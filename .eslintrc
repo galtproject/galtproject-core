@@ -1,0 +1,31 @@
+{
+    "extends": "@colony/eslint-config-colony",
+    "env": {
+        "node": true,
+        "mocha": true
+    },
+    "globals": {
+        "web3": true,
+        "assert": true,
+        "artifacts": true,
+        "contract": true
+    },
+    "rules": {
+        "import/no-extraneous-dependencies": [2, {"devDependencies": ["**/*.js"]}],
+        "max-len": [2, { "code": 120, "ignoreComments": true }],
+        "flowtype/require-valid-file-annotation": "off",
+        "import/named": "off",
+        "no-console": "off",
+        "func-names": "off",
+        "prettier/prettier": [
+            "error",
+            {
+                "singleQuote": true,
+                "printWidth": 120
+            }
+        ]
+    },
+    "parserOptions": {
+        "ecmaVersion": 2017
+    }
+}

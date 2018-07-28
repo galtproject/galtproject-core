@@ -1,0 +1,4 @@
+node_modules
+migrations
+test
+contracts/Migrations.sol
