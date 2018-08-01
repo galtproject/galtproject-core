@@ -17,6 +17,8 @@ module.exports = async function(deployer, network, accounts) {
   await deployer.deploy(LandUtils, { from: coreTeam });
 
   // Setup proxies...
+  // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
+  // https://github.com/zeppelinos/zos-lib/issues/226
   const spaceProxy = await AdminUpgradeabilityProxy.new(SpaceToken.address, { from: proxiesAdmin });
   const spaceToken = await SpaceToken.at(spaceProxy.address);
   spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
