@@ -1,6 +1,11 @@
-const web3 = require('web3');
+const Web3 = require('web3');
+
+let web3;
 
 module.exports = {
+  initHelperWeb3(_web3) {
+    web3 = new Web3(_web3.currentProvider);
+  },
   zeroAddress: '0x0000000000000000000000000000000000000000',
   hex(input) {
     return web3.utils.toHex(input);
@@ -22,5 +27,14 @@ module.exports = {
       return;
     }
     assert.fail('Expected throw not received');
+  },
+  async printStorage(address, slotsToPrint) {
+    assert(typeof address !== 'undefined');
+    assert(address.length > 0);
+
+    console.log('Storage listing for', address);
+    for (let i = 0; i < (slotsToPrint || 20); i++) {
+      console.log(`slot #${i}`, await web3.eth.getStorageAt(address, i));
+    }
   }
 };
