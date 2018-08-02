@@ -45,6 +45,7 @@ contract('PlotManager', ([deployer, alice, bob]) => {
 
       assert.equal(res2.status, 1);
       assert.equal(res2.precision, 7);
+      assert.equal(res2.applicant.toLowerCase(), alice);
       assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
       assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), initLedgerIdentifier);
     });

@@ -12,6 +12,7 @@ contract PlotManager is Initializable, Ownable {
 
   struct Application {
     bytes32 id;
+    address applicant;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint8 precision;
@@ -58,6 +59,7 @@ contract PlotManager is Initializable, Ownable {
 
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
+    a.applicant = msg.sender;
     a.vertices = _vertices;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
@@ -76,6 +78,7 @@ contract PlotManager is Initializable, Ownable {
     public
     view
     returns (
+      address applicant,
       uint256[] vertices,
       bytes32 credentiaslHash,
       ApplicationStatuses status,
@@ -89,6 +92,7 @@ contract PlotManager is Initializable, Ownable {
     Application storage m = applications[_id];
 
     return (
+      m.applicant,
       m.vertices,
       m.credentialsHash,
       m.status,
