@@ -4,7 +4,8 @@ const LandUtils = artifacts.require('./LandUtils');
 const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 module.exports = async function(deployer, network, accounts) {
-  if (network === 'test') {
+  if (network === 'test' || network === 'local' || network === 'development') {
+    console.log('Skipping deployment migration');
     return;
   }
 
