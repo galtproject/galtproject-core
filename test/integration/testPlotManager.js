@@ -1,4 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
+const SpaceToken = artifacts.require('./SpaceToken.sol');
+const SplitMerge = artifacts.require('./SplitMerge.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -19,7 +21,14 @@ chai.should();
 contract('PlotManager', ([deployer, alice, bob]) => {
   beforeEach(async function() {
     this.plotManagerTruffle = await PlotManager.new({ from: deployer });
+    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
+    this.splitMerge = await SplitMerge.new({ from: deployer });
+
+    this.spaceToken.initialize(this.plotManagerTruffle.address, 'SpaceToken', 'SPACE', { from: deployer });
+    this.plotManagerTruffle.initialize(this.spaceToken.address, this.splitMerge.address, { from: deployer });
+
     this.plotManager = new web3.eth.Contract(this.plotManagerTruffle.abi, this.plotManagerTruffle.address);
+    this.spaceToken = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
   describe('contract', () => {
@@ -48,6 +57,31 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       assert.equal(res2.applicant.toLowerCase(), alice);
       assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
       assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), initLedgerIdentifier);
+    });
+
+    it('should mint package-token to SplitMerge contract', async function() {
+      this.timeout(20000);
+      const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+      const initLedgerIdentifier = 'шц50023中222ائِيل';
+
+      const vertices = initVertices.map(galt.geohashToNumber);
+      const credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+      const ledgerIdentifier = web3.utils.utf8ToHex(initLedgerIdentifier);
+      const send = this.plotManager.methods
+        .applyForPlotOwnership(vertices, credentials, ledgerIdentifier, web3.utils.asciiToHex('MN'), 7)
+        .send({ from: alice, gas: 500000 });
+
+      let res = await send;
+      const aId = res.events.NewApplication.returnValues.id;
+      // console.log('Application ID:', aId);
+
+      res = await this.plotManagerTruffle.mintPack(aId, { from: alice });
+      const packTokenId = res.logs[0].args.spaceTokenId;
+      // console.log('Pack Token ID:', packTokenId);
+
+      // TODO: get minted pack id through a broadcasted event
+      res = await this.spaceToken.methods.totalSupply().call();
+      assert.equal(res, 1);
     });
   });
 });

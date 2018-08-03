@@ -3,12 +3,14 @@ pragma experimental "v0.5.0";
 
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./SpaceToken.sol";
+import "./SplitMerge.sol";
 
 contract PlotManager is Initializable, Ownable {
-  enum ApplicationStatuses { NOT_EXISTS, NEW, PENDING, APPROVED, REJECTED }
-  event Length(uint256 len);
-  event Byte(bytes1 b);
+  enum ApplicationStatuses { NOT_EXISTS, NEW, PACKED, APPROVED, REJECTED }
+
   event NewApplication(bytes32 id, address applicant);
+  event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
 
   struct Application {
     bytes32 id;
@@ -31,7 +33,19 @@ contract PlotManager is Initializable, Ownable {
   bytes32[] applicationsArray;
   address[] validatorsArray;
 
-  function initialize() isInitializer public {
+  SpaceToken public spaceToken;
+  SplitMerge public splitMerge;
+
+  function initialize(
+    SpaceToken _spaceToken,
+    SplitMerge _splitMerge
+  )
+    public
+    isInitializer
+  {
+    owner = msg.sender;
+    spaceToken = _spaceToken;
+    splitMerge = _splitMerge;
   }
 
   function applyForPlotOwnership(
@@ -47,8 +61,6 @@ contract PlotManager is Initializable, Ownable {
     require(_precision > 5, "Precision should be greater than 5");
     require(_vertices.length >= 3, "Number of vertices should be equal or greater than 3");
     require(_vertices.length < 51, "Number of vertices should be equal or less than 50");
-
-    emit Length(_ledgerIdentifier.length);
 
     for (uint8 i = 0; i < _vertices.length; i++) {
       require(_vertices[i] > 0, "Vertex should not be zero");
@@ -70,6 +82,17 @@ contract PlotManager is Initializable, Ownable {
 
     emit NewApplication(_id, msg.sender);
     return _id;
+  }
+
+  function mintPack(bytes32 _aId) public {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender);
+    require(a.status == ApplicationStatuses.NEW);
+    require(splitMerge != address(0));
+
+    uint256 t = spaceToken.mintPack(splitMerge);
+    emit NewPackMinted(bytes32(t), _aId);
   }
 
   function getPlotApplication(
