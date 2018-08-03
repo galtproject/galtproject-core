@@ -15,7 +15,8 @@ const config = {
     },
     test: {
       provider: Ganache.provider({
-        unlocked_accounts: [0, 1, 2, 3, 4, 5]
+        unlocked_accounts: [0, 1, 2, 3, 4, 5],
+        vmErrorsOnRPCResponse: false
       }),
       network_id: '*'
     }
