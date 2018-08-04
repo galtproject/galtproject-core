@@ -11,6 +11,7 @@ contract PlotManager is Initializable, Ownable {
 
   event NewApplication(bytes32 id, address applicant);
   event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
+  event NewGeohashMinted(bytes32 spaceTokenId, bytes32 applicationId);
 
   struct Application {
     bytes32 id;
@@ -20,6 +21,7 @@ contract PlotManager is Initializable, Ownable {
     uint8 precision;
     bytes2 country;
     uint256[] vertices;
+    uint256[] geohashTokens;
     ApplicationStatuses status;
   }
 
@@ -94,6 +96,23 @@ contract PlotManager is Initializable, Ownable {
     uint256 t = spaceToken.mintPack(splitMerge);
     emit NewPackMinted(bytes32(t), _aId);
   }
+
+  function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public {
+    require(_geohashes.length < 40, "Able to handle up to 40 geohashes only");
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender);
+    require(a.status == ApplicationStatuses.NEW);
+    require(splitMerge != address(0));
+
+    for (uint8 i = 0; i < _geohashes.length; i++) {
+      uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
+      spaceToken.mint(address(this), g);
+      a.geohashTokens.push(g);
+      emit NewGeohashMinted(bytes32(g), _aId);
+    }
+  }
+
 
   function getPlotApplication(
     bytes32 _id

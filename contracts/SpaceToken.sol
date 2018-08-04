@@ -91,10 +91,30 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     super._setTokenURI(_tokenId, _uri);
   }
 
+  // TODO: add unit tests
+  function geohashToTokenId(uint256 _geohash) pure public returns (uint256) {
+    bytes32 newIdBytes = bytes32(_geohash);
+
+    // Do not allow create more than 2^62 (4.611e18) geohashes
+    assert((newIdBytes & GeohashMask) == 0x0);
+    // TODO: assert length not more than 12 characters
+
+    uint256 newId = uint256(newIdBytes ^ GeohashMask);
+
+    return newId;
+  }
+
+  // TODO: add unit tests
+  function tokenIdToGeohash(uint256 _tokenId) pure public returns (uint256) {
+    return uint256(bytes32(_tokenId) ^ GeohashMask);
+  }
+
+  // TODO: add unit tests
   function isGeohash(bytes32 id) pure public returns (bool) {
     return (id & GeohashMask) == GeohashMask;
   }
 
+  // TODO: add unit tests
   function isPack(bytes32 id) pure public returns (bool) {
     return (id & PackMask) == PackMask;
   }

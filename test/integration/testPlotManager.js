@@ -79,9 +79,21 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       const packTokenId = res.logs[0].args.spaceTokenId;
       // console.log('Pack Token ID:', packTokenId);
 
-      // TODO: get minted pack id through a broadcasted event
+      let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+      geohashes += ` gbsuv7zq	gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+      geohashes = geohashes.split(' ').map(galt.geohashToNumber);
+      res = await this.plotManagerTruffle.pushGeohashes(aId, geohashes, { from: alice });
+
+      geohashes = `sezu7zht sezu7zhv sezu7zjj sezu7zhs sezu7zhu sezu7zjh sezu7zhe	sezu7zhg sezu7zj5`;
+      geohashes = geohashes.split(' ').map(galt.geohashToNumber);
+      res = await this.plotManagerTruffle.pushGeohashes(aId, geohashes, { from: alice });
+
+      // TODO: exchange tokens between PlotManager and SplitMerge
+      // TODO: validators management
+      // TODO: application submition by applicant
+      // TODO: application approval by validator
       res = await this.spaceToken.methods.totalSupply().call();
-      assert.equal(res, 1);
+      assert.equal(res, 25);
     });
   });
 });
