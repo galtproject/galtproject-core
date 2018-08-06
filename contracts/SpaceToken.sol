@@ -7,11 +7,12 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 
 // Just keep it here to make it loaded in tests
 import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
+import "./SplitMerge.sol";
 
 /*
  * SpaceToken id encode the following additional logic
  * left two bits describes what type is it:
- *  - 0x01 for geohash, for ex. "0x01f9388f000000000...0000
+ *  - 0x01 for geohash, for ex. "0x01f9388f000000000...0000000"
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
@@ -23,6 +24,8 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   bytes32 public constant PackMask = 0x0200000000000000000000000000000000000000000000000000000000000000;
 
   uint256 packTokenIdCounter;
+  bool splitMergeSet;
+  SplitMerge splitMerge;
 
   event SpaceTokenMinted(bytes32 id, address owner);
 
@@ -49,6 +52,18 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     _registerInterface(InterfaceId_ERC721Metadata);
   }
 
+  modifier canTransfer(uint256 _tokenId) {
+    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender);
+    _;
+  }
+
+  function setSplitMerge(SplitMerge _splitMerge) public {
+    require(splitMergeSet == false);
+
+    splitMerge = _splitMerge;
+    splitMergeSet = true;
+  }
+
   function mint(
     address _to,
     uint256 _tokenId
@@ -68,6 +83,21 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   {
     _tokenId = generatePackTokenId();
     mint(_to, _tokenId);
+  }
+
+  // Assume that can be called only by splitMerge for now
+  function swapToPack(uint256 _packageId, uint256[] _geohashIds, address _beneficiary) public {
+    require(splitMerge != address(0));
+    require(splitMerge == msg.sender);
+    // TODO: add assert for length of _geohasheIds
+    // TODO: add assertion that _packageId token is a package
+    // TODO: add assertions for each geohashId to make sure that it is a geohash
+
+    for (uint256 i = 0; i < _geohashIds.length; i++) {
+      transferFrom(_beneficiary, splitMerge, _geohashIds[i]);
+    }
+
+    transferFrom(splitMerge, _beneficiary, _packageId);
   }
 
   function generatePackTokenId() internal returns (uint256) {

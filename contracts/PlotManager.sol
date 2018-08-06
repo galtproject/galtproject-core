@@ -7,7 +7,7 @@ import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 
 contract PlotManager is Initializable, Ownable {
-  enum ApplicationStatuses { NOT_EXISTS, NEW, PACKED, APPROVED, REJECTED }
+  enum ApplicationStatuses { NOT_EXISTS, NEW, SWAPPED, SUBMITTED, APPROVED, REJECTED }
 
   event NewApplication(bytes32 id, address applicant);
   event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
@@ -18,6 +18,7 @@ contract PlotManager is Initializable, Ownable {
     address applicant;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
+    uint256 packageToken;
     uint8 precision;
     bytes2 country;
     uint256[] vertices;
@@ -48,6 +49,16 @@ contract PlotManager is Initializable, Ownable {
     owner = msg.sender;
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
+  }
+
+  modifier onlyApplicant(bytes32 _aId) {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender);
+    require(a.status == ApplicationStatuses.NEW);
+    require(splitMerge != address(0));
+
+    _;
   }
 
   function applyForPlotOwnership(
@@ -86,24 +97,18 @@ contract PlotManager is Initializable, Ownable {
     return _id;
   }
 
-  function mintPack(bytes32 _aId) public {
+  function mintPack(bytes32 _aId) public onlyApplicant(_aId) {
+    // TODO: prevent double mint
     Application storage a = applications[_aId];
-
-    require(a.applicant == msg.sender);
-    require(a.status == ApplicationStatuses.NEW);
-    require(splitMerge != address(0));
-
     uint256 t = spaceToken.mintPack(splitMerge);
+    a.packageToken = t;
+
     emit NewPackMinted(bytes32(t), _aId);
   }
 
-  function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public {
+  function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public onlyApplicant(_aId) {
     require(_geohashes.length < 40, "Able to handle up to 40 geohashes only");
     Application storage a = applications[_aId];
-
-    require(a.applicant == msg.sender);
-    require(a.status == ApplicationStatuses.NEW);
-    require(splitMerge != address(0));
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
@@ -111,6 +116,17 @@ contract PlotManager is Initializable, Ownable {
       a.geohashTokens.push(g);
       emit NewGeohashMinted(bytes32(g), _aId);
     }
+  }
+
+  function swapTokens(bytes32 _aId) public onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender);
+    require(a.status == ApplicationStatuses.NEW);
+    require(splitMerge != address(0));
+
+    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
+    a.status = ApplicationStatuses.SWAPPED;
   }
 
 
@@ -122,6 +138,8 @@ contract PlotManager is Initializable, Ownable {
     returns (
       address applicant,
       uint256[] vertices,
+      uint256 packageToken,
+      uint256[] geohashTokens,
       bytes32 credentiaslHash,
       ApplicationStatuses status,
       uint8 precision,
@@ -136,6 +154,8 @@ contract PlotManager is Initializable, Ownable {
     return (
       m.applicant,
       m.vertices,
+      m.packageToken,
+      m.geohashTokens,
       m.credentialsHash,
       m.status,
       m.precision,
