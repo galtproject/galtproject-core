@@ -104,9 +104,12 @@ contract('PlotManager', ([deployer, alice, bob]) => {
 
       let packageToken = res.packageToken;
       let geohashTokens = res.geohashTokens;
+      let status = res.status;
 
       console.log('splitMerge', this.splitMerge.address);
       console.log('plotManager', this.plotManager.address);
+
+      assert.equal(status, 1);
 
       res = await this.spaceToken.ownerOf.call(res.packageToken);
       assert.equal(res, this.splitMerge.address);
@@ -124,9 +127,11 @@ contract('PlotManager', ([deployer, alice, bob]) => {
 
       packageToken = res.packageToken;
       geohashTokens = res.geohashTokens;
+      status = res.status;
 
       console.log('splitMerge', this.splitMerge.address);
       console.log('plotManager', this.plotManager.address);
+      assert.equal(status, 2);
 
       res = await this.spaceToken.ownerOf.call(res.packageToken);
       assert.equal(res, this.plotManager.address);
