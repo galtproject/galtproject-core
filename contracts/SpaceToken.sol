@@ -33,6 +33,11 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
 
   event SpaceTokenMinted(bytes32 id, address owner);
 
+  modifier canTransfer(uint256 _tokenId) {
+    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
+    _;
+  }
+
   constructor(
     string name,
     string symbol
@@ -54,11 +59,6 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     // register the supported interfaces to conform to ERC721 via ERC165
     _registerInterface(InterfaceId_ERC721Enumerable);
     _registerInterface(InterfaceId_ERC721Metadata);
-  }
-
-  modifier canTransfer(uint256 _tokenId) {
-    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
-    _;
   }
 
   function setSplitMerge(SplitMerge _splitMerge) public {
@@ -104,19 +104,6 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     transferFrom(splitMerge, _beneficiary, _packageId);
   }
 
-  function generatePackTokenId() internal returns (uint256) {
-    bytes32 newIdBytes = bytes32(packTokenIdCounter++);
-
-    // Do not allow create more than 2^62 (4.611e18) packs
-    assert((newIdBytes & PACKAGE_MASK) == 0x0);
-
-    uint256 newId = uint256(newIdBytes ^ PACKAGE_MASK);
-
-    assert(!exists(newId));
-
-    return newId;
-  }
-
   function burn(uint256 _tokenId) public {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
@@ -151,5 +138,18 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   // TODO: add unit tests
   function isPack(bytes32 id) public pure returns (bool) {
     return (id & PACKAGE_MASK) == PACKAGE_MASK;
+  }
+
+  function generatePackTokenId() internal returns (uint256) {
+    bytes32 newIdBytes = bytes32(packTokenIdCounter++);
+
+    // Do not allow create more than 2^62 (4.611e18) packs
+    assert((newIdBytes & PACKAGE_MASK) == 0x0);
+
+    uint256 newId = uint256(newIdBytes ^ PACKAGE_MASK);
+
+    assert(!exists(newId));
+
+    return newId;
   }
 }
