@@ -50,9 +50,9 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
         { from: alice, gas: 500000 }
       );
 
-      const aId = res.events.NewApplication.returnValues.id;
+      const aId = res.logs[0].args.id;
 
-      const res2 = await this.plotManager.getPlotApplication.call(aId);
+      const res2 = await this.plotManagerWeb3.methods.getPlotApplication(aId).call();
 
       // assertions
       for (let i = 0; i < res2.vertices.length; i++) {
@@ -66,7 +66,7 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), initLedgerIdentifier);
     });
 
-    it.only('should mint package-token to SplitMerge contract', async function() {
+    it('should mint package-token to SplitMerge contract', async function() {
       this.timeout(40000);
       const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
       const initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -104,9 +104,6 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
 
       let { packageToken, geohashTokens, status } = res;
 
-      console.log('splitMerge', this.splitMerge.address);
-      console.log('plotManager', this.plotManager.address);
-
       assert.equal(status, 1);
 
       res = await this.spaceToken.ownerOf.call(packageToken);
@@ -125,8 +122,6 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
 
       ({ packageToken, geohashTokens, status } = res);
 
-      console.log('splitMerge', this.splitMerge.address);
-      console.log('plotManager', this.plotManager.address);
       assert.equal(status, 2);
 
       res = await this.spaceToken.ownerOf.call(res.packageToken);
