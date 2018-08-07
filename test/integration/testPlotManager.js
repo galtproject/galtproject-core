@@ -6,7 +6,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertRevert } = require('../helpers');
+const { ether } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 
@@ -86,18 +86,16 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       const aId = res.logs[0].args.id;
       // console.log('Application ID:', aId);
 
-      res = await this.plotManager.mintPack(aId, { from: alice });
-      const packTokenId = res.logs[0].args.spaceTokenId;
-      // console.log('Pack Token ID:', packTokenId);
+      await this.plotManager.mintPack(aId, { from: alice });
 
       let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
       geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
       geohashes = geohashes.split(' ').map(galt.geohashToNumber);
-      res = await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
+      await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
 
       geohashes = `sezu7zht sezu7zhv sezu7zjj sezu7zhs sezu7zhu sezu7zjh sezu7zhe sezu7zhg sezu7zj5`;
       geohashes = geohashes.split(' ').map(galt.geohashToNumber);
-      res = await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
+      await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
 
       // Verify pre-swap state
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: alice });
@@ -110,7 +108,7 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       assert.equal(res, this.splitMerge.address);
 
       for (let i = 0; i < geohashTokens; i++) {
-        let localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
+        const localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
         assert.equal(localRes, this.plotManager.address);
       }
 
@@ -128,7 +126,7 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       assert.equal(res, this.plotManager.address);
 
       for (let i = 0; i < geohashTokens; i++) {
-        let localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
+        const localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
         assert.equal(localRes, this.splitMerge.address);
       }
 
