@@ -102,16 +102,14 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       // Verify pre-swap state
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ form: alice });
 
-      let packageToken = res.packageToken;
-      let geohashTokens = res.geohashTokens;
-      let status = res.status;
+      let { packageToken, geohashTokens, status } = res;
 
       console.log('splitMerge', this.splitMerge.address);
       console.log('plotManager', this.plotManager.address);
 
       assert.equal(status, 1);
 
-      res = await this.spaceToken.ownerOf.call(res.packageToken);
+      res = await this.spaceToken.ownerOf.call(packageToken);
       assert.equal(res, this.splitMerge.address);
 
       for (let i = 0; i < geohashTokens; i++) {
@@ -125,9 +123,7 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       // Verify after-swap state
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ form: alice });
 
-      packageToken = res.packageToken;
-      geohashTokens = res.geohashTokens;
-      status = res.status;
+      ({ packageToken, geohashTokens, status } = res);
 
       console.log('splitMerge', this.splitMerge.address);
       console.log('plotManager', this.plotManager.address);
