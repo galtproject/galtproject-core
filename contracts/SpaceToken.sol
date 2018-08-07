@@ -12,7 +12,7 @@ import "./SplitMerge.sol";
 /*
  * SpaceToken id encode the following additional logic
  * left two bits describes what type is it:
- *  - 0x01 for geohash, for ex. "0x01f9388f000000000...0000000"
+ *  - 0x01 for geohash, for ex. "0x01000000000000000...00005df"
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
