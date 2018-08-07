@@ -9,7 +9,7 @@ import "./SplitMerge.sol";
 contract PlotManager is Initializable, Ownable {
   enum ApplicationStatuses { NOT_EXISTS, NEW, SWAPPED, SUBMITTED, APPROVED, REJECTED }
 
-  event ApplicationStatusChanged(bytes32 application, uint256 status);
+  event ApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
   event NewApplication(bytes32 id, address applicant);
   event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
   event NewGeohashMinted(bytes32 spaceTokenId, bytes32 applicationId);
@@ -31,11 +31,15 @@ contract PlotManager is Initializable, Ownable {
   struct Validator {
     bytes32 name;
     bytes2 country;
+    bool active;
   }
 
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
+  // WARNING: we do not remove validators from validatorsArray,
+  // so do not rely on this variable to verify whether validator
+  // exists or not.
   address[] validatorsArray;
   uint256 validationFee;
 
@@ -64,12 +68,23 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
-  function addValidator(address) public onlyOwner {
-
+  modifier onlyValidator() {
+    require(validators[msg.sender].active == true);
+    _;
   }
 
-  function removeValidator(address _validator, bytes2 country) public onlyOwner {
+  function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
+    require(_validator != address(0));
+    require(_country != 0x0);
 
+    validators[_validator] = Validator({ name: _name, country: _country, active: true });
+    validatorsArray.push(_validator);
+  }
+
+  function removeValidator(address _validator) public onlyOwner {
+    require(_validator != address(0));
+
+    validators[_validator].active = false;
   }
 
   function applyForPlotOwnership(
@@ -105,6 +120,8 @@ contract PlotManager is Initializable, Ownable {
     applications[_id] = a;
 
     emit NewApplication(_id, msg.sender);
+    emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
+
     return _id;
   }
 
@@ -138,16 +155,32 @@ contract PlotManager is Initializable, Ownable {
 
     splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
+    emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
   }
 
-  function submit(bytes32 _aId) public payable onlyApplicant(_aId) {
+  function submitApplication(bytes32 _aId) public payable onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
+    require(a.status == ApplicationStatuses.SWAPPED);
     require(msg.value == validationFee);
 
     a.status = ApplicationStatuses.SUBMITTED;
+    emit ApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
+  function validateApplication(bytes32 _aId, bool _approve) public payable onlyValidator {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatuses.SUBMITTED);
+
+    if (_approve) {
+      a.status = ApplicationStatuses.APPROVED;
+      emit ApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
+    } else {
+      a.status = ApplicationStatuses.REJECTED;
+      emit ApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
+    }
+  }
 
   function getPlotApplication(
     bytes32 _id

@@ -18,7 +18,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('PlotManager', ([deployer, alice, bob]) => {
+contract('PlotManager', ([deployer, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: deployer });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
@@ -67,7 +67,7 @@ contract('PlotManager', ([deployer, alice, bob]) => {
     });
 
     it.only('should mint package-token to SplitMerge contract', async function() {
-      this.timeout(20000);
+      this.timeout(40000);
       const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
       const initLedgerIdentifier = 'шц50023中222ائِيل';
 
@@ -100,7 +100,7 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       res = await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
 
       // Verify pre-swap state
-      res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ form: alice });
+      res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: alice });
 
       let { packageToken, geohashTokens, status } = res;
 
@@ -121,7 +121,7 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       await this.plotManager.swapTokens(aId, { from: alice });
 
       // Verify after-swap state
-      res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ form: alice });
+      res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: alice });
 
       ({ packageToken, geohashTokens, status } = res);
 
@@ -138,11 +138,19 @@ contract('PlotManager', ([deployer, alice, bob]) => {
       }
 
       // Submit
-      await this.plotManager.submit(aId, { from: alice, value: ether(1) });
+      await this.plotManager.submitApplication(aId, { from: alice, value: ether(1) });
 
-      // TODO: application submition by applicant
-      // TODO: validators management
-      // TODO: application approval by validator
+      // Add Bob as a validator
+      await this.plotManager.addValidator(bob, web3.utils.utf8ToHex('Bob'), web3.utils.utf8ToHex('ID'), {
+        from: deployer
+      });
+
+      // Bob validates the application from Alice
+      await this.plotManager.validateApplication(aId, true, { from: bob });
+
+      res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: charlie });
+      assert.equal(res.status, 4);
+
       res = await this.spaceToken.totalSupply.call();
       assert.equal(res, 25);
     });
