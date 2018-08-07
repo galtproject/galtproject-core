@@ -8,6 +8,7 @@ dist: trusty
 
 install:
   - npm install
+  - npm install -g eslint solium
 
 script:
   - npm run eslint
