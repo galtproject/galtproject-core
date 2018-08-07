@@ -9,6 +9,7 @@ import "./SplitMerge.sol";
 contract PlotManager is Initializable, Ownable {
   enum ApplicationStatuses { NOT_EXISTS, NEW, SWAPPED, SUBMITTED, APPROVED, REJECTED }
 
+  event ApplicationStatusChanged(bytes32 application, uint256 status);
   event NewApplication(bytes32 id, address applicant);
   event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
   event NewGeohashMinted(bytes32 spaceTokenId, bytes32 applicationId);
@@ -16,6 +17,7 @@ contract PlotManager is Initializable, Ownable {
   struct Application {
     bytes32 id;
     address applicant;
+    address validator;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageToken;
@@ -28,13 +30,14 @@ contract PlotManager is Initializable, Ownable {
 
   struct Validator {
     bytes32 name;
-    bytes4 country;
+    bytes2 country;
   }
 
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
   address[] validatorsArray;
+  uint256 validationFee;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -49,16 +52,24 @@ contract PlotManager is Initializable, Ownable {
     owner = msg.sender;
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
+    validationFee = 1 ether;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
     require(a.applicant == msg.sender);
-    require(a.status == ApplicationStatuses.NEW);
     require(splitMerge != address(0));
 
     _;
+  }
+
+  function addValidator(address) public onlyOwner {
+
+  }
+
+  function removeValidator(address _validator, bytes2 country) public onlyOwner {
+
   }
 
   function applyForPlotOwnership(
@@ -127,6 +138,14 @@ contract PlotManager is Initializable, Ownable {
 
     splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
+  }
+
+  function submit(bytes32 _aId) public payable onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(msg.value == validationFee);
+
+    a.status = ApplicationStatuses.SUBMITTED;
   }
 
 

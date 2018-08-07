@@ -141,8 +141,11 @@ contract('PlotManager', ([deployer, alice, bob]) => {
         assert.equal(localRes, this.splitMerge.address);
       }
 
-      // TODO: validators management
+      // Submit
+      await this.plotManager.submit(aId, { from: alice, value: ether(1) });
+
       // TODO: application submition by applicant
+      // TODO: validators management
       // TODO: application approval by validator
       res = await this.spaceToken.totalSupply.call();
       assert.equal(res, 25);
