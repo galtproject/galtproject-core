@@ -10,6 +10,8 @@ contract SplitMerge is Initializable, Ownable {
 
   mapping(uint256 => uint256[]) packedTokens;
 
+  constructor () public {}
+
   function initialize(SpaceToken _spaceToken) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;

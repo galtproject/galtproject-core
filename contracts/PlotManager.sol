@@ -46,6 +46,8 @@ contract PlotManager is Initializable, Ownable {
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
 
+  constructor () public {}
+
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge
