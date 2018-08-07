@@ -5,8 +5,8 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
+const galt = require('@galtproject/utils');
 const { ether, assertRevert } = require('../helpers');
-const galt = require('../helpers/galt');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 
@@ -91,11 +91,11 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       // console.log('Pack Token ID:', packTokenId);
 
       let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
-      geohashes += ` gbsuv7zq	gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+      geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
       geohashes = geohashes.split(' ').map(galt.geohashToNumber);
       res = await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
 
-      geohashes = `sezu7zht sezu7zhv sezu7zjj sezu7zhs sezu7zhu sezu7zjh sezu7zhe	sezu7zhg sezu7zj5`;
+      geohashes = `sezu7zht sezu7zhv sezu7zjj sezu7zhs sezu7zhu sezu7zjh sezu7zhe sezu7zhg sezu7zj5`;
       geohashes = geohashes.split(' ').map(galt.geohashToNumber);
       res = await this.plotManager.pushGeohashes(aId, geohashes, { from: alice });
 
@@ -146,8 +146,8 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: charlie });
       assert.equal(res.status, 4);
 
-      res = await this.spaceToken.totalSupply.call();
-      assert.equal(res, 25);
+      res = await this.spaceToken.totalSupply();
+      assert.equal(res, 27);
     });
   });
 });

@@ -8,6 +8,7 @@
   "dependencies": {},
   "devDependencies": {
     "@colony/eslint-config-colony": "5.0.0",
+    "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "^8.2.5",
