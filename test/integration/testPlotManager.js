@@ -107,9 +107,14 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       res = await this.spaceToken.ownerOf.call(packageToken);
       assert.equal(res, this.splitMerge.address);
 
-      for (let i = 0; i < geohashTokens; i++) {
-        const localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
-        assert.equal(localRes, this.plotManager.address);
+      let tasks = [];
+      for (let i = 0; i < geohashTokens.length; i++) {
+        tasks.push(this.spaceToken.ownerOf.call(geohashTokens[i]));
+      }
+
+      let results = await Promise.all(tasks);
+      for (let i = 0; i < results.length; i++) {
+        assert.equal(results[i], this.plotManager.address);
       }
 
       // Swap
@@ -125,9 +130,14 @@ contract('PlotManager', ([deployer, alice, bob, charlie]) => {
       res = await this.spaceToken.ownerOf.call(res.packageToken);
       assert.equal(res, this.plotManager.address);
 
-      for (let i = 0; i < geohashTokens; i++) {
-        const localRes = await this.spaceToken.ownerOf.call(res.geohashTokens[i]);
-        assert.equal(localRes, this.splitMerge.address);
+      tasks = [];
+      for (let i = 0; i < geohashTokens.length; i++) {
+        tasks.push(this.spaceToken.ownerOf.call(geohashTokens[i]));
+      }
+
+      results = await Promise.all(tasks);
+      for (let i = 0; i < results.length; i++) {
+        assert.equal(results[i], this.splitMerge.address);
       }
 
       // Submit
