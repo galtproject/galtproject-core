@@ -142,6 +142,7 @@ contract PlotManager is Initializable, Ownable {
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
+      // TODO: check for geohash parents exists
       spaceToken.mint(address(this), g);
       a.geohashTokens.push(g);
       emit NewGeohashMinted(bytes32(g), _aId);
