@@ -1,5 +1,5 @@
 # About Galt Project
-[![Build Status](https://travis-ci.org/andromedaspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/andromedaspace/galtproject-contracts)
+[![Build Status](https://travis-ci.org/galtspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-contracts)
 
 ## Who is John Galt?
 What is John Galt Project in 10 sentences.

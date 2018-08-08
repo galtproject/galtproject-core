@@ -6,6 +6,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 
+
 contract PlotManager is Initializable, Ownable {
   enum ApplicationStatuses { NOT_EXISTS, NEW, SWAPPED, SUBMITTED, APPROVED, REJECTED }
 
@@ -64,27 +65,27 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender);
-    require(splitMerge != address(0));
+    require(a.applicant == msg.sender, "Not valid applicant");
+    require(splitMerge != address(0), "SplitMerge address not set");
 
     _;
   }
 
   modifier onlyValidator() {
-    require(validators[msg.sender].active == true);
+    require(validators[msg.sender].active == true, "Not active validator");
     _;
   }
 
   function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
-    require(_validator != address(0));
-    require(_country != 0x0);
+    require(_validator != address(0), "Missing validator");
+    require(_country != 0x0, "Missing country");
 
     validators[_validator] = Validator({ name: _name, country: _country, active: true });
     validatorsArray.push(_validator);
   }
 
   function removeValidator(address _validator) public onlyOwner {
-    require(_validator != address(0));
+    require(_validator != address(0), "Missing validator");
 
     validators[_validator].active = false;
   }
@@ -152,9 +153,9 @@ contract PlotManager is Initializable, Ownable {
   function swapTokens(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender);
-    require(a.status == ApplicationStatuses.NEW);
-    require(splitMerge != address(0));
+    require(a.applicant == msg.sender, "Not valid applicant");
+    require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
+    require(splitMerge != address(0), "SplitMerge address not set");
 
     splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
@@ -164,8 +165,8 @@ contract PlotManager is Initializable, Ownable {
   function submitApplication(bytes32 _aId) public payable onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.SWAPPED);
-    require(msg.value == validationFee);
+    require(a.status == ApplicationStatuses.SWAPPED, "Application status should be SWAPPED");
+    require(msg.value == validationFee, "Incorrect fee passed in");
 
     a.status = ApplicationStatuses.SUBMITTED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
@@ -174,7 +175,7 @@ contract PlotManager is Initializable, Ownable {
   function validateApplication(bytes32 _aId, bool _approve) public payable onlyValidator {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.SUBMITTED);
+    require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
 
     if (_approve) {
       a.status = ApplicationStatuses.APPROVED;

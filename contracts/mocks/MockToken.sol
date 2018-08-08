@@ -21,7 +21,7 @@ contract MockToken is Initializable, MintableToken {
   constructor() public {
   }
 
-  function initialize() isInitializer public {
+  function initialize() public isInitializer {
     owner = msg.sender;
 
     totalSupply_ = INITIAL_SUPPLY;

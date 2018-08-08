@@ -11,6 +11,7 @@
         "contract": true
     },
     "rules": {
+        "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
         "import/no-extraneous-dependencies": [2, {"devDependencies": ["**/*.js"]}],
         "max-len": [2, { "code": 120, "ignoreComments": true }],
         "flowtype/require-valid-file-annotation": "off",

@@ -33,8 +33,16 @@ module.exports = {
     assert(address.length > 0);
 
     console.log('Storage listing for', address);
+    const tasks = [];
+
     for (let i = 0; i < (slotsToPrint || 20); i++) {
-      console.log(`slot #${i}`, await web3.eth.getStorageAt(address, i));
+      tasks.push(web3.eth.getStorageAt(address, i));
+    }
+
+    const results = await Promise.all(tasks);
+
+    for (let i = 0; i < results.length; i++) {
+      console.log(`slot #${i}`, results[i]);
     }
   }
 };

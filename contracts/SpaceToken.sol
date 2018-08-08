@@ -9,6 +9,7 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
 import "./SplitMerge.sol";
 
+
 /*
  * SpaceToken id encode the following additional logic
  * left two bits describes what type is it:
@@ -17,17 +18,25 @@ import "./SplitMerge.sol";
  *
  */
 contract SpaceToken is ERC721Token, Ownable, Initializable {
+  // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
+
+  // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Metadata = 0x5b5e139f;
 
-  bytes32 public constant GeohashMask = 0x0100000000000000000000000000000000000000000000000000000000000000;
-  bytes32 public constant PackMask = 0x0200000000000000000000000000000000000000000000000000000000000000;
+  bytes32 public constant GEOHASH_MASK = 0x0100000000000000000000000000000000000000000000000000000000000000;
+  bytes32 public constant PACKAGE_MASK = 0x0200000000000000000000000000000000000000000000000000000000000000;
 
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
 
   event SpaceTokenMinted(bytes32 id, address owner);
+
+  modifier canTransfer(uint256 _tokenId) {
+    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
+    _;
+  }
 
   constructor(
     string name,
@@ -38,7 +47,7 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   {
   }
 
-  function initialize(address _owner, string _name, string _symbol) isInitializer public {
+  function initialize(address _owner, string _name, string _symbol) public isInitializer {
     // TODO: figure out how to call constructor
     // For now all parent constructors code is copied here
     owner = _owner;
@@ -52,13 +61,8 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     _registerInterface(InterfaceId_ERC721Metadata);
   }
 
-  modifier canTransfer(uint256 _tokenId) {
-    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender);
-    _;
-  }
-
   function setSplitMerge(SplitMerge _splitMerge) public {
-    require(splitMergeSet == false);
+    require(splitMergeSet == false, "SplitMerge address is already set");
 
     splitMerge = _splitMerge;
     splitMergeSet = true;
@@ -87,8 +91,8 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
 
   // Assume that can be called only by splitMerge for now
   function swapToPack(uint256 _packageId, uint256[] _geohashIds, address _beneficiary) public {
-    require(splitMerge != address(0));
-    require(splitMerge == msg.sender);
+    require(splitMerge != address(0), "SplitMerge address not set");
+    require(splitMerge == msg.sender, "Sender is not SplitMerge");
     // TODO: add assert for length of _geohasheIds
     // TODO: add assertion that _packageId token is a package
     // TODO: add assertions for each geohashId to make sure that it is a geohash
@@ -100,19 +104,6 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     transferFrom(splitMerge, _beneficiary, _packageId);
   }
 
-  function generatePackTokenId() internal returns (uint256) {
-    bytes32 newIdBytes = bytes32(packTokenIdCounter++);
-
-    // Do not allow create more than 2^62 (4.611e18) packs
-    assert((newIdBytes & PackMask) == 0x0);
-
-    uint256 newId = uint256(newIdBytes ^ PackMask);
-
-    assert(!exists(newId));
-
-    return newId;
-  }
-
   function burn(uint256 _tokenId) public {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
@@ -122,30 +113,43 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   }
 
   // TODO: add unit tests
-  function geohashToTokenId(uint256 _geohash) pure public returns (uint256) {
+  function geohashToTokenId(uint256 _geohash) public pure returns (uint256) {
     bytes32 newIdBytes = bytes32(_geohash);
 
     // Do not allow create more than 2^62 (4.611e18) geohashes
-    assert((newIdBytes & GeohashMask) == 0x0);
+    assert((newIdBytes & GEOHASH_MASK) == 0x0);
     // TODO: assert length not more than 12 characters
 
-    uint256 newId = uint256(newIdBytes ^ GeohashMask);
+    uint256 newId = uint256(newIdBytes ^ GEOHASH_MASK);
 
     return newId;
   }
 
   // TODO: add unit tests
-  function tokenIdToGeohash(uint256 _tokenId) pure public returns (uint256) {
-    return uint256(bytes32(_tokenId) ^ GeohashMask);
+  function tokenIdToGeohash(uint256 _tokenId) public pure returns (uint256) {
+    return uint256(bytes32(_tokenId) ^ GEOHASH_MASK);
   }
 
   // TODO: add unit tests
-  function isGeohash(bytes32 id) pure public returns (bool) {
-    return (id & GeohashMask) == GeohashMask;
+  function isGeohash(bytes32 id) public pure returns (bool) {
+    return (id & GEOHASH_MASK) == GEOHASH_MASK;
   }
 
   // TODO: add unit tests
-  function isPack(bytes32 id) pure public returns (bool) {
-    return (id & PackMask) == PackMask;
+  function isPack(bytes32 id) public pure returns (bool) {
+    return (id & PACKAGE_MASK) == PACKAGE_MASK;
+  }
+
+  function generatePackTokenId() internal returns (uint256) {
+    bytes32 newIdBytes = bytes32(packTokenIdCounter++);
+
+    // Do not allow create more than 2^62 (4.611e18) packs
+    assert((newIdBytes & PACKAGE_MASK) == 0x0);
+
+    uint256 newId = uint256(newIdBytes ^ PACKAGE_MASK);
+
+    assert(!exists(newId));
+
+    return newId;
   }
 }

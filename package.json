@@ -1,13 +1,14 @@
 {
   "name": "galt-contracts",
   "version": "0.1.0",
-  "description": "",
+  "description": "Open-source software for land tokenization (accounting on blockchain) and self-governance",
   "directories": {
     "test": "test"
   },
   "dependencies": {},
   "devDependencies": {
     "@colony/eslint-config-colony": "5.0.0",
+    "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "^8.2.5",
@@ -31,6 +32,10 @@
     "web3": "^1.0.0-beta.35",
     "zos-lib": "^1.3.0"
   },
+  "engines": {
+    "node": ">=10.5.0"
+  },
+  "repository": "https://github.com/galtspace/galtproject-contracts",
   "scripts": {
     "test": "truffle test --network test",
     "test-gas": "USE_GAS_REPORTER=yes truffle test --network development",
