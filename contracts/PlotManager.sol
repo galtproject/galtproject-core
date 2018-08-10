@@ -210,6 +210,17 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
+  function isCredentialsHashValid(
+    bytes32 _id,
+    bytes32 _hash
+  )
+    public
+    view
+    returns (bool)
+  {
+    return (_hash == applications[_id].credentialsHash);
+  }
+
   function getPlotApplication(
     bytes32 _id
   )

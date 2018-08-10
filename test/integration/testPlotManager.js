@@ -158,5 +158,31 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 27);
     });
+
+    describe('actions on new applications', () => {
+      beforeEach(async function() {
+        const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+        const initLedgerIdentifier = 'шц50023中222ائِيل';
+
+        const vertices = initVertices.map(galt.geohashToNumber);
+        this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+        const ledgerIdentifier = web3.utils.utf8ToHex(initLedgerIdentifier);
+        const res = await this.plotManager.applyForPlotOwnership(
+          vertices,
+          this.credentials,
+          ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, gas: 500000 }
+        );
+
+        this.aId = res.logs[0].args.id;
+      });
+
+      it('should provide an option to verify applicants credentials', async function() {
+        const res = await this.plotManager.isCredentialsHashValid(this.aId, this.credentials);
+        assert(res);
+      });
+    });
   });
 });
