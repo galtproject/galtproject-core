@@ -18,6 +18,10 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
+/**
+ * Alice is an applicant
+ * Bob is a validator
+ */
 contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: deployer });
@@ -142,7 +146,7 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
       }
 
       // Submit
-      await this.plotManager.submitApplication(aId, { from: alice, value: ether(1) });
+      await this.plotManager.submitApplication(aId, { from: alice, value: ether(6) });
 
       // Add Bob as a validator
       await this.plotManager.addValidator(bob, web3.utils.utf8ToHex('Bob'), web3.utils.utf8ToHex('ID'), {
@@ -182,6 +186,61 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
       it('should provide an option to verify applicants credentials', async function() {
         const res = await this.plotManager.isCredentialsHashValid(this.aId, this.credentials);
         assert(res);
+      });
+    });
+
+    describe('actions on approved applications', () => {
+      beforeEach(async function() {
+        this.fee = ether(6);
+        const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+        const initLedgerIdentifier = 'шц50023中222ائِيل';
+
+        const vertices = initVertices.map(galt.geohashToNumber);
+        this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+        const ledgerIdentifier = web3.utils.utf8ToHex(initLedgerIdentifier);
+        const res = await this.plotManager.applyForPlotOwnership(
+          vertices,
+          this.credentials,
+          ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, gas: 500000 }
+        );
+
+        this.aId = res.logs[0].args.id;
+
+        // mint
+        await this.plotManager.mintPack(this.aId, { from: alice });
+
+        // push
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToNumber);
+        await this.plotManager.pushGeohashes(this.aId, geohashes, { from: alice });
+
+        // Swap
+        await this.plotManager.swapTokens(this.aId, { from: alice });
+
+        // Submit
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.fee });
+
+        await this.plotManager.addValidator(bob, web3.utils.utf8ToHex('Bob'), web3.utils.utf8ToHex('ID'), {
+          from: deployer
+        });
+
+        // Bob validates the application from Alice
+        await this.plotManager.validateApplication(this.aId, true, { from: bob });
+      });
+
+      it('should provide validator an option to claim his earnings', async function() {
+        const initialBalance = await web3.eth.getBalance(bob);
+
+        await this.plotManager.claimFee(this.aId, { from: bob });
+
+        const currentBalance = await web3.eth.getBalance(bob);
+        const diff = currentBalance - initialBalance;
+
+        assert(web3.utils.fromWei(diff.toString(), 'ether') < 6);
+        assert(web3.utils.fromWei(diff.toString(), 'ether') > 5);
       });
     });
   });

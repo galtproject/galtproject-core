@@ -22,6 +22,8 @@ contract PlotManager is Initializable, Ownable {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageToken;
+    uint256 fee;
+    bool feePaid;
     uint8 precision;
     bytes2 country;
     uint256[] vertices;
@@ -43,7 +45,7 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   address[] validatorsArray;
-  uint256 validationFee;
+  uint256 public validationFee;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -60,7 +62,7 @@ contract PlotManager is Initializable, Ownable {
     owner = msg.sender;
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    validationFee = 1 ether;
+    validationFee = 6 ether;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -193,10 +195,12 @@ contract PlotManager is Initializable, Ownable {
     require(msg.value == validationFee, "Incorrect fee passed in");
 
     a.status = ApplicationStatuses.SUBMITTED;
+    a.fee = msg.value;
+
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
-  function validateApplication(bytes32 _aId, bool _approve) public payable onlyValidator {
+  function validateApplication(bytes32 _aId, bool _approve) public onlyValidator {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
@@ -208,6 +212,19 @@ contract PlotManager is Initializable, Ownable {
       a.status = ApplicationStatuses.REJECTED;
       emit ApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
     }
+  }
+
+  function claimFee(bytes32 _aId) public onlyValidator {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be ether APPROVED or REJECTED");
+    require(a.feePaid == false, "Fee already paid");
+
+    a.feePaid = true;
+
+    msg.sender.transfer(a.fee);
   }
 
   function isCredentialsHashValid(
@@ -233,7 +250,9 @@ contract PlotManager is Initializable, Ownable {
       uint256 packageToken,
       uint256[] geohashTokens,
       bytes32 credentiaslHash,
+      uint256 fee,
       ApplicationStatuses status,
+      bool feePaid,
       uint8 precision,
       bytes2 country,
       bytes32 ledgerIdentifier
@@ -250,7 +269,9 @@ contract PlotManager is Initializable, Ownable {
       m.packageToken,
       m.geohashTokens,
       m.credentialsHash,
+      m.fee,
       m.status,
+      m.feePaid,
       m.precision,
       m.country,
       m.ledgerIdentifier
