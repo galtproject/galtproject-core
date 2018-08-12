@@ -5,7 +5,9 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {},
+  "dependencies": {
+    "p-iteration": "^1.1.7"
+  },
   "devDependencies": {
     "@colony/eslint-config-colony": "5.0.0",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git",
