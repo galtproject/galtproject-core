@@ -10,8 +10,6 @@ The main goal of Galt Project is to create sofware for land tokenization (accoun
 GALT - ERC20 standart ethereum based token.
 
 SPACE - ERC721 standart ethereum based token.
-### Galt Project Contact information
-https://galtproject.io/
 
 ### Contacts
 https://galtproject.io/
