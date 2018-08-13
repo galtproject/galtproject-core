@@ -18,7 +18,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('PlotManager', ([deployer, alice, bob, charlie]) => {
+contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: deployer });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
