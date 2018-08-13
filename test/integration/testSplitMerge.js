@@ -35,6 +35,7 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
     this.splitMergeWeb3 = new web3.eth.Contract(this.splitMerge.abi, this.splitMerge.address);
   });
 
+  // TODO: fix spaceToken.mint error and unskip test
   describe.skip('contract', () => {
     it('should creating correctly', async function() {
       const initFirstGeohash = 'sdesde';
