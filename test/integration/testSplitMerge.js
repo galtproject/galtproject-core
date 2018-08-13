@@ -37,7 +37,7 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
 
   // TODO: fix spaceToken.mint error and unskip test
   describe('contract', () => {
-    it.only('should creating correctly', async function() {
+    it('should creating correctly', async function() {
       let res;
 
       const initFirstGeohash = 'sdesde';
