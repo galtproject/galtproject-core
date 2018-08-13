@@ -4,32 +4,126 @@ pragma experimental "v0.5.0";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./SpaceToken.sol";
-
+import "./PlotManager.sol";
 
 contract SplitMerge is Initializable, Ownable {
   SpaceToken spaceToken;
+  PlotManager plotManager;
 
-  mapping(uint256 => uint256[]) packedTokens;
+  event PackageInit(bytes32 id, address owner);
 
-  constructor () public {}
+  mapping(uint256 => uint256) geohashToPackage;
+  mapping(uint256 => uint256[]) packageToContour;
+
+  mapping(uint256 => uint256[]) packageToGeohashes;
+  mapping(uint256 => uint256) packageToGeohashesCount;
+  mapping(uint256 => bool) brokenPackages;
+
+  uint256[] allPackages;
+
+  constructor () public {
+
+  }
 
   function initialize(SpaceToken _spaceToken) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;
   }
 
-  function swapTokens(uint256 _packageToken, uint256[] _geohashTokens) public {
+  function setPlotManager(PlotManager _plotManager) public onlyOwner {
+    plotManager = _plotManager;
+  }
+
+  modifier ownerOrPlotManager() {
+    require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
+    _;
+  }
+
+  function mintGeohash(uint256 _geohashToken) public ownerOrPlotManager {
+    // TODO: add spaceToken.isGeohash check
+    spaceToken.mint(address(this), _geohashToken);
+  }
+
+  function initPackage(uint256 _firstGeohashToken) public returns (uint256) {
+    // TODO: add spaceToken.isGeohash check
+    uint256 _packageToken = spaceToken.generatePackTokenId();
+
+    spaceToken.mint(msg.sender, _packageToken);
+    allPackages.push(_packageToken);
+
+    addGeohashToPackageUnsafe(_packageToken, _firstGeohashToken);
+
+    packageToGeohashesCount[_packageToken] = 1;
+
+    emit PackageInit(bytes32(_packageToken), spaceToken.ownerOf(_packageToken));
+    return _packageToken;
+  }
+
+  function setPackageContour(uint256 _packageToken, uint256[] _geohashesContour) public {
+    require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
+
+    packageToContour[_packageToken] = _geohashesContour;
+  }
+
+  function addGeohashToPackageUnsafe(uint256 _packageToken, uint256 _geohashToken) private {
+    require(_geohashToken != 0, "Geohash is 0");
+    require(spaceToken.ownerOf(_geohashToken) == msg.sender, "Geohash owner is not msg.sender");
+
+    spaceToken.transferFrom(spaceToken.ownerOf(_geohashToken), address(this), _geohashToken);
+
+    packageToGeohashes[_packageToken].push(_geohashToken);
+    geohashToPackage[_geohashToken] = _packageToken;
+  }
+
+  function addGeohashesToPackage(uint256 _packageToken, uint256[] _geohashTokens, uint256[] _neighborsGeohashTokens, bytes2[] _directions) public {
     require(_packageToken != 0, "Missing package token");
+    require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
     require(spaceToken != address(0), "SpaceToken address not set");
 
-    require(spaceToken.ownerOf(_packageToken) == address(this), "Package token doesn't belong to SplitMerge contract");
-
     for (uint256 i = 0; i < _geohashTokens.length; i++) {
-      require(_geohashTokens[i] != 0, "Geohash is 0");
-      require(spaceToken.ownerOf(_geohashTokens[i]) == msg.sender, "Geohash owner is not msg.sender");
-      packedTokens[_packageToken].push(_geohashTokens[i]);
+      //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
+      addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
 
-    spaceToken.swapToPack(_packageToken, _geohashTokens, msg.sender);
+    packageToGeohashesCount[_packageToken] += _geohashTokens.length;
   }
+
+  function removeGeohashFromPackageUnsafe(uint256 _packageToken, uint256 _geohashToken) public ownerOrPlotManager {
+    require(_geohashToken != 0, "Geohash is 0");
+    require(spaceToken.ownerOf(_geohashToken) == address(this), "Geohash owner is not SplitMerge");
+
+    spaceToken.transferFrom(address(this), msg.sender, _geohashToken);
+    geohashToPackage[_geohashToken] = 0;
+  }
+
+  function removeGeohashesFromPackage(uint256 _packageToken, uint256[] _geohashTokens, bytes2[] _directions1, bytes2[] _directions2) public {
+    require(_packageToken != 0, "Missing package token");
+    require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
+    require(spaceToken != address(0), "SpaceToken address not set");
+
+    for (uint256 i = 0; i < _geohashTokens.length; i++) {
+      //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
+      addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
+    }
+
+    packageToGeohashesCount[_packageToken] -= _geohashTokens.length;
+  }
+
+  function packageGeohashesCount(uint256 _packageToken) public returns (uint256) {
+    return packageToGeohashesCount[_packageToken];
+  }
+
+  function packageGeohashes(uint256 _packageToken) public returns (uint256[]) {
+    return packageToGeohashes[_packageToken];
+  }
+
+  // TODO: implement in future
+//  function splitGeohash(uint256 _geohashToken) public {
+//
+//  }
+
+  // TODO: implement in future
+//  function mergeGeohash(uint256[] _geohashToken) public {
+//
+//  }
 }

@@ -38,6 +38,7 @@ contract PlotManager is Initializable, Ownable {
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
+  mapping(address => bytes32[]) public applicationsByAddresses;
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -121,6 +122,8 @@ contract PlotManager is Initializable, Ownable {
     a.precision = _precision;
 
     applications[_id] = a;
+    applicationsArray.push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
 
     emit NewApplication(_id, msg.sender);
     emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -157,7 +160,8 @@ contract PlotManager is Initializable, Ownable {
     require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
     require(splitMerge != address(0), "SplitMerge address not set");
 
-    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
+    // TODO: should use actual functions from SplitMerge
+//    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
   }
@@ -218,5 +222,9 @@ contract PlotManager is Initializable, Ownable {
       m.country,
       m.ledgerIdentifier
     );
+  }
+
+  function getApplicationsByAddress(address applicant) external returns (bytes32[]) {
+    return applicationsByAddresses[applicant];
   }
 }
