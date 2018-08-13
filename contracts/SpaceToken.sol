@@ -90,6 +90,16 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
 
+  function setTokenURI(
+    uint256 _tokenId,
+    string _uri
+  )
+    public
+    onlyOwnerOf(_tokenId)
+  {
+    super._setTokenURI(_tokenId, _uri);
+  }
+
   // TODO: add unit tests
   function geohashToTokenId(uint256 _geohash) public pure returns (uint256) {
     bytes32 newIdBytes = bytes32(_geohash);

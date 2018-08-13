@@ -3,7 +3,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { ether, assertRevert } = require('../helpers');
+const { assertRevert } = require('../helpers');
 
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
@@ -75,8 +75,36 @@ contract('SpaceToken', ([coreTeam, alice, bob]) => {
       await assertRevert(this.spaceToken.burn(123, { from: bob }));
     });
 
-    it('should deny mint some tokens to users without any role', async function() {
+    it('should deny burn a token to users without any role', async function() {
       await assertRevert(this.spaceToken.burn(123, { from: bob }));
+    });
+
+    it('should deny burn a token to an owner of the token', async function() {
+      await assertRevert(this.spaceToken.burn(123, { from: alice }));
+    });
+  });
+
+  describe('#setTokenURI()', () => {
+    beforeEach(async function() {
+      await this.spaceToken.mint(alice, 123, { from: coreTeam });
+      let res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, alice);
+      res = await this.spaceToken.totalSupply();
+      assert.equal(res, 1);
+    });
+
+    it('should deny the contract owner to change token uri', async function() {
+      await assertRevert(this.spaceToken.setTokenURI(123, 'foobar', { from: coreTeam }));
+    });
+
+    it('should allow token owner to set token uri', async function() {
+      await this.spaceToken.setTokenURI(123, 'foobar', { from: alice });
+      const res = await this.spaceToken.tokenURI(123);
+      assert.equal(res, 'foobar');
+    });
+
+    it('should deny non-owner set token uri', async function() {
+      await assertRevert(this.spaceToken.setTokenURI(123, 'foobar', { from: bob }));
     });
   });
 });
