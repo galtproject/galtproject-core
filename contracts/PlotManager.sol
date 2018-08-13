@@ -38,7 +38,7 @@ contract PlotManager is Initializable, Ownable {
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
-  mapping(address => bytes32[]) public applicationByAddresses;
+  mapping(address => bytes32[]) public applicationsByAddresses;
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -123,7 +123,7 @@ contract PlotManager is Initializable, Ownable {
 
     applications[_id] = a;
     applicationsArray.push(_id);
-    applicationByAddresses[msg.sender].push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
 
     emit NewApplication(_id, msg.sender);
     emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -222,5 +222,9 @@ contract PlotManager is Initializable, Ownable {
       m.country,
       m.ledgerIdentifier
     );
+  }
+
+  function getApplicationsByAddress(address applicant) external {
+    return applicationsByAddresses[applicant];
   }
 }
