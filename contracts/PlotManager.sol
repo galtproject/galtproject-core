@@ -54,8 +54,8 @@ contract PlotManager is Initializable, Ownable {
     SpaceToken _spaceToken,
     SplitMerge _splitMerge
   )
-    public
-    isInitializer
+  public
+  isInitializer
   {
     owner = msg.sender;
     spaceToken = _spaceToken;
@@ -75,6 +75,26 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyValidator() {
     require(validators[msg.sender].active == true, "Not active validator");
     _;
+  }
+
+  function isValidator(address account) public view returns (bool) {
+    return validators[account].active == true;
+  }
+
+  function getValidators() public view returns (address[]) {
+    return validatorsArray;
+  }
+
+  function getValidator(address validator) public view returns (bytes32 name,
+    bytes2 country,
+    bool active)
+  {
+    Validator storage v = validators[validator];
+    return (
+    v.name,
+    v.country,
+    v.active
+    );
   }
 
   function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
@@ -98,8 +118,8 @@ contract PlotManager is Initializable, Ownable {
     bytes2 _country,
     uint8 _precision
   )
-    public
-    returns (bytes32)
+  public
+  returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_vertices.length >= 3, "Number of vertices should be equal or greater than 3");
@@ -161,7 +181,7 @@ contract PlotManager is Initializable, Ownable {
     require(splitMerge != address(0), "SplitMerge address not set");
 
     // TODO: should use actual functions from SplitMerge
-//    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
+    //    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
   }
@@ -193,34 +213,36 @@ contract PlotManager is Initializable, Ownable {
   function getPlotApplication(
     bytes32 _id
   )
-    public
-    view
-    returns (
-      address applicant,
-      uint256[] vertices,
-      uint256 packageToken,
-      uint256[] geohashTokens,
-      bytes32 credentiaslHash,
-      ApplicationStatuses status,
-      uint8 precision,
-      bytes2 country,
-      bytes32 ledgerIdentifier
-    )
+  public
+  view
+  returns (
+    bytes32 id,
+    address applicant,
+    uint256[] vertices,
+    uint256 packageToken,
+    uint256[] geohashTokens,
+    bytes32 credentiaslHash,
+    ApplicationStatuses status,
+    uint8 precision,
+    bytes2 country,
+    bytes32 ledgerIdentifier
+  )
   {
     require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
 
     Application storage m = applications[_id];
 
     return (
-      m.applicant,
-      m.vertices,
-      m.packageToken,
-      m.geohashTokens,
-      m.credentialsHash,
-      m.status,
-      m.precision,
-      m.country,
-      m.ledgerIdentifier
+    _id,
+    m.applicant,
+    m.vertices,
+    m.packageToken,
+    m.geohashTokens,
+    m.credentialsHash,
+    m.status,
+    m.precision,
+    m.country,
+    m.ledgerIdentifier
     );
   }
 
