@@ -44,22 +44,23 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
       const firstGeohash = galt.geohashToNumber(initFirstGeohash);
       const geohashes = initGeohashes.map(galt.geohashToNumber);
 
-      console.log('spaceToken.mint', alice, firstGeohash);
+      // TODO: remove console.log lines when the tests work
+      // console.log('spaceToken.mint', alice, firstGeohash);
       // TODO: fix error by web3 Error: Transaction has been reverted by the EVM:
       // by truffle: Error: Invalid number of arguments to Solidity function
       await this.spaceTokenWeb3.methods.mint(alice, firstGeohash).send({ from: deployer });
 
-      console.log('splitMerge.initPackage', firstGeohash);
+      // console.log('splitMerge.initPackage', firstGeohash);
       const packageId = await this.splitMerge.initPackage(firstGeohash, { from: alice });
 
-      console.log('setPackageContour', geohashes);
+      // console.log('setPackageContour', geohashes);
       await this.splitMergeWeb3.methods.setPackageContour(packageId, geohashes).send({ from: alice });
 
       await pIteration.forEach(geohashes, async geohashN => {
-        console.log('mint', geohashN);
+        // console.log('mint', geohashN);
         await this.spaceTokenWeb3.methods.mint(alice, geohashN).send({ from: deployer });
 
-        console.log('addGeohashToPackage', geohashN);
+        // console.log('addGeohashToPackage', geohashN);
         await this.splitMergeWeb3.methods
           .addGeohashToPackage(packageId, geohashN, firstGeohash, web3.utils.asciiToHex('N'))
           .send({ from: alice });
