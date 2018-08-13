@@ -122,6 +122,7 @@ contract PlotManager is Initializable, Ownable {
     a.precision = _precision;
 
     applications[_id] = a;
+    applicationsArray.push(_id);
     applicationByAddresses[msg.sender].push(_id);
 
     emit NewApplication(_id, msg.sender);
