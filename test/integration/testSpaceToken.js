@@ -15,7 +15,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SpaceToken', ([coreTeam, alice, bob]) => {
+contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
     this.spaceToken.initialize('Name', 'Symbol', { from: coreTeam });
@@ -105,6 +105,41 @@ contract('SpaceToken', ([coreTeam, alice, bob]) => {
 
     it('should deny non-owner set token uri', async function() {
       await assertRevert(this.spaceToken.setTokenURI(123, 'foobar', { from: bob }));
+    });
+  });
+
+  describe('canTransfer modifier', () => {
+    beforeEach(async function() {
+      await this.spaceToken.mint(alice, 123, { from: coreTeam });
+      let res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, alice);
+      res = await this.spaceToken.totalSupply();
+      assert.equal(res, 1);
+    });
+
+    it('should allow token owner to thransfer the token', async function() {
+      await this.spaceToken.transferFrom(alice, charlie, 123, { from: alice });
+      const res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, charlie);
+    });
+
+    it('should allow contract owner to thransfer the token', async function() {
+      await this.spaceToken.transferFrom(alice, charlie, 123, { from: coreTeam });
+      const res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, charlie);
+    });
+
+    it('should allow address with ROLE_OPERATOR transfer the token', async function() {
+      await this.spaceToken.addRoleTo(bob, 'operator', { from: coreTeam });
+      await this.spaceToken.transferFrom(alice, charlie, 123, { from: bob });
+      const res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, charlie);
+    });
+
+    it('should deny 3rd party transfer the token', async function() {
+      await assertRevert(this.spaceToken.transferFrom(alice, charlie, 123, { from: bob }));
+      const res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, alice);
     });
   });
 });

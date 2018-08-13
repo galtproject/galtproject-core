@@ -30,13 +30,14 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
   string public constant ROLE_MINTER = "minter";
   string public constant ROLE_BURNER = "burner";
+  string public constant ROLE_OPERATOR = "operator";
 
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
 
   modifier canTransfer(uint256 _tokenId) {
-    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
+    require(isApprovedOrOwner(msg.sender, _tokenId) || hasRole(msg.sender, ROLE_OPERATOR), "No permissions to transfer tokens");
     _;
   }
 
@@ -68,6 +69,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
     addRole(msg.sender, ROLE_MINTER);
     addRole(msg.sender, ROLE_BURNER);
+    addRole(msg.sender, ROLE_OPERATOR);
 
     packTokenIdCounter = 0;
 
