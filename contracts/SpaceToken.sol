@@ -36,6 +36,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   bool splitMergeSet;
   SplitMerge splitMerge;
 
+  event LogNewPackIdGenerated(bytes32 id);
+
   modifier canTransfer(uint256 _tokenId) {
     require(isApprovedOrOwner(msg.sender, _tokenId) || hasRole(msg.sender, ROLE_OPERATOR), "No permissions to transfer tokens");
     _;
@@ -139,6 +141,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     uint256 newId = uint256(newIdBytes ^ PACKAGE_MASK);
 
     assert(!exists(newId));
+
+    emit LogNewPackIdGenerated(bytes32(newId));
 
     return newId;
   }

@@ -1,9 +1,12 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const ExposedSpaceToken = artifacts.require('./mocks/ExposedSpaceToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert } = require('../helpers');
+
+const { BN } = Web3.utils;
 
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
@@ -20,6 +23,23 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
     this.spaceToken.initialize('Name', 'Symbol', { from: coreTeam });
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+  });
+
+  describe('#generatePackTokenId()', () => {
+    it('should generate number with Package mask', async () => {
+      const spaceToken = await ExposedSpaceToken.new('Name', 'Symbol', { from: coreTeam });
+      spaceToken.initialize('Name', 'Symbol', { from: coreTeam });
+
+      const expectedId = new BN('0x0200000000000000000000000000000000000000000000000000000000000000');
+      for (let i = 0; i < 10; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await spaceToken.exposedGeneratePackTokenId();
+        const { id } = res.logs[0].args;
+
+        id.should.be.a.bignumber.eq(expectedId);
+        expectedId.iadd(new BN('1'));
+      }
+    });
   });
 
   describe('#mint()', () => {
