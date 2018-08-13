@@ -224,7 +224,7 @@ contract PlotManager is Initializable, Ownable {
     );
   }
 
-  function getApplicationsByAddress(address applicant) external {
+  function getApplicationsByAddress(address applicant) external returns (bytes32[]) {
     return applicationsByAddresses[applicant];
   }
 }
