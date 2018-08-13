@@ -3,6 +3,7 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 
 // Just keep it here to make it loaded in tests
@@ -17,7 +18,7 @@ import "./SplitMerge.sol";
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
-contract SpaceToken is ERC721Token, Ownable, Initializable {
+contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
 
@@ -27,14 +28,25 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   bytes32 public constant GEOHASH_MASK = 0x0100000000000000000000000000000000000000000000000000000000000000;
   bytes32 public constant PACKAGE_MASK = 0x0200000000000000000000000000000000000000000000000000000000000000;
 
+  string public constant ROLE_MINTER = "minter";
+  string public constant ROLE_BURNER = "burner";
+
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
 
-  event SpaceTokenMinted(bytes32 id, address owner);
-
   modifier canTransfer(uint256 _tokenId) {
     require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
+    _;
+  }
+
+  modifier onlyMinter() {
+    checkRole(msg.sender, ROLE_MINTER);
+    _;
+  }
+
+  modifier onlyBurner() {
+    checkRole(msg.sender, ROLE_BURNER);
     _;
   }
 
@@ -47,12 +59,15 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   {
   }
 
-  function initialize(address _owner, string _name, string _symbol) public isInitializer {
+  function initialize(string _name, string _symbol) public isInitializer {
     // TODO: figure out how to call constructor
     // For now all parent constructors code is copied here
-    owner = _owner;
+    owner = msg.sender;
     name_ = _name;
     symbol_ = _symbol;
+
+    addRole(msg.sender, ROLE_MINTER);
+    addRole(msg.sender, ROLE_BURNER);
 
     packTokenIdCounter = 0;
 
@@ -61,29 +76,18 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     _registerInterface(InterfaceId_ERC721Metadata);
   }
 
-  function setSplitMerge(SplitMerge _splitMerge) public {
-    require(splitMergeSet == false, "SplitMerge address is already set");
-
-    splitMerge = _splitMerge;
-    splitMergeSet = true;
-  }
-
   function mint(
     address _to,
     uint256 _tokenId
   )
     public
+    onlyMinter
   {
     super._mint(_to, _tokenId);
-    emit LogSpaceTokenMinted(bytes32(_tokenId), _to);
   }
 
-  function burn(uint256 _tokenId) public {
+  function burn(uint256 _tokenId) public onlyBurner {
     super._burn(ownerOf(_tokenId), _tokenId);
-  }
-
-  function setTokenURI(uint256 _tokenId, string _uri) public {
-    super._setTokenURI(_tokenId, _uri);
   }
 
   // TODO: add unit tests
@@ -125,5 +129,13 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     assert(!exists(newId));
 
     return newId;
+  }
+
+  function addRoleTo(address _operator, string _role) public onlyOwner {
+    super.addRole(_operator, _role);
+  }
+
+  function removeRoleFrom(address _operator, string _role) public onlyOwner {
+    super.removeRole(_operator, _role);
   }
 }
