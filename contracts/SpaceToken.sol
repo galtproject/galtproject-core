@@ -146,7 +146,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     return (id & PACKAGE_MASK) == PACKAGE_MASK;
   }
 
-  function generatePackTokenId() internal returns (uint256) {
+  function generatePackTokenId() public returns (uint256) {
     bytes32 newIdBytes = bytes32(packTokenIdCounter++);
 
     // Do not allow create more than 2^62 (4.611e18) packs
