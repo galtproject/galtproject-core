@@ -38,6 +38,7 @@ contract PlotManager is Initializable, Ownable {
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
+  mapping(address => bytes32[]) public applicationByAddresses;
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -121,6 +122,7 @@ contract PlotManager is Initializable, Ownable {
     a.precision = _precision;
 
     applications[_id] = a;
+    applicationByAddresses[msg.sender].push(_id);
 
     emit NewApplication(_id, msg.sender);
     emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
