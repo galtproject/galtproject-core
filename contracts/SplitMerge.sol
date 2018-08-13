@@ -40,6 +40,7 @@ contract SplitMerge is Initializable, Ownable {
   }
 
   function mintGeohash(uint256 _geohashToken) public ownerOrPlotManager {
+    // TODO: add spaceToken.isGeohash check
     spaceToken.mint(address(this), _geohashToken);
   }
 
