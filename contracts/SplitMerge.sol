@@ -103,7 +103,7 @@ contract SplitMerge is Initializable, Ownable {
       addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
 
-    packageToGeohashesCount[_packageToken] += _geohashTokens.length;
+    packageToGeohashesCount[_packageToken] -= _geohashTokens.length;
   }
 
   // TODO: implement in future
