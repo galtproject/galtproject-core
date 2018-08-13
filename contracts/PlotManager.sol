@@ -160,6 +160,7 @@ contract PlotManager is Initializable, Ownable {
     require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
     require(splitMerge != address(0), "SplitMerge address not set");
 
+    // TODO: should use actual functions from SplitMerge
 //    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
