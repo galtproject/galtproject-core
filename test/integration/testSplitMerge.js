@@ -7,7 +7,6 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const pIteration = require('p-iteration');
-const { ether } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 
@@ -19,7 +18,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
+contract('SplitMerge', ([deployer, alice]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: deployer });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
