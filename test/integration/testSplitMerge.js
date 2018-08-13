@@ -36,35 +36,47 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
   });
 
   // TODO: fix spaceToken.mint error and unskip test
-  describe.skip('contract', () => {
-    it('should creating correctly', async function() {
+  describe('contract', () => {
+    it.only('should creating correctly', async function() {
+      let res;
+
       const initFirstGeohash = 'sdesde';
       const initGeohashes = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
 
-      const firstGeohash = galt.geohashToNumber(initFirstGeohash);
-      const geohashes = initGeohashes.map(galt.geohashToNumber);
+      const firstGeohash = galt.geohashToNumber(initFirstGeohash).toString(10);
+      const geohashes = initGeohashes.map(galt.geohashToNumber).map(geohash => geohash.toString(10));
 
       // TODO: remove console.log lines when the tests work
-      // console.log('spaceToken.mint', alice, firstGeohash);
+      console.log('spaceToken.mint', alice, firstGeohash);
       // TODO: fix error by web3 Error: Transaction has been reverted by the EVM:
-      // by truffle: Error: Invalid number of arguments to Solidity function
-      await this.spaceTokenWeb3.methods.mint(alice, firstGeohash).send({ from: deployer });
+      await this.spaceToken.mint(alice, firstGeohash, { from: deployer });
+      // await this.spaceTokenWeb3.methods.mint(alice, firstGeohash).send({ from: deployer });
 
-      // console.log('splitMerge.initPackage', firstGeohash);
-      const packageId = await this.splitMerge.initPackage(firstGeohash, { from: alice });
+      console.log('splitMerge.initPackage', firstGeohash);
+      res = await this.splitMerge.initPackage(firstGeohash, { from: alice });
 
-      // console.log('setPackageContour', geohashes);
-      await this.splitMergeWeb3.methods.setPackageContour(packageId, geohashes).send({ from: alice });
+      const packageId = res.logs[0].args.id;
 
-      await pIteration.forEach(geohashes, async geohashN => {
-        // console.log('mint', geohashN);
-        await this.spaceTokenWeb3.methods.mint(alice, geohashN).send({ from: deployer });
+      res = await this.spaceToken.ownerOf.call(packageId);
+      assert.equal(res, alice);
 
-        // console.log('addGeohashToPackage', geohashN);
-        await this.splitMergeWeb3.methods
-          .addGeohashToPackage(packageId, geohashN, firstGeohash, web3.utils.asciiToHex('N'))
-          .send({ from: alice });
+      console.log('setPackageContour', packageId, geohashes);
+      await this.splitMerge.setPackageContour(packageId, geohashes, { from: alice });
+
+      const neighbors = [];
+      const directions = [];
+
+      await pIteration.forEach(geohashes, async geohash => {
+        console.log('mint', geohash);
+        await this.spaceToken.mint(alice, geohash, { from: deployer });
+        neighbors.push(firstGeohash);
+        directions.push(web3.utils.asciiToHex('N'));
       });
+
+      await this.splitMerge.addGeohashesToPackage(packageId, geohashes, neighbors, directions, { from: alice });
+
+      res = await this.splitMerge.packageGeohashesCount.call(packageId);
+      assert.equal(res.toString(10), (geohashes.length + 1).toString(10));
     });
   });
 });
