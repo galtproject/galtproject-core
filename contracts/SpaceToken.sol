@@ -75,33 +75,7 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     public
   {
     super._mint(_to, _tokenId);
-    emit SpaceTokenMinted(bytes32(_tokenId), _to);
-  }
-
-  function mintPack(
-    address _to
-  )
-    public
-    onlyOwner
-    returns (uint256 _tokenId)
-  {
-    _tokenId = generatePackTokenId();
-    mint(_to, _tokenId);
-  }
-
-  // Assume that can be called only by splitMerge for now
-  function swapToPack(uint256 _packageId, uint256[] _geohashIds, address _beneficiary) public {
-    require(splitMerge != address(0), "SplitMerge address not set");
-    require(splitMerge == msg.sender, "Sender is not SplitMerge");
-    // TODO: add assert for length of _geohasheIds
-    // TODO: add assertion that _packageId token is a package
-    // TODO: add assertions for each geohashId to make sure that it is a geohash
-
-    for (uint256 i = 0; i < _geohashIds.length; i++) {
-      transferFrom(_beneficiary, splitMerge, _geohashIds[i]);
-    }
-
-    transferFrom(splitMerge, _beneficiary, _packageId);
+    emit LogSpaceTokenMinted(bytes32(_tokenId), _to);
   }
 
   function burn(uint256 _tokenId) public {
