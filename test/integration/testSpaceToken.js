@@ -22,7 +22,7 @@ contract('SpaceToken', ([coreTeam, alice, bob]) => {
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
-  describe.only('#mint()', () => {
+  describe('#mint()', () => {
     it('should allow owner mint some tokens if called by owner', async function() {
       await this.spaceToken.mint(alice, 123, { from: coreTeam });
       const res = await this.spaceToken.ownerOf(123);
@@ -43,6 +43,40 @@ contract('SpaceToken', ([coreTeam, alice, bob]) => {
 
     it('should deny mint some tokens to users without any role', async function() {
       await assertRevert(this.spaceToken.mint(alice, 123, { from: bob }));
+    });
+  });
+
+  describe('#burn()', () => {
+    beforeEach(async function() {
+      await this.spaceToken.mint(alice, 123, { from: coreTeam });
+      let res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, alice);
+      res = await this.spaceToken.totalSupply();
+      assert.equal(res, 1);
+    });
+
+    it('should allow owner burn tokens', async function() {
+      await this.spaceToken.burn(123, { from: coreTeam });
+      let res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, 0x0);
+      res = await this.spaceToken.totalSupply();
+      assert.equal(res, 0);
+    });
+
+    it('should allow burn tokens to the users in the burners role list', async function() {
+      await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
+      await this.spaceToken.burn(123, { from: bob });
+      const res = await this.spaceToken.ownerOf(123);
+      assert.equal(res, 0x0);
+    });
+
+    it('should deny burn some tokens to users not in the burner role list', async function() {
+      await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
+      await assertRevert(this.spaceToken.burn(123, { from: bob }));
+    });
+
+    it('should deny mint some tokens to users without any role', async function() {
+      await assertRevert(this.spaceToken.burn(123, { from: bob }));
     });
   });
 });
