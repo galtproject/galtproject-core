@@ -131,10 +131,10 @@ contract PlotManager is Initializable, Ownable {
   function mintPack(bytes32 _aId) public onlyApplicant(_aId) {
     // TODO: prevent double mint
     Application storage a = applications[_aId];
-    uint256 t = spaceToken.mintPack(splitMerge);
-    a.packageToken = t;
+    // uint256 t = split.mintPack(splitMerge);
+    // a.packageToken = t;
 
-    emit NewPackMinted(bytes32(t), _aId);
+    // emit NewPackMinted(bytes32(t), _aId);
   }
 
   function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public onlyApplicant(_aId) {

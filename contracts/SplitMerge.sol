@@ -29,7 +29,5 @@ contract SplitMerge is Initializable, Ownable {
       require(spaceToken.ownerOf(_geohashTokens[i]) == msg.sender, "Geohash owner is not msg.sender");
       packedTokens[_packageToken].push(_geohashTokens[i]);
     }
-
-    spaceToken.swapToPack(_packageToken, _geohashTokens, msg.sender);
   }
 }
