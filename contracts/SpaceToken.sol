@@ -104,7 +104,11 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     super._setTokenURI(_tokenId, _uri);
   }
 
-  // TODO: add unit tests
+  /**
+   * Add geohash mask to a 5-byte numerical representation of a geohash.
+   * Converts tokenId uint like `824642203853484471` to
+   * `452312848583266388373324160190187140051835877600158453279955829734764147127L`.
+   */
   function geohashToTokenId(uint256 _geohash) public pure returns (uint256) {
     bytes32 newIdBytes = bytes32(_geohash);
 
@@ -117,17 +121,27 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     return newId;
   }
 
-  // TODO: add unit tests
+  /**
+   * Remove geohash mask from tokenId and keep only a 5-byte numerical representation of geohash.
+   * Convert tokenId uint like `452312848583266388373324160190187140051835877600158453279955829734764147127L`
+   * to `824642203853484471`
+   */
   function tokenIdToGeohash(uint256 _tokenId) public pure returns (uint256) {
     return uint256(bytes32(_tokenId) ^ GEOHASH_MASK);
   }
 
-  // TODO: add unit tests
+  /**
+   * Check whether token has a GEOHASH_MASK or not
+   * @return bool if does
+   */
   function isGeohash(bytes32 id) public pure returns (bool) {
     return (id & GEOHASH_MASK) == GEOHASH_MASK;
   }
 
-  // TODO: add unit tests
+  /**
+   * Check whether token has a PACKAGE_MASK or not
+   * @return bool if does
+   */
   function isPack(bytes32 id) public pure returns (bool) {
     return (id & PACKAGE_MASK) == PACKAGE_MASK;
   }

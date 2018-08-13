@@ -42,6 +42,42 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
+  describe('#isPack()', () => {
+    it('should return true for the numbers starting with 0x02', async function() {
+      assert(await this.spaceToken.isPack('0x0200000000000000000000000000000000000000000000000000000000000001'));
+    });
+
+    it('should return false for the numbers not starting with 0x02', async function() {
+      assert(!(await this.spaceToken.isPack('0x0100000000000000000000000000000000000000000000000000000000000001')));
+      assert(!(await this.spaceToken.isPack('0x0000000000000000000000000000000000000000000000000000000000000001')));
+    });
+  });
+
+  describe('#isGeohash()', () => {
+    it('should return true for the numbers starting with 0x01', async function() {
+      assert(await this.spaceToken.isGeohash('0x0100000000000000000000000000000000000000000000000000000000000001'));
+    });
+
+    it('should return false for the numbers not starting with 0x01', async function() {
+      assert(!(await this.spaceToken.isGeohash('0x0200000000000000000000000000000000000000000000000000000000000001')));
+      assert(!(await this.spaceToken.isGeohash('0x0000000000000000000000000000000000000000000000000000000000000001')));
+    });
+  });
+
+  describe('#geohashToTokenId()', () => {
+    it('should add 0x01 to the bytes32 representation of number', async function() {
+      const res = await this.spaceToken.geohashToTokenId(123);
+      assert.equal(res.toString(16), '10000000000000000000000000000000000000000000000000000000000007b');
+    });
+
+    it('should cut out 0x01 from the start of bytes32 representation', async function() {
+      const res = await this.spaceToken.tokenIdToGeohash(
+        '0x010000000000000000000000000000000000000000000000000000000000007b'
+      );
+      assert.equal(res, 123);
+    });
+  });
+
   describe('#mint()', () => {
     it('should allow owner mint some tokens if called by owner', async function() {
       await this.spaceToken.mint(alice, 123, { from: coreTeam });
