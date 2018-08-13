@@ -19,8 +19,8 @@ contract SplitMerge is Initializable, Ownable {
 
   uint256[] allPackages;
 
-  constructor (SpaceToken _spaceToken) public {
-    spaceToken = _spaceToken;
+  constructor () public {
+
   }
 
   function initialize(SpaceToken _spaceToken) public isInitializer {
@@ -108,11 +108,13 @@ contract SplitMerge is Initializable, Ownable {
     removeGeohashFromPackageUnsafe(_packageToken, _geohashToken);
   }
 
-  function splitGeohash(uint256 _geohashToken) public {
+  // TODO: implement in future
+//  function splitGeohash(uint256 _geohashToken) public {
+//
+//  }
 
-  }
-
-  function mergeGeohash(uint256[] _geohashToken) public {
-
-  }
+  // TODO: implement in future
+//  function mergeGeohash(uint256[] _geohashToken) public {
+//
+//  }
 }

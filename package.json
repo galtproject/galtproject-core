@@ -5,9 +5,7 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {
-    "p-iteration": "^1.1.7"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@colony/eslint-config-colony": "5.0.0",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git",
@@ -29,6 +27,7 @@
     "lodash": "^4.17.10",
     "mocha": "^5.2.0",
     "openzeppelin-solidity": "^1.11.0",
+    "p-iteration": "^1.1.7",
     "prettier": "^1.14.0",
     "truffle": "^4.1.13",
     "web3": "^1.0.0-beta.35",

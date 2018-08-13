@@ -23,7 +23,7 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: deployer });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
-    this.splitMerge = await SplitMerge.new(this.spaceToken.address, { from: deployer });
+    this.splitMerge = await SplitMerge.new({ from: deployer });
 
     this.spaceToken.initialize(deployer, 'SpaceToken', 'SPACE', { from: deployer });
     this.spaceToken.setSplitMerge(this.splitMerge.address, { from: deployer });
@@ -35,8 +35,8 @@ contract('SplitMerge', ([deployer, alice, bob, charlie]) => {
     this.splitMergeWeb3 = new web3.eth.Contract(this.splitMerge.abi, this.splitMerge.address);
   });
 
-  describe('contract', () => {
-    it.only('should creating correctly', async function() {
+  describe.skip('contract', () => {
+    it('should creating correctly', async function() {
       const initFirstGeohash = 'sdesde';
       const initGeohashes = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
 
