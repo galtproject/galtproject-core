@@ -30,7 +30,7 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
 
     this.spaceToken.initialize(this.plotManager.address, 'SpaceToken', 'SPACE', { from: deployer });
     this.spaceToken.setSplitMerge(this.splitMerge.address, { from: deployer });
-    this.plotManager.initialize(this.spaceToken.address, this.splitMerge.address, { from: deployer });
+    this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: deployer });
     this.splitMerge.initialize(this.spaceToken.address, { from: deployer });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
@@ -38,6 +38,10 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
   });
 
   describe('contract', () => {
+    it('should be initialized successfully', async function() {
+      (await this.plotManager.validationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    });
+
     it('should provide methods to create and read an application', async function() {
       const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
       const initLedgerIdentifier = 'шц50023中222ائِيل';

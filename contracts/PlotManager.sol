@@ -37,6 +37,9 @@ contract PlotManager is Initializable, Ownable {
     bool active;
   }
 
+  uint256 public validationFeeInEth;
+  uint256 galtSpaceEthStake;
+
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
@@ -53,6 +56,8 @@ contract PlotManager is Initializable, Ownable {
   constructor () public {}
 
   function initialize(
+    uint256 _validationFeeInEth,
+    uint256 _galtSpaceEthStake,
     SpaceToken _spaceToken,
     SplitMerge _splitMerge
   )
@@ -62,7 +67,8 @@ contract PlotManager is Initializable, Ownable {
     owner = msg.sender;
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    validationFee = 6 ether;
+    validationFeeInEth = _validationFeeInEth;
+    galtSpaceEthStake = _galtSpaceEthStake;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
