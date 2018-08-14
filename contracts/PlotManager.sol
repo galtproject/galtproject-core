@@ -77,6 +77,26 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
+  function isValidator(address account) public view returns (bool) {
+    return validators[account].active == true;
+  }
+
+  function getValidators() public view returns (address[]) {
+    return validatorsArray;
+  }
+
+  function getValidator(address validator) public view returns (bytes32 name,
+    bytes2 country,
+    bool active)
+  {
+    Validator storage v = validators[validator];
+    return (
+    v.name,
+    v.country,
+    v.active
+    );
+  }
+
   function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
     require(_validator != address(0), "Missing validator");
     require(_country != 0x0, "Missing country");
@@ -161,7 +181,7 @@ contract PlotManager is Initializable, Ownable {
     require(splitMerge != address(0), "SplitMerge address not set");
 
     // TODO: should use actual functions from SplitMerge
-//    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
+    //    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
   }
@@ -196,6 +216,7 @@ contract PlotManager is Initializable, Ownable {
     public
     view
     returns (
+      bytes32 id,
       address applicant,
       uint256[] vertices,
       uint256 packageToken,
@@ -212,6 +233,7 @@ contract PlotManager is Initializable, Ownable {
     Application storage m = applications[_id];
 
     return (
+      _id,
       m.applicant,
       m.vertices,
       m.packageToken,
