@@ -54,8 +54,8 @@ contract PlotManager is Initializable, Ownable {
     SpaceToken _spaceToken,
     SplitMerge _splitMerge
   )
-  public
-  isInitializer
+    public
+    isInitializer
   {
     owner = msg.sender;
     spaceToken = _spaceToken;
@@ -118,8 +118,8 @@ contract PlotManager is Initializable, Ownable {
     bytes2 _country,
     uint8 _precision
   )
-  public
-  returns (bytes32)
+    public
+    returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_vertices.length >= 3, "Number of vertices should be equal or greater than 3");
