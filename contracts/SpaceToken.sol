@@ -208,7 +208,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     bytes32 fiveOn = bytes32(31);
     uint8 counter = 0;
 
-    while(num != 0) {
+    while (num != 0) {
       output = output >> 8;
       uint256 d = uint256(bytes32(num) & fiveOn);
       output = output ^ (bytes1(GEOHASH5_MASK[d]));
