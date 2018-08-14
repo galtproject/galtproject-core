@@ -47,6 +47,16 @@ contract.skip('PlotManager', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
+  describe('#removeValidator()', () => {
+    it('should allow an ower to remove validators', async function() {
+      await this.plotManager.removeValidator(alice, { from: coreTeam });
+    });
+
+    it('should deny any other person than owner to remove validators', async function() {
+      await assertRevert(this.plotManager.removeValidator(alice, { from: alice }));
+    });
+  });
+
   describe('contract', () => {
     it('should be initialized successfully', async function() {
       (await this.plotManager.validationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
