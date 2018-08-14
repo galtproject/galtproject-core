@@ -213,36 +213,36 @@ contract PlotManager is Initializable, Ownable {
   function getPlotApplication(
     bytes32 _id
   )
-  public
-  view
-  returns (
-    bytes32 id,
-    address applicant,
-    uint256[] vertices,
-    uint256 packageToken,
-    uint256[] geohashTokens,
-    bytes32 credentiaslHash,
-    ApplicationStatuses status,
-    uint8 precision,
-    bytes2 country,
-    bytes32 ledgerIdentifier
-  )
+    public
+    view
+    returns (
+      bytes32 id,
+      address applicant,
+      uint256[] vertices,
+      uint256 packageToken,
+      uint256[] geohashTokens,
+      bytes32 credentiaslHash,
+      ApplicationStatuses status,
+      uint8 precision,
+      bytes2 country,
+      bytes32 ledgerIdentifier
+    )
   {
     require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
 
     Application storage m = applications[_id];
 
     return (
-    _id,
-    m.applicant,
-    m.vertices,
-    m.packageToken,
-    m.geohashTokens,
-    m.credentialsHash,
-    m.status,
-    m.precision,
-    m.country,
-    m.ledgerIdentifier
+      _id,
+      m.applicant,
+      m.vertices,
+      m.packageToken,
+      m.geohashTokens,
+      m.credentialsHash,
+      m.status,
+      m.precision,
+      m.country,
+      m.ledgerIdentifier
     );
   }
 
