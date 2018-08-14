@@ -6,7 +6,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether } = require('../helpers');
+const { ether, assertRevert } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 
@@ -22,19 +22,29 @@ chai.should();
  * Alice is an applicant
  * Bob is a validator
  */
-contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
+contract.skip('PlotManager', ([coreTeam, alice, bob, charlie]) => {
   beforeEach(async function() {
-    this.plotManager = await PlotManager.new({ from: deployer });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
-    this.splitMerge = await SplitMerge.new({ from: deployer });
+    this.plotManager = await PlotManager.new({ from: coreTeam });
+    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
-    this.spaceToken.initialize(this.plotManager.address, 'SpaceToken', 'SPACE', { from: deployer });
-    this.spaceToken.setSplitMerge(this.splitMerge.address, { from: deployer });
-    this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: deployer });
-    this.splitMerge.initialize(this.spaceToken.address, { from: deployer });
+    this.spaceToken.initialize(this.plotManager.address, 'SpaceToken', 'SPACE', { from: coreTeam });
+    this.spaceToken.setSplitMerge(this.splitMerge.address, { from: coreTeam });
+    this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: coreTeam });
+    this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+  });
+
+  describe('#addValidator()', () => {
+    it('should allow an ower to assign validators', async function() {
+      await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
+    });
+
+    it('should deny any other person than owner to assign validators', async function() {
+      await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', { from: alice }));
+    });
   });
 
   describe('contract', () => {
@@ -154,7 +164,7 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
 
       // Add Bob as a validator
       await this.plotManager.addValidator(bob, web3.utils.utf8ToHex('Bob'), web3.utils.utf8ToHex('ID'), {
-        from: deployer
+        from: coreTeam
       });
 
       // Bob validates the application from Alice
@@ -228,7 +238,7 @@ contract.skip('PlotManager', ([deployer, alice, bob, charlie]) => {
         await this.plotManager.submitApplication(this.aId, { from: alice, value: this.fee });
 
         await this.plotManager.addValidator(bob, web3.utils.utf8ToHex('Bob'), web3.utils.utf8ToHex('ID'), {
-          from: deployer
+          from: coreTeam
         });
 
         // Bob validates the application from Alice
