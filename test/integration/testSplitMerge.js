@@ -24,8 +24,9 @@ contract('SplitMerge', ([deployer, alice]) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
     this.splitMerge = await SplitMerge.new({ from: deployer });
 
-    this.spaceToken.initialize(deployer, 'SpaceToken', 'SPACE', { from: deployer });
-    this.spaceToken.setSplitMerge(this.splitMerge.address, { from: deployer });
+    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: deployer });
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter', { from: deployer });
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator', { from: deployer });
     this.plotManager.initialize(this.spaceToken.address, this.splitMerge.address, { from: deployer });
     this.splitMerge.initialize(this.spaceToken.address, { from: deployer });
 
@@ -46,12 +47,12 @@ contract('SplitMerge', ([deployer, alice]) => {
       const geohashes = initGeohashes.map(galt.geohashToNumber).map(geohash => geohash.toString(10));
 
       // TODO: remove console.log lines when the tests work
-      console.log('spaceToken.mint', alice, firstGeohash);
+      // console.log('spaceToken.mint', alice, firstGeohash);
       // TODO: fix error by web3 Error: Transaction has been reverted by the EVM:
       await this.spaceToken.mint(alice, firstGeohash, { from: deployer });
       // await this.spaceTokenWeb3.methods.mint(alice, firstGeohash).send({ from: deployer });
 
-      console.log('splitMerge.initPackage', firstGeohash);
+      // console.log('splitMerge.initPackage', firstGeohash);
       res = await this.splitMerge.initPackage(firstGeohash, { from: alice });
 
       const packageId = res.logs[0].args.id;
@@ -59,14 +60,14 @@ contract('SplitMerge', ([deployer, alice]) => {
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      console.log('setPackageContour', packageId, geohashes);
+      // console.log('setPackageContour', packageId, geohashes);
       await this.splitMerge.setPackageContour(packageId, geohashes, { from: alice });
 
       const neighbors = [];
       const directions = [];
 
       await pIteration.forEach(geohashes, async geohash => {
-        console.log('mint', geohash);
+        // console.log('mint', geohash);
         await this.spaceToken.mint(alice, geohash, { from: deployer });
         neighbors.push(firstGeohash);
         directions.push(web3.utils.asciiToHex('N'));
