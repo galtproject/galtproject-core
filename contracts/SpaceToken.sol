@@ -32,6 +32,10 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   string public constant ROLE_BURNER = "burner";
   string public constant ROLE_OPERATOR = "operator";
 
+  // bytes32("0123456789bcdefghjkmnpqrstuvwxyz")
+  bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
+  uint256 constant GEOHASH5_LIMIT = 1152921504606846975;
+
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
@@ -188,6 +192,28 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
       }
 
       counter = counter + 5;
+    }
+
+    return output;
+  }
+
+  function geohash5ToGeohashString(uint256 _input) public pure returns (bytes32) {
+    if (_input > GEOHASH5_LIMIT) {
+      revert("Number exceeds the limit");
+      return 0x0;
+    }
+
+    uint256 num = _input;
+    bytes32 output;
+    bytes32 fiveOn = bytes32(31);
+    uint8 counter = 0;
+
+    while(num != 0) {
+      output = output >> 8;
+      uint256 d = uint256(bytes32(num) & fiveOn);
+      output = output ^ (bytes1(GEOHASH5_MASK[d]));
+      num = num >> 5;
+      counter++;
     }
 
     return output;

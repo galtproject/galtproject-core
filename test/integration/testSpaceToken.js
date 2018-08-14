@@ -62,6 +62,18 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
+  describe('#geohashStringToGeohash5()', () => {
+    it('convert one geohash string to its 5-bit per-value representation', async function() {
+      const res = await this.spaceToken.geohash5ToGeohashString('824642203853484471');
+      assert.equal(web3.utils.hexToUtf8(res), 'qwerqwerqwer');
+    });
+
+    it('convert one geohash string to its 5-bit per-value representation (0)', async function() {
+      const res = await this.spaceToken.geohash5ToGeohashString('0');
+      assert.equal(web3.utils.hexToUtf8(res), '');
+    });
+  });
+
   describe('#isPack()', () => {
     it('should return true for the numbers starting with 0x02', async function() {
       assert(await this.spaceToken.isPack('0x0200000000000000000000000000000000000000000000000000000000000001'));
