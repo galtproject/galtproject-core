@@ -35,6 +35,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
+  mapping(bytes1 => uint8) eMap;
+
 
   event LogNewPackIdGenerated(bytes32 id);
 
@@ -78,6 +80,40 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     // register the supported interfaces to conform to ERC721 via ERC165
     _registerInterface(InterfaceId_ERC721Enumerable);
     _registerInterface(InterfaceId_ERC721Metadata);
+
+    // REVIEW: not the best place to keep this
+    eMap["0"] = 0;
+    eMap["1"] = 1;
+    eMap["2"] = 2;
+    eMap["3"] = 3;
+    eMap["4"] = 4;
+    eMap["5"] = 5;
+    eMap["6"] = 6;
+    eMap["7"] = 7;
+    eMap["8"] = 8;
+    eMap["9"] = 9;
+    eMap["b"] = 10;
+    eMap["c"] = 11;
+    eMap["d"] = 12;
+    eMap["e"] = 13;
+    eMap["f"] = 14;
+    eMap["g"] = 15;
+    eMap["h"] = 16;
+    eMap["j"] = 17;
+    eMap["k"] = 18;
+    eMap["m"] = 19;
+    eMap["n"] = 20;
+    eMap["p"] = 21;
+    eMap["q"] = 22;
+    eMap["r"] = 23;
+    eMap["s"] = 24;
+    eMap["t"] = 25;
+    eMap["u"] = 26;
+    eMap["v"] = 27;
+    eMap["w"] = 28;
+    eMap["x"] = 29;
+    eMap["y"] = 30;
+    eMap["z"] = 31;
   }
 
   function mint(
@@ -130,6 +166,33 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     return uint256(bytes32(_tokenId) ^ GEOHASH_MASK);
   }
 
+  function geohashStringToGeohash5(bytes input) public view returns (uint256) {
+    uint256 output;
+    uint8 counter;
+
+    if (input.length > 12 || input.length == 0) {
+      return 0;
+    }
+
+    for (uint8 i = 0; i < input.length; i++) {
+      uint8 val = eMap[input[i]];
+
+      if (val == 0 && input[i] != 0x30) {
+        return 0;
+      }
+
+      output = output ^ val;
+      if (i + 1 != input.length) {
+        // shift left 5 bits
+        output = output * 2 ** 5;
+      }
+
+      counter = counter + 5;
+    }
+
+    return output;
+  }
+
   /**
    * Check whether token has a GEOHASH_MASK or not
    * @return bool if does
@@ -160,7 +223,6 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
     return newId;
   }
-
   function addRoleTo(address _operator, string _role) public onlyOwner {
     super.addRole(_operator, _role);
   }

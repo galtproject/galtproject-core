@@ -42,6 +42,26 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
+  describe('#geohashStringToGeohash5()', () => {
+    it('convert one geohash string to its 5-bit per-value representation', async function() {
+      const val = web3.utils.asciiToHex('qwerqwerqwer');
+      const res = await this.spaceToken.geohashStringToGeohash5(val);
+      assert.equal(res.toString(10), '824642203853484471');
+    });
+
+    it('reverts when trying to convert 13-string', async function() {
+      const val = web3.utils.asciiToHex('qwerqwerqwerq');
+      const res = await this.spaceToken.geohashStringToGeohash5(val);
+      assert.equal(res.toString(10), '0');
+    });
+
+    it('reverts when trying a string with unsupported characters', async function() {
+      const val = web3.utils.asciiToHex('qwerawerqwer');
+      const res = await this.spaceToken.geohashStringToGeohash5(val);
+      assert.equal(res.toString(10), '0');
+    });
+  });
+
   describe('#isPack()', () => {
     it('should return true for the numbers starting with 0x02', async function() {
       assert(await this.spaceToken.isPack('0x0200000000000000000000000000000000000000000000000000000000000001'));
