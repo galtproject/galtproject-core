@@ -3,6 +3,7 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 
 // Just keep it here to make it loaded in tests
@@ -17,7 +18,7 @@ import "./SplitMerge.sol";
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
-contract SpaceToken is ERC721Token, Ownable, Initializable {
+contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
 
@@ -27,14 +28,28 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   bytes32 public constant GEOHASH_MASK = 0x0100000000000000000000000000000000000000000000000000000000000000;
   bytes32 public constant PACKAGE_MASK = 0x0200000000000000000000000000000000000000000000000000000000000000;
 
+  string public constant ROLE_MINTER = "minter";
+  string public constant ROLE_BURNER = "burner";
+  string public constant ROLE_OPERATOR = "operator";
+
   uint256 packTokenIdCounter;
   bool splitMergeSet;
   SplitMerge splitMerge;
 
-  event SpaceTokenMinted(bytes32 id, address owner);
+  event LogNewPackIdGenerated(bytes32 id);
 
   modifier canTransfer(uint256 _tokenId) {
-    require(isApprovedOrOwner(msg.sender, _tokenId) || splitMerge == msg.sender, "No permissions to transfer tokens");
+    require(isApprovedOrOwner(msg.sender, _tokenId) || hasRole(msg.sender, ROLE_OPERATOR), "No permissions to transfer tokens");
+    _;
+  }
+
+  modifier onlyMinter() {
+    checkRole(msg.sender, ROLE_MINTER);
+    _;
+  }
+
+  modifier onlyBurner() {
+    checkRole(msg.sender, ROLE_BURNER);
     _;
   }
 
@@ -47,12 +62,16 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
   {
   }
 
-  function initialize(address _owner, string _name, string _symbol) public isInitializer {
+  function initialize(string _name, string _symbol) public isInitializer {
     // TODO: figure out how to call constructor
     // For now all parent constructors code is copied here
-    owner = _owner;
+    owner = msg.sender;
     name_ = _name;
     symbol_ = _symbol;
+
+    addRole(msg.sender, ROLE_MINTER);
+    addRole(msg.sender, ROLE_BURNER);
+    addRole(msg.sender, ROLE_OPERATOR);
 
     packTokenIdCounter = 0;
 
@@ -61,58 +80,35 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     _registerInterface(InterfaceId_ERC721Metadata);
   }
 
-  function setSplitMerge(SplitMerge _splitMerge) public {
-    require(splitMergeSet == false, "SplitMerge address is already set");
-
-    splitMerge = _splitMerge;
-    splitMergeSet = true;
-  }
-
   function mint(
     address _to,
     uint256 _tokenId
   )
     public
+    onlyMinter
   {
     super._mint(_to, _tokenId);
-    emit SpaceTokenMinted(bytes32(_tokenId), _to);
   }
 
-  function mintPack(
-    address _to
-  )
-    public
-    onlyOwner
-    returns (uint256 _tokenId)
-  {
-    _tokenId = generatePackTokenId();
-    mint(_to, _tokenId);
-  }
-
-  // Assume that can be called only by splitMerge for now
-  function swapToPack(uint256 _packageId, uint256[] _geohashIds, address _beneficiary) public {
-    require(splitMerge != address(0), "SplitMerge address not set");
-    require(splitMerge == msg.sender, "Sender is not SplitMerge");
-    // TODO: add assert for length of _geohasheIds
-    // TODO: add assertion that _packageId token is a package
-    // TODO: add assertions for each geohashId to make sure that it is a geohash
-
-    for (uint256 i = 0; i < _geohashIds.length; i++) {
-      transferFrom(_beneficiary, splitMerge, _geohashIds[i]);
-    }
-
-    transferFrom(splitMerge, _beneficiary, _packageId);
-  }
-
-  function burn(uint256 _tokenId) public {
+  function burn(uint256 _tokenId) public onlyBurner {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
 
-  function setTokenURI(uint256 _tokenId, string _uri) public {
+  function setTokenURI(
+    uint256 _tokenId,
+    string _uri
+  )
+    public
+    onlyOwnerOf(_tokenId)
+  {
     super._setTokenURI(_tokenId, _uri);
   }
 
-  // TODO: add unit tests
+  /**
+   * Add geohash mask to a 5-byte numerical representation of a geohash.
+   * Converts tokenId uint like `824642203853484471` to
+   * `452312848583266388373324160190187140051835877600158453279955829734764147127L`.
+   */
   function geohashToTokenId(uint256 _geohash) public pure returns (uint256) {
     bytes32 newIdBytes = bytes32(_geohash);
 
@@ -125,22 +121,32 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
     return newId;
   }
 
-  // TODO: add unit tests
+  /**
+   * Remove geohash mask from tokenId and keep only a 5-byte numerical representation of geohash.
+   * Convert tokenId uint like `452312848583266388373324160190187140051835877600158453279955829734764147127L`
+   * to `824642203853484471`
+   */
   function tokenIdToGeohash(uint256 _tokenId) public pure returns (uint256) {
     return uint256(bytes32(_tokenId) ^ GEOHASH_MASK);
   }
 
-  // TODO: add unit tests
+  /**
+   * Check whether token has a GEOHASH_MASK or not
+   * @return bool if does
+   */
   function isGeohash(bytes32 id) public pure returns (bool) {
     return (id & GEOHASH_MASK) == GEOHASH_MASK;
   }
 
-  // TODO: add unit tests
+  /**
+   * Check whether token has a PACKAGE_MASK or not
+   * @return bool if does
+   */
   function isPack(bytes32 id) public pure returns (bool) {
     return (id & PACKAGE_MASK) == PACKAGE_MASK;
   }
 
-  function generatePackTokenId() internal returns (uint256) {
+  function generatePackTokenId() public returns (uint256) {
     bytes32 newIdBytes = bytes32(packTokenIdCounter++);
 
     // Do not allow create more than 2^62 (4.611e18) packs
@@ -150,6 +156,16 @@ contract SpaceToken is ERC721Token, Ownable, Initializable {
 
     assert(!exists(newId));
 
+    emit LogNewPackIdGenerated(bytes32(newId));
+
     return newId;
+  }
+
+  function addRoleTo(address _operator, string _role) public onlyOwner {
+    super.addRole(_operator, _role);
+  }
+
+  function removeRoleFrom(address _operator, string _role) public onlyOwner {
+    super.removeRole(_operator, _role);
   }
 }

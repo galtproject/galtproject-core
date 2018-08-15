@@ -38,6 +38,7 @@ contract PlotManager is Initializable, Ownable {
   mapping(bytes32 => Application) applications;
   mapping(address => Validator) validators;
   bytes32[] applicationsArray;
+  mapping(address => bytes32[]) public applicationsByAddresses;
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -74,6 +75,26 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyValidator() {
     require(validators[msg.sender].active == true, "Not active validator");
     _;
+  }
+
+  function isValidator(address account) public view returns (bool) {
+    return validators[account].active == true;
+  }
+
+  function getValidators() public view returns (address[]) {
+    return validatorsArray;
+  }
+
+  function getValidator(address validator) public view returns (bytes32 name,
+    bytes2 country,
+    bool active)
+  {
+    Validator storage v = validators[validator];
+    return (
+    v.name,
+    v.country,
+    v.active
+    );
   }
 
   function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
@@ -121,6 +142,8 @@ contract PlotManager is Initializable, Ownable {
     a.precision = _precision;
 
     applications[_id] = a;
+    applicationsArray.push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
 
     emit NewApplication(_id, msg.sender);
     emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -131,10 +154,10 @@ contract PlotManager is Initializable, Ownable {
   function mintPack(bytes32 _aId) public onlyApplicant(_aId) {
     // TODO: prevent double mint
     Application storage a = applications[_aId];
-    uint256 t = spaceToken.mintPack(splitMerge);
-    a.packageToken = t;
+    // uint256 t = split.mintPack(splitMerge);
+    // a.packageToken = t;
 
-    emit NewPackMinted(bytes32(t), _aId);
+    // emit NewPackMinted(bytes32(t), _aId);
   }
 
   function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public onlyApplicant(_aId) {
@@ -142,11 +165,11 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
+      // uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
       // TODO: check for geohash parents exists
-      spaceToken.mint(address(this), g);
-      a.geohashTokens.push(g);
-      emit NewGeohashMinted(bytes32(g), _aId);
+      // spaceToken.mint(address(this), g);
+      // a.geohashTokens.push(g);
+      // emit NewGeohashMinted(bytes32(g), _aId);
     }
   }
 
@@ -157,7 +180,8 @@ contract PlotManager is Initializable, Ownable {
     require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
     require(splitMerge != address(0), "SplitMerge address not set");
 
-    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
+    // TODO: should use actual functions from SplitMerge
+    //    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
     a.status = ApplicationStatuses.SWAPPED;
     emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
   }
@@ -192,6 +216,7 @@ contract PlotManager is Initializable, Ownable {
     public
     view
     returns (
+      bytes32 id,
       address applicant,
       uint256[] vertices,
       uint256 packageToken,
@@ -208,6 +233,7 @@ contract PlotManager is Initializable, Ownable {
     Application storage m = applications[_id];
 
     return (
+      _id,
       m.applicant,
       m.vertices,
       m.packageToken,
@@ -218,5 +244,9 @@ contract PlotManager is Initializable, Ownable {
       m.country,
       m.ledgerIdentifier
     );
+  }
+
+  function getApplicationsByAddress(address applicant) external returns (bytes32[]) {
+    return applicationsByAddresses[applicant];
   }
 }
