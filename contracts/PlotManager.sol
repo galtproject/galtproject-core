@@ -8,12 +8,10 @@ import "./SplitMerge.sol";
 
 
 contract PlotManager is Initializable, Ownable {
-  enum ApplicationStatuses { NOT_EXISTS, NEW, SWAPPED, SUBMITTED, APPROVED, REJECTED }
+  enum ApplicationStatuses { NOT_EXISTS, NEW, SUBMITTED, APPROVED, REJECTED, DISASSEMBLED, REFUNDED, COMPLETED, CLOSED }
 
-  event ApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
-  event NewApplication(bytes32 id, address applicant);
-  event NewPackMinted(bytes32 spaceTokenId, bytes32 applicationId);
-  event NewGeohashMinted(bytes32 spaceTokenId, bytes32 applicationId);
+  event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
+  event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
@@ -27,7 +25,6 @@ contract PlotManager is Initializable, Ownable {
     uint8 precision;
     bytes2 country;
     uint256[] vertices;
-    uint256[] geohashTokens;
     ApplicationStatuses status;
   }
 
@@ -40,8 +37,8 @@ contract PlotManager is Initializable, Ownable {
   uint256 public validationFeeInEth;
   uint256 galtSpaceEthStake;
 
-  mapping(bytes32 => Application) applications;
-  mapping(address => Validator) validators;
+  mapping(bytes32 => Application) public applications;
+  mapping(address => Validator) public validators;
   bytes32[] applicationsArray;
   mapping(address => bytes32[]) public applicationsByAddresses;
   // WARNING: we do not remove validators from validatorsArray,
@@ -89,19 +86,23 @@ contract PlotManager is Initializable, Ownable {
     return validators[account].active == true;
   }
 
-  function getValidators() public view returns (address[]) {
-    return validatorsArray;
-  }
-
-  function getValidator(address validator) public view returns (bytes32 name,
-    bytes2 country,
-    bool active)
+  function getValidator(
+    address validator
+  )
+    public
+    view
+    returns (
+      bytes32 name,
+      bytes2 country,
+      bool active
+    )
   {
     Validator storage v = validators[validator];
+
     return (
-    v.name,
-    v.country,
-    v.active
+      v.name,
+      v.country,
+      v.active
     );
   }
 
@@ -121,6 +122,7 @@ contract PlotManager is Initializable, Ownable {
 
   function applyForPlotOwnership(
     uint256[] _vertices,
+    uint256 _baseGeohash,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     bytes2 _country,
@@ -153,19 +155,13 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    emit NewApplication(_id, msg.sender);
-    emit ApplicationStatusChanged(_id, ApplicationStatuses.NEW);
+    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
+    splitMerge.initPackage(geohashTokenId);
+
+    emit LogNewApplication(_id, msg.sender);
+    emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
 
     return _id;
-  }
-
-  function mintPack(bytes32 _aId) public onlyApplicant(_aId) {
-    // TODO: prevent double mint
-    Application storage a = applications[_aId];
-    // uint256 t = split.mintPack(splitMerge);
-    // a.packageToken = t;
-
-    // emit NewPackMinted(bytes32(t), _aId);
   }
 
   function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public onlyApplicant(_aId) {
@@ -181,29 +177,16 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
-  function swapTokens(bytes32 _aId) public onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-
-    require(a.applicant == msg.sender, "Not valid applicant");
-    require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
-    require(splitMerge != address(0), "SplitMerge address not set");
-
-    // TODO: should use actual functions from SplitMerge
-    //    splitMerge.swapTokens(a.packageToken, a.geohashTokens);
-    a.status = ApplicationStatuses.SWAPPED;
-    emit ApplicationStatusChanged(_aId, ApplicationStatuses.SWAPPED);
-  }
-
   function submitApplication(bytes32 _aId) public payable onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.SWAPPED, "Application status should be SWAPPED");
+    require(a.status == ApplicationStatuses.NEW, "Application status should be SWAPPED");
     require(msg.value == validationFee, "Incorrect fee passed in");
 
     a.status = ApplicationStatuses.SUBMITTED;
     a.fee = msg.value;
 
-    emit ApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
   function validateApplication(bytes32 _aId, bool _approve) public onlyValidator {
@@ -213,10 +196,10 @@ contract PlotManager is Initializable, Ownable {
 
     if (_approve) {
       a.status = ApplicationStatuses.APPROVED;
-      emit ApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
+      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
     } else {
       a.status = ApplicationStatuses.REJECTED;
-      emit ApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
+      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
     }
   }
 
@@ -244,17 +227,15 @@ contract PlotManager is Initializable, Ownable {
     return (_hash == applications[_id].credentialsHash);
   }
 
-  function getPlotApplication(
+  function getApplicationById(
     bytes32 _id
   )
     public
     view
     returns (
-      bytes32 id,
       address applicant,
       uint256[] vertices,
       uint256 packageToken,
-      uint256[] geohashTokens,
       bytes32 credentiaslHash,
       uint256 fee,
       ApplicationStatuses status,
@@ -269,11 +250,9 @@ contract PlotManager is Initializable, Ownable {
     Application storage m = applications[_id];
 
     return (
-      _id,
       m.applicant,
       m.vertices,
       m.packageToken,
-      m.geohashTokens,
       m.credentialsHash,
       m.fee,
       m.status,

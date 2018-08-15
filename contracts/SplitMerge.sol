@@ -15,7 +15,7 @@ contract SplitMerge is Initializable, Ownable {
   mapping(uint256 => uint256) geohashToPackage;
   mapping(uint256 => uint256[]) packageToContour;
 
-  mapping(uint256 => uint256[]) packageToGeohashes;
+  mapping(uint256 => uint256[]) public packageToGeohashes;
   mapping(uint256 => uint256) packageToGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
@@ -39,24 +39,17 @@ contract SplitMerge is Initializable, Ownable {
     _;
   }
 
-  function mintGeohash(uint256 _geohashToken) public ownerOrPlotManager {
-    // TODO: add spaceToken.isGeohash check
-    spaceToken.mint(address(this), _geohashToken);
-  }
+  function initPackage(uint256 _firstGeohashTokenId) public returns (uint256) {
+    uint256 _packageTokenId = spaceToken.mintPack(msg.sender);
+    allPackages.push(_packageTokenId);
 
-  function initPackage(uint256 _firstGeohashToken) public returns (uint256) {
-    // TODO: add spaceToken.isGeohash check
-    uint256 _packageToken = spaceToken.generatePackTokenId();
+    addGeohashToPackageUnsafe(_packageTokenId, _firstGeohashTokenId);
 
-    spaceToken.mint(msg.sender, _packageToken);
-    allPackages.push(_packageToken);
+    packageToGeohashesCount[_packageTokenId] = 1;
 
-    addGeohashToPackageUnsafe(_packageToken, _firstGeohashToken);
+    emit PackageInit(bytes32(_packageTokenId), spaceToken.ownerOf(_packageTokenId));
 
-    packageToGeohashesCount[_packageToken] = 1;
-
-    emit PackageInit(bytes32(_packageToken), spaceToken.ownerOf(_packageToken));
-    return _packageToken;
+    return _packageTokenId;
   }
 
   function setPackageContour(uint256 _packageToken, uint256[] _geohashesContour) public {

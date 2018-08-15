@@ -22,19 +22,26 @@ chai.should();
  * Alice is an applicant
  * Bob is a validator
  */
-contract.skip('PlotManager', ([coreTeam, alice, bob, charlie]) => {
+contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
-    this.spaceToken.initialize(this.plotManager.address, 'SpaceToken', 'SPACE', { from: coreTeam });
-    this.spaceToken.setSplitMerge(this.splitMerge.address, { from: coreTeam });
+    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: coreTeam });
     this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
+    this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+  });
+
+  it('should be initialized successfully', async function() {
+    (await this.plotManager.validationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 
   describe('#addValidator()', () => {
@@ -57,45 +64,63 @@ contract.skip('PlotManager', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
-  describe('contract', () => {
-    it('should be initialized successfully', async function() {
-      (await this.plotManager.validationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
-    });
+  describe('application pipeline', () => {
+    beforeEach(async function() {
+      this.initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+      this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
-    it('should provide methods to create and read an application', async function() {
-      const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
-      const initLedgerIdentifier = 'шц50023中222ائِيل';
-
-      const vertices = initVertices.map(galt.geohashToNumber);
-      const credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
-      const ledgerIdentifier = web3.utils.utf8ToHex(initLedgerIdentifier);
+      this.vertices = this.initVertices.map(galt.geohashToNumber);
+      this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+      this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
       const res = await this.plotManager.applyForPlotOwnership(
-        vertices,
-        credentials,
-        ledgerIdentifier,
+        this.vertices,
+        galt.geohashToGeohash5('sezu06'),
+        this.credentials,
+        this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        { from: alice, gas: 500000 }
+        { from: alice, gas: 1000000 }
       );
 
-      const aId = res.logs[0].args.id;
-
-      const res2 = await this.plotManagerWeb3.methods.getPlotApplication(aId).call();
-
-      // assertions
-      for (let i = 0; i < res2.vertices.length; i++) {
-        galt.numberToGeohash(res2.vertices[i]).should.be.equal(initVertices[i]);
-      }
-
-      assert.equal(res2.status, 1);
-      assert.equal(res2.precision, 7);
-      assert.equal(res2.applicant.toLowerCase(), alice);
-      assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
-      assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), initLedgerIdentifier);
+      this.aId = res.logs[0].args.id;
     });
 
-    // TODO: use actual SplitMerge functions in PlotManager for make the tests working again and unskip test
-    it.skip('should mint package-token to SplitMerge contract', async function() {
+    describe('#applyForPlotOwnership()', () => {
+      it('should provide methods to create and read an application', async function() {
+        const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        // assertions
+        for (let i = 0; i < res2.vertices.length; i++) {
+          galt.numberToGeohash(res2.vertices[i]).should.be.equal(this.initVertices[i]);
+        }
+
+        assert.equal(res2.status, 1);
+        assert.equal(res2.precision, 7);
+        assert.equal(res2.applicant.toLowerCase(), alice);
+        assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
+        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+      });
+
+      // eslint-disable-next-line
+      it('should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager addres', async function() {
+        let res = await this.spaceToken.totalSupply();
+        assert.equal(res.toString(), 2);
+        res = await this.spaceToken.balanceOf(this.plotManager.address);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.balanceOf(this.splitMerge.address);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.ownerOf('0x0100000000000000000000000000000000000000000000000000000030dfe806');
+        assert.equal(res, this.splitMerge.address);
+        res = await this.spaceToken.ownerOf('0x0200000000000000000000000000000000000000000000000000000000000000');
+        assert.equal(res, this.plotManager.address);
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert(res, 1);
+      });
+    });
+  });
+
+  describe.skip('contract', () => {
+    it('should mint package-token to SplitMerge contract', async function() {
       this.timeout(40000);
       const initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
       const initLedgerIdentifier = 'шц50023中222ائِيل';
