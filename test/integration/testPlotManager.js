@@ -445,5 +445,11 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res.status, ApplicationStatuses.SUBMITTED);
       });
     });
+    describe('#removeGeohashFromApplication()', () => {
+      beforeEach(async function() {
+        it('should ', async function() {
+        });
+      });
+    });
   });
 });

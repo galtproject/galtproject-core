@@ -206,6 +206,31 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
+  function removeGeohashesFromApplication(
+    bytes32 _aId,
+    uint256[] _geohashes,
+    bytes2[] _directions1,
+    bytes2[] _directions2
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be NEW for this operation.");
+
+    for (uint8 i = 0; i < _geohashes.length; i++) {
+      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+
+      require(spaceToken.ownerOf(geohashTokenId) == address(splitMerge), "Existing geohash token should belongs to PlotManager contract");
+
+      _geohashes[i] = geohashTokenId;
+    }
+
+    // TODO: implement directions
+    splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
+  }
+
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
