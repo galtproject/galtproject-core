@@ -47,6 +47,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   uint256 public validationFeeInEth;
+  // TODO: rename to galtSpaceEthShare and make public
   uint256 galtSpaceEthStake;
 
   mapping(bytes32 => Application) public applications;
@@ -188,14 +189,18 @@ contract PlotManager is Initializable, Ownable {
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
-      "Application status should be NEW for this operation.");
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be NEW for this operation."
+    );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
       if (spaceToken.exists(geohashTokenId)) {
-        require(spaceToken.ownerOf(geohashTokenId) == address(this),
-          "Existing geohash token should belongs to PlotManager contract");
+        require(
+          spaceToken.ownerOf(geohashTokenId) == address(this),
+          "Existing geohash token should belongs to PlotManager contract"
+        );
       } else {
         spaceToken.mintGeohash(address(this), _geohashes[i]);
       }
@@ -216,8 +221,10 @@ contract PlotManager is Initializable, Ownable {
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
-      "Application status should be NEW for this operation.");
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be NEW for this operation."
+    );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());

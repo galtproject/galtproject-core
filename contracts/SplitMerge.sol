@@ -16,7 +16,7 @@ contract SplitMerge is Initializable, Ownable {
   mapping(uint256 => uint256[]) packageToContour;
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
-  mapping(uint256 => uint256) packageToGeohashesCount;
+  mapping(uint256 => uint256) public packageToGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
   uint256[] allPackages;
@@ -25,12 +25,9 @@ contract SplitMerge is Initializable, Ownable {
 
   }
 
-  function initialize(SpaceToken _spaceToken) public isInitializer {
+  function initialize(SpaceToken _spaceToken, PlotManager _plotManager) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;
-  }
-
-  function setPlotManager(PlotManager _plotManager) public onlyOwner {
     plotManager = _plotManager;
   }
 
@@ -121,17 +118,17 @@ contract SplitMerge is Initializable, Ownable {
 
     for (uint256 i = 0; i < _geohashTokens.length; i++) {
       //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
-      addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
+      removeGeohashFromPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
 
     packageToGeohashesCount[_packageToken] -= _geohashTokens.length;
   }
 
-  function packageGeohashesCount(uint256 _packageToken) public returns (uint256) {
+  function packageGeohashesCount(uint256 _packageToken) public view returns (uint256) {
     return packageToGeohashesCount[_packageToken];
   }
 
-  function packageGeohashes(uint256 _packageToken) public returns (uint256[]) {
+  function packageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
     return packageToGeohashes[_packageToken];
   }
 

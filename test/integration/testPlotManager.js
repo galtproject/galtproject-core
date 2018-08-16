@@ -55,7 +55,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
 
     this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: coreTeam });
-    this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
+    this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
 
     this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -445,10 +445,22 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res.status, ApplicationStatuses.SUBMITTED);
       });
     });
-    describe('#removeGeohashFromApplication()', () => {
+
+    describe.only('#removeGeohashFromApplication()', () => {
       beforeEach(async function() {
-        it('should ', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        this.geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        await this.plotManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], { from: alice });
+      });
+
+      it('should allow owner partially remove geohashes from an application', async function() {
+        const geohashesToRemove = this.geohashes.slice(0, 2);
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+          from: alice
         });
+        // TODO: finish after fixing splitmerge
       });
     });
   });
