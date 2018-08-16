@@ -269,8 +269,6 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res.status, 2);
       });
 
-      it('should change status of an application from from rejected to submitted');
-
       it('should reject if status is not new or rejected', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, 1);
