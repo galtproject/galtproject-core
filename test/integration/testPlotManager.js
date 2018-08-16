@@ -186,7 +186,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         geohashes.push(tokenId.toString());
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
 
-        res = await this.spaceToken.ownerOf(tokenId.or(GEOHASH_MASK).toString());
+        res = await this.spaceToken.ownerOf(tokenId.xor(GEOHASH_MASK).toString());
         assert.equal(res, this.splitMerge.address);
       });
 
@@ -201,7 +201,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         geohashes.push(tokenId.toString());
         await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
 
-        res = await this.spaceToken.ownerOf(tokenId.or(GEOHASH_MASK).toString());
+        res = await this.spaceToken.ownerOf(tokenId.xor(GEOHASH_MASK).toString());
         assert.equal(res, bob);
       });
 
@@ -239,6 +239,44 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         geohashes.push('');
 
         await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
+      });
+    });
+
+    describe('#submitApplication', () => {
+      it('should change status of an application from from new to submitted', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 1);
+
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 2);
+      });
+
+      it('should change status of an application from from rejected to submitted');
+
+      it('should reject if status is not new or rejected', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 1);
+
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.validateApplication(this.aId, true, { from: bob });
+
+        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice }));
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 3);
+      });
+
+      it('should reject if another person tries to submit the application', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 1);
+
+        await assertRevert(this.plotManager.submitApplication(this.aId, { from: bob }));
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 1);
       });
     });
   });
