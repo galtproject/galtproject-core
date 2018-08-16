@@ -82,7 +82,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        { from: alice, gas: 1000000 }
+        { from: alice, gas: 1000000, value: ether(6) }
       );
 
       this.aId = res.logs[0].args.id;
@@ -118,6 +118,50 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res, this.plotManager.address);
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert(res, 1);
+      });
+
+      describe('payable', () => {
+        it('should reject applications without payment', async function() {
+          await assertRevert(
+            this.plotManager.applyForPlotOwnership(
+              this.vertices,
+              galt.geohashToGeohash5('sezu06'),
+              this.credentials,
+              this.ledgerIdentifier,
+              web3.utils.asciiToHex('MN'),
+              7,
+              { from: alice, gas: 1000000 }
+            )
+          );
+        });
+
+        it('should reject applications with payment less than required', async function() {
+          await assertRevert(
+            this.plotManager.applyForPlotOwnership(
+              this.vertices,
+              galt.geohashToGeohash5('sezu06'),
+              this.credentials,
+              this.ledgerIdentifier,
+              web3.utils.asciiToHex('MN'),
+              7,
+              { from: alice, gas: 1000000, value: ether(3) }
+            )
+          );
+        });
+
+        it('should reject applications with payment greater than required', async function() {
+          await assertRevert(
+            this.plotManager.applyForPlotOwnership(
+              this.vertices,
+              galt.geohashToGeohash5('sezu06'),
+              this.credentials,
+              this.ledgerIdentifier,
+              web3.utils.asciiToHex('MN'),
+              7,
+              { from: alice, gas: 1000000, value: ether(6.5) }
+            )
+          );
+        });
       });
     });
 
@@ -167,7 +211,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
 
         // TODO: pass neighbours and directions
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: ether(6) });
+        await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
         await this.plotManager.validateApplication(this.aId, false, { from: bob });
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
@@ -184,7 +228,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: ether(6) });
+        await this.plotManager.submitApplication(this.aId, { from: alice });
         await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
       });
 

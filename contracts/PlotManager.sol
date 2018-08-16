@@ -128,11 +128,13 @@ contract PlotManager is Initializable, Ownable {
     uint8 _precision
   )
     public
+    payable
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_vertices.length >= 3, "Number of vertices should be equal or greater than 3");
     require(_vertices.length < 51, "Number of vertices should be equal or less than 50");
+    require(msg.value == validationFeeInEth, "Incorrect fee passed in");
 
     for (uint8 i = 0; i < _vertices.length; i++) {
       require(_vertices[i] > 0, "Vertex should not be zero");
@@ -144,6 +146,7 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
     a.applicant = msg.sender;
+    a.fee = msg.value;
     a.vertices = _vertices;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
@@ -191,14 +194,12 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
-  function submitApplication(bytes32 _aId) public payable onlyApplicant(_aId) {
+  function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatuses.NEW, "Application status should be SWAPPED");
-    require(msg.value == validationFeeInEth, "Incorrect fee passed in");
 
     a.status = ApplicationStatuses.SUBMITTED;
-    a.fee = msg.value;
 
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
