@@ -248,6 +248,14 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
   }
 
+  function revertApplication(bytes32 _aId) public onlyValidator {
+    Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
+
+    a.status = ApplicationStatuses.REVERTED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REVERTED);
+  }
+
   function claimFee(bytes32 _aId) public onlyValidator {
     Application storage a = applications[_aId];
 

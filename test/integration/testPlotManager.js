@@ -393,6 +393,33 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res.status, ApplicationStatuses.SUBMITTED);
       });
     });
+
+    describe('#revertApplication()', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+      });
+
+      it('should allow a validator revert application', async function() {
+        await this.plotManager.revertApplication(this.aId, { from: bob });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.REVERTED);
+      });
+
+      it('should deny non-validator revert application', async function() {
+        await assertRevert(this.plotManager.revertApplication(this.aId, { from: alice }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
+      });
+
+      it('should deny validator revert an application with non-consideration status', async function() {
+        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
+        await assertRevert(this.plotManager.revertApplication(this.aId, { from: bob }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.SUBMITTED);
+      });
+    });
   });
 
   describe.skip('contract', () => {
