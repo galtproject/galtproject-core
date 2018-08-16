@@ -231,9 +231,10 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
-  function approveApplication(bytes32 _aId) public onlyValidator {
+  function approveApplication(bytes32 _aId, bytes32 _credentialsHash) public onlyValidator {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
+    require(a.credentialsHash == _credentialsHash, "Credentials don't match");
 
     a.status = ApplicationStatuses.APPROVED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);

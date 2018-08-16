@@ -42,6 +42,13 @@ Object.freeze(ApplicationStatuses);
  */
 contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
   beforeEach(async function() {
+    this.initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+    this.initLedgerIdentifier = 'шц50023中222ائِيل';
+
+    this.vertices = this.initVertices.map(galt.geohashToNumber);
+    this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+    this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
+
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
@@ -84,12 +91,6 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
 
   describe('application pipeline', () => {
     beforeEach(async function() {
-      this.initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
-      this.initLedgerIdentifier = 'шц50023中222ائِيل';
-
-      this.vertices = this.initVertices.map(galt.geohashToNumber);
-      this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
-      this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
       const res = await this.plotManager.applyForPlotOwnership(
         this.vertices,
         galt.geohashToGeohash5('sezu06'),
@@ -277,7 +278,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
-        await this.plotManager.approveApplication(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
 
         await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice }));
 
@@ -368,20 +369,26 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
       });
 
       it('should allow a validator approve application', async function() {
-        await this.plotManager.approveApplication(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatuses.APPROVED);
       });
 
+      it('should deny a validator approve application if hash doesnt match', async function() {
+        await assertRevert(this.plotManager.approveApplication(this.aId, `${this.credentials}_foo`, { from: bob }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
+      });
+
       it('should deny non-validator approve application', async function() {
-        await assertRevert(this.plotManager.approveApplication(this.aId, { from: alice }));
+        await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: alice }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
       });
 
       it('should deny validator approve an application with non-consideration status', async function() {
         await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
-        await assertRevert(this.plotManager.approveApplication(this.aId, { from: bob }));
+        await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: bob }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatuses.SUBMITTED);
       });
@@ -472,7 +479,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
       });
 
       // Bob validates the application from Alice
-      await this.plotManager.approveApplication(aId, { from: bob });
+      await this.plotManager.approveApplication(aId, this.credentials, { from: bob });
 
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: charlie });
       assert.equal(res.status, 4);
@@ -546,7 +553,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         });
 
         // Bob validates the application from Alice
-        await this.plotManager.approveApplication(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       });
 
       it('should provide validator an option to claim his earnings', async function() {
