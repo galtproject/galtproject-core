@@ -9,6 +9,7 @@ const galt = require('@galtproject/utils');
 const { ether, assertRevert } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
+const { BN } = Web3.utils;
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -17,6 +18,8 @@ Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
+
+const GEOHASH_MASK = new BN('0100000000000000000000000000000000000000000000000000000000000000', 16);
 
 /**
  * Alice is an applicant
@@ -115,6 +118,83 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res, this.plotManager.address);
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert(res, 1);
+      });
+    });
+
+    describe('#addGeohashesToApplication', () => {
+      it('should add a list of geohashes', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+      });
+
+      it('should re-use geohash space tokens if they belong to PlotManager', async function() {
+        const tokenId = galt.geohashToNumber('sezu05');
+        let res = await this.spaceToken.mintGeohash(this.plotManager.address, tokenId.toString(10), {
+          from: coreTeam
+        });
+
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+        geohashes.push(tokenId.toString());
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+
+        res = await this.spaceToken.ownerOf(tokenId.or(GEOHASH_MASK).toString());
+        assert.equal(res, this.splitMerge.address);
+      });
+
+      it('should reject if already minted token doesnt belong to PlotManager', async function() {
+        const tokenId = galt.geohashToNumber('sezu05');
+        let res = await this.spaceToken.mintGeohash(bob, tokenId.toString(10), {
+          from: coreTeam
+        });
+
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+        geohashes.push(tokenId.toString());
+        await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
+
+        res = await this.spaceToken.ownerOf(tokenId.or(GEOHASH_MASK).toString());
+        assert.equal(res, bob);
+      });
+
+      // TODO: unskip after application dissably implementation
+      it.skip('should add a list of geohashes if an application status is rejected', async function() {
+        const geohashes = ['sezu01', 'sezu02'].map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: ether(6) });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.validateApplication(this.aId, false, { from: bob });
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+      });
+
+      it('should reject push from non-owner', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: coreTeam }));
+      });
+
+      it('should reject push when status is not new or rejected', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: ether(6) });
+        await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
+      });
+
+      // TODO: add check for non allowed symbols on geohash token minting
+      it.skip('should reject push if geohash array contains an empty element', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+        geohashes.push('');
+
+        await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
       });
     });
   });

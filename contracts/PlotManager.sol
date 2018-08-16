@@ -19,7 +19,7 @@ contract PlotManager is Initializable, Ownable {
     address validator;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
-    uint256 packageToken;
+    uint256 packageTokenId;
     uint256 fee;
     bool feePaid;
     uint8 precision;
@@ -45,7 +45,6 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   address[] validatorsArray;
-  uint256 public validationFee;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -151,12 +150,12 @@ contract PlotManager is Initializable, Ownable {
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
 
+    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
+    a.packageTokenId = splitMerge.initPackage(geohashTokenId);
+
     applications[_id] = a;
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
-
-    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    splitMerge.initPackage(geohashTokenId);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -164,24 +163,39 @@ contract PlotManager is Initializable, Ownable {
     return _id;
   }
 
-  function pushGeohashes(bytes32 _aId, uint256[] _geohashes) public onlyApplicant(_aId) {
-    require(_geohashes.length < 40, "Able to handle up to 40 geohashes only");
+  function addGeohashesToApplication(
+    bytes32 _aId,
+    uint256[] _geohashes,
+    uint256[] _neighborsGeohashTokens,
+    bytes2[] _directions
+  )
+    public
+    onlyApplicant(_aId)
+  {
     Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be NEW for this operation.");
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      // uint256 g = spaceToken.geohashToTokenId(_geohashes[i]);
-      // TODO: check for geohash parents exists
-      // spaceToken.mint(address(this), g);
-      // a.geohashTokens.push(g);
-      // emit NewGeohashMinted(bytes32(g), _aId);
+      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+      if (spaceToken.exists(geohashTokenId)) {
+        require(spaceToken.ownerOf(geohashTokenId) == address(this),
+          "Existing geohash token should belongs to PlotManager contract");
+      } else {
+        spaceToken.mintGeohash(address(this), _geohashes[i]);
+      }
+
+      _geohashes[i] = geohashTokenId;
     }
+
+    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
   function submitApplication(bytes32 _aId) public payable onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatuses.NEW, "Application status should be SWAPPED");
-    require(msg.value == validationFee, "Incorrect fee passed in");
+    require(msg.value == validationFeeInEth, "Incorrect fee passed in");
 
     a.status = ApplicationStatuses.SUBMITTED;
     a.fee = msg.value;
@@ -235,7 +249,7 @@ contract PlotManager is Initializable, Ownable {
     returns (
       address applicant,
       uint256[] vertices,
-      uint256 packageToken,
+      uint256 packageTokenId,
       bytes32 credentiaslHash,
       uint256 fee,
       ApplicationStatuses status,
@@ -252,7 +266,7 @@ contract PlotManager is Initializable, Ownable {
     return (
       m.applicant,
       m.vertices,
-      m.packageToken,
+      m.packageTokenId,
       m.credentialsHash,
       m.fee,
       m.status,

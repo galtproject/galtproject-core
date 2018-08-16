@@ -58,7 +58,12 @@ contract SplitMerge is Initializable, Ownable {
     packageToContour[_packageToken] = _geohashesContour;
   }
 
-  function addGeohashToPackageUnsafe(uint256 _packageToken, uint256 _geohashToken) private {
+  function addGeohashToPackageUnsafe(
+    uint256 _packageToken,
+    uint256 _geohashToken
+  )
+    private
+  {
     require(_geohashToken != 0, "Geohash is 0");
     require(spaceToken.ownerOf(_geohashToken) == msg.sender, "Geohash owner is not msg.sender");
 
@@ -68,7 +73,14 @@ contract SplitMerge is Initializable, Ownable {
     geohashToPackage[_geohashToken] = _packageToken;
   }
 
-  function addGeohashesToPackage(uint256 _packageToken, uint256[] _geohashTokens, uint256[] _neighborsGeohashTokens, bytes2[] _directions) public {
+  function addGeohashesToPackage(
+    uint256 _packageToken,
+    uint256[] _geohashTokens,
+    uint256[] _neighborsGeohashTokens,
+    bytes2[] _directions
+  )
+    public
+  {
     require(_packageToken != 0, "Missing package token");
     require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
     require(spaceToken != address(0), "SpaceToken address not set");
