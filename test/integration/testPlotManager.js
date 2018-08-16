@@ -66,7 +66,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
   });
 
   it('should be initialized successfully', async function() {
-    (await this.plotManager.validationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    (await this.plotManager.applicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 
   describe('#addValidator()', () => {
@@ -446,7 +446,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
       });
     });
 
-    describe.only('#removeGeohashFromApplication()', () => {
+    describe('#removeGeohashFromApplication()', () => {
       beforeEach(async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
@@ -461,6 +461,23 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
           from: alice
         });
         // TODO: finish after fixing splitmerge
+      });
+    });
+
+    describe('#claimValidatorRewardEth()', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+      });
+
+      it('should', async function() {
+        const bobInitialBalance = await web3.eth.getBalance(bob);
+        console.log('bobs initial balance', bobInitialBalance);
+        await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
+        const bobFinalBalance = await web3.eth.getBalance(bob);
+        console.log('bobs final balance', bobFinalBalance);
       });
     });
   });
