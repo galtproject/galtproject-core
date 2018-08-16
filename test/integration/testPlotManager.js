@@ -20,12 +20,27 @@ chai.use(chaiBigNumber);
 chai.should();
 
 const GEOHASH_MASK = new BN('0100000000000000000000000000000000000000000000000000000000000000', 16);
+const ApplicationStatuses = {
+  NOT_EXISTS: 0,
+  NEW: 1,
+  SUBMITTED: 2,
+  CONSIDERATION: 3,
+  APPROVED: 4,
+  REJECTED: 5,
+  REVERTED: 6,
+  DISASSEMBLED: 7,
+  REFUNDED: 8,
+  COMPLETED: 9,
+  CLOSED: 10
+};
+
+Object.freeze(ApplicationStatuses);
 
 /**
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
+contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -213,7 +228,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
-        await this.plotManager.validateApplication(this.aId, false, { from: bob });
+        await this.plotManager.rejectApplication(this.aId, { from: bob });
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
       });
 
@@ -261,12 +276,13 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
 
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
-        await this.plotManager.validateApplication(this.aId, true, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, { from: bob });
 
         await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice }));
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 3);
+        assert.equal(res.status, ApplicationStatuses.APPROVED);
       });
 
       it('should reject if another person tries to submit the application', async function() {
@@ -290,13 +306,13 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
       it('should allow a validator to lock a submitted application', async function() {
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 5);
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
       });
 
       it('should deny validator to lock an application which is already on consideration', async function() {
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 5);
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
 
         await assertRevert(this.plotManager.lockApplicationForReview(this.aId, { from: charlie }));
       });
@@ -340,7 +356,34 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
       it('should deny non-owner to unlock an application under consideration', async function() {
         await assertRevert(this.plotManager.unlockApplication(this.aId, { from: charlie }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 5);
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
+      });
+    });
+
+    describe('#approveApplication', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+      });
+
+      it('should allow a validator approve application', async function() {
+        await this.plotManager.approveApplication(this.aId, { from: bob });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.APPROVED);
+      });
+
+      it('should deny non-validator approve application', async function() {
+        await assertRevert(this.plotManager.approveApplication(this.aId, { from: alice }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
+      });
+
+      it('should deny validator approve an application with non-consideration status', async function() {
+        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
+        await assertRevert(this.plotManager.approveApplication(this.aId, { from: bob }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.SUBMITTED);
       });
     });
   });
@@ -429,7 +472,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
       });
 
       // Bob validates the application from Alice
-      await this.plotManager.validateApplication(aId, true, { from: bob });
+      await this.plotManager.approveApplication(aId, { from: bob });
 
       res = await this.plotManagerWeb3.methods.getPlotApplication(aId).call({ from: charlie });
       assert.equal(res.status, 4);
@@ -503,7 +546,7 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
         });
 
         // Bob validates the application from Alice
-        await this.plotManager.validateApplication(this.aId, true, { from: bob });
+        await this.plotManager.approveApplication(this.aId, { from: bob });
       });
 
       it('should provide validator an option to claim his earnings', async function() {

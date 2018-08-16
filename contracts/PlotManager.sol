@@ -8,7 +8,19 @@ import "./SplitMerge.sol";
 
 
 contract PlotManager is Initializable, Ownable {
-  enum ApplicationStatuses { NOT_EXISTS, NEW, SUBMITTED, APPROVED, REJECTED, CONSIDERATION, DISASSEMBLED, REFUNDED, COMPLETED, CLOSED }
+  enum ApplicationStatuses {
+    NOT_EXISTS,
+    NEW,
+    SUBMITTED,
+    CONSIDERATION,
+    APPROVED,
+    REJECTED,
+    REVERTED,
+    DISASSEMBLED,
+    REFUNDED,
+    COMPLETED,
+    CLOSED
+  }
 
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
   event LogNewApplication(bytes32 id, address applicant);
@@ -219,18 +231,20 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
-  function validateApplication(bytes32 _aId, bool _approve) public onlyValidator {
+  function approveApplication(bytes32 _aId) public onlyValidator {
     Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
 
-    require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
+    a.status = ApplicationStatuses.APPROVED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
+  }
 
-    if (_approve) {
-      a.status = ApplicationStatuses.APPROVED;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
-    } else {
-      a.status = ApplicationStatuses.REJECTED;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
-    }
+  function rejectApplication(bytes32 _aId) public onlyValidator {
+    Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
+
+    a.status = ApplicationStatuses.REJECTED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
   }
 
   function claimFee(bytes32 _aId) public onlyValidator {
