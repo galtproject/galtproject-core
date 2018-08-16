@@ -8,7 +8,7 @@ import "./SplitMerge.sol";
 
 
 contract PlotManager is Initializable, Ownable {
-  enum ApplicationStatuses { NOT_EXISTS, NEW, SUBMITTED, APPROVED, REJECTED, DISASSEMBLED, REFUNDED, COMPLETED, CLOSED }
+  enum ApplicationStatuses { NOT_EXISTS, NEW, SUBMITTED, APPROVED, REJECTED, CONSIDERATION, DISASSEMBLED, REFUNDED, COMPLETED, CLOSED }
 
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
   event LogNewApplication(bytes32 id, address applicant);
@@ -197,10 +197,25 @@ contract PlotManager is Initializable, Ownable {
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.NEW, "Application status should be SWAPPED");
+    require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
 
     a.status = ApplicationStatuses.SUBMITTED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
+  }
 
+  function lockApplicationForReview(bytes32 _aId) public onlyValidator {
+    Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
+
+    a.status = ApplicationStatuses.CONSIDERATION;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
+  }
+
+  function unlockApplication(bytes32 _aId) public onlyOwner {
+    Application storage a = applications[_aId];
+    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
+
+    a.status = ApplicationStatuses.SUBMITTED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 

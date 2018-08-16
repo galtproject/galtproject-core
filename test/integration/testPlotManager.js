@@ -25,7 +25,7 @@ const GEOHASH_MASK = new BN('010000000000000000000000000000000000000000000000000
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
+contract('PlotManager', ([coreTeam, alice, bob, charlie, dan]) => {
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -277,6 +277,70 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, 1);
+      });
+    });
+
+    describe('#lockApplicationForReview', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.addValidator(charlie, 'Charlie', 'ID', { from: coreTeam });
+      });
+
+      it('should allow a validator to lock a submitted application', async function() {
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 5);
+      });
+
+      it('should deny validator to lock an application which is already on consideration', async function() {
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 5);
+
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, { from: charlie }));
+      });
+
+      it('should deny validator to lock an application which is new', async function() {
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.vertices,
+          galt.geohashToGeohash5('sezu05'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, gas: 1000000, value: ether(6) }
+        );
+        const a2Id = res.logs[0].args.id;
+        await assertRevert(this.plotManager.lockApplicationForReview(a2Id, { from: charlie }));
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 1);
+      });
+
+      it('should deny non-validator to lock an application', async function() {
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, { from: coreTeam }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 2);
+      });
+    });
+
+    describe('#unlockApplication', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+      });
+
+      it('should should allow a contract owner to unlock an application under consideration', async function() {
+        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 2);
+      });
+
+      it('should deny non-owner to unlock an application under consideration', async function() {
+        await assertRevert(this.plotManager.unlockApplication(this.aId, { from: charlie }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, 5);
       });
     });
   });
