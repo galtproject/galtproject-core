@@ -10,3 +10,12 @@ validate:
 
 test:
 	npm test
+
+deploy-test:
+	truffle deploy --network test
+
+deploy-dev:
+	truffle deploy --network development
+
+deploy-local:
+	truffle deploy --network local
