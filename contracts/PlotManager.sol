@@ -399,6 +399,10 @@ contract PlotManager is Initializable, Ownable {
     );
   }
 
+  function getAllApplications() external view returns (bytes32[]) {
+    return applicationsArray;
+  }
+
   function getApplicationsByAddress(address applicant) external view returns (bytes32[]) {
     return applicationsByAddresses[applicant];
   }
