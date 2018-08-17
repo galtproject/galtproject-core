@@ -89,6 +89,16 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
     });
   });
 
+  describe('#isValidator()', () => {
+    it('return true if validator is active', async function() {
+      assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
+      await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
+      assert(await this.plotManagerWeb3.methods.isValidator(alice).call());
+      await this.plotManager.removeValidator(alice, { from: coreTeam });
+      assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
+    });
+  });
+
   describe('application pipeline', () => {
     beforeEach(async function() {
       const res = await this.plotManager.applyForPlotOwnership(
