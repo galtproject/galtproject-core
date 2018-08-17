@@ -178,6 +178,13 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
             )
           );
         });
+
+        it('should calculate correspondive validator and coreTeam rewards in Eth', async function() {
+          const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+          assert.equal(res.status, 1);
+          res.validatorRewardEth.should.be.a.bignumber.eq(new BN('4560000000000000000'));
+          res.galtSpaceRewardEth.should.be.a.bignumber.eq(new BN('1440000000000000000'));
+        });
       });
     });
 

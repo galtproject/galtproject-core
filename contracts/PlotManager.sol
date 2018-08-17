@@ -171,12 +171,12 @@ contract PlotManager is Initializable, Ownable {
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
 
-    uint256 validatorRewardEth = galtSpaceEthShare.div(100).mul(msg.value);
-    uint256 galtSpaceRewardEth = msg.value.sub(validatorRewardEth);
+    uint256 galtSpaceRewardEth = galtSpaceEthShare.mul(msg.value).div(100);
+    uint256 validatorRewardEth = msg.value.sub(galtSpaceRewardEth);
 
     assert(validatorRewardEth.add(galtSpaceRewardEth) == msg.value);
 
-    a.validatorRewardEth = galtSpaceRewardEth;
+    a.validatorRewardEth = validatorRewardEth;
     a.galtSpaceRewardEth = galtSpaceRewardEth;
 
     uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
