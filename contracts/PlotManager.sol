@@ -58,8 +58,13 @@ contract PlotManager is Initializable, Ownable {
 
   mapping(bytes32 => Application) public applications;
   mapping(address => Validator) public validators;
-  bytes32[] applicationsArray;
   mapping(address => bytes32[]) public applicationsByAddresses;
+  bytes32[] applicationsArray;
+
+  // WARNING: we do not remove applications from validator's list,
+  // so do not rely on this variable to verify whether validator
+  // exists or not.
+  mapping(address => bytes32[]) public applicationsByValidator;
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -264,7 +269,10 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
 
+    a.validator = msg.sender;
+    applicationsByValidator[msg.sender].push(_aId);
     a.status = ApplicationStatuses.CONSIDERATION;
+
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
   }
 
@@ -272,7 +280,9 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
 
+    a.validator = address(0);
     a.status = ApplicationStatuses.SUBMITTED;
+
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
@@ -336,6 +346,7 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (
       address applicant,
+      address validator,
       uint256[] vertices,
       uint256 packageTokenId,
       bytes32 credentiaslHash,
@@ -351,6 +362,7 @@ contract PlotManager is Initializable, Ownable {
 
     return (
       m.applicant,
+      m.validator,
       m.vertices,
       m.packageTokenId,
       m.credentialsHash,
@@ -389,5 +401,9 @@ contract PlotManager is Initializable, Ownable {
 
   function getApplicationsByAddress(address applicant) external view returns (bytes32[]) {
     return applicationsByAddresses[applicant];
+  }
+
+  function getApplicationsByValidator(address applicant) external view returns (bytes32[]) {
+    return applicationsByValidator[applicant];
   }
 }
