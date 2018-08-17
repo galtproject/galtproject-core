@@ -41,7 +41,6 @@ contract PlotManager is Initializable, Ownable {
     uint256 galtSpaceRewardGalt;
     uint8 precision;
     bytes2 country;
-    uint256[] vertices;
     ApplicationStatuses status;
   }
 
@@ -147,7 +146,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function applyForPlotOwnership(
-    uint256[] _vertices,
+    uint256[] _packageCountour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
@@ -159,21 +158,16 @@ contract PlotManager is Initializable, Ownable {
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
-    require(_vertices.length >= 3, "Number of vertices should be equal or greater than 3");
-    require(_vertices.length < 51, "Number of vertices should be equal or less than 50");
+    require(_packageCountour.length >= 3, "Number of contour elements should be equal or greater than 3");
+    require(_packageCountour.length < 51, "Number of contour elements should be equal or less than 50");
     require(msg.value == applicationFeeInEth, "Incorrect fee passed in");
 
-    for (uint8 i = 0; i < _vertices.length; i++) {
-      require(_vertices[i] > 0, "Vertex should not be zero");
-    }
-
     Application memory a;
-    bytes32 _id = keccak256(abi.encodePacked(_vertices[0], _vertices[1], _credentialsHash));
+    bytes32 _id = keccak256(abi.encodePacked(_packageCountour[0], _packageCountour[1], _credentialsHash));
 
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
     a.applicant = msg.sender;
-    a.vertices = _vertices;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -188,7 +182,10 @@ contract PlotManager is Initializable, Ownable {
     a.galtSpaceRewardEth = galtSpaceRewardEth;
 
     uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    a.packageTokenId = splitMerge.initPackage(geohashTokenId);
+    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
+    a.packageTokenId = packageTokenId;
+
+    splitMerge.setPackageContour(packageTokenId, _packageCountour);
 
     applications[_id] = a;
     applicationsArray.push(_id);
@@ -364,7 +361,6 @@ contract PlotManager is Initializable, Ownable {
     returns (
       address applicant,
       address validator,
-      uint256[] vertices,
       uint256 packageTokenId,
       bytes32 credentiaslHash,
       ApplicationStatuses status,
@@ -380,7 +376,6 @@ contract PlotManager is Initializable, Ownable {
     return (
       m.applicant,
       m.validator,
-      m.vertices,
       m.packageTokenId,
       m.credentialsHash,
       m.status,

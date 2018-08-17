@@ -502,7 +502,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       });
     });
 
-    describe('#removeGeohashFromApplication()', () => {
+    describe.only('#removeGeohashFromApplication()', () => {
       beforeEach(async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
@@ -513,6 +513,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
       it('should allow owner partially remove geohashes from an application', async function() {
         const geohashesToRemove = this.geohashes.slice(0, 2);
+        let res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[0]));
+        console.log('res', res);
         await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
           from: alice
         });
