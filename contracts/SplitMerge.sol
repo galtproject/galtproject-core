@@ -16,7 +16,7 @@ contract SplitMerge is Initializable, Ownable {
   mapping(uint256 => uint256[]) packageToContour;
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
-  mapping(uint256 => uint256) public packageToGeohashesCount;
+  mapping(uint256 => uint256) public packageGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
   uint256[] allPackages;
@@ -42,7 +42,7 @@ contract SplitMerge is Initializable, Ownable {
 
     addGeohashToPackageUnsafe(_packageTokenId, _firstGeohashTokenId);
 
-    packageToGeohashesCount[_packageTokenId] = 1;
+    packageGeohashesCount[_packageTokenId] = 1;
 
     emit PackageInit(bytes32(_packageTokenId), spaceToken.ownerOf(_packageTokenId));
 
@@ -97,7 +97,7 @@ contract SplitMerge is Initializable, Ownable {
       addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
 
-    packageToGeohashesCount[_packageToken] += _geohashTokens.length;
+    packageGeohashesCount[_packageToken] += _geohashTokens.length;
   }
 
   function removeGeohashFromPackageUnsafe(
@@ -131,14 +131,10 @@ contract SplitMerge is Initializable, Ownable {
       removeGeohashFromPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
 
-    packageToGeohashesCount[_packageToken] -= _geohashTokens.length;
+    packageGeohashesCount[_packageToken] -= _geohashTokens.length;
   }
 
-  function packageGeohashesCount(uint256 _packageToken) public view returns (uint256) {
-    return packageToGeohashesCount[_packageToken];
-  }
-
-  function packageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
+  function getPackageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
     return packageToGeohashes[_packageToken];
   }
 

@@ -243,16 +243,43 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res, bob);
       });
 
-      // TODO: unskip after application dissably implementation
-      it.skip('should add a list of geohashes if an application status is rejected', async function() {
-        const geohashes = ['sezu01', 'sezu02'].map(galt.geohashToGeohash5);
+      it('should add a list of geohashes if an application status is reverted', async function() {
+        let geohashes1 = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes1 = geohashes1.split(' ').map(galt.geohashToGeohash5);
+        const geohashes2 = ['sezu01', 'sezu02'].map(galt.geohashToGeohash5);
 
         // TODO: pass neighbours and directions
-        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes1, [], [], { from: alice });
+
+        assert.equal(await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashes1[0])), this.splitMerge.address);
+        assert.equal(await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashes1[1])), this.splitMerge.address);
+
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
-        await this.plotManager.rejectApplication(this.aId, { from: bob });
-        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        await this.plotManager.revertApplication(this.aId, { from: bob });
+
+        let res = await this.splitMerge.packageGeohashesCount(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
+        assert.equal(res, 9);
+
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes2, [], [], { from: alice });
+        res = await this.splitMerge.packageGeohashesCount(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
+        assert.equal(res, 11);
+      });
+
+      it('should throw if already existing geohashes are passed in', async function() {
+        let geohashes1 = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes1 = geohashes1.split(' ').map(galt.geohashToGeohash5);
+        const geohashes2 = ['sezu01', 'gbsuv7ztm'].map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes1, [], [], { from: alice });
+
+        await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes2, [], [], { from: alice }));
       });
 
       it('should reject push from non-owner', async function() {
