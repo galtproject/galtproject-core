@@ -479,12 +479,25 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       });
 
-      it('should', async function() {
-        const bobInitialBalance = await web3.eth.getBalance(bob);
-        console.log('bobs initial balance', bobInitialBalance);
+      it('should allow validator claim reward', async function() {
+        const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
         await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
-        const bobFinalBalance = await web3.eth.getBalance(bob);
-        console.log('bobs final balance', bobFinalBalance);
+        const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
+
+        // bobs fee is around (100 - 24) / 100 * 6 ether = 4560000000000000000 wei
+        // assume that the commission paid by bob isn't greater than 0.1 ether
+        assert(
+          bobsInitialBalance
+            .add(new BN('4560000000000000000'))
+            .sub(new BN(ether(0.1)))
+            .lt(bobsFinalBalance)
+        );
+        assert(
+          bobsInitialBalance
+            .add(new BN('4560000000000000000'))
+            .add(new BN(ether(0.1)))
+            .gt(bobsFinalBalance)
+        );
       });
     });
   });
