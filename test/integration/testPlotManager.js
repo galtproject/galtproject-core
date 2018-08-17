@@ -544,11 +544,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       it('should allow owner partially remove geohashes from an application', async function() {
         const geohashesToRemove = this.geohashes.slice(0, 2);
         let res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[0]));
-        console.log('res', res);
+        assert.equal(res, this.splitMerge.address);
+        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[1]));
+        assert.equal(res, this.splitMerge.address);
+
+        res = await this.splitMerge.packageGeohashesCount(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
+        assert.equal(res, 18);
+
         await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
           from: alice
         });
-        // TODO: finish after fixing splitmerge
+
+        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[0]));
+        assert.equal(res, this.plotManager.address);
+        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[1]));
+        assert.equal(res, this.plotManager.address);
+
+        res = await this.splitMerge.packageGeohashesCount(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
+        assert.equal(res, 16);
       });
     });
 
