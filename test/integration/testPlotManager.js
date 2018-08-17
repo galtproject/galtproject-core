@@ -119,10 +119,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     describe('#applyForPlotOwnership()', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res3 = await this.splitMerge.getPackageContour(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
 
         // assertions
-        for (let i = 0; i < res2.vertices.length; i++) {
-          galt.numberToGeohash(res2.vertices[i]).should.be.equal(this.initVertices[i]);
+        for (let i = 0; i < res3.length; i++) {
+          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initVertices[i]);
         }
 
         assert.equal(res2.status, 1);
@@ -502,7 +505,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       });
     });
 
-    describe.only('#removeGeohashFromApplication()', () => {
+    describe('#removeGeohashFromApplication()', () => {
       beforeEach(async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
