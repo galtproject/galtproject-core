@@ -146,7 +146,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function applyForPlotOwnership(
-    uint256[] _packageCountour,
+    uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
@@ -158,12 +158,12 @@ contract PlotManager is Initializable, Ownable {
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
-    require(_packageCountour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageCountour.length < 51, "Number of contour elements should be equal or less than 50");
+    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
+    require(_packageContour.length < 51, "Number of contour elements should be equal or less than 50");
     require(msg.value == applicationFeeInEth, "Incorrect fee passed in");
 
     Application memory a;
-    bytes32 _id = keccak256(abi.encodePacked(_packageCountour[0], _packageCountour[1], _credentialsHash));
+    bytes32 _id = keccak256(abi.encodePacked(_packageContour[0], _packageContour[1], _credentialsHash));
 
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
@@ -185,7 +185,7 @@ contract PlotManager is Initializable, Ownable {
     uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
     a.packageTokenId = packageTokenId;
 
-    splitMerge.setPackageContour(packageTokenId, _packageCountour);
+    splitMerge.setPackageContour(packageTokenId, _packageContour);
 
     applications[_id] = a;
     applicationsArray.push(_id);
@@ -370,7 +370,7 @@ contract PlotManager is Initializable, Ownable {
       address applicant,
       address validator,
       uint256 packageTokenId,
-      bytes32 credentiaslHash,
+      bytes32 credentialsHash,
       ApplicationStatuses status,
       uint8 precision,
       bytes2 country,
