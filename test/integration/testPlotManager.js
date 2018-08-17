@@ -379,6 +379,13 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
         assert.equal(res.status, ApplicationStatuses.APPROVED);
       });
 
+      it('should transfer package to an applicant', async function() {
+        const packId = '0x0200000000000000000000000000000000000000000000000000000000000000';
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+        const res = await this.spaceToken.ownerOf(packId);
+        assert.equal(res, alice);
+      });
+
       it('should deny a validator approve application if hash doesnt match', async function() {
         await assertRevert(this.plotManager.approveApplication(this.aId, `${this.credentials}_foo`, { from: bob }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();

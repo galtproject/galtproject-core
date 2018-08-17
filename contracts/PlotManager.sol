@@ -282,6 +282,9 @@ contract PlotManager is Initializable, Ownable {
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
 
     a.status = ApplicationStatuses.APPROVED;
+
+    spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
+
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
   }
 
