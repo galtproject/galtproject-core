@@ -264,7 +264,12 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW"
     );
 
-    a.status = ApplicationStatuses.SUBMITTED;
+    if(a.status == ApplicationStatuses.NEW) {
+      a.status = ApplicationStatuses.SUBMITTED;
+    } else {
+      a.status = ApplicationStatuses.CONSIDERATION;
+    }
+
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
