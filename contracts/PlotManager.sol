@@ -259,7 +259,10 @@ contract PlotManager is Initializable, Ownable {
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.NEW, "Application status should be NEW");
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      "Application status should be NEW"
+    );
 
     a.status = ApplicationStatuses.SUBMITTED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
