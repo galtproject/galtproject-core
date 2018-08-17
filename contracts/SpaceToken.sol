@@ -189,4 +189,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
   }
+
+  function tokensOfOwner(address _owner) public view returns (uint256[]) {
+    return ownedTokens[_owner];
+  }
 }
