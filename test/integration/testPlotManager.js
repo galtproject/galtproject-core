@@ -318,7 +318,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res.status, 2);
       });
 
-      it.only('should allow submit reverted application', async function() {
+      it('should allow submit reverted application', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, 1);
 
