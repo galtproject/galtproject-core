@@ -40,7 +40,7 @@ Object.freeze(ApplicationStatuses);
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
+contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   beforeEach(async function() {
     this.initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -54,7 +54,9 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
-    this.plotManager.initialize(ether(6), '24', this.spaceToken.address, this.splitMerge.address, { from: coreTeam });
+    this.plotManager.initialize(ether(6), '24', galtSpaceOrg, this.spaceToken.address, this.splitMerge.address, {
+      from: coreTeam
+    });
     this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
 
     this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
@@ -545,6 +547,41 @@ contract('PlotManager', ([coreTeam, alice, bob, charlie]) => {
             .add(new BN(ether(0.1)))
             .gt(bobsFinalBalance)
         );
+      });
+    });
+
+    describe('#claimGaltSpaceRewardEth()', () => {
+      beforeEach(async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+        await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
+      });
+
+      it('should allow validator claim reward', async function() {
+        const plotManagerInitialBalance = new BN(await web3.eth.getBalance(this.plotManager.address));
+        const galtSpaceOrgInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+        await this.plotManager.claimGaltSpaceRewardEth(this.aId, { from: galtSpaceOrg });
+        const galtSpaceOrgFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+        const plotManagerFinalBalance = new BN(await web3.eth.getBalance(this.plotManager.address));
+
+        // galtSpaceOrg fee is around 24 / 100 * 6 ether = 1440000000000000000 wei
+        // assume that the commission paid by bob isn't greater than 0.1 ether
+        assert(
+          galtSpaceOrgInitialBalance
+            .add(new BN('1440000000000000000'))
+            .sub(new BN(ether(0.1)))
+            .lt(galtSpaceOrgFinalBalance)
+        );
+        assert(
+          galtSpaceOrgInitialBalance
+            .add(new BN('1440000000000000000'))
+            .add(new BN(ether(0.1)))
+            .gt(galtSpaceOrgFinalBalance)
+        );
+        assert(plotManagerInitialBalance.eq(new BN('1440000000000000000')));
+        assert(plotManagerFinalBalance.eq(new BN('0')));
       });
     });
   });

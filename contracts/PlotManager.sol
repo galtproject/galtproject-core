@@ -55,6 +55,7 @@ contract PlotManager is Initializable, Ownable {
   uint256 public applicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
+  address galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
   mapping(address => Validator) public validators;
@@ -78,6 +79,7 @@ contract PlotManager is Initializable, Ownable {
   function initialize(
     uint256 _validationFeeInEth,
     uint256 _galtSpaceEthShare,
+    address _galtSpaceRewardsAddress,
     SpaceToken _spaceToken,
     SplitMerge _splitMerge
   )
@@ -89,6 +91,7 @@ contract PlotManager is Initializable, Ownable {
     splitMerge = _splitMerge;
     applicationFeeInEth = _validationFeeInEth;
     galtSpaceEthShare = _galtSpaceEthShare;
+    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -323,9 +326,23 @@ contract PlotManager is Initializable, Ownable {
     require(a.validatorRewardEth > 0, "Reward in ETH is 0");
 
     a.status = ApplicationStatuses.VALIDATOR_REWARDED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
 
-    // TODO: emit event
     msg.sender.transfer(a.validatorRewardEth);
+  }
+
+  function claimGaltSpaceRewardEth(bytes32 _aId) public {
+    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatuses.VALIDATOR_REWARDED, "Application status should be VALIDATOR_REWARDED");
+    require(a.galtSpaceRewardEth > 0, "Reward in ETH is 0");
+
+    a.status = ApplicationStatuses.GALTSPACE_REWARDED;
+    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.GALTSPACE_REWARDED);
+
+    msg.sender.transfer(a.galtSpaceRewardEth);
   }
 
   function isCredentialsHashValid(
