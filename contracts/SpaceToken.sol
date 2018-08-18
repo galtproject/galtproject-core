@@ -165,6 +165,10 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     super._setTokenURI(_tokenId, _uri);
   }
 
+  function tokensOfOwner(address _owner) public view returns (uint256[]) {
+    return ownedTokens[_owner];
+  }
+
   /**
    * Add geohash mask to a 5-byte numerical representation of a geohash.
    * Converts tokenId uint like `824642203853484471` to
@@ -270,15 +274,12 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
     return newId;
   }
+
   function addRoleTo(address _operator, string _role) public onlyOwner {
     super.addRole(_operator, _role);
   }
 
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
-  }
-
-  function tokensOfOwner(address _owner) public view returns (uint256[]) {
-    return ownedTokens[_owner];
   }
 }
