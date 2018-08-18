@@ -318,7 +318,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res.status, 2);
       });
 
-      it('should allow submit reverted application', async function() {
+      it('should allow submit reverted application to the same validator who reverted it', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, 1);
 
@@ -329,7 +329,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 2);
+        assert.equal(res.status, ApplicationStatuses.CONSIDERATION);
+        assert.equal(res.validator.toLowerCase(), bob);
       });
 
       it('should reject if status is not new or rejected', async function() {
