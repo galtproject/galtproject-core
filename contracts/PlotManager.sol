@@ -264,13 +264,13 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW"
     );
 
-    if(a.status == ApplicationStatuses.NEW) {
+    if (a.status == ApplicationStatuses.NEW) {
       a.status = ApplicationStatuses.SUBMITTED;
-    } else {
+      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
+    } else if (a.status == ApplicationStatuses.REVERTED) {
       a.status = ApplicationStatuses.CONSIDERATION;
+      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
     }
-
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
   function lockApplicationForReview(bytes32 _aId) public onlyValidator {
