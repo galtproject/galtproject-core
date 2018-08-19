@@ -264,7 +264,7 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
-      "Application status should be NEW for this operation."
+      "Application status should be NEW or REJECTED for this operation."
     );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
@@ -278,7 +278,7 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if(splitMerge.getPackageCount(a.packageTokenId) == 0) {
+    if(splitMerge.getPackageCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
       a.status = ApplicationStatuses.DISASSEMBLED;
     }
   }
@@ -353,9 +353,14 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.DISASSEMBLED,
-      "Application status should be ether APPROVED or DISASSEMBLED");
+      a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
+      "Application status should be ether APPROVED or REJECTED");
     require(a.validatorRewardEth > 0, "Reward in ETH is 0");
+
+    if(a.status == ApplicationStatuses.REJECTED) {
+      require(splitMerge.getPackageCount(a.packageTokenId) == 0,
+        "Application geohashes count must be 0 for REJECTED status");
+    }
 
     a.status = ApplicationStatuses.VALIDATOR_REWARDED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
