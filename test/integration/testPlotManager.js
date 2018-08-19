@@ -582,6 +582,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         );
         assert.equal(res, 16);
       });
+
+      it.only('should set DISASSEMBLED on all geohases remove', async function() {
+        let res;
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+        const geohashesToRemove = packageGeohashes.map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)));
+
+        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+        assert.equal(res, 18);
+
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+          from: alice
+        });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.DISASSEMBLED);
+
+        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+        assert.equal(res, 0);
+      });
     });
 
     describe('#claimValidatorRewardEth()', () => {
