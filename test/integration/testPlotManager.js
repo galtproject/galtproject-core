@@ -583,7 +583,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res, 16);
       });
 
-      it.only('should set DISASSEMBLED on all geohases remove', async function() {
+      it('should set DISASSEMBLED on all geohases remove', async function() {
         let res;
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
