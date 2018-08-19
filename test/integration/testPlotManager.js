@@ -640,8 +640,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
         await assertRevert(this.plotManager.claimValidatorRewardEth(this.aId, { from: bob }));
 
-        const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
-
         let res;
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -658,6 +656,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
         res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
         assert.equal(res, 0);
+
+        const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
 
         await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
         const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
