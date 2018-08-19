@@ -635,7 +635,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         );
       });
 
-      it.only('should allow validator claim reward after reject', async function() {
+      it('should allow validator claim reward after reject', async function() {
         await this.plotManager.rejectApplication(this.aId, { from: bob });
 
         await assertRevert(this.plotManager.claimValidatorRewardEth(this.aId, { from: bob }));
