@@ -182,7 +182,7 @@ contract PlotManager is Initializable, Ownable {
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageContour.length < 51, "Number of contour elements should be equal or less than 50");
+    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
     require(msg.value == applicationFeeInEth, "Incorrect fee passed in");
 
     Application memory a;
