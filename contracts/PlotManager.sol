@@ -108,7 +108,7 @@ contract PlotManager is Initializable, Ownable {
     require(a.applicant == msg.sender || a.validator == msg.sender, "Not valid sender");
     require(splitMerge != address(0), "SplitMerge address not set");
 
-    if(a.validator == msg.sender) {
+    if (a.validator == msg.sender) {
       require(isValidator(msg.sender), "Not active validator");
     }
 
@@ -278,7 +278,7 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if(splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
+    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
       a.status = ApplicationStatuses.DISASSEMBLED;
     }
   }
@@ -357,7 +357,7 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be ether APPROVED or REJECTED");
     require(a.validatorRewardEth > 0, "Reward in ETH is 0");
 
-    if(a.status == ApplicationStatuses.REJECTED) {
+    if (a.status == ApplicationStatuses.REJECTED) {
       require(splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
         "Application geohashes count must be 0 for REJECTED status");
     }
