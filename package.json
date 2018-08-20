@@ -29,7 +29,7 @@
     "openzeppelin-solidity": "^1.11.0",
     "p-iteration": "^1.1.7",
     "prettier": "^1.14.2",
-    "truffle": "^4.1.13",
+    "truffle": "^4.1.14",
     "web3": "^1.0.0-beta.35",
     "zos-lib": "^1.4.0"
   },
