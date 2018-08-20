@@ -138,10 +138,6 @@ contract SplitMerge is Initializable, Ownable {
     return packageToGeohashes[_packageToken];
   }
 
-  function packageOfGeohash(uint256 _geohashToken) public view returns (uint256) {
-    return geohashToPackage[_geohashToken];
-  }
-
   // TODO: implement in future
 //  function splitGeohash(uint256 _geohashToken) public {
 //
