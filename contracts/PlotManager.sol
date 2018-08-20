@@ -102,8 +102,31 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
+  modifier onlyApplicantOrValidator(bytes32 _aId) {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender || a.validator == msg.sender, "Not valid sender");
+    require(splitMerge != address(0), "SplitMerge address not set");
+
+    if (a.validator == msg.sender) {
+      require(isValidator(msg.sender), "Not active validator");
+    }
+
+    _;
+  }
+
   modifier onlyValidator() {
     require(validators[msg.sender].active == true, "Not active validator");
+    _;
+  }
+
+  modifier onlyValidatorOfApplication(bytes32 _aId) {
+    Application storage a = applications[_aId];
+
+    require(a.validator == msg.sender, "Not valid validator");
+    require(splitMerge != address(0), "SplitMerge address not set");
+    require(isValidator(msg.sender), "Not active validator");
+
     _;
   }
 
@@ -236,12 +259,12 @@ contract PlotManager is Initializable, Ownable {
     bytes2[] _directions2
   )
     public
-    onlyApplicant(_aId)
+    onlyApplicantOrValidator(_aId)
   {
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
-      "Application status should be NEW for this operation."
+      "Application status should be NEW or REJECTED for this operation."
     );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
@@ -254,6 +277,10 @@ contract PlotManager is Initializable, Ownable {
 
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
+
+    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
+      a.status = ApplicationStatuses.DISASSEMBLED;
+    }
   }
 
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
@@ -294,7 +321,7 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
   }
 
-  function approveApplication(bytes32 _aId, bytes32 _credentialsHash) public onlyValidator {
+  function approveApplication(bytes32 _aId, bytes32 _credentialsHash) public onlyValidatorOfApplication(_aId) {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
@@ -306,7 +333,7 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
   }
 
-  function rejectApplication(bytes32 _aId) public onlyValidator {
+  function rejectApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
 
@@ -314,7 +341,7 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
   }
 
-  function revertApplication(bytes32 _aId) public onlyValidator {
+  function revertApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
 
@@ -329,6 +356,12 @@ contract PlotManager is Initializable, Ownable {
       a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
       "Application status should be ether APPROVED or REJECTED");
     require(a.validatorRewardEth > 0, "Reward in ETH is 0");
+
+    if (a.status == ApplicationStatuses.REJECTED) {
+      require(
+        splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
+        "Application geohashes count must be 0 for REJECTED status");
+    }
 
     a.status = ApplicationStatuses.VALIDATOR_REWARDED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
