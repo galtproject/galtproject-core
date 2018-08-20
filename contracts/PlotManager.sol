@@ -168,6 +168,22 @@ contract PlotManager is Initializable, Ownable {
     validators[_validator].active = false;
   }
 
+  function changeApplicationCredentialsHash(
+    bytes32 _aId,
+    bytes32 _credentialsHash
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      "Application status should be NEW or REVERTED."
+    );
+
+    a.credentialsHash = _credentialsHash;
+  }
+
   function applyForPlotOwnership(
     uint256[] _packageContour,
     uint256 _baseGeohash,

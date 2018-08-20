@@ -101,6 +101,58 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     });
   });
 
+  describe('config change methods', () => {
+    describe('#changeApplicationCredentialsHash()', () => {
+      beforeEach(async function() {
+        const res = await this.plotManager.applyForPlotOwnership(
+          this.vertices,
+          galt.geohashToGeohash5('sezu06'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, gas: 1000000, value: ether(6) }
+        );
+
+        this.aId = res.logs[0].args.id;
+      });
+
+      it('should allow change hash to the owner when status is NEW', async function() {
+        const hash = web3.utils.keccak256('AnotherPerson');
+        await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, hash);
+      });
+
+      it('should allow change hash to the owner when status is REVERTED', async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.addValidator(bob, 'Bob', 'BB', { from: coreTeam });
+        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+        await this.plotManager.revertApplication(this.aId, { from: bob });
+
+        const hash = web3.utils.keccak256('AnotherPerson');
+        await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, hash);
+      });
+
+      it('should deny hash change to another person', async function() {
+        const hash = web3.utils.keccak256('AnotherPerson');
+        await assertRevert(this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: coreTeam }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, this.credentials);
+      });
+
+      it('should deny hash change if applicaiton is submitted', async function() {
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+        const hash = web3.utils.keccak256('AnotherPerson');
+        await assertRevert(this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, this.credentials);
+      });
+    });
+  });
+
   describe('application pipeline', () => {
     beforeEach(async function() {
       const res = await this.plotManager.applyForPlotOwnership(
