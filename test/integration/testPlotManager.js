@@ -655,7 +655,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res.status, ApplicationStatuses.REJECTED);
 
         res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
-        assert.equal(res, 0);
+        assert.equal(res.toString(10), (0).toString(10));
 
         const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
 
