@@ -44,7 +44,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
   });
 
   describe('contract', () => {
-    it.only('should creating correctly', async function() {
+    it('should creating correctly', async function() {
       let res;
       // TODO: remove console.log lines when the tests work
       // console.log('spaceToken.mintGeohash', alice, this.firstGeohash);
