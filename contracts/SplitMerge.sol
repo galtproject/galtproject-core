@@ -12,8 +12,8 @@ contract SplitMerge is Initializable, Ownable {
 
   event PackageInit(bytes32 id, address owner);
 
-  mapping(uint256 => uint256) geohashToPackage;
-  mapping(uint256 => uint256[]) packageToContour;
+  mapping(uint256 => uint256) public geohashToPackage;
+  mapping(uint256 => uint256[]) public packageToContour;
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
   mapping(uint256 => uint256) public packageGeohashesCount;

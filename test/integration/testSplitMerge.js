@@ -91,7 +91,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         res = await this.spaceToken.ownerOf.call(geohashTokenId);
         assert.equal(res, this.splitMerge.address);
 
-        res = await this.splitMerge.packageOfGeohash.call(geohashTokenId);
+        res = await this.splitMerge.geohashToPackage.call(geohashTokenId);
         assert.equal(res.toString(10), packageId);
       });
 
