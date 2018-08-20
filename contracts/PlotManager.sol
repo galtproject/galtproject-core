@@ -278,7 +278,7 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if(splitMerge.getPackageCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
+    if(splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
       a.status = ApplicationStatuses.DISASSEMBLED;
     }
   }
