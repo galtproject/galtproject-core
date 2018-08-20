@@ -43,6 +43,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
 
   event LogNewPackIdGenerated(bytes32 id);
+  event LogPackTokenMinted(bytes32 tokenId, address owner);
+  event LogGeohashTokenMinted(bytes32 tokenId, address owner);
 
   modifier canTransfer(uint256 _tokenId) {
     require(isApprovedOrOwner(msg.sender, _tokenId) || hasRole(msg.sender, ROLE_OPERATOR), "No permissions to transfer tokens");
@@ -120,14 +122,33 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     eMap["z"] = 31;
   }
 
-  function mint(
-    address _to,
-    uint256 _tokenId
+  function mintPack(
+    address _to
   )
     public
     onlyMinter
+    returns (uint256)
   {
+    uint256 _tokenId = generatePackTokenId();
     super._mint(_to, _tokenId);
+    emit LogPackTokenMinted(bytes32(_tokenId), _to);
+
+    return _tokenId;
+  }
+
+  function mintGeohash(
+    address _to,
+    uint256 _geohash5
+  )
+    public
+    onlyMinter
+    returns (uint256)
+  {
+    uint256 _tokenId = geohashToTokenId(_geohash5);
+    super._mint(_to, _tokenId);
+    emit LogGeohashTokenMinted(bytes32(_tokenId), _to);
+
+    return _tokenId;
   }
 
   function burn(uint256 _tokenId) public onlyBurner {
@@ -142,6 +163,10 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     onlyOwnerOf(_tokenId)
   {
     super._setTokenURI(_tokenId, _uri);
+  }
+
+  function tokensOfOwner(address _owner) public view returns (uint256[]) {
+    return ownedTokens[_owner];
   }
 
   /**
@@ -235,7 +260,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     return (id & PACKAGE_MASK) == PACKAGE_MASK;
   }
 
-  function generatePackTokenId() public returns (uint256) {
+  function generatePackTokenId() internal returns (uint256) {
     bytes32 newIdBytes = bytes32(packTokenIdCounter++);
 
     // Do not allow create more than 2^62 (4.611e18) packs
@@ -249,6 +274,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
 
     return newId;
   }
+
   function addRoleTo(address _operator, string _role) public onlyOwner {
     super.addRole(_operator, _role);
   }
