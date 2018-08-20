@@ -1,11 +1,12 @@
 const MockToken = artifacts.require('./mocks/MockToken.sol');
+// eslint-disable-next-line
 const MockToken_V2 = artifacts.require('./mocks/MockToken_V2.sol');
 const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { ether, assertRevert, initHelperWeb3 } = require('../helpers');
+const { ether, initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(MockToken.web3.currentProvider);
 
