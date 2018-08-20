@@ -68,7 +68,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const directions = [];
 
       await pIteration.forEach(geohashes, async geohash => {
-        console.log('mint', geohash);
+        // console.log('mint', geohash);
         res = await this.spaceToken.mintGeohash(alice, geohash, { from: coreTeam });
 
         geohashesTokenIds.push(galt.geohashToTokenId(geohash));
