@@ -582,6 +582,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         );
         assert.equal(res, 16);
       });
+
+      it('should set DISASSEMBLED on all geohases remove', async function() {
+        let res;
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+        const geohashesToRemove = packageGeohashes.map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)));
+
+        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+        assert.equal(res, 18);
+
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+          from: alice
+        });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.DISASSEMBLED);
+
+        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+        assert.equal(res, 0);
+      });
     });
 
     describe('#claimValidatorRewardEth()', () => {
@@ -589,11 +611,54 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       });
 
-      it('should allow validator claim reward', async function() {
+      it('should allow validator claim reward after approve', async function() {
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
+        await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
+        const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
+
+        // bobs fee is around (100 - 24) / 100 * 6 ether = 4560000000000000000 wei
+        // assume that the commission paid by bob isn't greater than 0.1 ether
+        assert(
+          bobsInitialBalance
+            .add(new BN('4560000000000000000'))
+            .sub(new BN(ether(0.1)))
+            .lt(bobsFinalBalance)
+        );
+        assert(
+          bobsInitialBalance
+            .add(new BN('4560000000000000000'))
+            .add(new BN(ether(0.1)))
+            .gt(bobsFinalBalance)
+        );
+      });
+
+      it('should allow validator claim reward after reject', async function() {
+        await this.plotManager.rejectApplication(this.aId, { from: bob });
+
+        await assertRevert(this.plotManager.claimValidatorRewardEth(this.aId, { from: bob }));
+
+        let res;
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+        const geohashesToRemove = packageGeohashes.map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)));
+
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+          from: alice
+        });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatuses.REJECTED);
+
+        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+        assert.equal(res.toString(10), (0).toString(10));
+
+        const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
+
         await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
         const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
 

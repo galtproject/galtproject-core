@@ -52,7 +52,7 @@ contract SplitMerge is Initializable, Ownable {
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public {
     require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Package owner is not msg.sender");
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_geohashesContour.length < 51, "Number of contour elements should be equal or less than 50");
+    require(_geohashesContour.length <= 50, "Number of contour elements should be equal or less than 50");
 
     for (uint8 i = 0; i < _geohashesContour.length; i++) {
       require(_geohashesContour[i] > 0, "Countour element geohash should not be a zero");
