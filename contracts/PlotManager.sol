@@ -184,6 +184,54 @@ contract PlotManager is Initializable, Ownable {
     a.credentialsHash = _credentialsHash;
   }
 
+  function changeApplicationLedgerIdentifier(
+    bytes32 _aId,
+    bytes32 _ledgerIdentifier
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      "Application status should be NEW or REVERTED."
+    );
+
+    a.ledgerIdentifier = _ledgerIdentifier;
+  }
+
+  function changeApplicationPrecision(
+    bytes32 _aId,
+    uint8 _precision
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      "Application status should be NEW or REVERTED."
+    );
+
+    a.precision = _precision;
+  }
+
+  function changeApplicationCountry(
+    bytes32 _aId,
+    bytes2 _country
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      "Application status should be NEW or REVERTED."
+    );
+
+    a.country = _country;
+  }
+
   function applyForPlotOwnership(
     uint256[] _packageContour,
     uint256 _baseGeohash,

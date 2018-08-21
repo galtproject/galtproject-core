@@ -101,7 +101,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     });
   });
 
-  describe('config change methods', () => {
+  describe('application modifiers', () => {
     describe('#changeApplicationCredentialsHash()', () => {
       beforeEach(async function() {
         const res = await this.plotManager.applyForPlotOwnership(
@@ -119,9 +119,21 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
       it('should allow change hash to the owner when status is NEW', async function() {
         const hash = web3.utils.keccak256('AnotherPerson');
+        const ledgedIdentifier = 'foo-123';
+        const country = 'SG';
+        const precision = 9;
+
         await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
+        await this.plotManager.changeApplicationLedgerIdentifier(this.aId, ledgedIdentifier, { from: alice });
+        await this.plotManager.changeApplicationCountry(this.aId, country, { from: alice });
+        await this.plotManager.changeApplicationPrecision(this.aId, precision, { from: alice });
+
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
         assert.equal(res.credentialsHash, hash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
+        assert.equal(web3.utils.hexToAscii(res.country), 'SG');
+        assert.equal(res.precision, 9);
       });
 
       it('should allow change hash to the owner when status is REVERTED', async function() {
@@ -130,25 +142,62 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
         await this.plotManager.revertApplication(this.aId, { from: bob });
 
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+        assert.equal(web3.utils.hexToAscii(res.country), 'MN');
+        assert.equal(res.precision, 7);
+
         const hash = web3.utils.keccak256('AnotherPerson');
+        const ledgedIdentifier = 'foo-123';
+        const country = 'SG';
+        const precision = 9;
+
         await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        await this.plotManager.changeApplicationLedgerIdentifier(this.aId, ledgedIdentifier, { from: alice });
+        await this.plotManager.changeApplicationCountry(this.aId, country, { from: alice });
+        await this.plotManager.changeApplicationPrecision(this.aId, precision, { from: alice });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, hash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
+        assert.equal(web3.utils.hexToAscii(res.country), 'SG');
+        assert.equal(res.precision, 9);
       });
 
       it('should deny hash change to another person', async function() {
-        const hash = web3.utils.keccak256('AnotherPerson');
-        await assertRevert(this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: coreTeam }));
+        await assertRevert(
+          this.plotManager.changeApplicationCredentialsHash(this.aId, web3.utils.keccak256('AnotherPerson'), {
+            from: coreTeam
+          })
+        );
+        await assertRevert(this.plotManager.changeApplicationLedgerIdentifier(this.aId, 'foo-bar', { from: coreTeam }));
+        await assertRevert(this.plotManager.changeApplicationCountry(this.aId, 'SG', { from: coreTeam }));
+        await assertRevert(this.plotManager.changeApplicationPrecision(this.aId, 9, { from: coreTeam }));
+
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+        assert.equal(web3.utils.hexToAscii(res.country), 'MN');
+        assert.equal(res.precision, 7);
       });
 
       it('should deny hash change if applicaiton is submitted', async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        const hash = web3.utils.keccak256('AnotherPerson');
-        await assertRevert(this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice }));
+        await assertRevert(
+          this.plotManager.changeApplicationCredentialsHash(this.aId, web3.utils.keccak256('AnotherPerson'), {
+            from: alice
+          })
+        );
+        await assertRevert(this.plotManager.changeApplicationLedgerIdentifier(this.aId, 'foo-bar', { from: alice }));
+        await assertRevert(this.plotManager.changeApplicationCountry(this.aId, 'SG', { from: alice }));
+        await assertRevert(this.plotManager.changeApplicationPrecision(this.aId, 9, { from: alice }));
+
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+        assert.equal(web3.utils.hexToAscii(res.country), 'MN');
+        assert.equal(res.precision, 7);
       });
     });
   });
