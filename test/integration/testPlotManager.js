@@ -125,13 +125,25 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         await assertRevert(this.plotManager.changeApplicationFeeInGalt(ether(0.15), { from: alice }));
       });
     });
+
+    describe('#setGaltSpaceEthShare()', () => {
+      it('should allow an owner set galtSpace ETH share in percents', async function() {
+        await this.plotManager.setGaltSpaceEthShare('42', { from: coreTeam });
+        const res = await this.plotManager.galtSpaceEthShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotManager.changeApplicationFeeInGalt('20', { from: alice }));
+      });
+    });
   });
 
   describe('application modifiers', () => {
     describe('#changeApplicationCredentialsHash()', () => {
       beforeEach(async function() {
         const res = await this.plotManager.applyForPlotOwnership(
-          this.vertices,
+          this.contour,
           galt.geohashToGeohash5('sezu06'),
           this.credentials,
           this.ledgerIdentifier,
