@@ -10,6 +10,8 @@ const pIteration = require('p-iteration');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 
+const { BN } = Web3.utils;
+
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
@@ -18,65 +20,89 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([deployer, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   beforeEach(async function() {
-    this.plotManager = await PlotManager.new({ from: deployer });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: deployer });
-    this.splitMerge = await SplitMerge.new({ from: deployer });
+    this.initFirstGeohash = 'sezu05';
+    this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
 
-    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: deployer });
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter', { from: deployer });
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator', { from: deployer });
-    this.plotManager.initialize(this.spaceToken.address, this.splitMerge.address, { from: deployer });
-    this.splitMerge.initialize(this.spaceToken.address, { from: deployer });
+    this.firstGeohash = galt.geohashToGeohash5(this.initFirstGeohash);
+    this.contour = this.initContour.map(galt.geohashToGeohash5);
+
+    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+
+    this.plotManager = await PlotManager.new({ from: coreTeam });
+
+    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
+    this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
+
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
+    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
-    this.splitMergeWeb3 = new web3.eth.Contract(this.splitMerge.abi, this.splitMerge.address);
   });
 
-  // TODO: fix spaceToken.mint error and unskip test
-  describe.skip('contract', () => {
+  describe('contract', () => {
     it('should creating correctly', async function() {
       let res;
-
-      const initFirstGeohash = 'sdesde';
-      const initGeohashes = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
-
-      const firstGeohash = galt.geohashToNumber(initFirstGeohash).toString(10);
-      const geohashes = initGeohashes.map(galt.geohashToNumber).map(geohash => geohash.toString(10));
-
       // TODO: remove console.log lines when the tests work
-      // console.log('spaceToken.mint', alice, firstGeohash);
-      // TODO: fix error by web3 Error: Transaction has been reverted by the EVM:
-      await this.spaceToken.mint(alice, firstGeohash, { from: deployer });
-      // await this.spaceTokenWeb3.methods.mint(alice, firstGeohash).send({ from: deployer });
+      // console.log('spaceToken.mintGeohash', alice, this.firstGeohash);
+      res = await this.spaceToken.mintGeohash(alice, this.firstGeohash, { from: coreTeam });
 
-      // console.log('splitMerge.initPackage', firstGeohash);
-      res = await this.splitMerge.initPackage(firstGeohash, { from: alice });
+      res = await this.splitMerge.initPackage(galt.geohashToTokenId(this.firstGeohash), { from: alice });
 
-      const packageId = res.logs[0].args.id;
+      const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
+      // console.log('packageId', packageId);
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      // console.log('setPackageContour', packageId, geohashes);
-      await this.splitMerge.setPackageContour(packageId, geohashes, { from: alice });
+      // console.log('setPackageContour', packageId, this.contour);
+      await this.splitMerge.setPackageContour(packageId, this.contour, { from: alice });
 
-      const neighbors = [];
+      const geohashes = this.contour;
+
+      const geohashesTokenIds = [];
+      const neighborsTokenIds = [];
       const directions = [];
 
       await pIteration.forEach(geohashes, async geohash => {
         // console.log('mint', geohash);
-        await this.spaceToken.mint(alice, geohash, { from: deployer });
-        neighbors.push(firstGeohash);
+        res = await this.spaceToken.mintGeohash(alice, geohash, { from: coreTeam });
+
+        geohashesTokenIds.push(galt.geohashToTokenId(geohash));
+        neighborsTokenIds.push(galt.geohashToTokenId(geohash));
         directions.push(web3.utils.asciiToHex('N'));
       });
 
-      await this.splitMerge.addGeohashesToPackage(packageId, geohashes, neighbors, directions, { from: alice });
+      // console.log('addGeohashesToPackage', packageId, geohashesTokenIds, neighborsTokenIds, directions);
+      await this.splitMerge.addGeohashesToPackage(packageId, geohashesTokenIds, neighborsTokenIds, directions, {
+        from: alice
+      });
 
       res = await this.splitMerge.packageGeohashesCount.call(packageId);
-      assert.equal(res.toString(10), (geohashes.length + 1).toString(10));
+      assert.equal(res.toString(10), (geohashesTokenIds.length + 1).toString(10));
+
+      res = await this.spaceToken.ownerOf.call(packageId);
+      assert.equal(res, alice);
+
+      await pIteration.forEach(geohashesTokenIds, async geohashTokenId => {
+        res = await this.spaceToken.ownerOf.call(geohashTokenId);
+        assert.equal(res, this.splitMerge.address);
+
+        res = await this.splitMerge.geohashToPackage.call(geohashTokenId);
+        assert.equal(res.toString(10), packageId);
+      });
+
+      geohashesTokenIds.push(galt.geohashToTokenId(this.firstGeohash));
+      // console.log('removeGeohashesFromPackage', packageId, geohashesTokenIds, directions, directions);
+      await this.splitMerge.removeGeohashesFromPackage(packageId, geohashesTokenIds, directions, directions, {
+        from: alice
+      });
+
+      res = await this.splitMerge.packageGeohashesCount.call(packageId);
+      assert.equal(res.toString(10), (0).toString(10));
     });
   });
 });

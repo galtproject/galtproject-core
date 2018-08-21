@@ -3,19 +3,23 @@ pragma experimental "v0.5.0";
 
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./PlotManager.sol";
 
 contract SplitMerge is Initializable, Ownable {
+  using SafeMath for uint256;
+
   SpaceToken spaceToken;
   PlotManager plotManager;
 
   event PackageInit(bytes32 id, address owner);
 
-  mapping(uint256 => uint256) geohashToPackage;
-  mapping(uint256 => uint256[]) packageToContour;
+  mapping(uint256 => uint256) public geohashToPackage;
+  mapping(uint256 => uint256[]) public packageToContour;
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
+  mapping(uint256 => uint256) internal packageToGeohashesIndex;
   mapping(uint256 => uint256) public packageGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
@@ -74,9 +78,12 @@ contract SplitMerge is Initializable, Ownable {
     require(_geohashToken != 0, "Geohash is 0");
     require(spaceToken.ownerOf(_geohashToken) == msg.sender, "Geohash owner is not msg.sender");
 
-    spaceToken.transferFrom(spaceToken.ownerOf(_geohashToken), address(this), _geohashToken);
+    spaceToken.transferFrom(msg.sender, address(this), _geohashToken);
 
+    uint256 length = packageToGeohashes[_packageToken].length;
     packageToGeohashes[_packageToken].push(_geohashToken);
+    packageToGeohashesIndex[_geohashToken] = length;
+
     geohashToPackage[_geohashToken] = _packageToken;
   }
 
@@ -104,14 +111,29 @@ contract SplitMerge is Initializable, Ownable {
     uint256 _packageToken,
     uint256 _geohashToken
   )
-    public
-    ownerOrPlotManager
+    private
   {
     require(_geohashToken != 0, "Geohash is 0");
     require(spaceToken.ownerOf(_geohashToken) == address(this), "Geohash owner is not SplitMerge");
+    require(geohashToPackage[_geohashToken] == _packageToken, "Geohash dont belongs to package");
 
     spaceToken.transferFrom(address(this), msg.sender, _geohashToken);
     geohashToPackage[_geohashToken] = 0;
+
+
+    uint256 tokenIndex = packageToGeohashesIndex[_geohashToken];
+    uint256 lastTokenIndex = packageToGeohashes[_packageToken].length.sub(1);
+    uint256 lastToken = packageToGeohashes[_packageToken][lastTokenIndex];
+
+    packageToGeohashes[_packageToken][tokenIndex] = lastToken;
+    packageToGeohashes[_packageToken][lastTokenIndex] = 0;
+    // Note that this will handle single-element arrays. In that case, both tokenIndex and lastTokenIndex are going to
+    // be zero. Then we can make sure that we will remove _tokenId from the ownedTokens list since we are first swapping
+    // the lastToken to the first position, and then dropping the element placed in the last position of the list
+
+    packageToGeohashes[_packageToken].length--;
+    packageToGeohashesIndex[_geohashToken] = 0;
+    packageToGeohashesIndex[lastToken] = tokenIndex;
   }
 
   function removeGeohashesFromPackage(
@@ -139,12 +161,12 @@ contract SplitMerge is Initializable, Ownable {
   }
 
   // TODO: implement in future
-//  function splitGeohash(uint256 _geohashToken) public {
-//
-//  }
+  //  function splitGeohash(uint256 _geohashToken) public {
+  //
+  //  }
 
   // TODO: implement in future
-//  function mergeGeohash(uint256[] _geohashToken) public {
-//
-//  }
+  //  function mergeGeohash(uint256[] _geohashToken) public {
+  //
+  //  }
 }

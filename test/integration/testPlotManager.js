@@ -42,10 +42,10 @@ Object.freeze(ApplicationStatuses);
  */
 contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   beforeEach(async function() {
-    this.initVertices = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+    this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
-    this.vertices = this.initVertices.map(galt.geohashToNumber);
+    this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
@@ -104,7 +104,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   describe('application pipeline', () => {
     beforeEach(async function() {
       const res = await this.plotManager.applyForPlotOwnership(
-        this.vertices,
+        this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
@@ -125,7 +125,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
         // assertions
         for (let i = 0; i < res3.length; i++) {
-          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initVertices[i]);
+          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initContour[i]);
         }
 
         assert.equal(res2.status, 1);
@@ -155,7 +155,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
-              this.vertices,
+              this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
               this.ledgerIdentifier,
@@ -169,7 +169,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
-              this.vertices,
+              this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
               this.ledgerIdentifier,
@@ -183,7 +183,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications with payment greater than required', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
-              this.vertices,
+              this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
               this.ledgerIdentifier,
@@ -387,7 +387,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
         // submit second
         let res = await this.plotManager.applyForPlotOwnership(
-          this.vertices,
+          this.contour,
           galt.geohashToGeohash5('sezu07'),
           this.credentials,
           this.ledgerIdentifier,
@@ -409,7 +409,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
       it('should deny validator to lock an application which is new', async function() {
         let res = await this.plotManager.applyForPlotOwnership(
-          this.vertices,
+          this.contour,
           galt.geohashToGeohash5('sezu05'),
           this.credentials,
           this.ledgerIdentifier,
