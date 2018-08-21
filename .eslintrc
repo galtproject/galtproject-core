@@ -1,5 +1,5 @@
 {
-    "extends": "@colony/eslint-config-colony",
+    "extends": "@galtproject/eslint-config-galt",
     "env": {
         "node": true,
         "mocha": true
