@@ -3,10 +3,13 @@ pragma experimental "v0.5.0";
 
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./PlotManager.sol";
 
 contract SplitMerge is Initializable, Ownable {
+  using SafeMath for uint256;
+
   SpaceToken spaceToken;
   PlotManager plotManager;
 
@@ -130,7 +133,7 @@ contract SplitMerge is Initializable, Ownable {
 
     packageToGeohashes[_packageToken].length--;
     packageToGeohashesIndex[_geohashToken] = 0;
-    ownedTokensIndex[lastToken] = tokenIndex;
+    packageToGeohashesIndex[lastToken] = tokenIndex;
   }
 
   function removeGeohashesFromPackage(
