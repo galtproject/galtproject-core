@@ -102,6 +102,32 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   });
 
   describe('application modifiers', () => {
+    describe('#changeApplicationFeeInEth()', () => {
+      it('should allow an owner set a new minimum fee in ETH', async function() {
+        await this.plotManager.changeApplicationFeeInEth(ether(0.05), { from: coreTeam });
+        const res = await this.plotManager.applicationFeeInEth();
+        assert.equal(res, ether(0.05));
+      });
+
+      it('should deny any other than owner person set fee in ETH', async function() {
+        await assertRevert(this.plotManager.changeApplicationFeeInEth(ether(0.05), { from: alice }));
+      });
+    });
+
+    describe('#changeApplicationFeeInGalt()', () => {
+      it('should allow an owner set a new minimum fee in GALT', async function() {
+        await this.plotManager.changeApplicationFeeInGalt(ether(0.15), { from: coreTeam });
+        const res = await this.plotManager.applicationFeeInGalt();
+        assert.equal(res, ether(0.15));
+      });
+
+      it('should deny any other than owner person set fee in GALT', async function() {
+        await assertRevert(this.plotManager.changeApplicationFeeInGalt(ether(0.15), { from: alice }));
+      });
+    });
+  });
+
+  describe('application modifiers', () => {
     describe('#changeApplicationCredentialsHash()', () => {
       beforeEach(async function() {
         const res = await this.plotManager.applyForPlotOwnership(

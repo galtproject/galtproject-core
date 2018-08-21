@@ -54,12 +54,12 @@ contract PlotManager is Initializable, Ownable {
   uint256 public applicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
-  address galtSpaceRewardsAddress;
+  address private galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
   mapping(address => Validator) public validators;
   mapping(address => bytes32[]) public applicationsByAddresses;
-  bytes32[] applicationsArray;
+  bytes32[] private applicationsArray;
 
   // WARNING: we do not remove applications from validator's list,
   // so do not rely on this variable to verify whether validator
@@ -68,7 +68,7 @@ contract PlotManager is Initializable, Ownable {
   // WARNING: we do not remove validators from validatorsArray,
   // so do not rely on this variable to verify whether validator
   // exists or not.
-  address[] validatorsArray;
+  address[] public validatorsArray;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -166,6 +166,14 @@ contract PlotManager is Initializable, Ownable {
     require(_validator != address(0), "Missing validator");
 
     validators[_validator].active = false;
+  }
+
+  function changeApplicationFeeInEth(uint256 _newFee) public onlyOwner {
+    applicationFeeInEth = _newFee;
+  }
+
+  function changeApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
+    applicationFeeInGalt = _newFee;
   }
 
   function changeApplicationCredentialsHash(
