@@ -263,7 +263,7 @@ contract PlotManager is Initializable, Ownable {
   {
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED,
+      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED || a.status == ApplicationStatuses.REVERTED,
       "Application status should be NEW or REJECTED for this operation."
     );
 
