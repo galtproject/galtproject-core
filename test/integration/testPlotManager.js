@@ -386,17 +386,15 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
           );
         });
 
-        it('should reject applications with payment greater than required', async function() {
-          await assertRevert(
-            this.plotManager.applyForPlotOwnership(
-              this.contour,
-              galt.geohashToGeohash5('sezu06'),
-              this.credentials,
-              this.ledgerIdentifier,
-              web3.utils.asciiToHex('MN'),
-              7,
-              { from: alice, gas: 1000000, value: ether(6.5) }
-            )
+        it('should allow applications with payment greater than required', async function() {
+          await this.plotManager.applyForPlotOwnership(
+            this.contour,
+            galt.geohashToGeohash5('sezu07'),
+            this.credentials,
+            this.ledgerIdentifier,
+            web3.utils.asciiToHex('MN'),
+            7,
+            { from: alice, gas: 1000000, value: ether(7) }
           );
         });
 
