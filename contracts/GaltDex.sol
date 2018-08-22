@@ -128,6 +128,7 @@ contract GaltDex is Initializable, Ownable {
 
   function exchangeRate() public view returns(uint256) {
     if(ethToGaltSum > 0 && address(this).balance > 0) {
+      // TODO: is galtFeeTotalPayout and ethFeeTotalPayout should be used?
       return (
               galtToken.totalSupply()
                 .sub(galtToken.balanceOf(address(this)))
@@ -159,7 +160,7 @@ contract GaltDex is Initializable, Ownable {
   }
 
   function withdrawGaltFee() public onlyOwner {
-    galtToken.transferFrom(address(this), msg.sender, galtFeePayout);
+    galtToken.transfer(msg.sender, galtFeePayout);
     galtFeePayout = 0;
   }
 }
