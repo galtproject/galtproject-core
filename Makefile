@@ -9,6 +9,7 @@ validate:
 	npm run eslint
 
 test:
+	truffle compile
 	npm test
 
 deploy-test:
