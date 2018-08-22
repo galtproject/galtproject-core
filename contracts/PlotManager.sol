@@ -25,6 +25,13 @@ contract PlotManager is Initializable, Ownable {
     GALTSPACE_REWARDED
   }
 
+  enum PaymentMethods {
+    NONE,
+    ETH_ONLY,
+    GALT_ONLY,
+    ETH_AND_GALT
+  }
+
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
   event LogNewApplication(bytes32 id, address applicant);
 
@@ -50,6 +57,7 @@ contract PlotManager is Initializable, Ownable {
     bool active;
   }
 
+  PaymentMethods public paymentMethod;
   uint256 public applicationFeeInEth;
   uint256 public applicationFeeInGalt;
   uint256 public galtSpaceEthShare;
@@ -95,6 +103,7 @@ contract PlotManager is Initializable, Ownable {
     applicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
+    paymentMethod = PaymentMethods.ETH_AND_GALT;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -170,6 +179,10 @@ contract PlotManager is Initializable, Ownable {
     require(_validator != address(0), "Missing validator");
 
     validators[_validator].active = false;
+  }
+
+  function setPaymentMethod(PaymentMethods _newMethod) public onlyOwner {
+    paymentMethod = _newMethod;
   }
 
   function setApplicationFeeInEth(uint256 _newFee) public onlyOwner {

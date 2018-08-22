@@ -34,7 +34,15 @@ const ApplicationStatuses = {
   CLOSED: 10
 };
 
+const PaymentMethods = {
+  NONE: 0,
+  ETH_ONLY: 1,
+  GALT_ONLY: 2,
+  ETH_AND_GALT: 3
+};
+
 Object.freeze(ApplicationStatuses);
+Object.freeze(PaymentMethods);
 
 /**
  * Alice is an applicant
@@ -107,6 +115,20 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   });
 
   describe('contract config modifiers', () => {
+    describe('#setPaymentMethod()', () => {
+      it('should allow an owner set a payment method', async function() {
+        await this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam });
+        const res = await this.plotManager.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_ONLY);
+      });
+
+      it('should deny non-owner set a payment method', async function() {
+        await assertRevert(this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
+        const res = await this.plotManager.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_AND_GALT);
+      });
+    });
+
     describe('#setApplicationFeeInEth()', () => {
       it('should allow an owner set a new minimum fee in ETH', async function() {
         await this.plotManager.setApplicationFeeInEth(ether(0.05), { from: coreTeam });
