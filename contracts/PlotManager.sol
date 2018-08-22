@@ -6,6 +6,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
+import "./GaltToken.sol";
 
 
 contract PlotManager is Initializable, Ownable {
@@ -80,12 +81,14 @@ contract PlotManager is Initializable, Ownable {
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
+  GaltToken public galtToken;
 
   constructor () public {}
 
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
+    GaltToken _galtToken,
     address _galtSpaceRewardsAddress
   )
     public
@@ -95,6 +98,7 @@ contract PlotManager is Initializable, Ownable {
 
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
+    galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     // Default values for revenue shares and application fees
@@ -273,6 +277,65 @@ contract PlotManager is Initializable, Ownable {
     );
 
     a.country = _country;
+  }
+
+  function applyForPlotOwnershipGalt(
+    uint256[] _packageContour,
+    uint256 _baseGeohash,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
+    bytes2 _country,
+    uint8 _precision,
+    uint256 _applicationFeeInGalt
+  )
+    public
+    payable
+    returns (bytes32)
+  {
+    require(_precision > 5, "Precision should be greater than 5");
+    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
+    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
+    require(_applicationFeeInGalt >= applicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
+
+    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+
+    Application memory a;
+    bytes32 _id = keccak256(abi.encodePacked(_packageContour[0], _packageContour[1], _credentialsHash));
+
+    a.status = ApplicationStatuses.NEW;
+    a.id = _id;
+    a.applicant = msg.sender;
+    a.country = _country;
+    a.credentialsHash = _credentialsHash;
+    a.ledgerIdentifier = _ledgerIdentifier;
+    a.precision = _precision;
+
+    calculateAndStoreGaltFee(a, _applicationFeeInGalt);
+
+    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
+    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
+    a.packageTokenId = packageTokenId;
+
+    splitMerge.setPackageContour(packageTokenId, _packageContour);
+
+    applications[_id] = a;
+    applicationsArray.push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
+
+    emit LogNewApplication(_id, msg.sender);
+    emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
+
+    return _id;
+  }
+
+  function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
+    uint256 galtSpaceRewardGalt = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
+    uint256 validatorRewardGalt = _applicationFeeInGalt.sub(galtSpaceRewardGalt);
+
+    assert(validatorRewardGalt.add(galtSpaceRewardGalt) == _applicationFeeInGalt);
+
+    _a.validatorRewardGalt = validatorRewardGalt;
+    _a.galtSpaceRewardGalt = galtSpaceRewardGalt;
   }
 
   function applyForPlotOwnership(

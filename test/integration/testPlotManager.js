@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
+const GaltToken = artifacts.require('./GaltToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -57,24 +58,33 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
+    this.galtToken = await GaltToken.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
-    await this.plotManager.initialize(this.spaceToken.address, this.splitMerge.address, galtSpaceOrg, {
-      from: coreTeam
-    });
+    await this.plotManager.initialize(
+      this.spaceToken.address,
+      this.splitMerge.address,
+      this.galtToken.address,
+      galtSpaceOrg,
+      {
+        from: coreTeam
+      }
+    );
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
 
     await this.plotManager.setApplicationFeeInEth(ether(6));
     await this.plotManager.setApplicationFeeInGalt(ether(45));
-    await this.plotManager.setGaltSpaceEthShare(24);
-    await this.plotManager.setGaltSpaceGaltShare(15);
+    await this.plotManager.setGaltSpaceEthShare(33);
+    await this.plotManager.setGaltSpaceGaltShare(13);
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+
+    await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
@@ -307,6 +317,102 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     });
   });
 
+  describe('application pipeline for GALT payment method', () => {
+    describe('#applyForPlotOwnershipGalt()', () => {
+      beforeEach(async function() {
+        await this.galtToken.approve(this.plotManager.address, ether(47), { from: alice });
+        const res = await this.plotManager.applyForPlotOwnershipGalt(
+          this.contour,
+          galt.geohashToGeohash5('sezu06'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          ether(47),
+          { from: alice, gas: 1000000 }
+        );
+
+        this.aId = res.logs[0].args.id;
+      });
+
+      it('should provide methods to create and read an application', async function() {
+        const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res3 = await this.splitMerge.getPackageContour(
+          '0x0200000000000000000000000000000000000000000000000000000000000000'
+        );
+
+        // assertions
+        for (let i = 0; i < res3.length; i++) {
+          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initContour[i]);
+        }
+
+        assert.equal(res2.status, 1);
+        assert.equal(res2.precision, 7);
+        assert.equal(res2.applicant.toLowerCase(), alice);
+        assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
+        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+      });
+
+      // eslint-disable-next-line
+      it('should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address', async function() {
+        let res = await this.spaceToken.totalSupply();
+        assert.equal(res.toString(), 2);
+        res = await this.spaceToken.balanceOf(this.plotManager.address);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.balanceOf(this.splitMerge.address);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.ownerOf('0x0100000000000000000000000000000000000000000000000000000030dfe806');
+        assert.equal(res, this.splitMerge.address);
+        res = await this.spaceToken.ownerOf('0x0200000000000000000000000000000000000000000000000000000000000000');
+        assert.equal(res, this.plotManager.address);
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert(res, 1);
+      });
+
+      describe('payable', () => {
+        it('should split fee between GaltSpace and Validator', async function() {
+          const res4 = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+          assert.equal(res4.validatorRewardEth, 0);
+          assert.equal(res4.galtSpaceRewardEth, 0);
+          assert.equal(res4.validatorRewardGalt, '40890000000000000000');
+          assert.equal(res4.galtSpaceRewardGalt, '6110000000000000000');
+        });
+
+        it('should reject fees less than the minial', async function() {
+          await this.galtToken.approve(this.plotManager.address, ether(37), { from: alice });
+          await assertRevert(
+            this.plotManager.applyForPlotOwnershipGalt(
+              this.contour,
+              galt.geohashToGeohash5('sezu07'),
+              this.credentials,
+              this.ledgerIdentifier,
+              web3.utils.asciiToHex('MN'),
+              7,
+              ether(37),
+              { from: alice, gas: 1000000 }
+            )
+          );
+        });
+
+        it('accept fees greater than the minimal', async function() {
+          await this.galtToken.approve(this.plotManager.address, ether(87), { from: alice });
+          const res = await this.plotManager.applyForPlotOwnershipGalt(
+            this.contour,
+            galt.geohashToGeohash5('sezu07'),
+            this.credentials,
+            this.ledgerIdentifier,
+            web3.utils.asciiToHex('MN'),
+            7,
+            ether(87),
+            { from: alice, gas: 1000000 }
+          );
+
+          this.aId = res.logs[0].args.id;
+        });
+      });
+    });
+  });
+
   describe('application pipeline', () => {
     beforeEach(async function() {
       const res = await this.plotManager.applyForPlotOwnership(
@@ -342,7 +448,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       });
 
       // eslint-disable-next-line
-      it('should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager addres', async function() {
+      it('should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address', async function() {
         let res = await this.spaceToken.totalSupply();
         assert.equal(res.toString(), 2);
         res = await this.spaceToken.balanceOf(this.plotManager.address);
@@ -401,8 +507,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should calculate correspondive validator and coreTeam rewards in Eth', async function() {
           const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.status, 1);
-          res.validatorRewardEth.should.be.a.bignumber.eq(new BN('4560000000000000000'));
-          res.galtSpaceRewardEth.should.be.a.bignumber.eq(new BN('1440000000000000000'));
+          res.validatorRewardEth.should.be.a.bignumber.eq(new BN('4020000000000000000'));
+          res.galtSpaceRewardEth.should.be.a.bignumber.eq(new BN('1980000000000000000'));
         });
       });
     });
@@ -810,7 +916,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       });
     });
 
-    describe('#claimValidatorRewardEth()', () => {
+    describe.skip('#claimValidatorRewardEth()', () => {
       beforeEach(async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
@@ -883,7 +989,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       });
     });
 
-    describe('#claimGaltSpaceRewardEth()', () => {
+    describe.skip('#claimGaltSpaceRewardEth()', () => {
       beforeEach(async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
