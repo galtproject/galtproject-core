@@ -53,15 +53,20 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
-    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
-    this.plotManager.initialize(ether(6), '24', galtSpaceOrg, this.spaceToken.address, this.splitMerge.address, {
+    await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
+    await this.plotManager.initialize(this.spaceToken.address, this.splitMerge.address, galtSpaceOrg, {
       from: coreTeam
     });
-    this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
+    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
 
-    this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+    await this.plotManager.setApplicationFeeInEth(ether(6));
+    await this.plotManager.setApplicationFeeInGalt(ether(45));
+    await this.plotManager.setGaltSpaceEthShare(24);
+    await this.plotManager.setGaltSpaceGaltShare(15);
+
+    await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
+    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
+    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
@@ -101,28 +106,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     });
   });
 
-  describe('application modifiers', () => {
-    describe('#changeApplicationFeeInEth()', () => {
+  describe('contract config modifiers', () => {
+    describe('#setApplicationFeeInEth()', () => {
       it('should allow an owner set a new minimum fee in ETH', async function() {
-        await this.plotManager.changeApplicationFeeInEth(ether(0.05), { from: coreTeam });
+        await this.plotManager.setApplicationFeeInEth(ether(0.05), { from: coreTeam });
         const res = await this.plotManager.applicationFeeInEth();
         assert.equal(res, ether(0.05));
       });
 
       it('should deny any other than owner person set fee in ETH', async function() {
-        await assertRevert(this.plotManager.changeApplicationFeeInEth(ether(0.05), { from: alice }));
+        await assertRevert(this.plotManager.setApplicationFeeInEth(ether(0.05), { from: alice }));
       });
     });
 
-    describe('#changeApplicationFeeInGalt()', () => {
+    describe('#setApplicationFeeInGalt()', () => {
       it('should allow an owner set a new minimum fee in GALT', async function() {
-        await this.plotManager.changeApplicationFeeInGalt(ether(0.15), { from: coreTeam });
+        await this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: coreTeam });
         const res = await this.plotManager.applicationFeeInGalt();
         assert.equal(res, ether(0.15));
       });
 
       it('should deny any other than owner person set fee in GALT', async function() {
-        await assertRevert(this.plotManager.changeApplicationFeeInGalt(ether(0.15), { from: alice }));
+        await assertRevert(this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: alice }));
       });
     });
 
@@ -133,14 +138,42 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         assert.equal(res.toString(10), '42');
       });
 
+      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('0.5', { from: coreTeam }));
+      });
+
+      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('101', { from: coreTeam }));
+      });
+
       it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotManager.changeApplicationFeeInGalt('20', { from: alice }));
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('20', { from: alice }));
+      });
+    });
+
+    describe('#setGaltSpaceGaltShare()', () => {
+      it('should allow an owner set galtSpace Galt share in percents', async function() {
+        await this.plotManager.setGaltSpaceGaltShare('42', { from: coreTeam });
+        const res = await this.plotManager.galtSpaceGaltShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('0.5', { from: coreTeam }));
+      });
+
+      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('101', { from: coreTeam }));
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('20', { from: alice }));
       });
     });
   });
 
   describe('application modifiers', () => {
-    describe('#changeApplicationCredentialsHash()', () => {
+    describe('all methods', () => {
       beforeEach(async function() {
         const res = await this.plotManager.applyForPlotOwnership(
           this.contour,

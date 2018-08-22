@@ -76,21 +76,25 @@ contract PlotManager is Initializable, Ownable {
   constructor () public {}
 
   function initialize(
-    uint256 _validationFeeInEth,
-    uint256 _galtSpaceEthShare,
-    address _galtSpaceRewardsAddress,
     SpaceToken _spaceToken,
-    SplitMerge _splitMerge
+    SplitMerge _splitMerge,
+    address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
     owner = msg.sender;
+
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    applicationFeeInEth = _validationFeeInEth;
-    galtSpaceEthShare = _galtSpaceEthShare;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+
+    // Default values for revenue shares and application fees
+    // Override them using one of the corresponding setters
+    applicationFeeInEth = 1;
+    applicationFeeInGalt = 10;
+    galtSpaceEthShare = 33;
+    galtSpaceGaltShare = 33;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -168,12 +172,26 @@ contract PlotManager is Initializable, Ownable {
     validators[_validator].active = false;
   }
 
-  function changeApplicationFeeInEth(uint256 _newFee) public onlyOwner {
+  function setApplicationFeeInEth(uint256 _newFee) public onlyOwner {
     applicationFeeInEth = _newFee;
   }
 
-  function changeApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
+  function setApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
     applicationFeeInGalt = _newFee;
+  }
+
+  function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
+    require(_newShare >= 1, "Percent value should be grater or equal to 1");
+    require(_newShare <= 100, "Percent value should be grater or equal to 100");
+
+    galtSpaceEthShare = _newShare;
+  }
+
+  function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
+    require(_newShare >= 1, "Percent value should be grater or equal to 1");
+    require(_newShare <= 100, "Percent value should be grater or equal to 100");
+
+    galtSpaceGaltShare = _newShare;
   }
 
   function changeApplicationCredentialsHash(
