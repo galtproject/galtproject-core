@@ -115,6 +115,18 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   });
 
   describe('contract config modifiers', () => {
+    describe('#setGaltSpaceRewardsAddress()', () => {
+      it('should allow an owner set rewards address', async function() {
+        await this.plotManager.setGaltSpaceRewardsAddress(bob, { from: coreTeam });
+        const res = await web3.eth.getStorageAt(this.plotManager.address, 5);
+        assert.equal(res, bob);
+      });
+
+      it('should deny non-owner set rewards address', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceRewardsAddress(bob, { from: alice }));
+      });
+    });
+
     describe('#setPaymentMethod()', () => {
       it('should allow an owner set a payment method', async function() {
         await this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam });

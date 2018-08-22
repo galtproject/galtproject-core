@@ -181,6 +181,10 @@ contract PlotManager is Initializable, Ownable {
     validators[_validator].active = false;
   }
 
+  function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
+    galtSpaceRewardsAddress = _newAddress;
+  }
+
   function setPaymentMethod(PaymentMethods _newMethod) public onlyOwner {
     paymentMethod = _newMethod;
   }
