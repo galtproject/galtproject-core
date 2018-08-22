@@ -198,15 +198,15 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
-    require(_newShare >= 1, "Percent value should be grater or equal to 1");
-    require(_newShare <= 100, "Percent value should be grater or equal to 100");
+    require(_newShare >= 1, "Percent value should be greater or equal to 1");
+    require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceEthShare = _newShare;
   }
 
   function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
-    require(_newShare >= 1, "Percent value should be grater or equal to 1");
-    require(_newShare <= 100, "Percent value should be grater or equal to 100");
+    require(_newShare >= 1, "Percent value should be greater or equal to 1");
+    require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceGaltShare = _newShare;
   }
