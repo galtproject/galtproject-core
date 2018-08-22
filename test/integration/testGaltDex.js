@@ -96,14 +96,18 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         ethBalanceOfGaltDex.toString(10)
       );
 
-      const exchangeRate = await this.galtDex.exchangeRate();
-      console.log('exchangeRate', exchangeRate.toString(10));
-
       const galtBalance = await this.galtToken.balanceOf(alice);
 
       const galtToSend = ethToSend / 2;
       const shouldGaltFee = (galtToSend / 100) * fee;
       const ethShouldReceive = galtToSend - shouldGaltFee;
+
+      const exchangeRate = await this.galtDex.exchangeRate();
+      console.log('exchangeRate                 ', exchangeRate.toString(10));
+
+      const getExchangeGaltAmountForEth = await this.galtDex.getExchangeGaltAmountForEth(galtToSend);
+      console.log('galtToSend                   ', galtToSend.toString(10));
+      console.log('getExchangeGaltAmountForEth  ', getExchangeGaltAmountForEth.toString(10));
 
       const aliceBalance = await web3.eth.getBalance(alice);
 

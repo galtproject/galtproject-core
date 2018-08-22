@@ -68,7 +68,10 @@ contract GaltDex is Initializable, Ownable {
   }
 
   function getExchangeEthAmountForGaltWithFee(uint256 ethAmount, uint256 ethFeeForAmount) private view returns(uint256) {
-    return ethAmount.sub(ethFeeForAmount).mul(exchangeRate()).div(1 ether);
+    return  (
+              ethAmount.sub(ethFeeForAmount)
+            )
+            .mul(exchangeRate()).div(1 ether);
   }
 
   function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns(uint256) {
@@ -102,7 +105,10 @@ contract GaltDex is Initializable, Ownable {
   }
 
   function getExchangeGaltAmountForEthWithFee(uint256 galtAmount, uint256 galtFeeForAmount) private view returns(uint256) {
-    return galtAmount.sub(galtFeeForAmount).div(exchangeRate()).div(1 ether);
+    return  (
+              galtAmount.sub(galtFeeForAmount)
+            )
+            .div(exchangeRate()).mul(1 ether);
   }
 
   function getExchangeGaltAmountForEth(uint256 galtAmount) public view returns(uint256) {
@@ -122,10 +128,14 @@ contract GaltDex is Initializable, Ownable {
     if(ethToGaltSum > 0 && address(this).balance > 0) {
       return (
               galtToken.totalSupply()
-              .sub(galtToken.balanceOf(address(this)))
+                .sub(galtToken.balanceOf(address(this)))
+//                .sub(galtFeeTotalPayout)
             )
             .mul(1 ether)
-            .div(address(this).balance);
+            .div(
+              address(this).balance
+//                .sub(ethFeeTotalPayout)
+            );
     } else {
       return baseExchangeRate;
     }
