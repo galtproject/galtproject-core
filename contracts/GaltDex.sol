@@ -27,8 +27,8 @@ contract GaltDex is Initializable, Ownable {
   uint256 public galtFeeTotalPayout;
   uint256 public ethFeeTotalPayout;
 
-  event LogExchangeEthToGalt(address sender, uint256 ethAmount, uint256 galtToSend, uint256 ethFee, uint256 galtBalance);
-  event LogExchangeGaltToEth(address sender, uint256 galtAmount, uint256 ethToSend, uint256 galtFee, uint256 ethBalance);
+  event LogExchangeEthToGalt(address sender, uint256 ethAmount, uint256 galtToSend, uint256 ethFee, uint256 galtBalance, uint256 exchangeRate);
+  event LogExchangeGaltToEth(address sender, uint256 galtAmount, uint256 ethToSend, uint256 galtFee, uint256 ethBalance, uint256 exchangeRate);
 
   event LogSetEthFee(address sender, uint256 ethFee);
   event LogSetGaltFee(address sender, uint256 galtFee);
@@ -66,7 +66,7 @@ contract GaltDex is Initializable, Ownable {
 
     galtToken.transfer(msg.sender, galtToSend);
 
-    emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)));
+    emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)), exchangeRate());
   }
 
   function getExchangeEthAmountForGaltWithFee(uint256 ethAmount, uint256 ethFeeForAmount) private view returns(uint256) {
@@ -103,7 +103,7 @@ contract GaltDex is Initializable, Ownable {
 
     galtToEthSum = galtToEthSum.add(galtAmount);
 
-    emit LogExchangeGaltToEth(msg.sender, galtAmount, ethToSend, galtFee, address(this).balance);
+    emit LogExchangeGaltToEth(msg.sender, galtAmount, ethToSend, galtFee, address(this).balance, exchangeRate());
   }
 
   function getExchangeGaltAmountForEthWithFee(uint256 galtAmount, uint256 galtFeeForAmount) private view returns(uint256) {
