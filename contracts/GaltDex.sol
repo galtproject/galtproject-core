@@ -11,6 +11,8 @@ contract GaltDex is Initializable, Ownable {
 
   GaltToken galtToken;
 
+  uint256 public constant feePrecision = 1 szabo;
+
   uint256 public baseExchangeRate;
 
   uint256 public galtToEthSum;
@@ -71,7 +73,7 @@ contract GaltDex is Initializable, Ownable {
     return  (
               ethAmount.sub(ethFeeForAmount)
             )
-            .mul(exchangeRate()).div(1 ether);
+            .mul(exchangeRate()).div(feePrecision);
   }
 
   function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns(uint256) {
@@ -108,7 +110,7 @@ contract GaltDex is Initializable, Ownable {
     return  (
               galtAmount.sub(galtFeeForAmount)
             )
-            .div(exchangeRate()).mul(1 ether);
+            .div(exchangeRate()).mul(feePrecision);
   }
 
   function getExchangeGaltAmountForEth(uint256 galtAmount) public view returns(uint256) {
@@ -129,12 +131,12 @@ contract GaltDex is Initializable, Ownable {
       return (
               galtToken.totalSupply()
                 .sub(galtToken.balanceOf(address(this)))
-//                .sub(galtFeeTotalPayout)
+//                .add(galtFeeTotalPayout)
             )
-            .mul(1 ether)
+            .mul(feePrecision)
             .div(
               address(this).balance
-//                .sub(ethFeeTotalPayout)
+//                .add(ethFeeTotalPayout)
             );
     } else {
       return baseExchangeRate;

@@ -5,7 +5,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { initHelperWeb3, ether, assertRevert, zeroAddress } = require('../helpers');
+const { initHelperWeb3, ether, szabo, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
@@ -24,13 +24,13 @@ chai.should();
  * Bob is a validator
  */
 contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
-  const fee = 5;
+  const fee = 15;
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
 
-    this.galtDex.initialize(ether(1), fee.toString(10), fee.toString(10), this.galtToken.address, {
+    this.galtDex.initialize(szabo(1), fee.toString(10), fee.toString(10), this.galtToken.address, {
       from: coreTeam
     });
 
