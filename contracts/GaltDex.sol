@@ -56,6 +56,7 @@ contract GaltDex is Initializable, Ownable {
   function exchangeEthToGalt() public payable {
     require(msg.value > 0, "Ether amount cant be null");
 
+    uint256 _exchangeRate = exchangeRate(msg.value);
     uint256 galtToSend = getExchangeEthAmountForGalt(msg.value);
 
     uint256 ethFeeForAmount = getEthFeeForAmount(msg.value);
@@ -66,11 +67,11 @@ contract GaltDex is Initializable, Ownable {
 
     galtToken.transfer(msg.sender, galtToSend);
 
-    emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)), exchangeRate());
+    emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)), _exchangeRate);
   }
   
   function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns(uint256) {
-    return ethAmount.mul(exchangeRate()).div(exchangeRatePrecision);
+    return ethAmount.mul(exchangeRate(ethAmount)).div(exchangeRatePrecision);
   }
 
   function getEthFeeForAmount(uint256 ethAmount) public view returns(uint256) {
@@ -84,6 +85,7 @@ contract GaltDex is Initializable, Ownable {
   function exchangeGaltToEth(uint256 galtAmount) public {
     require(galtToken.allowance(msg.sender, address(this)) >= galtAmount, "Not enough galt allowance");
 
+    uint256 _exchangeRate = exchangeRate(0);
     uint256 ethToSend = getExchangeGaltAmountForEth(galtAmount);
 
     uint256 galtFeeForAmount = getGaltFeeForAmount(galtAmount);
@@ -95,11 +97,11 @@ contract GaltDex is Initializable, Ownable {
 
     galtToEthSum = galtToEthSum.add(galtAmount);
 
-    emit LogExchangeGaltToEth(msg.sender, galtAmount, ethToSend, galtFee, address(this).balance, exchangeRate());
+    emit LogExchangeGaltToEth(msg.sender, galtAmount, ethToSend, galtFee, address(this).balance, _exchangeRate);
   }
 
   function getExchangeGaltAmountForEth(uint256 galtAmount) public view returns(uint256) {
-    return galtAmount.div(exchangeRate()).mul(exchangeRatePrecision);
+    return galtAmount.div(exchangeRate(0)).mul(exchangeRatePrecision);
   }
 
   function getGaltFeeForAmount(uint256 galtAmount) public view returns(uint256) {
@@ -110,7 +112,7 @@ contract GaltDex is Initializable, Ownable {
     }
   }
 
-  function exchangeRate() public view returns(uint256) {
+  function exchangeRate(uint256 minusBalance) public view returns(uint256) {
     if(ethToGaltSum > 0 && address(this).balance > 0) {
       // TODO: is galtFeeTotalPayout and ethFeeTotalPayout should be used?
       return (
@@ -120,7 +122,7 @@ contract GaltDex is Initializable, Ownable {
             )
             .mul(exchangeRatePrecision)
             .div(
-              address(this).balance
+              address(this).balance - minusBalance
 //                .add(ethFeeTotalPayout)
             );
     } else {
