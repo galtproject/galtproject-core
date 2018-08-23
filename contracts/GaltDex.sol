@@ -3,11 +3,14 @@ pragma experimental "v0.5.0";
 
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
 
-contract GaltDex is Initializable, Ownable {
+contract GaltDex is Initializable, Ownable, RBAC {
   using SafeMath for uint256;
+
+  string public constant FEE_MANAGER = "fee_manager";
 
   GaltToken galtToken;
 
@@ -18,6 +21,7 @@ contract GaltDex is Initializable, Ownable {
   uint256 public galtToEthSum;
   uint256 public ethToGaltSum;
 
+  // TODO: set galtFee as ether
   uint256 public galtFee;
   uint256 public ethFee;
 
@@ -43,14 +47,19 @@ contract GaltDex is Initializable, Ownable {
     uint256 _ethFee,
     GaltToken _galtToken
   )
-    public
-    isInitializer
+  public
+  isInitializer
   {
     owner = msg.sender;
     galtToken = _galtToken;
     baseExchangeRate = _baseExchangeRate;
     galtFee = _galtFee;
     ethFee = _ethFee;
+  }
+
+  modifier onlyFeeManager() {
+    checkRole(msg.sender, FEE_MANAGER);
+    _;
   }
 
   function exchangeEthToGalt() public payable {
@@ -69,7 +78,7 @@ contract GaltDex is Initializable, Ownable {
 
     emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)), _exchangeRate);
   }
-  
+
   function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns(uint256) {
     return ethAmount.mul(exchangeRate(ethAmount)).div(exchangeRatePrecision);
   }
@@ -116,37 +125,46 @@ contract GaltDex is Initializable, Ownable {
     if(ethToGaltSum > 0 && address(this).balance > 0) {
       // TODO: is galtFeeTotalPayout and ethFeeTotalPayout should be used?
       return (
-              galtToken.totalSupply()
-                .sub(galtToken.balanceOf(address(this)))
-//                .add(galtFeeTotalPayout)
-            )
-            .mul(exchangeRatePrecision)
-            .div(
-              address(this).balance - minusBalance
-//                .add(ethFeeTotalPayout)
-            );
+        galtToken.totalSupply()
+          .sub(galtToken.balanceOf(address(this)))
+          .add(galtFeePayout)
+      )
+      .mul(exchangeRatePrecision)
+      .div(
+        address(this).balance
+          .sub(ethFeePayout)
+          .sub(minusBalance)
+      );
     } else {
       return baseExchangeRate;
     }
   }
 
-  function setEthFee(uint256 _ethFee) public onlyOwner {
+  function setEthFee(uint256 _ethFee) public onlyFeeManager {
     ethFee = _ethFee;
     emit LogSetEthFee(msg.sender, _ethFee);
   }
 
-  function setGaltFee(uint256 _galtFee) public onlyOwner {
+  function setGaltFee(uint256 _galtFee) public onlyFeeManager {
     galtFee = _galtFee;
     emit LogSetGaltFee(msg.sender, _galtFee);
   }
 
-  function withdrawEthFee() public onlyOwner {
+  function withdrawEthFee() public onlyFeeManager {
     msg.sender.transfer(ethFeePayout);
     ethFeePayout = 0;
   }
 
-  function withdrawGaltFee() public onlyOwner {
+  function withdrawGaltFee() public onlyFeeManager {
     galtToken.transfer(msg.sender, galtFeePayout);
     galtFeePayout = 0;
+  }
+
+  function addRoleTo(address _operator, string _role) public onlyOwner {
+    super.addRole(_operator, _role);
+  }
+
+  function removeRoleFrom(address _operator, string _role) public onlyOwner {
+    super.removeRole(_operator, _role);
   }
 }
