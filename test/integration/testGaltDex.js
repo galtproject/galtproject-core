@@ -46,11 +46,11 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   describe.only('#buyGalt()', async () => {
     const ethToSend = parseInt(ether(10), 10);
     const shouldEthFee = (ethToSend / 100) * fee;
-    const galtShouldReceive = ethToSend - shouldEthFee;
+    const galtShouldReceive = ethToSend;
 
     const galtToSend = ethToSend / 2;
     const shouldGaltFee = (galtToSend / 100) * fee;
-    const ethShouldReceive = galtToSend - shouldGaltFee;
+    const ethShouldReceive = galtToSend;
 
     beforeEach(async function() {
       const ethFeeForAmount = await this.galtDex.getEthFeeForAmount(ethToSend, { from: alice });
@@ -120,7 +120,7 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
       const aliceBalanceDiff = (await web3.eth.getBalance(alice)) - aliceBalance;
 
-      (ethShouldReceive - aliceBalanceDiff).should.be.lt(parseInt(ether(0.002), 10));
+      (ethShouldReceive - aliceBalanceDiff).should.be.lt(parseInt(ether(0.02), 10));
 
       const galtBalanceAfterExchange = await this.galtToken.balanceOf(alice);
 
