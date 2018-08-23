@@ -115,6 +115,7 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       const galtBalance = await this.galtToken.balanceOf(alice);
 
       const aliceBalance = await web3.eth.getBalance(alice);
+      // console.log(`aliceBalance before: ${aliceBalance / Math.pow(10, 18)}`);
 
       await this.galtToken.approve(this.galtDex.address, galtToSend, { from: alice });
 
@@ -122,6 +123,7 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       allowance.toString(10).should.be.eq(galtToSend.toString(10));
 
       await this.galtDex.exchangeGaltToEth(galtToSend, { from: alice });
+      // console.log(`aliceBalance after: ${(await web3.eth.getBalance(alice)) / Math.pow(10, 18)}`);
 
       const aliceBalanceDiff = (await web3.eth.getBalance(alice)) - aliceBalance;
 
