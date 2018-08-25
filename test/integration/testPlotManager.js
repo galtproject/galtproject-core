@@ -10,7 +10,7 @@ const galt = require('@galtproject/utils');
 const { ether, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
-const { BN } = Web3.utils;
+const { BN, keccak256 } = Web3.utils;
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -94,8 +94,119 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     (await this.plotManager.applicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 
+  describe('validators', () => {
+    describe('#addValidatorRole()', () => {
+      it('should allow owner add a role', async function() {
+        await this.plotManager.addValidatorRole('lawyer', { from: coreTeam });
+        const roles = await this.plotManager.getValidatorRoles();
+        assert.equal(roles.length, 1);
+        assert.equal(roles[0], web3.utils.keccak256('lawyer'));
+      });
+
+      it('should allow owner add multiple roles', async function() {
+        await this.plotManager.addValidatorRole('lawyer', { from: coreTeam });
+        await this.plotManager.addValidatorRole('cat', { from: coreTeam });
+        await this.plotManager.addValidatorRole('dog', { from: coreTeam });
+        const roles = await this.plotManager.getValidatorRoles();
+        assert.equal(roles.length, 3);
+        assert.equal(roles[0], web3.utils.keccak256('lawyer'));
+        assert.equal(roles[1], web3.utils.keccak256('cat'));
+        assert.equal(roles[2], web3.utils.keccak256('dog'));
+      });
+
+      it('should deny non-owner to add a role', async function() {
+        await assertRevert(this.plotManager.addValidatorRole('lawyer', { from: bob }));
+      });
+
+      it('should deny owner to add an existing role', async function() {
+        await this.plotManager.addValidatorRole('lawyer', { from: coreTeam });
+        await assertRevert(this.plotManager.addValidatorRole('lawyer', { from: coreTeam }));
+      });
+    });
+
+    describe('#removeValidatorRole()', () => {
+      beforeEach(async function() {
+        await this.plotManager.addValidatorRole('lawyer', { from: coreTeam });
+        await this.plotManager.addValidatorRole('cat', { from: coreTeam });
+        await this.plotManager.addValidatorRole('dog', { from: coreTeam });
+        await this.plotManager.addValidatorRole('human', { from: coreTeam });
+      });
+
+      it('should allow owner remove a role in the middle', async function() {
+        await this.plotManager.removeValidatorRole('cat', { from: coreTeam });
+        const roles = await this.plotManager.getValidatorRoles();
+        assert.equal(roles.length, 3);
+        assert.equal(roles[0], keccak256('lawyer'));
+        assert.equal(roles[1], keccak256('human'));
+        assert.equal(roles[2], keccak256('dog'));
+
+        const human = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('human')).call();
+        assert.equal(human.exists, true);
+        assert.equal(human.active, true);
+        assert.equal(human.index, 1);
+        assert.equal(human.name, 'human');
+
+        const cat = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('cat')).call();
+        assert.equal(cat.exists, false);
+        assert.equal(cat.active, false);
+        assert.equal(cat.index, 0);
+        assert.equal(cat.name, '');
+      });
+
+      it('should allow owner remove a role from the end', async function() {
+        await this.plotManager.removeValidatorRole('human', { from: coreTeam });
+        const roles = await this.plotManager.getValidatorRoles();
+        assert.equal(roles.length, 3);
+        assert.equal(roles[0], web3.utils.keccak256('lawyer'));
+        assert.equal(roles[1], web3.utils.keccak256('cat'));
+        assert.equal(roles[2], web3.utils.keccak256('dog'));
+
+        const dog = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('dog')).call();
+        assert.equal(dog.exists, true);
+        assert.equal(dog.active, true);
+        assert.equal(dog.index, 2);
+        assert.equal(dog.name, 'dog');
+
+        const human = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('human')).call();
+        assert.equal(human.exists, false);
+        assert.equal(human.active, false);
+        assert.equal(human.index, 0);
+        assert.equal(human.name, '');
+      });
+
+      it('should allow owner remove all roles', async function() {
+        await this.plotManager.removeValidatorRole('human', { from: coreTeam });
+        await this.plotManager.removeValidatorRole('lawyer', { from: coreTeam });
+        await this.plotManager.removeValidatorRole('cat', { from: coreTeam });
+        await this.plotManager.removeValidatorRole('dog', { from: coreTeam });
+        const roles = await this.plotManager.getValidatorRoles();
+        assert.equal(roles.length, 0);
+
+        const dog = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('dog')).call();
+        assert.equal(dog.exists, false);
+        assert.equal(dog.active, false);
+        assert.equal(dog.index, 0);
+        assert.equal(dog.name, '');
+
+        const human = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('human')).call();
+        assert.equal(human.exists, false);
+        assert.equal(human.active, false);
+        assert.equal(human.index, 0);
+        assert.equal(human.name, '');
+      });
+
+      it('should deny non-owner to remove a role', async function() {
+        await assertRevert(this.plotManager.removeValidatorRole('lawyer', { from: bob }));
+      });
+
+      it('should deny owner to remove non-existing', async function() {
+        await assertRevert(this.plotManager.removeValidatorRole('tiger', { from: coreTeam }));
+      });
+    });
+  });
+
   describe('#addValidator()', () => {
-    it('should allow an ower to assign validators', async function() {
+    it('should allow an owner to assign validators', async function() {
       await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
     });
 

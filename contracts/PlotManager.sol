@@ -54,9 +54,21 @@ contract PlotManager is Initializable, Ownable {
 
   struct Validator {
     bytes32 name;
+    bytes32 role;
     bytes2 country;
     bool active;
   }
+
+  struct ValidatorRole {
+    bool exists;
+    bool active;
+    uint8 index;
+    string name;
+  }
+
+  bytes32[] public validatorRolesIndex;
+  mapping(bytes32 => ValidatorRole) public validatorRolesMap;
+  mapping(address => bytes32) public validatorRoles;
 
   PaymentMethods public paymentMethod;
   uint256 public applicationFeeInEth;
@@ -171,11 +183,43 @@ contract PlotManager is Initializable, Ownable {
     );
   }
 
-  function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
+  function addValidatorRole(bytes _role) public onlyOwner {
+    require(validatorRolesMap[keccak256(_role)].exists == false, "Role already exists");
+    require(validatorRolesIndex.length < 256, "The limit is 256 roles");
+
+    validatorRolesMap[keccak256(_role)] = ValidatorRole(
+      true,
+      true,
+      uint8(validatorRolesIndex.length),
+      string(_role)
+    );
+    validatorRolesIndex.push(keccak256(_role));
+  }
+
+  function removeValidatorRole(bytes _role) public onlyOwner {
+    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+
+    uint8 indexToReassign = validatorRolesMap[keccak256(_role)].index;
+    uint256 lastIndex = validatorRolesIndex.length.sub(1);
+    bytes32 lastRole = validatorRolesIndex[lastIndex];
+
+    validatorRolesIndex[indexToReassign] = lastRole;
+    delete validatorRolesIndex[lastIndex];
+    validatorRolesIndex.length--;
+
+    validatorRolesMap[lastRole].index = indexToReassign;
+    delete validatorRolesMap[keccak256(_role)];
+  }
+
+  function getValidatorRoles() public view returns (bytes32[]) {
+    return validatorRolesIndex;
+  }
+
+  function addValidator(address _validator, bytes32 _role, bytes32 _name, bytes2 _country) public onlyOwner {
     require(_validator != address(0), "Missing validator");
     require(_country != 0x0, "Missing country");
 
-    validators[_validator] = Validator({ name: _name, country: _country, active: true });
+    validators[_validator] = Validator({ name: _name, role: _role, country: _country, active: true });
     validatorsArray.push(_validator);
   }
 
