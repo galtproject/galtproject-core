@@ -54,9 +54,9 @@ contract PlotManager is Initializable, Ownable {
 
   struct Validator {
     bytes32 name;
-    bytes32 role;
     bytes2 country;
     bool active;
+    bytes32 role;
   }
 
   struct ValidatorRole {
@@ -211,21 +211,49 @@ contract PlotManager is Initializable, Ownable {
     delete validatorRolesMap[keccak256(_role)];
   }
 
+  function enableValidatorRole(bytes _role) public onlyOwner {
+    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+
+    validatorRolesMap[keccak256(_role)].active == true;
+    // TODO: increment required confirmations
+  }
+
+  function disableValidatorRole(bytes _role) public onlyOwner {
+    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+
+    validatorRolesMap[keccak256(_role)].active == false;
+    // TODO: decrement required confirmations
+  }
+
   function getValidatorRoles() public view returns (bytes32[]) {
     return validatorRolesIndex;
   }
 
-  function addValidator(address _validator, bytes32 _role, bytes32 _name, bytes2 _country) public onlyOwner {
-    require(_validator != address(0), "Missing validator");
+  function addValidator(
+    address _validator,
+    bytes32 _name,
+    bytes2 _country,
+    bytes _role
+  )
+    public
+    onlyOwner
+  {
+    require(_validator != address(0), "Validator address is empty");
     require(_country != 0x0, "Missing country");
+    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
 
-    validators[_validator] = Validator({ name: _name, role: _role, country: _country, active: true });
+    validators[_validator] = Validator({
+      name: _name,
+      role: keccak256(_role),
+      country: _country,
+      active: true
+    });
     validatorsArray.push(_validator);
   }
 
   function removeValidator(address _validator) public onlyOwner {
     require(_validator != address(0), "Missing validator");
-
+    // TODO: use index to remove validator
     validators[_validator].active = false;
   }
 

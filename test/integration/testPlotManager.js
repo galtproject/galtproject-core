@@ -203,35 +203,43 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         await assertRevert(this.plotManager.removeValidatorRole('tiger', { from: coreTeam }));
       });
     });
-  });
 
-  describe('#addValidator()', () => {
-    it('should allow an owner to assign validators', async function() {
-      await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
+    describe('#addValidator()', () => {
+      beforeEach(async function() {
+        await this.plotManager.addValidatorRole('🦄', { from: coreTeam });
+      });
+
+      it('should allow an owner to assign validators', async function() {
+        await this.plotManager.addValidator(alice, 'Alice', 'IN', '🦄', { from: coreTeam });
+      });
+
+      it('should deny an owner to assign validator with non-existent role', async function() {
+        await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', '🦆️', { from: coreTeam }));
+      });
+
+      it('should deny any other person than owner to assign validators', async function() {
+        await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', '🦄', { from: alice }));
+      });
     });
 
-    it('should deny any other person than owner to assign validators', async function() {
-      await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', { from: alice }));
-    });
-  });
+    describe('#removeValidator()', () => {
+      it('should allow an ower to remove validators', async function() {
+        await this.plotManager.removeValidator(alice, { from: coreTeam });
+      });
 
-  describe('#removeValidator()', () => {
-    it('should allow an ower to remove validators', async function() {
-      await this.plotManager.removeValidator(alice, { from: coreTeam });
+      it('should deny any other person than owner to remove validators', async function() {
+        await assertRevert(this.plotManager.removeValidator(alice, { from: alice }));
+      });
     });
 
-    it('should deny any other person than owner to remove validators', async function() {
-      await assertRevert(this.plotManager.removeValidator(alice, { from: alice }));
-    });
-  });
-
-  describe('#isValidator()', () => {
-    it('return true if validator is active', async function() {
-      assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
-      await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
-      assert(await this.plotManagerWeb3.methods.isValidator(alice).call());
-      await this.plotManager.removeValidator(alice, { from: coreTeam });
-      assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
+    describe('#isValidator()', () => {
+      it('return true if validator is active', async function() {
+        assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
+        await this.plotManager.addValidator(alice, 'Alice', 'IN', { from: coreTeam });
+        assert(await this.plotManagerWeb3.methods.isValidator(alice).call());
+        await this.plotManager.removeValidator(alice, { from: coreTeam });
+        assert(!(await this.plotManagerWeb3.methods.isValidator(alice).call()));
+      });
     });
   });
 
