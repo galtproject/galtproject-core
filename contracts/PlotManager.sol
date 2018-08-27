@@ -12,6 +12,7 @@ import "./ISplitMerge.sol";
 contract PlotManager is Initializable, Ownable {
   using SafeMath for uint256;
 
+  // TODO: rename to a singular form
   enum ApplicationStatuses {
     NOT_EXISTS,
     NEW,
@@ -26,6 +27,7 @@ contract PlotManager is Initializable, Ownable {
     GALTSPACE_REWARDED
   }
 
+  // TODO: rename to a singular form
   enum ValidationStatuses {
     INTACT,
     LOCKED,
@@ -39,6 +41,11 @@ contract PlotManager is Initializable, Ownable {
     ETH_ONLY,
     GALT_ONLY,
     ETH_AND_GALT
+  }
+
+  enum Currency {
+    ETH,
+    GALT
   }
 
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
@@ -58,12 +65,11 @@ contract PlotManager is Initializable, Ownable {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageTokenId;
-    uint256 validatorsRewardEth;
-    uint256 galtSpaceRewardEth;
-    uint256 validatorsRewardGalt;
-    uint256 galtSpaceRewardGalt;
+    uint256 validatorsReward;
+    uint256 galtSpaceReward;
     uint8 precision;
     bytes2 country;
+    Currency currency;
     ApplicationStatuses status;
 
     bytes32[] assignedRoles;
@@ -454,6 +460,7 @@ contract PlotManager is Initializable, Ownable {
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
+    a.currency = Currency.GALT;
 
     calculateAndStoreGaltFee(a, _applicationFeeInGalt);
 
@@ -476,18 +483,19 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
-    uint256 galtSpaceRewardGalt = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorsRewardGalt = _applicationFeeInGalt.sub(galtSpaceRewardGalt);
+    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
+    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
 
-    assert(validatorsRewardGalt.add(galtSpaceRewardGalt) == _applicationFeeInGalt);
+    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
 
-    _a.validatorsRewardGalt = validatorsRewardGalt;
-    _a.galtSpaceRewardGalt = galtSpaceRewardGalt;
+    _a.validatorsReward = validatorsReward;
+    _a.galtSpaceReward = galtSpaceReward;
   }
 
   function assignRequiredValidatorRolesAndRewardsInGalt(bytes32 _aId) internal {
     Application storage a = applications[_aId];
-    assert(a.validatorsRewardGalt > 0);
+    assert(a.validatorsReward > 0);
+    assert(a.currency == Currency.GALT);
 
     uint256 totalReward = 0;
 
@@ -497,11 +505,13 @@ contract PlotManager is Initializable, Ownable {
       ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
       if (role.exists && role.active) {
         a.assignedRoles.push(key);
-        uint256 rewardShare = a.validatorsRewardGalt.mul(role.rewardShare).div(100);
+        uint256 rewardShare = a.validatorsReward.mul(role.rewardShare).div(100);
         a.assignedRewards[key] = rewardShare;
-        totalReward.add(rewardShare);
+        totalReward = totalReward.add(rewardShare);
       }
     }
+
+    assert(totalReward == a.validatorsReward);
   }
 
   function applyForPlotOwnership(
@@ -532,14 +542,15 @@ contract PlotManager is Initializable, Ownable {
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
+    a.currency = Currency.ETH;
 
-    uint256 galtSpaceRewardEth = galtSpaceEthShare.mul(msg.value).div(100);
-    uint256 validatorsRewardEth = msg.value.sub(galtSpaceRewardEth);
+    uint256 galtSpaceReward = galtSpaceEthShare.mul(msg.value).div(100);
+    uint256 validatorsReward = msg.value.sub(galtSpaceReward);
 
-    assert(validatorsRewardEth.add(galtSpaceRewardEth) == msg.value);
+    assert(validatorsReward.add(galtSpaceReward) == msg.value);
 
-    a.validatorsRewardEth = validatorsRewardEth;
-    a.galtSpaceRewardEth = galtSpaceRewardEth;
+    a.validatorsReward = validatorsReward;
+    a.galtSpaceReward = galtSpaceReward;
 
     uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
     uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
@@ -551,10 +562,34 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
+    assignRequiredValidatorRolesAndRewardsInEth(_id);
+
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
 
     return _id;
+  }
+
+  function assignRequiredValidatorRolesAndRewardsInEth(bytes32 _aId) internal {
+    Application storage a = applications[_aId];
+    assert(a.validatorsReward > 0);
+    assert(a.currency == Currency.ETH);
+
+    uint256 totalReward = 0;
+
+    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
+      assert(i < ROLES_LIMIT);
+      bytes32 key = validatorRolesIndex[i];
+      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
+      if (role.exists && role.active) {
+        a.assignedRoles.push(key);
+        uint256 rewardShare = a.validatorsReward.mul(role.rewardShare).div(100);
+        a.assignedRewards[key] = rewardShare;
+        totalReward = totalReward.add(rewardShare);
+      }
+    }
+
+    assert(totalReward == a.validatorsReward);
   }
 
   function addGeohashesToApplication(
@@ -698,7 +733,7 @@ contract PlotManager is Initializable, Ownable {
     require(
       a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
       "Application status should be ether APPROVED or REJECTED");
-    require(a.validatorsRewardEth > 0, "Reward in ETH is 0");
+    require(a.validatorsReward > 0, "Reward in ETH is 0");
 
     if (a.status == ApplicationStatuses.REJECTED) {
       require(
@@ -709,7 +744,7 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatuses.VALIDATOR_REWARDED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
 
-    msg.sender.transfer(a.validatorsRewardEth);
+    msg.sender.transfer(a.validatorsReward);
   }
 
   function claimGaltSpaceRewardEth(bytes32 _aId) public {
@@ -718,12 +753,12 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatuses.VALIDATOR_REWARDED, "Application status should be VALIDATOR_REWARDED");
-    require(a.galtSpaceRewardEth > 0, "Reward in ETH is 0");
+    require(a.galtSpaceReward > 0, "Reward in ETH is 0");
 
     a.status = ApplicationStatuses.GALTSPACE_REWARDED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.GALTSPACE_REWARDED);
 
-    msg.sender.transfer(a.galtSpaceRewardEth);
+    msg.sender.transfer(a.galtSpaceReward);
   }
 
   function isCredentialsHashValid(
@@ -748,9 +783,11 @@ contract PlotManager is Initializable, Ownable {
       uint256 packageTokenId,
       bytes32 credentialsHash,
       ApplicationStatuses status,
+      Currency currency,
       uint8 precision,
       bytes2 country,
-      bytes32 ledgerIdentifier
+      bytes32 ledgerIdentifier,
+      bytes32[] assignedValidatorRoles
     )
   {
     require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
@@ -763,9 +800,11 @@ contract PlotManager is Initializable, Ownable {
       m.packageTokenId,
       m.credentialsHash,
       m.status,
+      m.currency,
       m.precision,
       m.country,
-      m.ledgerIdentifier
+      m.ledgerIdentifier,
+      m.assignedRoles
     );
   }
 
@@ -776,10 +815,9 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (
       ApplicationStatuses status,
-      uint256 validatorsRewardEth,
-      uint256 galtSpaceRewardEth,
-      uint256 validatorsRewardGalt,
-      uint256 galtSpaceRewardGalt
+      Currency currency,
+      uint256 validatorsReward,
+      uint256 galtSpaceReward
     )
   {
     require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
@@ -788,10 +826,9 @@ contract PlotManager is Initializable, Ownable {
 
     return (
       m.status,
-      m.validatorsRewardEth,
-      m.galtSpaceRewardEth,
-      m.validatorsRewardGalt,
-      m.galtSpaceRewardGalt
+      m.currency,
+      m.validatorsReward,
+      m.galtSpaceReward
     );
   }
 
@@ -799,11 +836,24 @@ contract PlotManager is Initializable, Ownable {
     return applicationsArray;
   }
 
-  function getApplicationsByAddress(address applicant) external view returns (bytes32[]) {
-    return applicationsByAddresses[applicant];
+  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
+    return applicationsByAddresses[_applicant];
   }
 
-  function getApplicationsByValidator(address applicant) external view returns (bytes32[]) {
-    return applicationsByValidator[applicant];
+  function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
+    return applicationsByValidator[_applicant];
+  }
+
+  function getApplicationValidatorReward(
+    bytes32 _aId,
+    bytes32 _role
+  )
+    external
+    view
+    returns (uint256 reward, Currency currency)
+  {
+    return (
+      applications[_aId].assignedRewards[_role], applications[_aId].currency
+    );
   }
 }

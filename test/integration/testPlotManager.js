@@ -42,6 +42,11 @@ const PaymentMethods = {
   ETH_AND_GALT: 3
 };
 
+const Currency = {
+  ETH: 0,
+  GALT: 1
+};
+
 Object.freeze(ApplicationStatuses);
 Object.freeze(PaymentMethods);
 
@@ -403,13 +408,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        { from: alice, gas: 1000000, value: ether(6) }
+        { from: alice, value: ether(6) }
       );
 
       this.aId = res.logs[0].args.id;
     });
 
-    it('should allow change hash to the owner when status is NEW', async function() {
+    it('should allow change application fields to the owner when status is NEW', async function() {
       const hash = web3.utils.keccak256('AnotherPerson');
       const ledgedIdentifier = 'foo-123';
       const country = 'SG';
@@ -506,7 +511,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
           web3.utils.asciiToHex('MN'),
           7,
           ether(47),
-          { from: alice, gas: 2000000 }
+          { from: alice }
         );
 
         this.aId = res.logs[0].args.id;
@@ -549,10 +554,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
       describe('payable', () => {
         it('should split fee between GaltSpace and Validator', async function() {
           const res4 = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
-          assert.equal(res4.validatorsRewardEth, 0);
-          assert.equal(res4.galtSpaceRewardEth, 0);
-          assert.equal(res4.validatorsRewardGalt, '40890000000000000000');
-          assert.equal(res4.galtSpaceRewardGalt, '6110000000000000000');
+          assert.equal(res4.currency, Currency.GALT);
+          assert.equal(res4.validatorsReward, '40890000000000000000');
+          assert.equal(res4.galtSpaceReward, '6110000000000000000');
         });
 
         it('should reject fees less than the minial', async function() {
@@ -586,11 +590,52 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
           this.aId = res.logs[0].args.id;
         });
+
+        it('should calculate validator rewards according to their roles share', async function() {
+          await this.plotManager.removeValidatorRole('🦄', { from: coreTeam });
+          await this.plotManager.addValidatorRole('cat', 52, { from: coreTeam });
+          await this.plotManager.addValidatorRole('dog', 47, { from: coreTeam });
+          await this.plotManager.addValidatorRole('human', 1, { from: coreTeam });
+
+          await this.galtToken.approve(this.plotManager.address, ether(53), { from: alice });
+          let res = await this.plotManager.applyForPlotOwnershipGalt(
+            this.contour,
+            galt.geohashToGeohash5('sezu07'),
+            this.credentials,
+            this.ledgerIdentifier,
+            web3.utils.asciiToHex('MN'),
+            7,
+            ether(53),
+            { from: alice }
+          );
+          const aId = res.logs[0].args.id;
+
+          res = await this.plotManagerWeb3.methods.getApplicationFinanceById(aId).call();
+          assert.equal(res.status, 1);
+          assert.equal(res.currency, Currency.GALT);
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('46110000000000000000'));
+          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('6890000000000000000'));
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('cat')).call();
+          assert.equal(res.reward.toString(), '23977200000000000000');
+          assert.equal(res.currency, Currency.GALT);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '21671700000000000000');
+          assert.equal(res.currency, Currency.GALT);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '461100000000000000');
+          assert.equal(res.currency, Currency.GALT);
+        });
       });
     });
   });
 
-  describe('application pipeline', () => {
+  describe('application pipeline for ETH', () => {
     beforeEach(async function() {
       await this.plotManager.addValidatorRole('🦄', 100, { from: coreTeam });
       const res = await this.plotManager.applyForPlotOwnership(
@@ -600,7 +645,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        { from: alice, gas: 1000000, value: ether(6) }
+        { from: alice, value: ether(6) }
       );
 
       this.aId = res.logs[0].args.id;
@@ -682,11 +727,49 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
           );
         });
 
-        it.skip('should calculate correspondive validator and coreTeam rewards in Eth', async function() {
+        it('should calculate corresponding validator and coreTeam rewards in Eth', async function() {
           const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.status, 1);
-          res.validatorRewardEth.should.be.a.bignumber.eq(new BN('4020000000000000000'));
-          res.galtSpaceRewardEth.should.be.a.bignumber.eq(new BN('1980000000000000000'));
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('4020000000000000000'));
+          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('1980000000000000000'));
+        });
+
+        it('should calculate validator rewards according to their roles share', async function() {
+          await this.plotManager.removeValidatorRole('🦄', { from: coreTeam });
+          await this.plotManager.addValidatorRole('cat', 52, { from: coreTeam });
+          await this.plotManager.addValidatorRole('dog', 33, { from: coreTeam });
+          await this.plotManager.addValidatorRole('human', 15, { from: coreTeam });
+
+          let res = await this.plotManager.applyForPlotOwnership(
+            this.contour,
+            galt.geohashToGeohash5('sezu07'),
+            this.credentials,
+            this.ledgerIdentifier,
+            web3.utils.asciiToHex('MN'),
+            7,
+            { from: alice, value: ether(9) }
+          );
+          const aId = res.logs[0].args.id;
+
+          res = await this.plotManagerWeb3.methods.getApplicationFinanceById(aId).call();
+          assert.equal(res.status, 1);
+          assert.equal(res.currency, Currency.ETH);
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('6030000000000000000'));
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('cat')).call();
+          assert.equal(res.reward.toString(), '3135600000000000000');
+          assert.equal(res.currency, Currency.ETH);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '1989900000000000000');
+          assert.equal(res.currency, Currency.ETH);
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidatorReward(aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '904500000000000000');
+          assert.equal(res.currency, Currency.ETH);
         });
       });
     });
