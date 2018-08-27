@@ -15,6 +15,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   GaltToken galtToken;
 
   uint256 public constant exchangeRatePrecision = 1 szabo;
+  uint256 public constant feePrecision = 1 szabo;
 
   uint256 public baseExchangeRate;
 
@@ -85,7 +86,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
 
   function getEthFeeForAmount(uint256 ethAmount) public view returns(uint256) {
     if(ethFee > 0) {
-      return ethAmount.div(100).mul(ethFee);
+      return ethAmount.div(100).mul(ethFee).div(feePrecision);
     } else {
       return ethAmount;
     }
@@ -115,7 +116,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
 
   function getGaltFeeForAmount(uint256 galtAmount) public view returns(uint256) {
     if(galtFee > 0) {
-      return galtAmount.div(100).mul(galtFee);
+      return galtAmount.div(100).mul(galtFee).div(feePrecision);
     } else {
       return galtAmount;
     }
