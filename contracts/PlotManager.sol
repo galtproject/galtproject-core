@@ -4,9 +4,9 @@ pragma experimental "v0.5.0";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./GaltToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./ISpaceToken.sol";
+import "./ISplitMerge.sol";
 
 
 contract PlotManager is Initializable, Ownable {
@@ -26,6 +26,14 @@ contract PlotManager is Initializable, Ownable {
     GALTSPACE_REWARDED
   }
 
+  enum ValidationStatuses {
+    INTACT,
+    LOCKED,
+    APPROVED,
+    REJECTED,
+    REVERTED
+  }
+
   enum PaymentMethods {
     NONE,
     ETH_ONLY,
@@ -35,40 +43,54 @@ contract PlotManager is Initializable, Ownable {
 
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
   event LogNewApplication(bytes32 id, address applicant);
+  event LogReadyForApplications();
+  event LogNotReadyForApplications(uint256 total);
+  event LogValidatorRoleAdded(bytes32 role, uint8 share);
+  event LogValidatorRoleRemoved(bytes32 role);
+  event LogValidatorRoleEnabled(bytes32 role);
+  event LogValidatorRoleDisabled(bytes32 role);
 
   struct Application {
     bytes32 id;
     address applicant;
+    // TODO: rename => validators
     address validator;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageTokenId;
-    uint256 validatorRewardEth;
+    uint256 validatorsRewardEth;
     uint256 galtSpaceRewardEth;
-    uint256 validatorRewardGalt;
+    uint256 validatorsRewardGalt;
     uint256 galtSpaceRewardGalt;
     uint8 precision;
     bytes2 country;
     ApplicationStatuses status;
+
+    bytes32[] assignedRoles;
+    mapping(bytes32 => address) assignedValidators;
+    mapping(bytes32 => uint256) assignedRewards;
+    mapping(bytes32 => ValidationStatuses) validationStatuses;
   }
 
   struct Validator {
     bytes32 name;
+    bytes32 role;
     bytes2 country;
     bool active;
-    bytes32 role;
   }
 
   struct ValidatorRole {
     bool exists;
     bool active;
     uint8 index;
-    string name;
+    uint8 rewardShare;
   }
+
+  uint256 public constant ROLES_LIMIT = 10;
 
   bytes32[] public validatorRolesIndex;
   mapping(bytes32 => ValidatorRole) public validatorRolesMap;
-  mapping(address => bytes32) public validatorRoles;
+  bool public readyForApplications;
 
   PaymentMethods public paymentMethod;
   uint256 public applicationFeeInEth;
@@ -91,16 +113,16 @@ contract PlotManager is Initializable, Ownable {
   // exists or not.
   address[] public validatorsArray;
 
-  SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
-  GaltToken public galtToken;
+  ISpaceToken public spaceToken;
+  ISplitMerge public splitMerge;
+  ERC20 public galtToken;
 
   constructor () public {}
 
   function initialize(
-    SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
-    GaltToken _galtToken,
+    ISpaceToken _spaceToken,
+    ISplitMerge _splitMerge,
+    ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     public
@@ -159,6 +181,12 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
+  modifier ready() {
+    require(readyForApplications == true, "Roles list not complete");
+
+    _;
+  }
+
   function isValidator(address account) public view returns (bool) {
     return validators[account].active == true;
   }
@@ -183,23 +211,28 @@ contract PlotManager is Initializable, Ownable {
     );
   }
 
-  function addValidatorRole(bytes _role) public onlyOwner {
-    require(validatorRolesMap[keccak256(_role)].exists == false, "Role already exists");
-    require(validatorRolesIndex.length < 256, "The limit is 256 roles");
+  function addValidatorRole(bytes32 _role, uint8 _share) public onlyOwner {
+    require(validatorRolesMap[_role].exists == false, "Role already exists");
+    require(validatorRolesIndex.length < ROLES_LIMIT, "The limit is 256 roles");
+    require(_share >= 1, "Share should be greater or equal to 1");
+    require(_share <= 100, "Share value should be less or equal to 100");
 
-    validatorRolesMap[keccak256(_role)] = ValidatorRole(
+    validatorRolesMap[_role] = ValidatorRole(
       true,
       true,
       uint8(validatorRolesIndex.length),
-      string(_role)
+      _share
     );
-    validatorRolesIndex.push(keccak256(_role));
+    validatorRolesIndex.push(_role);
+
+    recalculateValidatorRoleShares();
+    emit LogValidatorRoleAdded(_role, _share);
   }
 
-  function removeValidatorRole(bytes _role) public onlyOwner {
-    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+  function removeValidatorRole(bytes32 _role) public onlyOwner {
+    require(validatorRolesMap[_role].exists == true, "Role doesn't exist");
 
-    uint8 indexToReassign = validatorRolesMap[keccak256(_role)].index;
+    uint8 indexToReassign = validatorRolesMap[_role].index;
     uint256 lastIndex = validatorRolesIndex.length.sub(1);
     bytes32 lastRole = validatorRolesIndex[lastIndex];
 
@@ -208,21 +241,61 @@ contract PlotManager is Initializable, Ownable {
     validatorRolesIndex.length--;
 
     validatorRolesMap[lastRole].index = indexToReassign;
-    delete validatorRolesMap[keccak256(_role)];
+    delete validatorRolesMap[_role];
+
+    recalculateValidatorRoleShares();
+    emit LogValidatorRoleRemoved(_role);
   }
 
-  function enableValidatorRole(bytes _role) public onlyOwner {
-    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+  function setValidatorRoleShare(bytes32 _role, uint8 _share) public onlyOwner {
+    ValidatorRole storage role = validatorRolesMap[_role];
+    require(role.exists == true, "Role doesn't exist");
+    require(_share >= 1, "Share should be greater or equal to 1");
+    require(_share <= 100, "Share value should be less or equal to 100");
 
-    validatorRolesMap[keccak256(_role)].active == true;
-    // TODO: increment required confirmations
+    role.rewardShare = _share;
+    recalculateValidatorRoleShares();
   }
 
-  function disableValidatorRole(bytes _role) public onlyOwner {
-    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+  function enableValidatorRole(bytes32 _role) public onlyOwner {
+    ValidatorRole storage role = validatorRolesMap[_role];
+    require(role.exists == true, "Role doesn't exist");
 
-    validatorRolesMap[keccak256(_role)].active == false;
-    // TODO: decrement required confirmations
+    role.active = true;
+    recalculateValidatorRoleShares();
+    emit LogValidatorRoleEnabled(_role);
+  }
+
+  function disableValidatorRole(bytes32 _role) public onlyOwner {
+    ValidatorRole storage role = validatorRolesMap[_role];
+    require(role.exists == true, "Role doesn't exist");
+
+    validatorRolesMap[_role].active = false;
+    recalculateValidatorRoleShares();
+    emit LogValidatorRoleDisabled(_role);
+  }
+
+  function recalculateValidatorRoleShares() internal {
+    uint8 total = 0;
+
+    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
+      assert(i < ROLES_LIMIT);
+
+      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
+      if (role.active == true) {
+        uint8 res = total + role.rewardShare;
+        assert(res > total);
+        total = res;
+      }
+    }
+
+    if (total == 100) {
+      readyForApplications = true;
+      emit LogReadyForApplications();
+    } else {
+      readyForApplications = false;
+      emit LogNotReadyForApplications(uint256(total));
+    }
   }
 
   function getValidatorRoles() public view returns (bytes32[]) {
@@ -233,18 +306,18 @@ contract PlotManager is Initializable, Ownable {
     address _validator,
     bytes32 _name,
     bytes2 _country,
-    bytes _role
+    bytes32 _role
   )
     public
     onlyOwner
   {
     require(_validator != address(0), "Validator address is empty");
     require(_country != 0x0, "Missing country");
-    require(validatorRolesMap[keccak256(_role)].exists == true, "Role doesn't exist");
+    require(validatorRolesMap[_role].exists == true, "Role doesn't exist");
 
     validators[_validator] = Validator({
       name: _name,
-      role: keccak256(_role),
+      role: _role,
       country: _country,
       active: true
     });
@@ -361,7 +434,7 @@ contract PlotManager is Initializable, Ownable {
     uint256 _applicationFeeInGalt
   )
     public
-    payable
+    ready
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
@@ -394,6 +467,8 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
+    assignRequiredValidatorRolesAndRewardsInGalt(_id);
+
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
 
@@ -402,12 +477,31 @@ contract PlotManager is Initializable, Ownable {
 
   function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
     uint256 galtSpaceRewardGalt = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorRewardGalt = _applicationFeeInGalt.sub(galtSpaceRewardGalt);
+    uint256 validatorsRewardGalt = _applicationFeeInGalt.sub(galtSpaceRewardGalt);
 
-    assert(validatorRewardGalt.add(galtSpaceRewardGalt) == _applicationFeeInGalt);
+    assert(validatorsRewardGalt.add(galtSpaceRewardGalt) == _applicationFeeInGalt);
 
-    _a.validatorRewardGalt = validatorRewardGalt;
+    _a.validatorsRewardGalt = validatorsRewardGalt;
     _a.galtSpaceRewardGalt = galtSpaceRewardGalt;
+  }
+
+  function assignRequiredValidatorRolesAndRewardsInGalt(bytes32 _aId) internal {
+    Application storage a = applications[_aId];
+    assert(a.validatorsRewardGalt > 0);
+
+    uint256 totalReward = 0;
+
+    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
+      assert(i < ROLES_LIMIT);
+      bytes32 key = validatorRolesIndex[i];
+      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
+      if (role.exists && role.active) {
+        a.assignedRoles.push(key);
+        uint256 rewardShare = a.validatorsRewardGalt.mul(role.rewardShare).div(100);
+        a.assignedRewards[key] = rewardShare;
+        totalReward.add(rewardShare);
+      }
+    }
   }
 
   function applyForPlotOwnership(
@@ -420,6 +514,7 @@ contract PlotManager is Initializable, Ownable {
   )
     public
     payable
+    ready
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
@@ -439,11 +534,11 @@ contract PlotManager is Initializable, Ownable {
     a.precision = _precision;
 
     uint256 galtSpaceRewardEth = galtSpaceEthShare.mul(msg.value).div(100);
-    uint256 validatorRewardEth = msg.value.sub(galtSpaceRewardEth);
+    uint256 validatorsRewardEth = msg.value.sub(galtSpaceRewardEth);
 
-    assert(validatorRewardEth.add(galtSpaceRewardEth) == msg.value);
+    assert(validatorsRewardEth.add(galtSpaceRewardEth) == msg.value);
 
-    a.validatorRewardEth = validatorRewardEth;
+    a.validatorsRewardEth = validatorsRewardEth;
     a.galtSpaceRewardEth = galtSpaceRewardEth;
 
     uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
@@ -478,7 +573,7 @@ contract PlotManager is Initializable, Ownable {
     );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
       if (spaceToken.exists(geohashTokenId)) {
         require(
           spaceToken.ownerOf(geohashTokenId) == address(this),
@@ -510,7 +605,7 @@ contract PlotManager is Initializable, Ownable {
     );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
 
       require(spaceToken.ownerOf(geohashTokenId) == address(splitMerge), "Existing geohash token should belongs to PlotManager contract");
 
@@ -543,12 +638,18 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function lockApplicationForReview(bytes32 _aId) public onlyValidator {
+    // TODO: count
     Application storage a = applications[_aId];
+    Validator storage v = validators[msg.sender];
+
     require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
+    require(a.validationStatuses[v.role] == ValidationStatuses.INTACT);
 
     a.validator = msg.sender;
     applicationsByValidator[msg.sender].push(_aId);
     a.status = ApplicationStatuses.CONSIDERATION;
+    // TODO: add parityallyLocked status
+    // TODO: recheck
 
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
   }
@@ -597,7 +698,7 @@ contract PlotManager is Initializable, Ownable {
     require(
       a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
       "Application status should be ether APPROVED or REJECTED");
-    require(a.validatorRewardEth > 0, "Reward in ETH is 0");
+    require(a.validatorsRewardEth > 0, "Reward in ETH is 0");
 
     if (a.status == ApplicationStatuses.REJECTED) {
       require(
@@ -608,7 +709,7 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatuses.VALIDATOR_REWARDED;
     emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
 
-    msg.sender.transfer(a.validatorRewardEth);
+    msg.sender.transfer(a.validatorsRewardEth);
   }
 
   function claimGaltSpaceRewardEth(bytes32 _aId) public {
@@ -675,9 +776,9 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (
       ApplicationStatuses status,
-      uint256 validatorRewardEth,
+      uint256 validatorsRewardEth,
       uint256 galtSpaceRewardEth,
-      uint256 validatorRewardGalt,
+      uint256 validatorsRewardGalt,
       uint256 galtSpaceRewardGalt
     )
   {
@@ -687,9 +788,9 @@ contract PlotManager is Initializable, Ownable {
 
     return (
       m.status,
-      m.validatorRewardEth,
+      m.validatorsRewardEth,
       m.galtSpaceRewardEth,
-      m.validatorRewardGalt,
+      m.validatorsRewardGalt,
       m.galtSpaceRewardGalt
     );
   }

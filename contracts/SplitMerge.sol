@@ -4,14 +4,16 @@ pragma experimental "v0.5.0";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./SpaceToken.sol";
-import "./PlotManager.sol";
+import "./ISpaceToken.sol";
+import "./ISplitMerge.sol";
 
-contract SplitMerge is Initializable, Ownable {
+
+contract SplitMerge is ISplitMerge, Initializable, Ownable {
   using SafeMath for uint256;
 
-  SpaceToken spaceToken;
-  PlotManager plotManager;
+  ISpaceToken spaceToken;
+  // TODO: change to IPlotManager
+  address plotManager;
 
   event PackageInit(bytes32 id, address owner);
 
@@ -25,11 +27,7 @@ contract SplitMerge is Initializable, Ownable {
 
   uint256[] allPackages;
 
-  constructor () public {
-
-  }
-
-  function initialize(SpaceToken _spaceToken, PlotManager _plotManager) public isInitializer {
+  function initialize(ISpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;
     plotManager = _plotManager;
@@ -158,6 +156,11 @@ contract SplitMerge is Initializable, Ownable {
 
   function getPackageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
     return packageToGeohashes[_packageToken];
+  }
+
+  // Keep this getter to satisfy ISplitMerge interface
+  function packageGeohashesCount(uint256 _packageTokenId) external view returns (uint256) {
+    return packageGeohashesCount[_packageTokenId];
   }
 
   // TODO: implement in future
