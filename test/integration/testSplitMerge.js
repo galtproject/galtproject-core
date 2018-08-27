@@ -81,7 +81,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      res = await this.splitMerge.packageGeohashesCount.call(packageId);
+      res = await this.splitMerge.getPackageGeohashesCount.call(packageId);
       assert.equal(res.toString(10), (geohashesTokenIds.length + 1).toString(10));
 
       res = await this.spaceToken.ownerOf.call(packageId);
@@ -101,7 +101,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      res = await this.splitMerge.packageGeohashesCount.call(packageId);
+      res = await this.splitMerge.getPackageGeohashesCount.call(packageId);
       assert.equal(res.toString(10), (0).toString(10));
     });
   });

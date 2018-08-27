@@ -20,7 +20,6 @@ contract SplitMerge is Initializable, Ownable {
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
   mapping(uint256 => uint256) internal packageToGeohashesIndex;
-  mapping(uint256 => uint256) public packageGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
   uint256[] allPackages;
@@ -45,8 +44,6 @@ contract SplitMerge is Initializable, Ownable {
     allPackages.push(_packageTokenId);
 
     addGeohashToPackageUnsafe(_packageTokenId, _firstGeohashTokenId);
-
-    packageGeohashesCount[_packageTokenId] = 1;
 
     emit PackageInit(bytes32(_packageTokenId), spaceToken.ownerOf(_packageTokenId));
 
@@ -103,8 +100,6 @@ contract SplitMerge is Initializable, Ownable {
       //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
       addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
-
-    packageGeohashesCount[_packageToken] += _geohashTokens.length;
   }
 
   function removeGeohashFromPackageUnsafe(
@@ -152,12 +147,14 @@ contract SplitMerge is Initializable, Ownable {
       //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
       removeGeohashFromPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
-
-    packageGeohashesCount[_packageToken] -= _geohashTokens.length;
   }
 
   function getPackageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
     return packageToGeohashes[_packageToken];
+  }
+
+  function getPackageGeohashesCount(uint256 _packageToken) public view returns (uint256) {
+    return packageToGeohashes[_packageToken].length;
   }
 
   // TODO: implement in future
