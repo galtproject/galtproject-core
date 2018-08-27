@@ -22,7 +22,6 @@ contract GaltDex is Initializable, Ownable, RBAC {
   uint256 public galtToEthSum;
   uint256 public ethToGaltSum;
 
-  // TODO: set galtFee as ether
   uint256 public galtFee;
   uint256 public ethFee;
 

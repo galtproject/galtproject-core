@@ -19,6 +19,9 @@ module.exports = {
   galt(number) {
     return web3.utils.toWei(number.toString(), 'ether');
   },
+  roundToPrecision(number, precision = 4) {
+    return Math.round(number / 10 ** precision) * 10 ** precision;
+  },
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
