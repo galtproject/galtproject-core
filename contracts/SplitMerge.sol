@@ -147,6 +147,10 @@ contract SplitMerge is Initializable, Ownable {
       //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
       removeGeohashFromPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
+
+    if(getPackageGeohashesCount(_packageToken) == 0) {
+      spaceToken.transferFrom(msg.sender, address(this), _packageToken);
+    }
   }
 
   function getPackageGeohashes(uint256 _packageToken) public view returns (uint256[]) {

@@ -43,7 +43,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
-  describe('contract', () => {
+  describe.only('contract', () => {
     it('should creating correctly', async function() {
       let res;
       // TODO: remove console.log lines when the tests work
@@ -103,6 +103,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       res = await this.splitMerge.getPackageGeohashesCount.call(packageId);
       assert.equal(res.toString(10), (0).toString(10));
+
+      res = await this.spaceToken.ownerOf.call(packageId);
+      assert.equal(res, this.splitMerge.address);
     });
   });
 });
