@@ -66,7 +66,7 @@ contract('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     (await this.galtDex.ethToGaltFee()).toString(10).should.be.eq('5');
   });
 
-  describe.only('#buyGalt()', async () => {
+  describe('#buyGalt()', async () => {
     const ethToSend = parseInt(ether(10), 10);
     const shouldEthFee = (ethToSend / 100) * fee;
     const galtShouldReceive = ethToSend;
