@@ -161,13 +161,40 @@ contract SplitMerge is Initializable, Ownable {
     return packageToGeohashes[_packageToken].length;
   }
 
-  // TODO: implement in future
-  //  function splitGeohash(uint256 _geohashToken) public {
-  //
-  //  }
+  function splitGeohash(uint256 _geohashToken) public {
+    uint256[] resultGeohashes;
 
-  // TODO: implement in future
-  //  function mergeGeohash(uint256[] _geohashToken) public {
-  //
-  //  }
+    uint256 _geohashParentToken = ;
+
+    while (num <= 32) {
+      output = output >> 8;
+      uint256 d = uint256(bytes32(num) & fiveOn);
+      output = output ^ (bytes1(spaceToken.GEOHASH5_MASK()[d]));
+      num = num >> 5;
+      counter++;
+      resultGeohashes.push();
+    }
+  }
+
+  function mergeGeohash(uint256[] _geohashToken) public {
+
+  }
 }
+
+//pragma solidity ^0.4.23;
+//
+//contract Geohash {
+//
+//  bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
+//
+//  constructor() public { }
+//
+//  function splitGeohash(uint256 _geohashToken) public view returns(bytes32) {
+//    bytes32 bytesGeohash = bytes32(_geohashToken);
+//    return (bytesGeohash << 8) ^ (bytes32(GEOHASH5_MASK[1]) >> 248);
+//  }
+//
+//  function geohashToBytes(uint256 _geohashToken) public view returns(bytes32) {
+//    return bytes32(_geohashToken);
+//  }
+//}
