@@ -8,8 +8,7 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 
 // Just keep it here to make it loaded in tests
 import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
-import "./SplitMerge.sol";
-
+import "./ISpaceToken.sol";
 
 /*
  * SpaceToken id encode the following additional logic
@@ -18,7 +17,7 @@ import "./SplitMerge.sol";
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
-contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
+contract SpaceToken is ISpaceToken, ERC721Token, Ownable, RBAC, Initializable {
   // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
 
@@ -37,8 +36,6 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   uint256 constant GEOHASH5_LIMIT = 1152921504606846975;
 
   uint256 packTokenIdCounter;
-  bool splitMergeSet;
-  SplitMerge splitMerge;
   mapping(bytes1 => uint8) eMap;
 
 
