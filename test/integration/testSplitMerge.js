@@ -110,7 +110,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
   });
 
-  describe.only('geohash', () => {
+  describe('geohash', () => {
     it('should split and merge correctly', async function() {
       let res = await this.spaceToken.mintGeohash(alice, this.firstGeohash, { from: coreTeam });
 
