@@ -26,6 +26,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
 
     this.firstGeohash = galt.geohashToGeohash5(this.initFirstGeohash);
+    this.firstGeohashTokenId = galt.geohashToTokenId(this.firstGeohash);
     this.contour = this.initContour.map(galt.geohashToGeohash5);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -43,14 +44,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
-  describe('contract', () => {
+  describe('package', () => {
     it('should creating correctly', async function() {
       let res;
       // TODO: remove console.log lines when the tests work
       // console.log('spaceToken.mintGeohash', alice, this.firstGeohash);
       res = await this.spaceToken.mintGeohash(alice, this.firstGeohash, { from: coreTeam });
 
-      res = await this.splitMerge.initPackage(galt.geohashToTokenId(this.firstGeohash), { from: alice });
+      res = await this.splitMerge.initPackage(this.firstGeohashTokenId, { from: alice });
 
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
       // console.log('packageId', packageId);
@@ -95,7 +96,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         assert.equal(res.toString(10), packageId);
       });
 
-      geohashesTokenIds.push(galt.geohashToTokenId(this.firstGeohash));
+      geohashesTokenIds.push(this.firstGeohashTokenId);
       // console.log('removeGeohashesFromPackage', packageId, geohashesTokenIds, directions, directions);
       await this.splitMerge.removeGeohashesFromPackage(packageId, geohashesTokenIds, directions, directions, {
         from: alice
@@ -106,6 +107,38 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, this.splitMerge.address);
+    });
+  });
+
+  describe.only('geohash', () => {
+    it('should split and merge correctly', async function() {
+      let res = await this.spaceToken.mintGeohash(alice, this.firstGeohash, { from: coreTeam });
+
+      res = await this.spaceToken.ownerOf.call(this.firstGeohashTokenId);
+      assert.equal(res, alice);
+
+      res = await this.splitMerge.splitGeohash(this.firstGeohashTokenId, { from: alice });
+
+      res = await this.spaceToken.ownerOf.call(this.firstGeohashTokenId);
+      assert.equal(res, this.splitMerge.address);
+
+      const childGeohashTokenId = galt.geohashToTokenId(galt.geohashToGeohash5(`${this.initFirstGeohash}0`));
+      res = await this.spaceToken.ownerOf.call(childGeohashTokenId);
+      assert.equal(res, alice);
+
+      res = await this.spaceToken.balanceOf.call(alice);
+      assert.equal(res, '32');
+
+      await this.splitMerge.mergeGeohash(this.firstGeohashTokenId, { from: alice });
+
+      res = await this.spaceToken.ownerOf.call(this.firstGeohashTokenId);
+      assert.equal(res, alice);
+
+      res = await this.spaceToken.ownerOf.call(childGeohashTokenId);
+      assert.equal(res, this.splitMerge.address);
+
+      res = await this.spaceToken.balanceOf.call(alice);
+      assert.equal(res, '1');
     });
   });
 });
