@@ -10,6 +10,7 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
 import "./ISpaceToken.sol";
 
+
 /*
  * SpaceToken id encode the following additional logic
  * left two bits describes what type is it:

@@ -447,12 +447,14 @@ contract PlotManager is Initializable, Ownable {
     galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
 
     Application memory a;
-    bytes32 _id = keccak256(abi.encodePacked(
+    bytes32 _id = keccak256(
+      abi.encodePacked(
         _baseGeohash,
         _packageContour[0],
         _packageContour[1],
         _credentialsHash
-    ));
+      )
+    );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
@@ -536,12 +538,14 @@ contract PlotManager is Initializable, Ownable {
     require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
 
     Application memory a;
-    bytes32 _id = keccak256(abi.encodePacked(
-      _baseGeohash,
-      _packageContour[0],
-      _packageContour[1],
-      _credentialsHash
-    ));
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        _baseGeohash,
+        _packageContour[0],
+        _packageContour[1],
+        _credentialsHash
+      )
+    );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 

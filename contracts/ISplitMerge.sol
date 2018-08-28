@@ -12,8 +12,7 @@ contract ISplitMerge {
     uint256 _packageToken,
     uint256[] _geohashTokens,
     uint256[] _neighborsGeohashTokens,
-    bytes2[] _directions
-  ) public;
+    bytes2[] _directions) public;
 
   function removeGeohashesFromPackage(
     uint256 _packageToken,
