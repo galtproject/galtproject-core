@@ -8,7 +8,6 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 
 // Just keep it here to make it loaded in tests
 import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
-import "./ISpaceToken.sol";
 
 
 /*
@@ -18,7 +17,7 @@ import "./ISpaceToken.sol";
  *  - 0x02 for pack, for ex. "0x020000000000000000...0003022fd0"
  *
  */
-contract SpaceToken is ISpaceToken, ERC721Token, Ownable, RBAC, Initializable {
+contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   // solium-disable-next-line uppercase
   bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
 
@@ -279,5 +278,9 @@ contract SpaceToken is ISpaceToken, ERC721Token, Ownable, RBAC, Initializable {
 
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
+  }
+
+  function hello(uint256 _tokenId) public view returns (bool) {
+    return true;
   }
 }

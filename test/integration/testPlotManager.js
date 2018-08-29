@@ -56,7 +56,9 @@ const Currency = {
 };
 
 Object.freeze(ApplicationStatuses);
+Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
+Object.freeze(Currency);
 
 /**
  * Alice is an applicant
@@ -72,7 +74,7 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.plotManager = await PlotManager.new({ from: coreTeam });
+    this.plotManager = await PlotManager.new({ from: coreTeam, gas: 17700000 });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
@@ -645,7 +647,7 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
       await this.plotManager.addValidatorRole('🦄', 100, { from: coreTeam });
       const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        galt.geohashToGeohash5('sezu06'),
+        galt.geohashToGeohash5('sezu03'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
@@ -1027,8 +1029,9 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
       });
     });
 
-    describe('#unlockApplication', () => {
+    describe.skip('#unlockApplication', () => {
       beforeEach(async function() {
+        assert(this.aId);
         await this.plotManager.submitApplication(this.aId, { from: alice });
         await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
@@ -1049,10 +1052,11 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
       });
     });
 
-    describe('#approveApplication', () => {
+    describe.only('#approveApplication', () => {
       beforeEach(async function() {
+        assert(this.aId, 'Application ID not catched');
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
+        await this.plotManager.addValidator(bob, 'Bob', 'MN', '🦄', { from: coreTeam });
         await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
       });
 

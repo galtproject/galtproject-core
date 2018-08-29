@@ -5,8 +5,8 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./ISpaceToken.sol";
-import "./ISplitMerge.sol";
+import "./SpaceToken.sol";
+import "./SplitMerge.sol";
 
 
 contract PlotManager is Initializable, Ownable {
@@ -115,15 +115,15 @@ contract PlotManager is Initializable, Ownable {
   // exists or not.
   address[] public validatorsArray;
 
-  ISpaceToken public spaceToken;
-  ISplitMerge public splitMerge;
+  SpaceToken public spaceToken;
+  SplitMerge public splitMerge;
   ERC20 public galtToken;
 
   constructor () public {}
 
   function initialize(
-    ISpaceToken _spaceToken,
-    ISplitMerge _splitMerge,
+    SpaceToken _spaceToken,
+    SplitMerge _splitMerge,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
@@ -727,16 +727,42 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
   }
 
-  function approveApplication(bytes32 _aId, bytes32 _credentialsHash) public onlyValidatorOfApplication(_aId) {
+  function approveApplication(
+    bytes32 _aId,
+    bytes32 _credentialsHash
+  )
+    public
+    onlyValidator
+  {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.CONSIDERATION, "Application status should be CONSIDERATION");
+    bytes32 role = validators[msg.sender].role;
+
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
+//     TODO: reverted?
+    require(
+      a.status == ApplicationStatus.CONSIDERATION || a.status == ApplicationStatus.SUBMITTED,
+        "Application status should be CONSIDERATION or SUBMITTED");
+//     TODO: reverted?
+    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.validators[role] == msg.sender, "Sender not assigned to this application");
 
-    a.status = ApplicationStatus.APPROVED;
+    a.validationStatus[role] = ValidationStatus.APPROVED;
+    address a = a.validators[role];
 
-    spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
+    uint256 len = a.assignedRoles.length;
+    bool allApproved = true;
 
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.APPROVED);
+    for (uint8 i = 0; i < len; i++) {
+      assert(i < ROLES_LIMIT);
+      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.APPROVED) {
+        allApproved = false;
+      }
+    }
+
+    if (allApproved) {
+      a.status = ApplicationStatus.APPROVED;
+//      spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
+    }
   }
 
   function rejectApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {

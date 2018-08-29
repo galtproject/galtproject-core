@@ -4,15 +4,13 @@ pragma experimental "v0.5.0";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./ISpaceToken.sol";
-import "./ISplitMerge.sol";
+import "./SpaceToken.sol";
 
 
-contract SplitMerge is ISplitMerge, Initializable, Ownable {
+contract SplitMerge is Initializable, Ownable {
   using SafeMath for uint256;
 
-  ISpaceToken spaceToken;
-  // TODO: change to IPlotManager
+  SpaceToken spaceToken;
   address plotManager;
 
   event PackageInit(bytes32 id, address owner);
@@ -27,7 +25,7 @@ contract SplitMerge is ISplitMerge, Initializable, Ownable {
 
   uint256[] allPackages;
 
-  function initialize(ISpaceToken _spaceToken, address _plotManager) public isInitializer {
+  function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;
     plotManager = _plotManager;
