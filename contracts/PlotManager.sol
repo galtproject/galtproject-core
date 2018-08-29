@@ -30,6 +30,7 @@ contract PlotManager is Initializable, Ownable {
 
   struct Application {
     bytes32 id;
+    address operator;
     address applicant;
     address validator;
     bytes32 credentialsHash;
@@ -96,7 +97,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender, "Not valid applicant");
+    require(a.applicant == msg.sender || a.operator == msg.sender, "Not valid sender");
     require(splitMerge != address(0), "SplitMerge address not set");
 
     _;
@@ -105,7 +106,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicantOrValidator(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender || a.validator == msg.sender, "Not valid sender");
+    require(a.applicant == msg.sender || a.operator == msg.sender || a.validator == msg.sender, "Not valid sender");
     require(splitMerge != address(0), "SplitMerge address not set");
 
     if (a.validator == msg.sender) {
@@ -169,6 +170,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function applyForPlotOwnership(
+    address _applicant,
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
@@ -190,7 +192,8 @@ contract PlotManager is Initializable, Ownable {
 
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
-    a.applicant = msg.sender;
+    a.operator = msg.sender;
+    a.applicant = _applicant;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -213,6 +216,7 @@ contract PlotManager is Initializable, Ownable {
     applications[_id] = a;
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
+    applicationsByAddresses[_applicant].push(_id);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -401,6 +405,7 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (
       address applicant,
+      address operator,
       address validator,
       uint256 packageTokenId,
       bytes32 credentialsHash,
@@ -416,6 +421,7 @@ contract PlotManager is Initializable, Ownable {
 
     return (
       m.applicant,
+      m.operator,
       m.validator,
       m.packageTokenId,
       m.credentialsHash,

@@ -104,6 +104,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
   describe('application pipeline', () => {
     beforeEach(async function() {
       const res = await this.plotManager.applyForPlotOwnership(
+        alice,
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
@@ -155,6 +156,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
+              alice,
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
@@ -169,6 +171,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
+              alice,
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
@@ -183,6 +186,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
         it('should reject applications with payment greater than required', async function() {
           await assertRevert(
             this.plotManager.applyForPlotOwnership(
+              alice,
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
@@ -387,6 +391,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
         // submit second
         let res = await this.plotManager.applyForPlotOwnership(
+          alice,
           this.contour,
           galt.geohashToGeohash5('sezu07'),
           this.credentials,
@@ -409,6 +414,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
 
       it('should deny validator to lock an application which is new', async function() {
         let res = await this.plotManager.applyForPlotOwnership(
+          alice,
           this.contour,
           galt.geohashToGeohash5('sezu05'),
           this.credentials,
