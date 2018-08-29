@@ -40,6 +40,18 @@ contract SplitMerge is Initializable, Ownable {
     _;
   }
 
+  modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
+    address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
+
+    require(
+      ownerOfToken == msg.sender
+      || spaceToken.isApprovedForAll(ownerOfToken, msg.sender)
+      || spaceToken.getApproved(_spaceTokenId) == msg.sender,
+        "This action not permitted for msg.sender"
+    );
+    _;
+  }
+
   function initPackage(uint256 _firstGeohashTokenId) public returns (uint256) {
     uint256 _packageTokenId = spaceToken.mintPack(msg.sender);
     allPackages.push(_packageTokenId);
@@ -53,8 +65,7 @@ contract SplitMerge is Initializable, Ownable {
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public {
-    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Package owner is not msg.sender");
+  function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public onlySpaceTokenOwner(_packageTokenId) {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(_geohashesContour.length <= 50, "Number of contour elements should be equal or less than 50");
 
@@ -74,9 +85,9 @@ contract SplitMerge is Initializable, Ownable {
     uint256 _geohashToken
   )
     private
+    onlySpaceTokenOwner(_geohashToken)
   {
     require(_geohashToken != 0, "Geohash is 0");
-    require(spaceToken.ownerOf(_geohashToken) == msg.sender, "Geohash owner is not msg.sender");
 
     spaceToken.transferFrom(msg.sender, address(this), _geohashToken);
 
@@ -94,9 +105,9 @@ contract SplitMerge is Initializable, Ownable {
     bytes2[] _directions
   )
     public
+    onlySpaceTokenOwner(_packageToken)
   {
     require(_packageToken != 0, "Missing package token");
-    require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
     require(spaceToken != address(0), "SpaceToken address not set");
 
     for (uint256 i = 0; i < _geohashTokens.length; i++) {
@@ -120,7 +131,6 @@ contract SplitMerge is Initializable, Ownable {
     spaceToken.transferFrom(address(this), msg.sender, _geohashToken);
     geohashToPackage[_geohashToken] = 0;
 
-
     uint256 tokenIndex = packageToGeohashesIndex[_geohashToken];
     uint256 lastTokenIndex = packageToGeohashes[_packageToken].length.sub(1);
     uint256 lastToken = packageToGeohashes[_packageToken][lastTokenIndex];
@@ -143,9 +153,9 @@ contract SplitMerge is Initializable, Ownable {
     bytes2[] _directions2
   )
     public
+    onlySpaceTokenOwner(_packageToken)
   {
     require(_packageToken != 0, "Missing package token");
-    require(spaceToken.ownerOf(_packageToken) == msg.sender, "Package owner is not msg.sender");
     require(spaceToken != address(0), "SpaceToken address not set");
 
     for (uint256 i = 0; i < _geohashTokens.length; i++) {
