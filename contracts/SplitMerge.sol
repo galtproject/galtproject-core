@@ -40,7 +40,7 @@ contract SplitMerge is Initializable, Ownable {
   }
 
   function initPackage(uint256 _firstGeohashTokenId) public returns (uint256) {
-    uint256 _packageTokenId = spaceToken.mintPack(msg.sender);
+    uint256 _packageTokenId = spaceToken.mintPack(spaceToken.ownerOf(_firstGeohashTokenId));
     allPackages.push(_packageTokenId);
 
     addGeohashToPackageUnsafe(_packageTokenId, _firstGeohashTokenId);
