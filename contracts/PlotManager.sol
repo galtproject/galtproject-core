@@ -221,9 +221,6 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
     a.applicant = _applicant;
-    if(msg.sender != _applicant) {
-      applicationApprovals[_id] = msg.sender;
-    }
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -246,7 +243,11 @@ contract PlotManager is Initializable, Ownable {
     applications[_id] = a;
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
-    applicationsByAddresses[_applicant].push(_id);
+
+    if(msg.sender != _applicant) {
+      applicationApprovals[_id] = msg.sender;
+      applicationsByAddresses[_applicant].push(_id);
+    }
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
