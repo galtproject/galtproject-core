@@ -282,4 +282,11 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
   }
+
+  function clearApprove(uint256 _tokenId) public {
+    address owner = ownerOf(_tokenId);
+    require(msg.sender == owner || isApprovedForAll(owner, msg.sender) || getApproved(_tokenId) == msg.sender);
+
+    tokenApprovals[_tokenId] = 0x0;
+  }
 }
