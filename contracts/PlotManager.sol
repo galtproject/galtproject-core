@@ -185,7 +185,7 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
     require(msg.sender == a.applicant || isApprovedForAll(owner, msg.sender) || getApproved(_aId) == msg.sender);
 
-    applicationApprovals[_aId] = 0x0;
+    applicationApprovals[_aId] = address(0);
   }
 
   function setApprovalForAll(address _to, bool _approved) public {
