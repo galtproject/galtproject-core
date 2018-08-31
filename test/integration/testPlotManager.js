@@ -64,7 +64,7 @@ Object.freeze(Currency);
  * Alice is an applicant
  * Bob is a validator
  */
-contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve]) => {
+contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve]) => {
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -107,210 +107,6 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
 
   it('should be initialized successfully', async function() {
     (await this.plotManager.applicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
-  });
-
-  describe('validators', () => {
-    describe('roles', () => {
-      describe('#addValidatorRole()', () => {
-        it('should allow owner add a role', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          const roles = await this.plotManager.getValidatorRoles();
-          assert.equal(roles.length, 1);
-          assert.equal(hexToUtf8(roles[0]), 'lawyer');
-        });
-
-        it('should allow owner add multiple roles', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 20, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 20, { from: coreTeam });
-          const roles = await this.plotManager.getValidatorRoles();
-          assert.equal(roles.length, 3);
-          assert.equal(hexToUtf8(roles[0]), 'lawyer');
-          assert.equal(hexToUtf8(roles[1]), 'cat');
-          assert.equal(hexToUtf8(roles[2]), 'dog');
-        });
-
-        it('should deny non-owner to add a role', async function() {
-          await assertRevert(this.plotManager.addValidatorRole('lawyer', 20, { from: bob }));
-        });
-
-        it('should deny owner to add an existing role', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 20, { from: coreTeam });
-          await assertRevert(this.plotManager.addValidatorRole('lawyer', 20, { from: coreTeam }));
-        });
-      });
-
-      describe('#removeValidatorRole()', () => {
-        beforeEach(async function() {
-          await this.plotManager.addValidatorRole('lawyer', 20, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 20, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 20, { from: coreTeam });
-          await this.plotManager.addValidatorRole('human', 40, { from: coreTeam });
-        });
-
-        it('should allow owner remove a role in the middle', async function() {
-          await this.plotManager.removeValidatorRole('cat', { from: coreTeam });
-          const roles = await this.plotManager.getValidatorRoles();
-          assert.equal(roles.length, 3);
-          assert.equal(hexToUtf8(roles[0]), 'lawyer');
-          assert.equal(hexToUtf8(roles[1]), 'human');
-          assert.equal(hexToUtf8(roles[2]), 'dog');
-
-          const human = await this.plotManagerWeb3.methods.validatorRolesMap(utf8ToHex('human')).call();
-          assert.equal(human.exists, true);
-          assert.equal(human.active, true);
-          assert.equal(human.index, 1);
-
-          const cat = await this.plotManagerWeb3.methods.validatorRolesMap(utf8ToHex('cat')).call();
-          assert.equal(cat.exists, false);
-          assert.equal(cat.active, false);
-          assert.equal(cat.index, 0);
-        });
-
-        it('should allow owner remove a role from the end', async function() {
-          await this.plotManager.removeValidatorRole('human', { from: coreTeam });
-          const roles = await this.plotManager.getValidatorRoles();
-          assert.equal(roles.length, 3);
-          assert.equal(hexToUtf8(roles[0]), 'lawyer');
-          assert.equal(hexToUtf8(roles[1]), 'cat');
-          assert.equal(hexToUtf8(roles[2]), 'dog');
-
-          const dog = await this.plotManagerWeb3.methods.validatorRolesMap(utf8ToHex('dog')).call();
-          assert.equal(dog.exists, true);
-          assert.equal(dog.active, true);
-          assert.equal(dog.index, 2);
-
-          const human = await this.plotManagerWeb3.methods.validatorRolesMap(utf8ToHex('human')).call();
-          assert.equal(human.exists, false);
-          assert.equal(human.active, false);
-          assert.equal(human.index, 0);
-        });
-
-        it('should allow owner remove all roles', async function() {
-          await this.plotManager.removeValidatorRole('human', { from: coreTeam });
-          await this.plotManager.removeValidatorRole('lawyer', { from: coreTeam });
-          await this.plotManager.removeValidatorRole('cat', { from: coreTeam });
-          await this.plotManager.removeValidatorRole('dog', { from: coreTeam });
-          const roles = await this.plotManager.getValidatorRoles();
-          assert.equal(roles.length, 0);
-
-          const dog = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('dog')).call();
-          assert.equal(dog.exists, false);
-          assert.equal(dog.active, false);
-          assert.equal(dog.index, 0);
-
-          const human = await this.plotManagerWeb3.methods.validatorRolesMap(keccak256('human')).call();
-          assert.equal(human.exists, false);
-          assert.equal(human.active, false);
-          assert.equal(human.index, 0);
-        });
-
-        it('should deny non-owner to remove a role', async function() {
-          await assertRevert(this.plotManager.removeValidatorRole('lawyer', { from: bob }));
-        });
-
-        it('should deny owner to remove non-existing', async function() {
-          await assertRevert(this.plotManager.removeValidatorRole('tiger', { from: coreTeam }));
-        });
-      });
-
-      describe('readiness', () => {
-        it('should be enabled when 100% shares reached', async function() {
-          assert(!(await this.plotManager.readyForApplications()));
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 40, { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-        });
-
-        it('should be disabled on less than 100% shares total on share change', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 40, { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-          await this.plotManager.setValidatorRoleShare('cat', 10, { from: coreTeam });
-          assert(!(await this.plotManager.readyForApplications()));
-        });
-
-        it('should be disabled on less than 100% shares total on role disable', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 40, { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-          await this.plotManager.disableValidatorRole('cat', { from: coreTeam });
-          await sleep(500);
-          assert(!(await this.plotManager.readyForApplications()));
-          await this.plotManager.enableValidatorRole('cat', { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-        });
-
-        it('should be disabled on less than 100% shares total on role removal', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 40, { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-          await this.plotManager.removeValidatorRole('cat', { from: coreTeam });
-          assert(!(await this.plotManager.readyForApplications()));
-        });
-
-        it('should be disabled on more than 100% shares total', async function() {
-          assert(!(await this.plotManager.readyForApplications()));
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('pony', 50, { from: coreTeam });
-          assert(!(await this.plotManager.readyForApplications()));
-        });
-
-        it('should be disabled on more than 100% shares total on share change', async function() {
-          await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('cat', 30, { from: coreTeam });
-          await this.plotManager.addValidatorRole('dog', 40, { from: coreTeam });
-          assert(await this.plotManager.readyForApplications());
-          await this.plotManager.setValidatorRoleShare('cat', 50, { from: coreTeam });
-          assert(!(await this.plotManager.readyForApplications()));
-        });
-      });
-    });
-
-    describe('#addValidator()', () => {
-      beforeEach(async function() {
-        await this.plotManager.addValidatorRole('🦄', 100, { from: coreTeam });
-      });
-
-      it('should allow an owner to assign validators', async function() {
-        await this.plotManager.addValidator(alice, 'Alice', 'IN', '🦄', { from: coreTeam });
-      });
-
-      it('should deny an owner to assign validator with non-existent role', async function() {
-        await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', '🦆️', { from: coreTeam }));
-      });
-
-      it('should deny any other person than owner to assign validators', async function() {
-        await assertRevert(this.plotManager.addValidator(alice, 'Alice', 'IN', '🦄', { from: alice }));
-      });
-    });
-
-    describe('#removeValidator()', () => {
-      it('should allow an ower to remove validators', async function() {
-        await this.plotManager.removeValidator(alice, { from: coreTeam });
-      });
-
-      it('should deny any other person than owner to remove validators', async function() {
-        await assertRevert(this.plotManager.removeValidator(alice, { from: alice }));
-      });
-    });
-
-    describe('#isValidator()', () => {
-      it('return true if validator is active', async function() {
-        assert(!(await this.plotManager.isValidator(alice)));
-        await this.plotManager.addValidatorRole('lawyer', 30, { from: coreTeam });
-        await this.plotManager.addValidator(alice, 'Alice', 'IN', 'lawyer', { from: coreTeam });
-        assert(await this.plotManager.isValidator(alice));
-        await this.plotManager.removeValidator(alice, { from: coreTeam });
-        assert(!(await this.plotManager.isValidator(alice)));
-      });
-    });
   });
 
   describe('contract config modifiers', () => {
@@ -1052,7 +848,7 @@ contract.only('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan,
       });
     });
 
-    describe.only('#approveApplication', () => {
+    describe('#approveApplication', () => {
       beforeEach(async function() {
         assert(this.aId, 'Application ID not catched');
         await this.plotManager.submitApplication(this.aId, { from: alice });

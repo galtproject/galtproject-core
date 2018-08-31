@@ -7,10 +7,13 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
+import "./Validators.sol";
 
 
 contract PlotManager is Initializable, Ownable {
   using SafeMath for uint256;
+
+  bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -48,12 +51,6 @@ contract PlotManager is Initializable, Ownable {
 
   event LogApplicationStatusChanged(bytes32 application, ApplicationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
-  event LogReadyForApplications();
-  event LogNotReadyForApplications(uint256 total);
-  event LogValidatorRoleAdded(bytes32 role, uint8 share);
-  event LogValidatorRoleRemoved(bytes32 role);
-  event LogValidatorRoleEnabled(bytes32 role);
-  event LogValidatorRoleDisabled(bytes32 role);
 
   struct Application {
     bytes32 id;
@@ -70,29 +67,10 @@ contract PlotManager is Initializable, Ownable {
 
     bytes32[] assignedRoles;
     mapping(bytes32 => uint256) assignedRewards;
-    mapping(bytes32 => address) validators;
+    mapping(bytes32 => address) roleAddresses;
+    mapping(address => bytes32) addressRoles;
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
-
-  struct Validator {
-    bytes32 name;
-    bytes32 role;
-    bytes2 country;
-    bool active;
-  }
-
-  struct ValidatorRole {
-    bool exists;
-    bool active;
-    uint8 index;
-    uint8 rewardShare;
-  }
-
-  uint256 public constant ROLES_LIMIT = 10;
-
-  bytes32[] public validatorRolesIndex;
-  mapping(bytes32 => ValidatorRole) public validatorRolesMap;
-  bool public readyForApplications;
 
   PaymentMethod public paymentMethod;
   uint256 public applicationFeeInEth;
@@ -102,7 +80,6 @@ contract PlotManager is Initializable, Ownable {
   address private galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
-  mapping(address => Validator) public validators;
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
 
@@ -110,13 +87,10 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   mapping(address => bytes32[]) public applicationsByValidator;
-  // WARNING: we do not remove validators from validatorsArray,
-  // so do not rely on this variable to verify whether validator
-  // exists or not.
-  address[] public validatorsArray;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
+  Validators public validators;
   ERC20 public galtToken;
 
   constructor () public {}
@@ -124,6 +98,7 @@ contract PlotManager is Initializable, Ownable {
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
+    Validators _validators,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
@@ -134,6 +109,7 @@ contract PlotManager is Initializable, Ownable {
 
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
+    validators = _validators;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -154,184 +130,27 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
-  modifier onlyApplicantOrValidator(bytes32 _aId) {
-    Application storage a = applications[_aId];
-    bytes32 role = validators[msg.sender].role;
-
-    require(a.applicant == msg.sender || a.validators[role] == msg.sender, "Not valid sender");
-
-    if (a.validators[role] == msg.sender) {
-      require(isValidator(msg.sender), "Not active validator");
-    }
-
-    _;
-  }
-
-  modifier onlyValidator() {
-    require(validators[msg.sender].active == true, "Not active validator");
+  modifier anyValidator() {
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
     _;
   }
 
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
-    bytes32 role = validators[msg.sender].role;
 
-    require(a.validators[role] == msg.sender, "Not valid validator");
-    require(isValidator(msg.sender), "Not active validator");
+    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
 
     _;
   }
 
   modifier ready() {
-    require(readyForApplications == true, "Roles list not complete");
+    require(validators.isReady(), "Roles list not complete");
 
     _;
   }
 
   // TODO: fix incorrect meaning
-  function isValidator(address account) public view returns (bool) {
-    return validators[account].active == true;
-  }
-
-  function getValidator(
-    address validator
-  )
-    public
-    view
-    returns (
-      bytes32 name,
-      bytes2 country,
-      bool active
-    )
-  {
-    Validator storage v = validators[validator];
-
-    return (
-      v.name,
-      v.country,
-      v.active
-    );
-  }
-
-  function addValidatorRole(bytes32 _role, uint8 _share) public onlyOwner {
-    require(validatorRolesMap[_role].exists == false, "Role already exists");
-    require(validatorRolesIndex.length < ROLES_LIMIT, "The limit is 256 roles");
-    require(_share >= 1, "Share should be greater or equal to 1");
-    require(_share <= 100, "Share value should be less or equal to 100");
-
-    validatorRolesMap[_role] = ValidatorRole(
-      true,
-      true,
-      uint8(validatorRolesIndex.length),
-      _share
-    );
-    validatorRolesIndex.push(_role);
-
-    recalculateValidatorRoleShares();
-    emit LogValidatorRoleAdded(_role, _share);
-  }
-
-  function removeValidatorRole(bytes32 _role) public onlyOwner {
-    require(validatorRolesMap[_role].exists == true, "Role doesn't exist");
-
-    uint8 indexToReassign = validatorRolesMap[_role].index;
-    uint256 lastIndex = validatorRolesIndex.length.sub(1);
-    bytes32 lastRole = validatorRolesIndex[lastIndex];
-
-    validatorRolesIndex[indexToReassign] = lastRole;
-    delete validatorRolesIndex[lastIndex];
-    validatorRolesIndex.length--;
-
-    validatorRolesMap[lastRole].index = indexToReassign;
-    delete validatorRolesMap[_role];
-
-    recalculateValidatorRoleShares();
-    emit LogValidatorRoleRemoved(_role);
-  }
-
-  function setValidatorRoleShare(bytes32 _role, uint8 _share) public onlyOwner {
-    ValidatorRole storage role = validatorRolesMap[_role];
-    require(role.exists == true, "Role doesn't exist");
-    require(_share >= 1, "Share should be greater or equal to 1");
-    require(_share <= 100, "Share value should be less or equal to 100");
-
-    role.rewardShare = _share;
-    recalculateValidatorRoleShares();
-  }
-
-  function enableValidatorRole(bytes32 _role) public onlyOwner {
-    ValidatorRole storage role = validatorRolesMap[_role];
-    require(role.exists == true, "Role doesn't exist");
-
-    role.active = true;
-    recalculateValidatorRoleShares();
-    emit LogValidatorRoleEnabled(_role);
-  }
-
-  function disableValidatorRole(bytes32 _role) public onlyOwner {
-    ValidatorRole storage role = validatorRolesMap[_role];
-    require(role.exists == true, "Role doesn't exist");
-
-    validatorRolesMap[_role].active = false;
-    recalculateValidatorRoleShares();
-    emit LogValidatorRoleDisabled(_role);
-  }
-
-  function recalculateValidatorRoleShares() internal {
-    uint8 total = 0;
-
-    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
-      assert(i < ROLES_LIMIT);
-
-      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
-      if (role.active == true) {
-        uint8 res = total + role.rewardShare;
-        assert(res > total);
-        total = res;
-      }
-    }
-
-    if (total == 100) {
-      readyForApplications = true;
-      emit LogReadyForApplications();
-    } else {
-      readyForApplications = false;
-      emit LogNotReadyForApplications(uint256(total));
-    }
-  }
-
-  function getValidatorRoles() public view returns (bytes32[]) {
-    return validatorRolesIndex;
-  }
-
-  function addValidator(
-    address _validator,
-    bytes32 _name,
-    bytes2 _country,
-    bytes32 _role
-  )
-    public
-    onlyOwner
-  {
-    require(_validator != address(0), "Validator address is empty");
-    require(_country != 0x0, "Missing country");
-    require(validatorRolesMap[_role].exists == true, "Role doesn't exist");
-
-    validators[_validator] = Validator({
-      name: _name,
-      role: _role,
-      country: _country,
-      active: true
-    });
-    validatorsArray.push(_validator);
-  }
-
-  function removeValidator(address _validator) public onlyOwner {
-    require(_validator != address(0), "Missing validator");
-    // TODO: use index to remove validator
-    validators[_validator].active = false;
-  }
-
   function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
     galtSpaceRewardsAddress = _newAddress;
   }
@@ -479,7 +298,7 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    assignRequiredValidatorRolesAndRewardsInGalt(_id);
+    assignRequiredValidatorRolesAndRewards(_id);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
@@ -497,23 +316,22 @@ contract PlotManager is Initializable, Ownable {
     _a.galtSpaceReward = galtSpaceReward;
   }
 
-  function assignRequiredValidatorRolesAndRewardsInGalt(bytes32 _aId) internal {
+  function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
     assert(a.validatorsReward > 0);
-    assert(a.currency == Currency.GALT);
 
     uint256 totalReward = 0;
 
-    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
-      assert(i < ROLES_LIMIT);
-      bytes32 key = validatorRolesIndex[i];
-      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
-      if (role.exists && role.active) {
-        a.assignedRoles.push(key);
-        uint256 rewardShare = a.validatorsReward.mul(role.rewardShare).div(100);
-        a.assignedRewards[key] = rewardShare;
-        totalReward = totalReward.add(rewardShare);
-      }
+    a.assignedRoles = validators.getApplicationTypeRoles(APPLICATION_TYPE);
+    uint256 len = a.assignedRoles.length;
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 role = a.assignedRoles[i];
+      uint256 rewardShare = a
+        .validatorsReward
+        .mul(validators.getRoleRewardShare(role))
+        .div(100);
+      a.assignedRewards[role] = rewardShare;
+      totalReward = totalReward.add(rewardShare);
     }
 
     assert(totalReward == a.validatorsReward);
@@ -576,34 +394,12 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    assignRequiredValidatorRolesAndRewardsInEth(_id);
+    assignRequiredValidatorRolesAndRewards(_id);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
 
     return _id;
-  }
-
-  function assignRequiredValidatorRolesAndRewardsInEth(bytes32 _aId) internal {
-    Application storage a = applications[_aId];
-    assert(a.validatorsReward > 0);
-    assert(a.currency == Currency.ETH);
-
-    uint256 totalReward = 0;
-
-    for (uint8 i = 0; i < validatorRolesIndex.length; i++) {
-      assert(i < ROLES_LIMIT);
-      bytes32 key = validatorRolesIndex[i];
-      ValidatorRole storage role = validatorRolesMap[validatorRolesIndex[i]];
-      if (role.exists && role.active) {
-        a.assignedRoles.push(key);
-        uint256 rewardShare = a.validatorsReward.mul(role.rewardShare).div(100);
-        a.assignedRewards[key] = rewardShare;
-        totalReward = totalReward.add(rewardShare);
-      }
-    }
-
-    assert(totalReward == a.validatorsReward);
   }
 
   function addGeohashesToApplication(
@@ -645,8 +441,8 @@ contract PlotManager is Initializable, Ownable {
     bytes2[] _directions2
   )
     public
-    onlyApplicantOrValidator(_aId)
   {
+    // TODO: check for permissions
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.REVERTED,
@@ -687,29 +483,27 @@ contract PlotManager is Initializable, Ownable {
   }
 
   // Application can be locked by a role only once.
-  function lockApplicationForReview(bytes32 _aId) public onlyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
     Application storage a = applications[_aId];
-    Validator storage v = validators[msg.sender];
-    bytes32 role = v.role;
+    require(validators.hasRole(msg.sender, _role));
 
-    require(a.country == v.country, "Application and validator countries don't match");
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
-    require(a.validationStatus[role] == ValidationStatus.INTACT, "Can't lock an application already in work");
-    require(a.validators[role] == address(0), "Validator can't be empty");
+    require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
+    require(a.validationStatus[_role] == ValidationStatus.INTACT, "Can't lock an application already in work");
 
-    a.validators[role] = msg.sender;
-    a.validationStatus[role] = ValidationStatus.LOCKED;
+    a.roleAddresses[_role] = msg.sender;
+    a.addressRoles[msg.sender] = _role;
+    a.validationStatus[_role] = ValidationStatus.LOCKED;
     applicationsByValidator[msg.sender].push(_aId);
 
     uint256 len = a.assignedRoles.length;
     bool allLocked = true;
 
-    for (uint8 i = 0; i < len; i++) {
-      assert(i < ROLES_LIMIT);
-      if (a.validators[a.assignedRoles[i]] == address(0)) {
-        allLocked = false;
-      }
-    }
+    // for (uint8 i = 0; i < len; i++) {
+      // if (a.validators[a.assignedRoles[i]] == address(0)) {
+        // allLocked = false;
+      // }
+    // }
 
     if (allLocked) {
       a.status = ApplicationStatus.CONSIDERATION;
@@ -729,31 +523,30 @@ contract PlotManager is Initializable, Ownable {
 
   function approveApplication(
     bytes32 _aId,
-    bytes32 _credentialsHash
+    bytes32 _credentialsHash,
+    bytes32 _role
   )
     public
-    onlyValidator
+    onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    bytes32 role = validators[msg.sender].role;
+    require(validators.hasRole(msg.sender, _role));
 
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
 //     TODO: reverted?
     require(
       a.status == ApplicationStatus.CONSIDERATION || a.status == ApplicationStatus.SUBMITTED,
-        "Application status should be CONSIDERATION or SUBMITTED");
+      "Application status should be CONSIDERATION or SUBMITTED");
 //     TODO: reverted?
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.validators[role] == msg.sender, "Sender not assigned to this application");
+    require(a.validationStatus[_role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[a.addressRoles[msg.sender]] == msg.sender, "Sender not assigned to this application");
 
-    a.validationStatus[role] = ValidationStatus.APPROVED;
-    address a = a.validators[role];
+    a.validationStatus[_role] = ValidationStatus.APPROVED;
 
     uint256 len = a.assignedRoles.length;
     bool allApproved = true;
 
     for (uint8 i = 0; i < len; i++) {
-      assert(i < ROLES_LIMIT);
       if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.APPROVED) {
         allApproved = false;
       }
@@ -781,7 +574,12 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_aId, ApplicationStatus.REVERTED);
   }
 
-  function claimValidatorRewardEth(bytes32 _aId) public onlyValidator {
+  function claimValidatorRewardEth(
+    bytes32 _aId
+  )
+    public 
+    onlyValidatorOfApplication(_aId)
+  {
     Application storage a = applications[_aId];
 
     require(
@@ -909,7 +707,7 @@ contract PlotManager is Initializable, Ownable {
     )
   {
     return (
-      applications[_aId].validators[_role],
+      applications[_aId].roleAddresses[_role],
       applications[_aId].assignedRewards[_role],
       applications[_aId].validationStatus[_role]
     );
