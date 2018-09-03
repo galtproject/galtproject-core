@@ -500,13 +500,13 @@ contract PlotManager is Initializable, Ownable {
     applicationsByValidator[msg.sender].push(_aId);
 
     uint256 len = a.assignedRoles.length;
-    bool allLocked = false;
+    bool allLocked = true;
 
-    // for (uint8 i = 0; i < len; i++) {
-      // if (a.validators[a.assignedRoles[i]] == address(0)) {
-        // allLocked = false;
-      // }
-    // }
+    for (uint8 i = 0; i < len; i++) {
+      if (a.validationStatus[a.assignedRoles[i]] == ValidationStatus.INTACT) {
+        allLocked = false;
+      }
+    }
 
     if (allLocked) {
       a.status = ApplicationStatus.CONSIDERATION;
@@ -529,25 +529,26 @@ contract PlotManager is Initializable, Ownable {
 
   function approveApplication(
     bytes32 _aId,
-    bytes32 _credentialsHash,
-    bytes32 _role
+    bytes32 _credentialsHash
   )
     public
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    require(validators.hasRole(msg.sender, _role));
 
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
-//     TODO: reverted?
+    // TODO: reverted?
     require(
       a.status == ApplicationStatus.CONSIDERATION || a.status == ApplicationStatus.SUBMITTED,
       "Application status should be CONSIDERATION or SUBMITTED");
-//     TODO: reverted?
-    require(a.validationStatus[_role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[a.addressRoles[msg.sender]] == msg.sender, "Sender not assigned to this application");
+    require(validators.isValidatorActive(msg.sender), "Validator is not active");
 
-    a.validationStatus[_role] = ValidationStatus.APPROVED;
+    bytes32 role = a.addressRoles[msg.sender];
+
+    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+
+    a.validationStatus[role] = ValidationStatus.APPROVED;
 
     uint256 len = a.assignedRoles.length;
     bool allApproved = true;
@@ -560,7 +561,7 @@ contract PlotManager is Initializable, Ownable {
 
     if (allApproved) {
       a.status = ApplicationStatus.APPROVED;
-//      spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
+      spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
     }
   }
 
