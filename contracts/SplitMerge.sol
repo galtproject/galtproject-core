@@ -20,7 +20,6 @@ contract SplitMerge is Initializable, Ownable {
 
   mapping(uint256 => uint256[]) public packageToGeohashes;
   mapping(uint256 => uint256) internal packageToGeohashesIndex;
-  mapping(uint256 => uint256) public packageGeohashesCount;
   mapping(uint256 => bool) brokenPackages;
 
   uint256[] allPackages;
@@ -44,24 +43,20 @@ contract SplitMerge is Initializable, Ownable {
     address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
 
     require(
-      ownerOfToken == msg.sender || 
-      spaceToken.isApprovedForAll(ownerOfToken, msg.sender) || 
+      ownerOfToken == msg.sender ||
+      spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
       spaceToken.getApproved(_spaceTokenId) == msg.sender,
       "This action not permitted for msg.sender");
     _;
   }
 
   function initPackage(uint256 _firstGeohashTokenId) public returns (uint256) {
-    address ownerOfTokenId = spaceToken.ownerOf(_firstGeohashTokenId);
-
-    uint256 _packageTokenId = spaceToken.mintPack(ownerOfTokenId);
+    uint256 _packageTokenId = spaceToken.mintPack(spaceToken.ownerOf(_firstGeohashTokenId));
     allPackages.push(_packageTokenId);
 
     addGeohashToPackageUnsafe(_packageTokenId, _firstGeohashTokenId);
 
-    packageGeohashesCount[_packageTokenId] = 1;
-
-    emit PackageInit(bytes32(_packageTokenId), ownerOfTokenId);
+    emit PackageInit(bytes32(_packageTokenId), msg.sender);
 
     return _packageTokenId;
   }
@@ -115,8 +110,6 @@ contract SplitMerge is Initializable, Ownable {
       //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
       addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
     }
-
-    packageGeohashesCount[_packageToken] += _geohashTokens.length;
   }
 
   function removeGeohashFromPackageUnsafe(
