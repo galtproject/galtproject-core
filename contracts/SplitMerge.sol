@@ -43,6 +43,7 @@ contract SplitMerge is Initializable, Ownable {
     address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
 
     require(
+      /* solium-disable-next-line */
       ownerOfToken == msg.sender || 
       spaceToken.isApprovedForAll(ownerOfToken, msg.sender) || 
       spaceToken.getApproved(_spaceTokenId) == msg.sender,
