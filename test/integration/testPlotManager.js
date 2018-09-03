@@ -874,26 +874,36 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe.skip('#resetApplicationRole', () => {
+    describe('#resetApplicationRole()', () => {
       beforeEach(async function() {
-        assert(this.aId);
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
       });
 
       it('should should allow a contract owner to unlock an application under consideration', async function() {
-        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 2);
+        await this.plotManager.resetApplicationRole(this.aId, 'human', { from: coreTeam });
+
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), zeroAddress);
+        assert.equal(res.status, ValidationStatus.INTACT);
       });
 
       it('should deny non-owner to unlock an application under consideration', async function() {
-        await assertRevert(this.plotManager.unlockApplication(this.aId, { from: charlie }));
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        await assertRevert(this.plotManager.resetApplicationRole(this.aId, 'human', { from: charlie }));
+
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
       });
     });
 
