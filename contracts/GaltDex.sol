@@ -84,7 +84,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   }
 
   function getEthFeeForAmount(uint256 ethAmount) public view returns(uint256) {
-    if(ethFee > 0) {
+    if (ethFee > 0) {
       return ethAmount.div(100).mul(ethFee).div(feePrecision);
     } else {
       return ethAmount;
@@ -114,7 +114,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   }
 
   function getGaltFeeForAmount(uint256 galtAmount) public view returns(uint256) {
-    if(galtFee > 0) {
+    if (galtFee > 0) {
       return galtAmount.div(100).mul(galtFee).div(feePrecision);
     } else {
       return galtAmount;
@@ -122,7 +122,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   }
 
   function exchangeRate(uint256 minusBalance) public view returns(uint256) {
-    if(ethToGaltSum > 0 && address(this).balance > 0) {
+    if (ethToGaltSum > 0 && address(this).balance > 0) {
       // TODO: is galtFeeTotalPayout and ethFeeTotalPayout should be used?
       return (
         galtToken.totalSupply()

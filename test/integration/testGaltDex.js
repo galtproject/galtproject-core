@@ -22,7 +22,7 @@ chai.should();
  * Alice is an applicant
  * Bob is a validator
  */
-contract.only('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
+contract('GaltDex', ([coreTeam, alice]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
@@ -39,11 +39,11 @@ contract.only('GaltDex', ([coreTeam, galtSpaceOrg, alice, bob, charlie]) => {
     await this.galtToken.mint(this.galtDex.address, ether(100));
 
     this.showGaltDexStatus = async function() {
-      const totalSupply = (await this.galtToken.totalSupply()) / Math.pow(10, 18);
-      const galtBalanceOfGaltDex = (await this.galtToken.balanceOf(this.galtDex.address)) / Math.pow(10, 18);
+      const totalSupply = (await this.galtToken.totalSupply()) / 10 ** 18;
+      const galtBalanceOfGaltDex = (await this.galtToken.balanceOf(this.galtDex.address)) / 10 ** 18;
       const totalSupplyMinusGaltBalance = totalSupply - galtBalanceOfGaltDex;
-      const ethBalanceOfGaltDex = (await web3.eth.getBalance(this.galtDex.address)) / Math.pow(10, 18);
-      const exchangeRate = (await this.galtDex.exchangeRate('0')) / Math.pow(10, 12);
+      const ethBalanceOfGaltDex = (await web3.eth.getBalance(this.galtDex.address)) / 10 ** 18;
+      const exchangeRate = (await this.galtDex.exchangeRate('0')) / 10 ** 12;
 
       console.log(
         'totalSupply',
