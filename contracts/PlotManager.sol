@@ -32,6 +32,7 @@ contract PlotManager is Initializable, Ownable {
     INTACT,
     LOCKED,
     APPROVED,
+    REJECTED,
     REVERTED
   }
 
@@ -65,7 +66,6 @@ contract PlotManager is Initializable, Ownable {
     ApplicationStatus status;
 
     bytes32[] assignedRoles;
-    bytes32 revertedBy;
 
     // TODO: rename => roleAssignedRewards
     mapping(bytes32 => uint256) assignedRewards;
@@ -546,10 +546,22 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
-  function rejectApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
+  function rejectApplication(
+    bytes32 _aId,
+    string _message
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
 
+    bytes32 senderRole = a.addressRoles[msg.sender];
+    a.roleMessages[senderRole] = _message;
+
+    changeValidationStatus(a, senderRole, ValidationStatus.REJECTED);
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
@@ -575,7 +587,6 @@ contract PlotManager is Initializable, Ownable {
       }
     }
 
-    a.revertedBy = senderRole;
     a.roleMessages[senderRole] = _message;
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
@@ -730,13 +741,15 @@ contract PlotManager is Initializable, Ownable {
     returns (
       address validator,
       uint256 reward,
-      ValidationStatus status
+      ValidationStatus status,
+      string message
     )
   {
     return (
       applications[_aId].roleAddresses[_role],
       applications[_aId].assignedRewards[_role],
-      applications[_aId].validationStatus[_role]
+      applications[_aId].validationStatus[_role],
+      applications[_aId].roleMessages[_role]
     );
   }
 }

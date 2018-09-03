@@ -41,7 +41,8 @@ const ValidationStatus = {
   INTACT: 0,
   LOCKED: 1,
   APPROVED: 2,
-  REVERTED: 3
+  REJECTED: 3,
+  REVERTED: 4
 };
 
 const PaymentMethods = {
@@ -1059,30 +1060,47 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe.skip('#rejectApplication()', () => {
+    describe('#rejectApplication()', () => {
       beforeEach(async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
       });
 
       it('should allow a validator reject application', async function() {
-        await this.plotManager.rejectApplication(this.aId, { from: bob });
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        await this.plotManager.rejectApplication(this.aId, 'my reason', { from: bob });
+        // TODO: check the message
+
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REJECTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.REJECTED);
+        assert.equal(res.message, 'my reason');
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+        assert.equal(res.validator.toLowerCase(), dan);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+        assert.equal(res.message, '');
       });
 
       it('should deny non-validator reject application', async function() {
-        await assertRevert(this.plotManager.rejectApplication(this.aId, { from: alice }));
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
-      });
-
-      it('should deny validator revert an application with non-consideration status', async function() {
-        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
-        await assertRevert(this.plotManager.rejectApplication(this.aId, { from: bob }));
+        await assertRevert(this.plotManager.rejectApplication(this.aId, 'hey', { from: alice }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+      });
+
+      it('should deny validator revert an application with non-submitted status', async function() {
+        await this.plotManager.revertApplication(this.aId, 'some reason', { from: bob });
+        await assertRevert(this.plotManager.rejectApplication(this.aId, 'another reason', { from: bob }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVERTED);
       });
     });
 
