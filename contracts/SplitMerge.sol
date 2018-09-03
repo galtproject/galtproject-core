@@ -43,7 +43,7 @@ contract SplitMerge is Initializable, Ownable {
     address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
 
     require(
-      ownerOfToken == msg.sender ||
+      ownerOfToken == msg.sender || 
       spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
       spaceToken.getApproved(_spaceTokenId) == msg.sender,
       "This action not permitted for msg.sender");
