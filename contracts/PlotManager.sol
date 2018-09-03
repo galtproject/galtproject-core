@@ -244,7 +244,7 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    if(msg.sender != _applicant) {
+    if (msg.sender != _applicant) {
       applicationApprovals[_id] = msg.sender;
       applicationsByAddresses[_applicant].push(_id);
     }
