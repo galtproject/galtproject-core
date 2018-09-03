@@ -28,23 +28,21 @@ const ApplicationStatus = {
   NOT_EXISTS: 0,
   NEW: 1,
   SUBMITTED: 2,
-  PARTIALLY_LOCKED: 3,
-  CONSIDERATION: 4,
-  APPROVED: 5,
-  REJECTED: 6,
-  REVERTED: 7,
-  DISASSEMBLED: 8,
-  REFUNDED: 9,
-  COMPLETED: 10,
-  CLOSED: 11
+  APPROVED: 3,
+  REJECTED: 4,
+  REVERTED: 5,
+  DISASSEMBLED: 6,
+  REFUNDED: 7,
+  COMPLETED: 8,
+  CLOSED: 9
 };
 
 const ValidationStatus = {
   INTACT: 0,
-  LOCKED: 1,
-  APPROVED: 0,
-  REJECTED: 1,
-  REVERTED: 0
+  RESET: 1,
+  LOCKED: 2,
+  APPROVED: 3,
+  REVERTED: 4
 };
 
 const PaymentMethods = {
@@ -461,7 +459,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     });
   });
 
-  describe('application pipeline for ETH', () => {
+  describe.only('application pipeline for ETH', () => {
     describe('#applyForPlotOwnership()', () => {
       beforeEach(async function() {
         this.resAddRoles = await this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['🦄'], [100], [''], {
@@ -837,14 +835,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       it('should allow multiple validators of different roles to lock a submitted application', async function() {
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.PARTIALLY_LOCKED);
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), bob);
@@ -931,7 +926,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe.skip('#unlockApplication', () => {
+    describe.skip('#resetApplicationRole', () => {
       beforeEach(async function() {
         assert(this.aId);
         await this.plotManager.submitApplication(this.aId, { from: alice });
@@ -993,9 +988,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
       });
 
       it('should allow a validator approve application', async function() {
@@ -1003,7 +995,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
 
@@ -1028,13 +1020,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       it('should deny a validator approve application if hash doesnt match', async function() {
         await assertRevert(this.plotManager.approveApplication(this.aId, `${this.credentials}_foo`, { from: bob }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should deny non-validator approve application', async function() {
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: alice }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       // eslint-disable-next-line
@@ -1070,29 +1062,102 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe.skip('#revertApplication()', () => {
+    describe('#revertApplication()', () => {
       beforeEach(async function() {
+        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+          NEW_APPLICATION,
+          ['human', 'dog', 'cat'],
+          [50, 25, 25],
+          ['', '', ''],
+          { from: coreTeam }
+        );
+
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour,
+          galt.geohashToGeohash5('sezu06'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, value: ether(6) }
+        );
+
+        this.aId = res.logs[0].args.id;
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
       });
 
       it('should allow a validator revert application', async function() {
-        await this.plotManager.revertApplication(this.aId, { from: bob });
+        await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
-      it('should deny non-validator revert application', async function() {
-        await assertRevert(this.plotManager.revertApplication(this.aId, { from: alice }));
+      // eslint-disable-next-line
+      it('should deny another assigned validator revert application after it was already reverted', async function() {
+        await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
+        await assertRevert(this.plotManager.revertApplication(this.aId, 'blah', { from: dan }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+      });
+
+      it('should reset validation statuses of another validators', async function() {
+        await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: eve });
+
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.RESET);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+        assert.equal(res.validator.toLowerCase(), dan);
+        assert.equal(res.status, ValidationStatus.RESET);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+        assert.equal(res.validator.toLowerCase(), eve);
+        assert.equal(res.status, ValidationStatus.REVERTED);
+      });
+
+      it('should deny non-validator revert application', async function() {
+        await assertRevert(this.plotManager.revertApplication(this.aId, 'blah', { from: alice }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        await this.plotManager.unlockApplication(this.aId, { from: coreTeam });
-        await assertRevert(this.plotManager.revertApplication(this.aId, { from: bob }));
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour,
+          galt.geohashToGeohash5('sezu96'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice, value: ether(6) }
+        );
+        const aId = res.logs[0].args.id;
+
+        await this.plotManager.submitApplication(aId, { from: alice });
+
+        await assertRevert(this.plotManager.revertApplication(aId, 'blah', { from: bob }));
+        res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
     });

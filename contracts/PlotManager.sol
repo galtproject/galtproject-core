@@ -19,8 +19,6 @@ contract PlotManager is Initializable, Ownable {
     NOT_EXISTS,
     NEW,
     SUBMITTED,
-    PARTIALLY_LOCKED,
-    CONSIDERATION,
     APPROVED,
     REJECTED,
     REVERTED,
@@ -32,9 +30,9 @@ contract PlotManager is Initializable, Ownable {
 
   enum ValidationStatus {
     INTACT,
+    RESET,
     LOCKED,
     APPROVED,
-    REJECTED,
     REVERTED
   }
 
@@ -50,7 +48,8 @@ contract PlotManager is Initializable, Ownable {
     GALT
   }
 
-  event LogApplicationStatusChanged(bytes32 application, ApplicationStatus status);
+  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
+  event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
@@ -67,7 +66,10 @@ contract PlotManager is Initializable, Ownable {
     ApplicationStatus status;
 
     bytes32[] assignedRoles;
+
+    // TODO: rename => roleAssignedRewards
     mapping(bytes32 => uint256) assignedRewards;
+    mapping(bytes32 => string) roleMessages;
     mapping(bytes32 => address) roleAddresses;
     mapping(address => bytes32) addressRoles;
     mapping(bytes32 => ValidationStatus) validationStatus;
@@ -469,19 +471,12 @@ contract PlotManager is Initializable, Ownable {
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    if (a.status == ApplicationStatus.NEW) {
-      a.status = ApplicationStatus.SUBMITTED;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
+    require(
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
+      "Application status should be NEW");
 
-    } else if (a.status == ApplicationStatus.REVERTED) {
-      a.status = ApplicationStatus.CONSIDERATION;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatus.CONSIDERATION);
-
-    } else {
-      revert("Application status should be NEW");
-    }
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
-  event Debug(ApplicationStatus status, ApplicationStatus submitted);
 
   // Application can be locked by a role only once.
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
@@ -489,42 +484,29 @@ contract PlotManager is Initializable, Ownable {
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
     require(
-      a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.PARTIALLY_LOCKED,
-      "Application status should be SUBMITTED or PARTIALLY_LOCKED");
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[_role] == ValidationStatus.INTACT, "Can't lock an application already in work");
 
     a.roleAddresses[_role] = msg.sender;
     a.addressRoles[msg.sender] = _role;
-    a.validationStatus[_role] = ValidationStatus.LOCKED;
     applicationsByValidator[msg.sender].push(_aId);
 
-    uint256 len = a.assignedRoles.length;
-    bool allLocked = true;
-
-    for (uint8 i = 0; i < len; i++) {
-      if (a.validationStatus[a.assignedRoles[i]] == ValidationStatus.INTACT) {
-        allLocked = false;
-      }
-    }
-
-    if (allLocked) {
-      a.status = ApplicationStatus.CONSIDERATION;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatus.CONSIDERATION);
-    } else if (a.status == ApplicationStatus.SUBMITTED) {
-      a.status = ApplicationStatus.PARTIALLY_LOCKED;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatus.PARTIALLY_LOCKED);
-    }
+    changeValidationStatus(a, _role, ValidationStatus.LOCKED);
   }
 
-  function unlockApplication(bytes32 _aId) public onlyOwner {
+  function resetApplicationRole(bytes32 _aId, bytes32 _role) public onlyOwner {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.CONSIDERATION, "Application status should be CONSIDERATION");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+    require(a.validationStatus[_role] != ValidationStatus.INTACT, "Validation status not set");
+    require(a.roleAddresses[_role] != address(0), "Address should be already set");
 
-//    a.validator = address(0);
-    a.status = ApplicationStatus.SUBMITTED;
-
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
+    // Do not affect on application state
+    a.roleAddresses[_role] = address(0);
+    changeValidationStatus(a, _role, ValidationStatus.INTACT);
   }
 
   function approveApplication(
@@ -537,10 +519,9 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     require(a.credentialsHash == _credentialsHash, "Credentials don't match");
-    // TODO: reverted?
     require(
-      a.status == ApplicationStatus.CONSIDERATION || a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be CONSIDERATION or SUBMITTED");
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
     require(validators.isValidatorActive(msg.sender), "Validator is not active");
 
     bytes32 role = a.addressRoles[msg.sender];
@@ -548,7 +529,7 @@ contract PlotManager is Initializable, Ownable {
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
-    a.validationStatus[role] = ValidationStatus.APPROVED;
+    changeValidationStatus(a, role, ValidationStatus.APPROVED);
 
     uint256 len = a.assignedRoles.length;
     bool allApproved = true;
@@ -560,25 +541,64 @@ contract PlotManager is Initializable, Ownable {
     }
 
     if (allApproved) {
-      a.status = ApplicationStatus.APPROVED;
+      changeApplicationStatus(a, ApplicationStatus.APPROVED);
       spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
     }
   }
 
   function rejectApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.CONSIDERATION, "Application status should be CONSIDERATION");
+    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
 
-    a.status = ApplicationStatus.REJECTED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.REJECTED);
+    changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
-  function revertApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
+  function revertApplication(
+    bytes32 _aId,
+    string _message
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.CONSIDERATION, "Application status should be CONSIDERATION");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
 
-    a.status = ApplicationStatus.REVERTED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.REVERTED);
+    bytes32 senderRole = a.addressRoles[msg.sender];
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (senderRole != currentRole) {
+        changeValidationStatus(a, currentRole, ValidationStatus.RESET);
+      }
+    }
+
+    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
+    a.roleMessages[senderRole] = _message;
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
+
+  function changeValidationStatus(
+    Application storage _a,
+    bytes32 _role,
+    ValidationStatus _status
+  ) internal {
+    emit LogValidationStatusChanged(_a.id, _role, _status);
+
+    _a.validationStatus[_role] = _status;
+  }
+
+  // NOTICE: the application should already persist in storage
+  function changeApplicationStatus(
+    Application storage _a,
+    ApplicationStatus _status
+  ) internal {
+    emit LogApplicationStatusChanged(_a.id, _status);
+
+    _a.status = _status;
   }
 
   function claimValidatorRewardEth(
