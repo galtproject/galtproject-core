@@ -30,7 +30,6 @@ contract PlotManager is Initializable, Ownable {
 
   enum ValidationStatus {
     INTACT,
-    RESET,
     LOCKED,
     APPROVED,
     REVERTED
@@ -66,6 +65,7 @@ contract PlotManager is Initializable, Ownable {
     ApplicationStatus status;
 
     bytes32[] assignedRoles;
+    bytes32 revertedBy;
 
     // TODO: rename => roleAssignedRewards
     mapping(bytes32 => uint256) assignedRewards;
@@ -570,12 +570,12 @@ contract PlotManager is Initializable, Ownable {
 
     for (uint8 i = 0; i < len; i++) {
       bytes32 currentRole = a.assignedRoles[i];
-      if (senderRole != currentRole) {
-        changeValidationStatus(a, currentRole, ValidationStatus.RESET);
+      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
       }
     }
 
-    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
+    a.revertedBy = senderRole;
     a.roleMessages[senderRole] = _message;
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);

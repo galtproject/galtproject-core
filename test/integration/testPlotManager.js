@@ -39,10 +39,9 @@ const ApplicationStatus = {
 
 const ValidationStatus = {
   INTACT: 0,
-  RESET: 1,
-  LOCKED: 2,
-  APPROVED: 3,
-  REVERTED: 4
+  LOCKED: 1,
+  APPROVED: 2,
+  REVERTED: 3
 };
 
 const PaymentMethods = {
@@ -655,8 +654,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         assert.equal(res, bob);
       });
 
-      // TODO: fix when reverted be ready
-      it.skip('should add a list of geohashes if an application status is reverted', async function() {
+      it('should add a list of geohashes if an application status is reverted', async function() {
         let geohashes1 = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes1 = geohashes1.split(' ').map(galt.geohashToGeohash5);
         const geohashes2 = ['sezu01', 'sezu02'].map(galt.geohashToGeohash5);
@@ -664,13 +662,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         // TODO: pass neighbours and directions
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes1, [], [], { from: alice });
 
-        assert.equal(await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashes1[0])), this.splitMerge.address);
-        assert.equal(await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashes1[1])), this.splitMerge.address);
+        assert.equal(await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashes1[0])), this.splitMerge.address);
+        assert.equal(await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashes1[1])), this.splitMerge.address);
 
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
-        await this.plotManager.revertApplication(this.aId, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
 
         let res = await this.splitMerge.packageGeohashesCount(
           '0x0200000000000000000000000000000000000000000000000000000000000000'
@@ -732,35 +729,35 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       // TODO: fix when approve implemented
-      it.skip('should allow submit reverted application to the same validator who reverted it', async function() {
+      it('should allow submit reverted application to the same validator who reverted it', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
-        await this.plotManager.revertApplication(this.aId, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.CONSIDERATION);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
-      // TODO: fix when approve implemented
-      it.skip('should reject if status is not new or rejected', async function() {
+      it('shotuld reject if status is not new or rejected', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
         await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', '🦄', { from: coreTeam });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
 
         await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice }));
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.APPROVED);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should reject if another person tries to submit the application', async function() {
@@ -1025,15 +1022,15 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), bob);
-        assert.equal(res.status, ValidationStatus.RESET);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
         assert.equal(res.validator.toLowerCase(), dan);
-        assert.equal(res.status, ValidationStatus.RESET);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
         assert.equal(res.validator.toLowerCase(), eve);
-        assert.equal(res.status, ValidationStatus.REVERTED);
+        assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
       it('should deny non-validator revert application', async function() {
