@@ -460,25 +460,38 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
   });
 
   describe.only('application pipeline for ETH', () => {
+    beforeEach(async function() {
+      this.resAddRoles = await this.validators.setApplicationTypeRoles(
+        NEW_APPLICATION,
+        ['human', 'dog', 'cat'],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: coreTeam }
+      );
+
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        galt.geohashToGeohash5('sezu06'),
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        7,
+        { from: alice, value: ether(6) }
+      );
+
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      assert.equal(res.status, ApplicationStatus.NEW);
+
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+    });
+
     describe('#applyForPlotOwnership()', () => {
-      beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['🦄'], [100], [''], {
-          from: coreTeam
-        });
-
-        const res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-      });
-
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -523,7 +536,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
               this.ledgerIdentifier,
               web3.utils.asciiToHex('MN'),
               7,
-              { from: alice, gas: 1000000 }
+              { from: alice }
             )
           );
         });
@@ -537,7 +550,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
               this.ledgerIdentifier,
               web3.utils.asciiToHex('MN'),
               7,
-              { from: alice, gas: 1000000, value: ether(3) }
+              { from: alice, value: ether(3) }
             )
           );
         });
@@ -550,13 +563,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             this.ledgerIdentifier,
             web3.utils.asciiToHex('MN'),
             7,
-            { from: alice, gas: 1000000, value: ether(7) }
+            { from: alice, value: ether(7) }
           );
         });
 
         it('should calculate corresponding validator and coreTeam rewards in Eth', async function() {
           const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
-          assert.equal(res.status, 1);
+          assert.equal(res.status, ApplicationStatus.NEW);
           res.validatorsReward.should.be.a.bignumber.eq(new BN('4020000000000000000'));
           res.galtSpaceReward.should.be.a.bignumber.eq(new BN('1980000000000000000'));
         });
@@ -603,24 +616,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     });
 
     describe('#addGeohashesToApplication', () => {
-      beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['🦄'], [100], [''], {
-          from: coreTeam
-        });
-
-        const res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-      });
-
       it('should add a list of geohashes', async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
@@ -726,24 +721,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     });
 
     describe('#submitApplication', () => {
-      beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['🦄'], [100], [''], {
-          from: coreTeam
-        });
-
-        const res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-      });
-
       it('should change status of an application from from new to submitted', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
@@ -799,39 +776,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
     describe('#lockApplicationForReview', () => {
       beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
-          NEW_APPLICATION,
-          ['human', 'dog', 'cat'],
-          [50, 25, 25],
-          ['', '', ''],
-          { from: coreTeam }
-        );
-
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
       });
 
       it('should allow multiple validators of different roles to lock a submitted application', async function() {
@@ -951,39 +899,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
     describe('#approveApplication', () => {
       beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
-          NEW_APPLICATION,
-          ['human', 'dog', 'cat'],
-          [50, 25, 25],
-          ['', '', ''],
-          { from: coreTeam }
-        );
-
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -1064,39 +983,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
     describe('#revertApplication()', () => {
       beforeEach(async function() {
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
-          NEW_APPLICATION,
-          ['human', 'dog', 'cat'],
-          [50, 25, 25],
-          ['', '', ''],
-          { from: coreTeam }
-        );
-
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour,
-          galt.geohashToGeohash5('sezu06'),
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice, value: ether(6) }
-        );
-
-        this.aId = res.logs[0].args.id;
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
