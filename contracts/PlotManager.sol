@@ -19,6 +19,7 @@ contract PlotManager is Initializable, Ownable {
     NOT_EXISTS,
     NEW,
     SUBMITTED,
+    PARTIALLY_LOCKED,
     CONSIDERATION,
     APPROVED,
     REJECTED,
@@ -145,7 +146,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   modifier ready() {
-    require(validators.isReady(), "Roles list not complete");
+    require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
 
     _;
   }
@@ -468,26 +469,28 @@ contract PlotManager is Initializable, Ownable {
   function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
-      "Application status should be NEW"
-    );
-
     if (a.status == ApplicationStatus.NEW) {
       a.status = ApplicationStatus.SUBMITTED;
       emit LogApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
+
     } else if (a.status == ApplicationStatus.REVERTED) {
       a.status = ApplicationStatus.CONSIDERATION;
       emit LogApplicationStatusChanged(_aId, ApplicationStatus.CONSIDERATION);
+
+    } else {
+      revert("Application status should be NEW");
     }
   }
+  event Debug(ApplicationStatus status, ApplicationStatus submitted);
 
   // Application can be locked by a role only once.
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
     Application storage a = applications[_aId];
-    require(validators.hasRole(msg.sender, _role));
+    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(
+      a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.PARTIALLY_LOCKED,
+      "Application status should be SUBMITTED or PARTIALLY_LOCKED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[_role] == ValidationStatus.INTACT, "Can't lock an application already in work");
 
@@ -497,7 +500,7 @@ contract PlotManager is Initializable, Ownable {
     applicationsByValidator[msg.sender].push(_aId);
 
     uint256 len = a.assignedRoles.length;
-    bool allLocked = true;
+    bool allLocked = false;
 
     // for (uint8 i = 0; i < len; i++) {
       // if (a.validators[a.assignedRoles[i]] == address(0)) {
@@ -508,6 +511,9 @@ contract PlotManager is Initializable, Ownable {
     if (allLocked) {
       a.status = ApplicationStatus.CONSIDERATION;
       emit LogApplicationStatusChanged(_aId, ApplicationStatus.CONSIDERATION);
+    } else if (a.status == ApplicationStatus.SUBMITTED) {
+      a.status = ApplicationStatus.PARTIALLY_LOCKED;
+      emit LogApplicationStatusChanged(_aId, ApplicationStatus.PARTIALLY_LOCKED);
     }
   }
 

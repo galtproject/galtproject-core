@@ -119,6 +119,10 @@ contract Validators is Ownable {
     delete applicationTypeRoles[_applicationType];
   }
 
+  function isApplicationTypeReady(bytes32 _applicationType) public view returns (bool) {
+    return applicationTypeRoles[_applicationType].length > 0;
+  }
+
   function getApplicationTypeRoles(
     bytes32 _applicationType
   )
@@ -213,10 +217,6 @@ contract Validators is Ownable {
     v.position,
     v.active
     );
-  }
-
-  function isReady() public view returns (bool) {
-    return true;
   }
 
   function getValidatorRoles() public view returns (bytes32[]) {

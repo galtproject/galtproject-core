@@ -110,7 +110,7 @@ contract('Validators', ([coreTeam, alice, bob]) => {
     });
   });
 
-  describe.only('validators management', () => {
+  describe('validators management', () => {
     beforeEach(async function() {
       const res = await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
