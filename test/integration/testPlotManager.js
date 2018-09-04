@@ -33,8 +33,6 @@ const ApplicationStatus = {
   REVERTED: 5,
   DISASSEMBLED: 6,
   REFUNDED: 7,
-  COMPLETED: 8,
-  CLOSED: 9
 };
 
 const ValidationStatus = {
@@ -1104,7 +1102,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe.skip('#removeGeohashFromApplication()', () => {
+    describe('#removeGeohashFromApplication()', () => {
       beforeEach(async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
@@ -1113,57 +1111,174 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         await this.plotManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], { from: alice });
       });
 
-      it('should allow owner partially remove geohashes from an application', async function() {
-        const geohashesToRemove = this.geohashes.slice(0, 2);
-        let res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[0]));
-        assert.equal(res, this.splitMerge.address);
-        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[1]));
-        assert.equal(res, this.splitMerge.address);
+      describe('new application', () => {
+        it('should allow owner partially remove geohashes from an application', async function() {
+          const geohashesToRemove = this.geohashes.slice(0, 2);
+          let res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[0]));
+          assert.equal(res, this.splitMerge.address);
+          res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[1]));
+          assert.equal(res, this.splitMerge.address);
 
-        res = await this.splitMerge.packageGeohashesCount(
-          '0x0200000000000000000000000000000000000000000000000000000000000000'
-        );
-        assert.equal(res, 18);
+          res = await this.splitMerge.packageGeohashesCount(
+            '0x0200000000000000000000000000000000000000000000000000000000000000'
+          );
+          assert.equal(res, 18);
 
-        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
-          from: alice
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+            from: alice
+          });
+
+          res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[0]));
+          assert.equal(res, this.plotManager.address);
+          res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[1]));
+          assert.equal(res, this.plotManager.address);
+
+          res = await this.splitMerge.packageGeohashesCount(
+            '0x0200000000000000000000000000000000000000000000000000000000000000'
+          );
+          assert.equal(res, 16);
         });
 
-        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[0]));
-        assert.equal(res, this.plotManager.address);
-        res = await this.spaceToken.ownerOf(galt.geohashToTokenId(geohashesToRemove[1]));
-        assert.equal(res, this.plotManager.address);
+        it('should set DISASSEMBLED on all geohases remove', async function() {
+          let res;
 
-        res = await this.splitMerge.packageGeohashesCount(
-          '0x0200000000000000000000000000000000000000000000000000000000000000'
-        );
-        assert.equal(res, 16);
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+          const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+          const geohashesToRemove = packageGeohashes
+            .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
+            .map(galt.geohashToGeohash5);
+
+          res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+          assert.equal(res, 18);
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+            from: alice
+          });
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+
+          res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+          assert.equal(res, 0);
+        });
       });
 
-      it('should set DISASSEMBLED on all geohases remove', async function() {
-        let res;
+      describe('reverted application', () => {
+        beforeEach(async function() {
+          await this.plotManager.submitApplication(this.aId, { from: alice });
+          await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+          await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+          await this.plotManager.revertApplication(this.aId, 'some reason', { from: bob });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
 
-        const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
-        const geohashesToRemove = packageGeohashes.map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)));
+          const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+          this.geohashesToRemove = packageGeohashes
+            .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
+            .map(galt.geohashToGeohash5);
 
-        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
-        assert.equal(res, 18);
-
-        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
-          from: alice
+          this.packageTokenId = res.packageTokenId;
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 18);
         });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+        it('can be disassembled by any validator role', async function() {
+          let res;
 
-        res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
-        assert.equal(res, 0);
+          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+            from: dan
+          });
+
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 0);
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+        });
+
+        it('can be disassembled by an applicant', async function() {
+          let res;
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+            from: alice
+          });
+
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 0);
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+        });
+
+        it('should revert when accessed by inactive account', async function() {
+          await this.validators.removeValidator(bob, { from: coreTeam });
+          await assertRevert(
+            this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+              from: bob
+            })
+          );
+        });
+
+        it('should revert when accessed by unknown account', async function() {
+          await assertRevert(
+            this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+              from: frank
+            })
+          );
+        });
+      });
+
+      describe('rejected application', () => {
+        beforeEach(async function() {
+          await this.plotManager.submitApplication(this.aId, { from: alice });
+          await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+          await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+          await this.plotManager.rejectApplication(this.aId, 'some reason', { from: bob });
+
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+          const packageGeohashes = await this.splitMerge.getPackageGeohashes(res.packageTokenId);
+          this.geohashesToRemove = packageGeohashes
+            .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
+            .map(galt.geohashToGeohash5);
+
+          this.packageTokenId = res.packageTokenId;
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 18);
+        });
+
+        it('can be disassembled by any validator role', async function() {
+          let res;
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+            from: dan
+          });
+
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 0);
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+        });
+
+        it('cant be disassembled by an applicant', async function() {
+          let res;
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+            from: alice
+          });
+
+          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          assert.equal(res, 0);
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.DISASSEMBLED);
+        });
       });
     });
 
-    describe('#cltaimValidatorRewardEth()', () => {
+    describe('#claimValidatorRewardEth()', () => {
       beforeEach(async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
 

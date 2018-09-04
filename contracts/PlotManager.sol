@@ -23,9 +23,7 @@ contract PlotManager is Initializable, Ownable {
     REJECTED,
     REVERTED,
     DISASSEMBLED,
-    REFUNDED,
-    VALIDATOR_REWARDED,
-    GALTSPACE_REWARDED
+    REFUNDED
   }
 
   enum ValidationStatus {
@@ -438,6 +436,7 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
+    event Debug(bytes32 role, bool active);
   function removeGeohashesFromApplication(
     bytes32 _aId,
     uint256[] _geohashes,
@@ -446,12 +445,16 @@ contract PlotManager is Initializable, Ownable {
   )
     public
   {
-    // TODO: check for permissions
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REJECTED for this operation."
     );
+
+    require(
+      a.applicant == msg.sender ||
+      (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
+      "Sender is not valid");
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
@@ -464,8 +467,8 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatus.NEW) {
-      a.status = ApplicationStatus.DISASSEMBLED;
+    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0) {
+      changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED);
     }
   }
 
@@ -653,11 +656,7 @@ contract PlotManager is Initializable, Ownable {
 
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.VALIDATOR_REWARDED, "Application status should be VALIDATOR_REWARDED");
     require(a.galtSpaceReward > 0, "Reward in ETH is 0");
-
-    a.status = ApplicationStatus.GALTSPACE_REWARDED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.GALTSPACE_REWARDED);
 
     msg.sender.transfer(a.galtSpaceReward);
   }
