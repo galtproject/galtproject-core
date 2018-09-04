@@ -1278,7 +1278,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
     });
 
-    describe('#claimValidatorRewardEth()', () => {
+    describe('claim reward', () => {
       beforeEach(async function() {
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
@@ -1291,22 +1291,27 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       describe('on approve', () => {
-        it('should allow validators claim reward', async function() {
+        beforeEach(async function() {
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        });
 
+        it('should allow shareholders claim reward', async function() {
           const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
           const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
+          const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: dan });
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.ETH, { from: galtSpaceOrg });
 
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
           const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
+          const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
           const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '2010000000000000000');
@@ -1329,9 +1334,15 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             .sub(evesInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
+          const diffOrg = orgsFinalBalance
+            .sub(new BN('1980000000000000000')) // <- the diff
+            .sub(orgsInitialBalance)
+            .add(new BN('10000000000000000')); // <- 0.01 ether
+
           const max = new BN('10000000000000000'); // <- 0.01 ether
           const min = new BN('0');
 
+          // lt
           assert(
             diffBob.lt(max), // diff < 0.01 ether
             `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be less than 0.01 ether`
@@ -1348,6 +1359,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           );
 
           assert(
+            diffOrg.lt(max), // diff < 0.01 ether
+            `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be less than 0.01 ether`
+          );
+
+          // gt
+          assert(
             diffBob.gt(min), // diff > 0
             `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be greater than 0`
           );
@@ -1360,6 +1377,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           assert(
             diffEve.gt(min), // diff > 0
             `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be greater than 0`
+          );
+
+          assert(
+            diffOrg.gt(min), // diff > 0
+            `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be greater than 0`
           );
         });
       });
@@ -1380,15 +1402,23 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             from: bob
           });
 
+          const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
           const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
+          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.ETH, { from: galtSpaceOrg });
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
+          const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '2010000000000000000');
 
           // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
           // assume that the commission paid by bob isn't greater than 0.1 ether
+
+          const diffOrg = orgsFinalBalance
+            .sub(new BN('1980000000000000000')) // <- the diff
+            .sub(orgsInitialBalance)
+            .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const diff = bobsFinalBalance
             .sub(new BN('2010000000000000000')) // <- the diff
@@ -1407,42 +1437,17 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             diff.gt(min), // diff > 0
             `Expected ${web3.utils.fromWei(diff.toString(10))} to be greater than 0`
           );
+
+          assert(
+            diffOrg.lt(max), // diff < 0.01 ether
+            `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be less than 0.01 ether`
+          );
+
+          assert(
+            diffOrg.gt(min), // diff > 0
+            `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be greater than 0`
+          );
         });
-      });
-    });
-
-    describe.skip('#claimGaltSpaceRewardEth()', () => {
-      beforeEach(async function() {
-        await this.plotManager.submitApplication(this.aId, { from: alice });
-        await this.plotManager.addValidator(bob, 'Bob', 'ID', { from: coreTeam });
-        await this.plotManager.lockApplicationForReview(this.aId, { from: bob });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
-        await this.plotManager.claimValidatorRewardEth(this.aId, { from: bob });
-      });
-
-      it('should allow validator claim reward', async function() {
-        const plotManagerInitialBalance = new BN(await web3.eth.getBalance(this.plotManager.address));
-        const galtSpaceOrgInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
-        await this.plotManager.claimGaltSpaceRewardEth(this.aId, { from: galtSpaceOrg });
-        const galtSpaceOrgFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
-        const plotManagerFinalBalance = new BN(await web3.eth.getBalance(this.plotManager.address));
-
-        // galtSpaceOrg fee is around 24 / 100 * 6 ether = 1440000000000000000 wei
-        // assume that the commission paid by bob isn't greater than 0.1 ether
-        assert(
-          galtSpaceOrgInitialBalance
-            .add(new BN('1440000000000000000'))
-            .sub(new BN(ether(0.1)))
-            .lt(galtSpaceOrgFinalBalance)
-        );
-        assert(
-          galtSpaceOrgInitialBalance
-            .add(new BN('1440000000000000000'))
-            .add(new BN(ether(0.1)))
-            .gt(galtSpaceOrgFinalBalance)
-        );
-        assert(plotManagerInitialBalance.eq(new BN('1440000000000000000')));
-        assert(plotManagerFinalBalance.eq(new BN('0')));
       });
     });
   });

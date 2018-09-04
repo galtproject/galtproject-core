@@ -58,6 +58,7 @@ contract PlotManager is Initializable, Ownable {
     uint256 packageTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
+    bool galtSpaceRewardPaidOut;
     uint8 precision;
     bytes2 country;
     Currency currency;
@@ -604,6 +605,61 @@ contract PlotManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
+  function claimValidatorReward(
+    bytes32 _aId,
+    Currency _currency
+  )
+    public 
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+    bytes32 senderRole = a.addressRoles[msg.sender];
+
+    require(
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
+      "Application status should be ether APPROVED or DISASSEMBLED");
+    require(a.validatorsReward > 0, "Reward is 0");
+    require(a.currency == _currency, "Reward currency doesn't match");
+    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
+    validators.ensureValidatorActive(msg.sender);
+
+    a.roleRewardPaidOut[senderRole] = true; 
+
+    if (_currency == Currency.ETH) {
+      msg.sender.transfer(a.assignedRewards[senderRole]);
+    } else if (_currency == Currency.GALT) {
+
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
+  function claimGaltSpaceReward(
+    bytes32 _aId,
+    Currency _currency
+  ) public {
+    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
+      "Application status should be ether APPROVED or DISASSEMBLED");
+    require(a.galtSpaceReward > 0, "Reward is 0");
+    require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+    require(a.currency == _currency, "Reward currency doesn't match");
+
+    a.galtSpaceRewardPaidOut = true;
+
+    if (_currency == Currency.ETH) {
+      msg.sender.transfer(a.galtSpaceReward);
+    } else if (_currency == Currency.GALT) {
+
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
   function changeValidationStatus(
     Application storage _a,
     bytes32 _role,
@@ -622,51 +678,6 @@ contract PlotManager is Initializable, Ownable {
     emit LogApplicationStatusChanged(_a.id, _status);
 
     _a.status = _status;
-  }
-
-  function claimValidatorReward(
-    bytes32 _aId,
-    Currency _currency
-  )
-    public 
-    onlyValidatorOfApplication(_aId)
-  {
-    Application storage a = applications[_aId];
-    bytes32 senderRole = a.addressRoles[msg.sender];
-
-    require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
-      "Application status should be ether APPROVED or REJECTED");
-    require(a.validatorsReward > 0, "Reward is 0");
-    require(a.currency == _currency, "Reward doesn't match");
-    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
-    validators.ensureValidatorActive(msg.sender);
-
-    if (a.status == ApplicationStatus.REJECTED) {
-      require(
-        splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
-        "Application geohashes count must be 0 for REJECTED status");
-    }
-
-    a.roleRewardPaidOut[senderRole] = true; 
-
-    if (_currency == Currency.ETH) {
-      msg.sender.transfer(a.assignedRewards[senderRole]);
-    } else if (_currency == Currency.GALT) {
-
-    } else {
-      revert("Unknown currency");
-    }
-  }
-
-  function claimGaltSpaceRewardEth(bytes32 _aId) public {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-
-    Application storage a = applications[_aId];
-
-    require(a.galtSpaceReward > 0, "Reward in ETH is 0");
-
-    msg.sender.transfer(a.galtSpaceReward);
   }
 
   function isCredentialsHashValid(
