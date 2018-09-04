@@ -247,12 +247,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       assert.equal(res.precision, 9);
     });
 
-    // TODO: implement when revered be ready
-    it.skip('should allow change hash to the owner when status is REVERTED', async function() {
+    it('should allow application details hash to the owner when status is REVERTED', async function() {
       await this.plotManager.submitApplication(this.aId, { from: alice });
-      await this.validators.addValidator(bob, 'Bob', 'sezu06', [], ['🦄'], { from: coreTeam });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
       await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: bob });
-      await this.plotManager.revertApplication(this.aId, { from: bob });
+      await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
 
       let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
@@ -457,7 +456,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     });
   });
 
-  describe.only('application pipeline for ETH', () => {
+  describe('application pipeline for ETH', () => {
     beforeEach(async function() {
       this.resAddRoles = await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
