@@ -191,6 +191,10 @@ contract Validators is Ownable {
     validators[_validator].active = false;
   }
 
+  function ensureValidatorActive(address _validator) public view returns (bool) {
+    require(validators[_validator].active == true, "Validator is not active");
+  }
+
   function isValidatorActive(address _validator) public view returns (bool) {
     return validators[_validator].active == true;
   }

@@ -67,8 +67,9 @@ contract PlotManager is Initializable, Ownable {
 
     bytes32[] assignedRoles;
 
-    // TODO: rename => roleAssignedRewards
+    // TODO: combine into role struct
     mapping(bytes32 => uint256) assignedRewards;
+    mapping(bytes32 => bool) roleRewardPaidOut;
     mapping(bytes32 => string) roleMessages;
     mapping(bytes32 => address) roleAddresses;
     mapping(address => bytes32) addressRoles;
@@ -612,18 +613,23 @@ contract PlotManager is Initializable, Ownable {
     _a.status = _status;
   }
 
-  function claimValidatorRewardEth(
-    bytes32 _aId
+  function claimValidatorReward(
+    bytes32 _aId,
+    Currency _currency
   )
     public 
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
+    bytes32 senderRole = a.addressRoles[msg.sender];
 
     require(
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
       "Application status should be ether APPROVED or REJECTED");
-    require(a.validatorsReward > 0, "Reward in ETH is 0");
+    require(a.validatorsReward > 0, "Reward is 0");
+    require(a.currency == _currency, "Reward doesn't match");
+    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
+    validators.ensureValidatorActive(msg.sender);
 
     if (a.status == ApplicationStatus.REJECTED) {
       require(
@@ -631,10 +637,15 @@ contract PlotManager is Initializable, Ownable {
         "Application geohashes count must be 0 for REJECTED status");
     }
 
-    a.status = ApplicationStatus.VALIDATOR_REWARDED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatus.VALIDATOR_REWARDED);
+    a.roleRewardPaidOut[senderRole] = true; 
 
-    msg.sender.transfer(a.validatorsReward);
+    if (_currency == Currency.ETH) {
+      msg.sender.transfer(a.assignedRewards[senderRole]);
+    } else if (_currency == Currency.GALT) {
+
+    } else {
+      revert("Unknown currency");
+    }
   }
 
   function claimGaltSpaceRewardEth(bytes32 _aId) public {
