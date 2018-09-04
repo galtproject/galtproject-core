@@ -61,6 +61,9 @@ contract PlotManager is Initializable, Ownable {
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] applicationsArray;
 
+  mapping (bytes32 => address) public applicationApprovals;
+  mapping (address => mapping (address => bool)) public operatorApprovals;
+
   // WARNING: we do not remove applications from validator's list,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -96,7 +99,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender, "Not valid applicant");
+    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender), "Not valid sender");
     require(splitMerge != address(0), "SplitMerge address not set");
 
     _;
@@ -105,7 +108,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicantOrValidator(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender || a.validator == msg.sender, "Not valid sender");
+    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender) || a.validator == msg.sender, "Not valid sender");
     require(splitMerge != address(0), "SplitMerge address not set");
 
     if (a.validator == msg.sender) {
@@ -168,7 +171,34 @@ contract PlotManager is Initializable, Ownable {
     validators[_validator].active = false;
   }
 
+  function approve(address _to, bytes32 _aId) public onlyApplicantOrValidator(_aId) {
+    Application storage a = applications[_aId];
+    require(_to != a.applicant);
+    applicationApprovals[_aId] = _to;
+  }
+
+  function getApproved(bytes32 _aId) public view returns (address) {
+    return applicationApprovals[_aId];
+  }
+
+  function clearApprove(bytes32 _aId) public {
+    Application storage a = applications[_aId];
+    require(msg.sender == a.applicant || isApprovedForAll(owner, msg.sender) || getApproved(_aId) == msg.sender);
+
+    applicationApprovals[_aId] = address(0);
+  }
+
+  function setApprovalForAll(address _to, bool _approved) public {
+    require(_to != msg.sender);
+    operatorApprovals[msg.sender][_to] = _approved;
+  }
+
+  function isApprovedForAll(address _owner, address _operator) public view returns (bool) {
+    return operatorApprovals[_owner][_operator];
+  }
+
   function applyForPlotOwnership(
+    address _applicant,
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
@@ -190,7 +220,7 @@ contract PlotManager is Initializable, Ownable {
 
     a.status = ApplicationStatuses.NEW;
     a.id = _id;
-    a.applicant = msg.sender;
+    a.applicant = _applicant;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -213,6 +243,11 @@ contract PlotManager is Initializable, Ownable {
     applications[_id] = a;
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
+
+    if (msg.sender != _applicant) {
+      applicationApprovals[_id] = msg.sender;
+      applicationsByAddresses[_applicant].push(_id);
+    }
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
@@ -278,7 +313,7 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
+    if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
       a.status = ApplicationStatuses.DISASSEMBLED;
     }
   }
@@ -359,7 +394,7 @@ contract PlotManager is Initializable, Ownable {
 
     if (a.status == ApplicationStatuses.REJECTED) {
       require(
-        splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
+        splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
         "Application geohashes count must be 0 for REJECTED status");
     }
 
