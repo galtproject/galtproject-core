@@ -436,7 +436,6 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
-    event Debug(bytes32 role, bool active);
   function removeGeohashesFromApplication(
     bytes32 _aId,
     uint256[] _geohashes,
@@ -562,6 +561,15 @@ contract PlotManager is Initializable, Ownable {
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
 
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (a.validationStatus[currentRole] == ValidationStatus.INTACT) {
+        revert("One of the roles has INTACT status");
+      }
+    }
+
     bytes32 senderRole = a.addressRoles[msg.sender];
     a.roleMessages[senderRole] = _message;
 
@@ -627,7 +635,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 senderRole = a.addressRoles[msg.sender];
 
     require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
       "Application status should be ether APPROVED or REJECTED");
     require(a.validatorsReward > 0, "Reward is 0");
     require(a.currency == _currency, "Reward doesn't match");

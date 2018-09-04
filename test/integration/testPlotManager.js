@@ -1291,54 +1291,103 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       describe('on approve', () => {
-        it('should allow validator claim reward', async function() {
+        it('should allow validators claim reward', async function() {
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
           await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
 
           const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
+          const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
+          const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
+
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: eve });
+
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
+          const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
+          const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
 
           const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '2010000000000000000');
 
-          // bobs fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
+          // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
           // assume that the commission paid by bob isn't greater than 0.1 ether
 
-          const diff = bobsFinalBalance
+          const diffBob = bobsFinalBalance
             .sub(new BN('2010000000000000000')) // <- the diff
             .sub(bobsInitialBalance)
+            .add(new BN('10000000000000000')); // <- 0.01 ether
+
+          const diffDan = dansFinalBalance
+            .sub(new BN('1005000000000000000')) // <- the diff
+            .sub(dansInitialBalance)
+            .add(new BN('10000000000000000')); // <- 0.01 ether
+
+          const diffEve = evesFinalBalance
+            .sub(new BN('1005000000000000000')) // <- the diff
+            .sub(evesInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const max = new BN('10000000000000000'); // <- 0.01 ether
           const min = new BN('0');
 
           assert(
-            diff.lt(max), // diff < 0.01 ether
-            `Expected ${web3.utils.fromWei(diff.toString(10))} to be less than 0.01 ether`
+            diffBob.lt(max), // diff < 0.01 ether
+            `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be less than 0.01 ether`
           );
 
           assert(
-            diff.gt(min), // diff > 0
-            `Expected ${web3.utils.fromWei(diff.toString(10))} to be greater than 0`
+            diffDan.lt(max), // diff < 0.01 ether
+            `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be less than 0.01 ether`
+          );
+
+          assert(
+            diffEve.lt(max), // diff < 0.01 ether
+            `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be less than 0.01 ether`
+          );
+
+          assert(
+            diffBob.gt(min), // diff > 0
+            `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be greater than 0`
+          );
+
+          assert(
+            diffDan.gt(min), // diff > 0
+            `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be greater than 0`
+          );
+
+          assert(
+            diffEve.gt(min), // diff > 0
+            `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be greater than 0`
           );
         });
       });
 
       describe('on reject', () => {
-        // TODO: fix when disassembling be ready
-        it.skip('should allow validator claim reward after reject', async function() {
+        it('should allow validators claim reward after reject', async function() {
           await this.plotManager.rejectApplication(this.aId, this.credentials, { from: bob });
+
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          const { packageTokenId } = res;
+
+          const packageGeohashes = await this.splitMerge.getPackageGeohashes(packageTokenId);
+          const geohashesToRemove = packageGeohashes
+            .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
+            .map(galt.geohashToGeohash5);
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+            from: bob
+          });
 
           const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
           await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '2010000000000000000');
 
-          // bobs fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
+          // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
           // assume that the commission paid by bob isn't greater than 0.1 ether
 
           const diff = bobsFinalBalance
