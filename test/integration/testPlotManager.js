@@ -8,7 +8,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, sleep, assertRevert, zeroAddress } = require('../helpers');
+const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, keccak256, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -105,6 +105,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+    this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -451,6 +452,124 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '461100000000000000');
+        });
+      });
+    });
+
+    describe('claim reward', () => {
+      beforeEach(async function() {
+        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+          NEW_APPLICATION,
+          ['human', 'dog', 'cat'],
+          [50, 25, 25],
+          ['', '', ''],
+          { from: coreTeam }
+        );
+
+        await this.galtToken.approve(this.plotManager.address, ether(57), { from: alice });
+        let res = await this.plotManager.applyForPlotOwnershipGalt(
+          this.contour,
+          galt.geohashToGeohash5('sezu06'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          ether(57),
+          { from: alice }
+        );
+
+        this.aId = res.logs[0].args.id;
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.plotManager.submitApplication(this.aId, { from: alice });
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+      });
+
+      describe('on approve', () => {
+        beforeEach(async function() {
+          await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+          await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+          await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        });
+
+        it('should allow shareholders claim reward', async function() {
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.GALT, { from: galtSpaceOrg });
+
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '24795000000000000000');
+
+          // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
+
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
+        });
+      });
+
+      describe('on reject', () => {
+        it('should allow validators claim reward after reject', async function() {
+          await this.plotManager.rejectApplication(this.aId, this.credentials, { from: bob });
+
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          const { packageTokenId } = res;
+
+          const packageGeohashes = await this.splitMerge.getPackageGeohashes(packageTokenId);
+          const geohashesToRemove = packageGeohashes
+            .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
+            .map(galt.geohashToGeohash5);
+
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
+            from: bob
+          });
+
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.GALT, { from: galtSpaceOrg });
+
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '24795000000000000000');
+
+          // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
+
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
         });
       });
     });
@@ -1233,6 +1352,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           await this.plotManager.submitApplication(this.aId, { from: alice });
           await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
           await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+          await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
           await this.plotManager.rejectApplication(this.aId, 'some reason', { from: bob });
 
           let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();

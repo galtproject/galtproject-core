@@ -614,11 +614,12 @@ contract PlotManager is Initializable, Ownable {
   {
     Application storage a = applications[_aId];
     bytes32 senderRole = a.addressRoles[msg.sender];
+    uint256 reward = a.assignedRewards[senderRole];
 
     require(
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
       "Application status should be ether APPROVED or DISASSEMBLED");
-    require(a.validatorsReward > 0, "Reward is 0");
+    require(reward > 0, "Reward is 0");
     require(a.currency == _currency, "Reward currency doesn't match");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
     validators.ensureValidatorActive(msg.sender);
@@ -626,9 +627,9 @@ contract PlotManager is Initializable, Ownable {
     a.roleRewardPaidOut[senderRole] = true; 
 
     if (_currency == Currency.ETH) {
-      msg.sender.transfer(a.assignedRewards[senderRole]);
+      msg.sender.transfer(reward);
     } else if (_currency == Currency.GALT) {
-
+      galtToken.transfer(msg.sender, reward);
     } else {
       revert("Unknown currency");
     }
@@ -654,7 +655,7 @@ contract PlotManager is Initializable, Ownable {
     if (_currency == Currency.ETH) {
       msg.sender.transfer(a.galtSpaceReward);
     } else if (_currency == Currency.GALT) {
-
+      galtToken.transfer(msg.sender, a.galtSpaceReward);
     } else {
       revert("Unknown currency");
     }
