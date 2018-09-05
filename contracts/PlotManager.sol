@@ -22,8 +22,9 @@ contract PlotManager is Initializable, Ownable {
     APPROVED,
     REJECTED,
     REVERTED,
-    DISASSEMBLED,
-    REFUNDED
+    DISASSEMBLED_BY_APPLICANT,
+    DISASSEMBLED_BY_VALIDATOR,
+    REVOKED
   }
 
   enum ValidationStatus {
@@ -184,56 +185,11 @@ contract PlotManager is Initializable, Ownable {
     galtSpaceGaltShare = _newShare;
   }
 
-  function changeApplicationCredentialsHash(
+  function changeApplicationDetails(
     bytes32 _aId,
-    bytes32 _credentialsHash
-  )
-    public
-    onlyApplicant(_aId)
-  {
-    Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
-      "Application status should be NEW or REVERTED."
-    );
-
-    a.credentialsHash = _credentialsHash;
-  }
-
-  function changeApplicationLedgerIdentifier(
-    bytes32 _aId,
-    bytes32 _ledgerIdentifier
-  )
-    public
-    onlyApplicant(_aId)
-  {
-    Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
-      "Application status should be NEW or REVERTED."
-    );
-
-    a.ledgerIdentifier = _ledgerIdentifier;
-  }
-
-  function changeApplicationPrecision(
-    bytes32 _aId,
-    uint8 _precision
-  )
-    public
-    onlyApplicant(_aId)
-  {
-    Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
-      "Application status should be NEW or REVERTED."
-    );
-
-    a.precision = _precision;
-  }
-
-  function changeApplicationCountry(
-    bytes32 _aId,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
+    uint8 _precision,
     bytes2 _country
   )
     public
@@ -245,6 +201,9 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW or REVERTED."
     );
 
+    a.credentialsHash = _credentialsHash;
+    a.ledgerIdentifier = _ledgerIdentifier;
+    a.precision = _precision;
     a.country = _country;
   }
 
@@ -468,7 +427,11 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
     if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0) {
-      changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED);
+      if (msg.sender == a.applicant) {
+        changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED_BY_APPLICANT);
+      } else {
+        changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED_BY_VALIDATOR);
+      }
     }
   }
 
@@ -605,6 +568,28 @@ contract PlotManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
+  function revokeApplication(bytes32 _aId) public onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should either NEW or DISASSEMBLED_BY_APPLICANT");
+
+    require(
+      splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
+      "Application package geohashes count should be 0");
+
+    changeApplicationStatus(a, ApplicationStatus.REVOKED);
+
+    uint256 deposit = a.validatorsReward.add(a.galtSpaceReward);
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(deposit);
+    } else {
+      galtToken.transfer(msg.sender, deposit);
+    }
+  }
+
   function claimValidatorReward(
     bytes32 _aId,
     Currency _currency
@@ -617,8 +602,9 @@ contract PlotManager is Initializable, Ownable {
     uint256 reward = a.assignedRewards[senderRole];
 
     require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
-      "Application status should be ether APPROVED or DISASSEMBLED");
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
+
     require(reward > 0, "Reward is 0");
     require(a.currency == _currency, "Reward currency doesn't match");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
@@ -644,8 +630,8 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED,
-      "Application status should be ether APPROVED or DISASSEMBLED");
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
     require(a.galtSpaceReward > 0, "Reward is 0");
     require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
     require(a.currency == _currency, "Reward currency doesn't match");
