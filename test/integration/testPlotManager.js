@@ -829,13 +829,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
 
-        let res = await this.splitMerge.packageGeohashesCount(
+        let res = await this.splitMerge.getPackageGeohashesCount(
           '0x0200000000000000000000000000000000000000000000000000000000000000'
         );
         assert.equal(res, 9);
 
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes2, [], [], { from: alice });
-        res = await this.splitMerge.packageGeohashesCount(
+        res = await this.splitMerge.getPackageGeohashesCount(
           '0x0200000000000000000000000000000000000000000000000000000000000000'
         );
         assert.equal(res, 11);
@@ -1360,7 +1360,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[1]));
           assert.equal(res, this.splitMerge.address);
 
-          res = await this.splitMerge.packageGeohashesCount(
+          res = await this.splitMerge.getPackageGeohashesCount(
             '0x0200000000000000000000000000000000000000000000000000000000000000'
           );
           assert.equal(res, 18);
@@ -1374,7 +1374,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           res = await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashesToRemove[1]));
           assert.equal(res, this.plotManager.address);
 
-          res = await this.splitMerge.packageGeohashesCount(
+          res = await this.splitMerge.getPackageGeohashesCount(
             '0x0200000000000000000000000000000000000000000000000000000000000000'
           );
           assert.equal(res, 16);
@@ -1390,7 +1390,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             .map(tokenId => galt.tokenIdToGeohash(tokenId.toString(10)))
             .map(galt.geohashToGeohash5);
 
-          res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(res.packageTokenId);
           assert.equal(res, 18);
 
           await this.plotManager.removeGeohashesFromApplication(this.aId, geohashesToRemove, [], [], {
@@ -1400,7 +1400,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.DISASSEMBLED_BY_APPLICANT);
 
-          res = await this.splitMerge.packageGeohashesCount(res.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(res.packageTokenId);
           assert.equal(res, 0);
         });
       });
@@ -1420,7 +1420,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             .map(galt.geohashToGeohash5);
 
           this.packageTokenId = res.packageTokenId;
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 18);
         });
 
@@ -1431,7 +1431,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             from: dan
           });
 
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 0);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1445,7 +1445,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             from: alice
           });
 
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 0);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1486,7 +1486,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             .map(galt.geohashToGeohash5);
 
           this.packageTokenId = res.packageTokenId;
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 18);
         });
 
@@ -1497,7 +1497,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             from: dan
           });
 
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 0);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1511,7 +1511,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             from: alice
           });
 
-          res = await this.splitMerge.packageGeohashesCount(this.packageTokenId);
+          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
           assert.equal(res, 0);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();

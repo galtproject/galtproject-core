@@ -87,6 +87,9 @@ contract PlotManager is Initializable, Ownable {
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
 
+  mapping (bytes32 => address) public applicationApprovals;
+  mapping (address => mapping (address => bool)) public operatorApprovals;
+
   // WARNING: we do not remove applications from validator's list,
   // so do not rely on this variable to verify whether validator
   // exists or not.
@@ -129,7 +132,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender, "Not valid applicant");
+    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender), "Applicant invalid");
 
     _;
   }
@@ -299,6 +302,36 @@ contract PlotManager is Initializable, Ownable {
     assert(totalReward == a.validatorsReward);
   }
 
+  // NOTICE: probably wrong modifier after merge
+  function approve(address _to, bytes32 _aId) public onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    // TODO: provide a message
+    require(_to != a.applicant);
+    applicationApprovals[_aId] = _to;
+  }
+
+  function getApproved(bytes32 _aId) public view returns (address) {
+    return applicationApprovals[_aId];
+  }
+
+  function clearApprove(bytes32 _aId) public {
+    Application storage a = applications[_aId];
+    // TODO: provide a message
+    require(msg.sender == a.applicant || isApprovedForAll(owner, msg.sender) || getApproved(_aId) == msg.sender);
+
+    applicationApprovals[_aId] = address(0);
+  }
+
+  function setApprovalForAll(address _to, bool _approved) public {
+    // TODO: provide a message
+    require(_to != msg.sender);
+    operatorApprovals[msg.sender][_to] = _approved;
+  }
+
+  function isApprovedForAll(address _owner, address _operator) public view returns (bool) {
+    return operatorApprovals[_owner][_operator];
+  }
+
   function applyForPlotOwnership(
     uint256[] _packageContour,
     uint256 _baseGeohash,
@@ -426,7 +459,7 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if (splitMerge.packageGeohashesCount(a.packageTokenId) == 0) {
+    if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0) {
       if (msg.sender == a.applicant) {
         changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED_BY_APPLICANT);
       } else {
@@ -576,7 +609,7 @@ contract PlotManager is Initializable, Ownable {
       "Application status should either NEW or DISASSEMBLED_BY_APPLICANT");
 
     require(
-      splitMerge.packageGeohashesCount(a.packageTokenId) == 0,
+      splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
       "Application package geohashes count should be 0");
 
     changeApplicationStatus(a, ApplicationStatus.REVOKED);
