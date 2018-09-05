@@ -8,7 +8,7 @@
   "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "https://github.com/galtspace/eslint-config-galt.git",
-    "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git",
+    "@galtproject/utils": "0.4.0",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "9.0.0",
