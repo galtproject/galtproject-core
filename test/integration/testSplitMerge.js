@@ -20,13 +20,14 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
+contract.only('SplitMerge', ([coreTeam, alice, bob]) => {
   beforeEach(async function() {
     this.initFirstGeohash = 'sezu05';
+    this.firstGeohash = galt.geohashToGeohash5(this.initFirstGeohash);
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
 
-    this.firstGeohash = galt.geohashToGeohash5(this.initFirstGeohash);
-    this.firstGeohashTokenId = galt.geohashToTokenId(this.firstGeohash);
+    this.firstGeohashTokenId = galt.geohashToTokenId(this.initFirstGeohash);
+    console.log('this.firstGeohashTokenId', this.firstGeohashTokenId);
     this.contour = this.initContour.map(galt.geohashToGeohash5);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -44,7 +45,7 @@ contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
-  describe.skip('package', () => {
+  describe('package', () => {
     it('should creating correctly', async function() {
       let res;
       // TODO: remove console.log lines when the tests work
@@ -72,8 +73,8 @@ contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
         // console.log('mint', geohash);
         res = await this.spaceToken.mintGeohash(alice, geohash, { from: coreTeam });
 
-        geohashesTokenIds.push(galt.geohashToTokenId(geohash));
-        neighborsTokenIds.push(galt.geohashToTokenId(geohash));
+        geohashesTokenIds.push(galt.geohash5ToTokenId(geohash));
+        neighborsTokenIds.push(galt.geohash5ToTokenId(geohash));
         directions.push(web3.utils.asciiToHex('N'));
       });
 
@@ -122,7 +123,7 @@ contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
       res = await this.spaceToken.ownerOf.call(this.firstGeohashTokenId);
       assert.equal(res, this.splitMerge.address);
 
-      const childGeohashTokenId = galt.geohashToTokenId(galt.geohashToGeohash5(`${this.initFirstGeohash}0`));
+      const childGeohashTokenId = galt.geohashToTokenId(`${this.initFirstGeohash}0`);
       res = await this.spaceToken.ownerOf.call(childGeohashTokenId);
       assert.equal(res, alice);
 
@@ -147,7 +148,6 @@ contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
       // console.log('spaceToken.mintGeohash', alice, this.firstGeohash);
       res = await this.spaceToken.mintGeohash(alice, this.firstGeohash, { from: coreTeam });
 
-      this.firstGeohashTokenId = galt.geohashToTokenId(this.firstGeohash);
       await this.spaceToken.approve(bob, this.firstGeohashTokenId, { from: alice });
 
       res = await this.spaceToken.getApproved(this.firstGeohashTokenId);
@@ -176,8 +176,8 @@ contract.skip('SplitMerge', ([coreTeam, alice, bob]) => {
         // console.log('mint', geohash);
         res = await this.spaceToken.mintGeohash(alice, geohash, { from: coreTeam });
 
-        geohashesTokenIds.push(galt.geohashToTokenId(geohash));
-        neighborsTokenIds.push(galt.geohashToTokenId(geohash));
+        geohashesTokenIds.push(galt.geohash5ToTokenId(geohash));
+        neighborsTokenIds.push(galt.geohash5ToTokenId(geohash));
         directions.push(web3.utils.asciiToHex('N'));
       });
 
