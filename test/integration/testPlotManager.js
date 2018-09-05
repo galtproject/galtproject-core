@@ -11,7 +11,7 @@ const galt = require('@galtproject/utils');
 const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
-const { BN, keccak256, utf8ToHex, hexToUtf8 } = Web3.utils;
+const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6ca3060ac1e46095';
 

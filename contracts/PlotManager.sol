@@ -624,7 +624,9 @@ contract PlotManager is Initializable, Ownable {
   function claimGaltSpaceReward(
     bytes32 _aId,
     Currency _currency
-  ) public {
+  )
+   public
+  {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
     Application storage a = applications[_aId];
@@ -651,7 +653,9 @@ contract PlotManager is Initializable, Ownable {
     Application storage _a,
     bytes32 _role,
     ValidationStatus _status
-  ) internal {
+  )
+    internal
+  {
     emit LogValidationStatusChanged(_a.id, _role, _status);
 
     _a.validationStatus[_role] = _status;
@@ -661,7 +665,9 @@ contract PlotManager is Initializable, Ownable {
   function changeApplicationStatus(
     Application storage _a,
     ApplicationStatus _status
-  ) internal {
+  )
+    internal
+  {
     emit LogApplicationStatusChanged(_a.id, _status);
 
     _a.status = _status;

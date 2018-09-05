@@ -3,9 +3,9 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { assertRevert, ether, initHelperWeb3 } = require('../helpers');
+const { assertRevert, initHelperWeb3 } = require('../helpers');
 
-const { BN, keccak256, utf8ToHex, hexToUtf8 } = Web3.utils;
+const { hexToUtf8 } = Web3.utils;
 const web3 = new Web3(Validators.web3.currentProvider);
 
 initHelperWeb3(web3);
@@ -19,7 +19,6 @@ chai.use(chaiBigNumber);
 chai.should();
 
 const NEW_APPLICATION = '0x41e691fcbdc41a0c9c62caec68dbbdb99b245cbb72f06df6f40fa1bd1b4d97d9';
-const FAKE_APPLICATION = '0x4c8f18581c0167eb90a761b4a304e009b924f03b619a0c0e8ea3adfce20aee64';
 const NON_EXISTING_APPLICATION = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
