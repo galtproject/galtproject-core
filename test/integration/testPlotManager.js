@@ -236,10 +236,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       const country = 'SG';
       const precision = 9;
 
-      await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
-      await this.plotManager.changeApplicationLedgerIdentifier(this.aId, ledgedIdentifier, { from: alice });
-      await this.plotManager.changeApplicationCountry(this.aId, country, { from: alice });
-      await this.plotManager.changeApplicationPrecision(this.aId, precision, { from: alice });
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+        from: alice
+      });
 
       const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
 
@@ -266,10 +265,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       const country = 'SG';
       const precision = 9;
 
-      await this.plotManager.changeApplicationCredentialsHash(this.aId, hash, { from: alice });
-      await this.plotManager.changeApplicationLedgerIdentifier(this.aId, ledgedIdentifier, { from: alice });
-      await this.plotManager.changeApplicationCountry(this.aId, country, { from: alice });
-      await this.plotManager.changeApplicationPrecision(this.aId, precision, { from: alice });
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+        from: alice
+      });
 
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, hash);
@@ -280,13 +278,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
     it('should deny hash change to another person', async function() {
       await assertRevert(
-        this.plotManager.changeApplicationCredentialsHash(this.aId, web3.utils.keccak256('AnotherPerson'), {
+        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', 9, 'SG', {
           from: coreTeam
         })
       );
-      await assertRevert(this.plotManager.changeApplicationLedgerIdentifier(this.aId, 'foo-bar', { from: coreTeam }));
-      await assertRevert(this.plotManager.changeApplicationCountry(this.aId, 'SG', { from: coreTeam }));
-      await assertRevert(this.plotManager.changeApplicationPrecision(this.aId, 9, { from: coreTeam }));
 
       const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
@@ -298,13 +293,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     it('should deny hash change if applicaiton is submitted', async function() {
       await this.plotManager.submitApplication(this.aId, { from: alice });
       await assertRevert(
-        this.plotManager.changeApplicationCredentialsHash(this.aId, web3.utils.keccak256('AnotherPerson'), {
+        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', 9, 'SG', {
           from: alice
         })
       );
-      await assertRevert(this.plotManager.changeApplicationLedgerIdentifier(this.aId, 'foo-bar', { from: alice }));
-      await assertRevert(this.plotManager.changeApplicationCountry(this.aId, 'SG', { from: alice }));
-      await assertRevert(this.plotManager.changeApplicationPrecision(this.aId, 9, { from: alice }));
 
       const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
@@ -625,7 +617,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
     });
   });
 
-  describe.only('application pipeline for ETH', () => {
+  describe('application pipeline for ETH', () => {
     beforeEach(async function() {
       this.resAddRoles = await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
