@@ -248,6 +248,25 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       assert.equal(res.precision, 9);
     });
 
+    it('should allow change application fields to an assigned operator when status is NEW', async function() {
+      const hash = web3.utils.keccak256('AnotherPerson');
+      const ledgedIdentifier = 'foo-123';
+      const country = 'SG';
+      const precision = 9;
+
+      await this.plotManager.approveOperator(this.aId, frank, { from: alice });
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+        from: frank
+      });
+
+      const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+
+      assert.equal(res.credentialsHash, hash);
+      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
+      assert.equal(web3.utils.hexToAscii(res.country), 'SG');
+      assert.equal(res.precision, 9);
+    });
+
     it('should allow application details hash to the owner when status is REVERTED', async function() {
       await this.plotManager.submitApplication(this.aId, { from: alice });
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
@@ -303,6 +322,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
       assert.equal(web3.utils.hexToAscii(res.country), 'MN');
       assert.equal(res.precision, 7);
+    });
+
+    it('should assign 3rd party key to manage the application multiple times', async function() {
+      await this.plotManager.approveOperator(this.aId, frank, { from: alice });
+      let operator = await this.plotManager.getApplicationOperator(this.aId);
+      assert.equal(operator, frank);
+
+      await this.plotManager.approveOperator(this.aId, dan, { from: alice });
+      operator = await this.plotManager.getApplicationOperator(this.aId);
+      assert.equal(operator, dan);
     });
   });
 
@@ -782,6 +811,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         // TODO: pass neighbours and directions
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+      });
+
+      it('should allow the operator to add goehashes', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.approveOperator(this.aId, frank, { from: alice });
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
       });
 
       it('should re-use geohash space tokens if they belong to PlotManager', async function() {

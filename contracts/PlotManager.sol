@@ -54,6 +54,7 @@ contract PlotManager is Initializable, Ownable {
   struct Application {
     bytes32 id;
     address applicant;
+    address operator;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageTokenId;
@@ -86,9 +87,6 @@ contract PlotManager is Initializable, Ownable {
   mapping(bytes32 => Application) public applications;
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
-
-  mapping (bytes32 => address) public applicationApprovals;
-  mapping (address => mapping (address => bool)) public operatorApprovals;
 
   // WARNING: we do not remove applications from validator's list,
   // so do not rely on this variable to verify whether validator
@@ -132,7 +130,9 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender), "Applicant invalid");
+    require(
+      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
+      "Applicant invalid");
 
     _;
   }
@@ -186,6 +186,17 @@ contract PlotManager is Initializable, Ownable {
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceGaltShare = _newShare;
+  }
+
+  function approveOperator(bytes32 _aId, address _to) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    require(_to != a.applicant, "Unable to approve to the same account");
+
+    a.operator = _to;
+  }
+
+  function getApplicationOperator(bytes32 _aId) public view returns (address) {
+    return applications[_aId].operator;
   }
 
   function changeApplicationDetails(
@@ -302,35 +313,6 @@ contract PlotManager is Initializable, Ownable {
     assert(totalReward == a.validatorsReward);
   }
 
-  // NOTICE: probably wrong modifier after merge
-  function approve(address _to, bytes32 _aId) public onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-    // TODO: provide a message
-    require(_to != a.applicant);
-    applicationApprovals[_aId] = _to;
-  }
-
-  function getApproved(bytes32 _aId) public view returns (address) {
-    return applicationApprovals[_aId];
-  }
-
-  function clearApprove(bytes32 _aId) public {
-    Application storage a = applications[_aId];
-    // TODO: provide a message
-    require(msg.sender == a.applicant || isApprovedForAll(owner, msg.sender) || getApproved(_aId) == msg.sender);
-
-    applicationApprovals[_aId] = address(0);
-  }
-
-  function setApprovalForAll(address _to, bool _approved) public {
-    // TODO: provide a message
-    require(_to != msg.sender);
-    operatorApprovals[msg.sender][_to] = _approved;
-  }
-
-  function isApprovedForAll(address _owner, address _operator) public view returns (bool) {
-    return operatorApprovals[_owner][_operator];
-  }
 
   function applyForPlotOwnership(
     uint256[] _packageContour,
@@ -658,7 +640,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     Currency _currency
   )
-   public
+    public
   {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
