@@ -112,6 +112,11 @@ contract PlotClarificationManager is Initializable, Ownable {
     _;
   }
 
+  modifier anyValidator() {
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
+    _;
+  }
+
   modifier onlyPusherRole() {
     require(validators.hasRole(msg.sender, PUSHER_ROLE), "Validator doesn't qualify for this action");
     validators.ensureValidatorActive(msg.sender);
@@ -316,6 +321,22 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
+
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
+    Application storage a = applications[_aId];
+
+    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
+    require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
+    require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
+    require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+
+    a.roleAddresses[_role] = msg.sender;
+    a.addressRoles[msg.sender] = _role;
+    applicationsByValidator[msg.sender].push(_aId);
+
+    changeValidationStatus(a, _role, ValidationStatus.LOCKED);
+  }
+
 
   function getApplicationById(
     bytes32 _id

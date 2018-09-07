@@ -260,7 +260,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
       this.packageTokenId = res.packageTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: coreTeam });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
@@ -611,6 +611,57 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
           res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '2010000000000000000');
         });
+      });
+    });
+
+    describe('#lockApplicationForReview()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          from: alice,
+          value: ether(6 + 7)
+        });
+      });
+
+      it('should allow multiple validators of different roles to lock a submitted application', async function() {
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+
+        let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.plotClarificationManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex('human'))
+          .call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+
+        res = await this.plotClarificationManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+          .call();
+        assert.equal(res.validator.toLowerCase(), dan);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+
+        res = await this.plotClarificationManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex('dog'))
+          .call();
+        assert.equal(res.validator.toLowerCase(), zeroAddress);
+        assert.equal(res.status, ValidationStatus.PENDING);
+      });
+
+      // eslint-disable-next-line
+      it('should deny a validator with the same role to lock an application which is already on consideration', async function() {
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await assertRevert(
+          this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: charlie })
+        );
+      });
+
+      it('should deny non-validator lock application', async function() {
+        await assertRevert(
+          this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: coreTeam })
+        );
       });
     });
   });
