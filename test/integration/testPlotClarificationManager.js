@@ -227,7 +227,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
     });
   });
 
-  describe.only('application pipeline for ETH', () => {
+  describe('application pipeline for ETH', () => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
@@ -293,13 +293,14 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         assert.equal(res, this.plotClarificationManager.address);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res2 = await this.plotClarificationManagerWeb3.methods.getApplicationPayloadById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
         assert.equal(res.packageTokenId, this.packageTokenId);
         assert.equal(res.applicant.toLowerCase(), alice);
         assert.equal(res.currency, Currency.ETH);
-        assert.equal(res.precision, 8);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), this.initLedgerIdentifier);
-        assert.equal(res.country, web3.utils.asciiToHex('MN'));
+        assert.equal(res2.precision, 8);
+        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+        assert.equal(res2.country, web3.utils.asciiToHex('MN'));
       });
     });
 
@@ -340,6 +341,30 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
       it('should deny locking for already locked applications ', async function() {
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await assertRevert(this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan }));
+      });
+    });
+
+    describe('#valuateGasDeposit()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+      });
+
+      it('should allow validator with role clarification pusher to valuate an application', async function() {
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.PAYMENT_REQUIRED);
+        assert.equal(res.gasDeposit, ether(42));
+      });
+
+      it('should deny other account valuate an application', async function() {
+        await assertRevert(this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: alice }));
+      });
+
+      it('should deny valudation for already valued applications ', async function() {
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan });
+        await assertRevert(this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan }));
       });
     });
   });

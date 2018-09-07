@@ -63,7 +63,7 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     uint256 validatorsReward;
     uint256 galtSpaceReward;
-    uint256 valuatedGasDeposit;
+    uint256 gasDeposit;
     bool galtSpaceRewardPaidOut;
 
     uint8 precision;
@@ -113,6 +113,7 @@ contract PlotClarificationManager is Initializable, Ownable {
 
   modifier onlyPusherRole() {
     require(validators.hasRole(msg.sender, PUSHER_ROLE), "Validator doesn't qualify for this action");
+    validators.ensureValidatorActive(msg.sender);
 
     _;
   }
@@ -250,6 +251,15 @@ contract PlotClarificationManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.VALUATION);
   }
 
+  function valuateGasDeposit(bytes32 _aId, uint256 _gasDeposit) external onlyPusherRole {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.VALUATION, "ApplicationStatus should be VALUATION");
+
+    a.gasDeposit = _gasDeposit;
+    changeApplicationStatus(a, ApplicationStatus.PAYMENT_REQUIRED);
+  }
+
   function getApplicationById(
     bytes32 _id
   )
@@ -260,11 +270,8 @@ contract PlotClarificationManager is Initializable, Ownable {
       Currency currency,
       address applicant,
       uint256 packageTokenId,
-      bytes32 credentialsHash,
-      uint8 precision,
-      bytes2 country,
-      bytes32 ledgerIdentifier,
       bytes32[] assignedValidatorRoles,
+      uint256 gasDeposit,
       uint256 validatorsReward,
       uint256 galtSpaceReward
     )
@@ -278,14 +285,30 @@ contract PlotClarificationManager is Initializable, Ownable {
       m.currency,
       m.applicant,
       m.packageTokenId,
-      m.credentialsHash,
-      m.precision,
-      m.country,
-      m.ledgerIdentifier,
       m.assignedRoles,
+      m.gasDeposit,
       m.validatorsReward,
       m.galtSpaceReward
     );
+  }
+
+  function getApplicationPayloadById(
+    bytes32 _id
+  )
+    external
+    view
+    returns(
+      bytes32 credentialsHash,
+      uint8 precision,
+      bytes2 country,
+      bytes32 ledgerIdentifier
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (m.credentialsHash, m.precision, m.country, m.ledgerIdentifier);
   }
 
   function changeValidationStatus(
