@@ -714,5 +714,41 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: bob }));
       });
     });
+
+    describe('#addGeohashesToApplication()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          from: alice,
+          value: ether(6 + 7)
+        });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        this.geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+      });
+
+      it('should allow pusher role add geohashes to package', async function() {
+        let res = await this.plotClarificationManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], {
+          from: dan
+        });
+        res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
+        assert.equal(res.toString(10), '18');
+      });
+
+      it('should deny non-pusher add geohashes to package', async function() {
+        await assertRevert(
+          this.plotClarificationManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], {
+            from: eve
+          })
+        );
+      });
+    });
   });
 });

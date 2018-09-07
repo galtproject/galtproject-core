@@ -377,6 +377,36 @@ contract PlotClarificationManager is Initializable, Ownable {
     }
   }
 
+  function addGeohashesToApplication(
+    bytes32 _aId,
+    uint256[] _geohashes,
+    uint256[] _neighborsGeohashTokens,
+    bytes2[] _directions
+  )
+    public
+    onlyPusherRole
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
+
+    for (uint8 i = 0; i < _geohashes.length; i++) {
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
+      if (spaceToken.exists(geohashTokenId)) {
+        require(
+          spaceToken.ownerOf(geohashTokenId) == address(this),
+          "Existing geohash token should belongs to PlotClarificationManager contract"
+        );
+      } else {
+        spaceToken.mintGeohash(address(this), _geohashes[i]);
+      }
+
+      _geohashes[i] = geohashTokenId;
+    }
+
+    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
+  }
+
   function getApplicationById(
     bytes32 _id
   )
