@@ -111,7 +111,99 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
-  it.only('should be initialized successfully', async function() {
+  it('should be initialized successfully', async function() {
     (await this.plotClarificationManager.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+  });
+
+  describe.only('contract config modifiers', () => {
+    describe('#setGaltSpaceRewardsAddress()', () => {
+      it('should allow an owner set rewards address', async function() {
+        await this.plotClarificationManager.setGaltSpaceRewardsAddress(bob, { from: coreTeam });
+        // const res = await web3.eth.getStorageAt(this.plotClarificationManager.address, 5);
+        // assert.equal(res, bob);
+      });
+
+      it('should deny non-owner set rewards address', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceRewardsAddress(bob, { from: alice }));
+      });
+    });
+
+    describe('#setPaymentMethod()', () => {
+      it('should allow an owner set a payment method', async function() {
+        await this.plotClarificationManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam });
+        const res = await this.plotClarificationManager.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_ONLY);
+      });
+
+      it('should deny non-owner set a payment method', async function() {
+        await assertRevert(this.plotClarificationManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
+        const res = await this.plotClarificationManager.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_AND_GALT);
+      });
+    });
+
+    describe('#setApplicationFeeInEth()', () => {
+      it('should allow an owner set a new minimum fee in ETH', async function() {
+        await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(0.05), { from: coreTeam });
+        const res = await this.plotClarificationManager.minimalApplicationFeeInEth();
+        assert.equal(res, ether(0.05));
+      });
+
+      it('should deny any other than owner person set fee in ETH', async function() {
+        await assertRevert(this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(0.05), { from: alice }));
+      });
+    });
+
+    describe('#setApplicationFeeInGalt()', () => {
+      it('should allow an owner set a new minimum fee in GALT', async function() {
+        await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: coreTeam });
+        const res = await this.plotClarificationManager.minimalApplicationFeeInGalt();
+        assert.equal(res, ether(0.15));
+      });
+
+      it('should deny any other than owner person set fee in GALT', async function() {
+        await assertRevert(this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: alice }));
+      });
+    });
+
+    describe('#setGaltSpaceEthShare()', () => {
+      it('should allow an owner set galtSpace ETH share in percents', async function() {
+        await this.plotClarificationManager.setGaltSpaceEthShare('42', { from: coreTeam });
+        const res = await this.plotClarificationManager.galtSpaceEthShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('0.5', { from: coreTeam }));
+      });
+
+      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('101', { from: coreTeam }));
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('20', { from: alice }));
+      });
+    });
+
+    describe('#setGaltSpaceGaltShare()', () => {
+      it('should allow an owner set galtSpace Galt share in percents', async function() {
+        await this.plotClarificationManager.setGaltSpaceGaltShare('42', { from: coreTeam });
+        const res = await this.plotClarificationManager.galtSpaceGaltShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('0.5', { from: coreTeam }));
+      });
+
+      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('101', { from: coreTeam }));
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('20', { from: alice }));
+      });
+    });
   });
 });
