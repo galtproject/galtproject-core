@@ -117,6 +117,15 @@ contract PlotClarificationManager is Initializable, Ownable {
     _;
   }
 
+  modifier onlyValidatorOfApplication(bytes32 _aId) {
+    Application storage a = applications[_aId];
+
+    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
+    validators.ensureValidatorActive(msg.sender);
+
+    _;
+  }
+
   modifier onlyPusherRole() {
     require(validators.hasRole(msg.sender, PUSHER_ROLE), "Validator doesn't qualify for this action");
     validators.ensureValidatorActive(msg.sender);
@@ -337,6 +346,36 @@ contract PlotClarificationManager is Initializable, Ownable {
     changeValidationStatus(a, _role, ValidationStatus.LOCKED);
   }
 
+  function approveApplication(
+    bytes32 _aId
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
+
+    bytes32 role = a.addressRoles[msg.sender];
+
+    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+
+    changeValidationStatus(a, role, ValidationStatus.APPROVED);
+
+    uint256 len = a.assignedRoles.length;
+    bool allApproved = true;
+
+    for (uint8 i = 0; i < len; i++) {
+      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.APPROVED) {
+        allApproved = false;
+      }
+    }
+
+    if (allApproved) {
+      changeApplicationStatus(a, ApplicationStatus.APPROVED);
+    }
+  }
 
   function getApplicationById(
     bytes32 _id

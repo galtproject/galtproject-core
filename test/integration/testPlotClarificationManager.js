@@ -664,5 +664,55 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         );
       });
     });
+
+    describe('#approveApplication', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          from: alice,
+          value: ether(6 + 7)
+        });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+      });
+
+      it('should allow a validator approve application', async function() {
+        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+
+        let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+
+        res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+      });
+
+      it('should deny non-validator approve application', async function() {
+        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: coreTeam }));
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+      });
+
+      // eslint-disable-next-line
+      it('should deny validator whose role doesnt present in application type to approve application', async function() {
+        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: charlie }));
+      });
+
+      // eslint-disable-next-line
+      it('should deny validator approve application with other than submitted', async function() {
+        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: bob }));
+      });
+    });
   });
 });
