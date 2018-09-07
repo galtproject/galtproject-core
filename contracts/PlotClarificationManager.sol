@@ -12,13 +12,17 @@ import "./Validators.sol";
 contract PlotClarificationManager is Initializable, Ownable {
   using SafeMath for uint256;
 
+  // 'PlotClarificationManager' hash
   bytes32 public constant APPLICATION_TYPE = 0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7;
+
+  // 'clarification pusher' bytes32 representation
+  bytes32 public constant PUSHER_ROLE = 0x636c6172696669636174696f6e20707573686572000000000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
     NEW,
-    VALIDATION_REQUIRED,
-    VALIDATION,
+    VALUATION_REQUIRED,
+    VALUATION,
     PAYMENT_REQUIRED,
     SUBMITTED,
     APPROVED,
@@ -103,6 +107,20 @@ contract PlotClarificationManager is Initializable, Ownable {
 
   modifier validatorsReady() {
     // require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+
+    _;
+  }
+
+  modifier onlyPusherRole() {
+    require(validators.hasRole(msg.sender, PUSHER_ROLE), "Validator doesn't qualify for this action");
+
+    _;
+  }
+
+  modifier onlyApplicant(bytes32 _aId) {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender, "Applicant invalid");
 
     _;
   }
@@ -215,6 +233,23 @@ contract PlotClarificationManager is Initializable, Ownable {
     return _id;
   }
 
+  function submitApplicationForValuation(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.NEW, "ApplicationStatus should be NEW");
+
+    changeApplicationStatus(a, ApplicationStatus.VALUATION_REQUIRED);
+
+  }
+
+  function lockApplicationForValuation(bytes32 _aId) external onlyPusherRole {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.VALUATION_REQUIRED, "ApplicationStatus should be VALUATION_REQUIRED");
+
+    changeApplicationStatus(a, ApplicationStatus.VALUATION);
+  }
+
   function getApplicationById(
     bytes32 _id
   )
@@ -251,5 +286,28 @@ contract PlotClarificationManager is Initializable, Ownable {
       m.validatorsReward,
       m.galtSpaceReward
     );
+  }
+
+  function changeValidationStatus(
+    Application storage _a,
+    bytes32 _role,
+    ValidationStatus _status
+  )
+    internal
+  {
+    emit LogValidationStatusChanged(_a.id, _role, _status);
+
+    _a.validationStatus[_role] = _status;
+  }
+
+  function changeApplicationStatus(
+    Application storage _a,
+    ApplicationStatus _status
+  )
+    internal
+  {
+    emit LogApplicationStatusChanged(_a.id, _status);
+
+    _a.status = _status;
   }
 }

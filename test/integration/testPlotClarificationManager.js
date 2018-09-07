@@ -16,6 +16,7 @@ const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const CLARIFICATION_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
 const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6ca3060ac1e46095';
+const PUSHER_ROLE = 'clarification pusher';
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -29,13 +30,13 @@ const GEOHASH_MASK = new BN('010000000000000000000000000000000000000000000000000
 const ApplicationStatus = {
   NOT_EXISTS: 0,
   NEW: 1,
-  SUBMITTED: 2,
-  APPROVED: 3,
-  REJECTED: 4,
-  REVERTED: 5,
-  DISASSEMBLED_BY_APPLICANT: 6,
-  DISASSEMBLED_BY_VALIDATOR: 7,
-  REVOKED: 8
+  VALUATION_REQUIRED: 2,
+  VALUATION: 3,
+  PAYMENT_REQUIRED: 4,
+  SUBMITTED: 5,
+  APPROVED: 6,
+  REVERTED: 7,
+  PACKED: 8
 };
 
 const ValidationStatus = {
@@ -238,7 +239,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
 
       this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
         CLARIFICATION_APPLICATION,
-        ['human', 'dog', 'cat'],
+        ['human', 'dog', PUSHER_ROLE],
         [50, 25, 25],
         ['', '', ''],
         { from: coreTeam }
@@ -260,7 +261,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: coreTeam });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
       await this.plotManager.submitApplication(this.aId, { from: alice });
@@ -271,28 +272,24 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      assert.equal(res, alice);
+
+      await this.spaceToken.approve(this.plotClarificationManager.address, this.packageTokenId, { from: alice });
+      res = await this.plotClarificationManager.applyForPlotOwnership(
+        this.packageTokenId,
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        8,
+        { from: alice }
+      );
+      this.aId = res.logs[0].args.id;
     });
 
     describe('#applyForPlotOwnership()', () => {
       it('should create a new application', async function() {
-        console.log('PlotManager', this.plotManager.address);
-        console.log('alice', alice);
-
         let res = await this.spaceToken.ownerOf(this.packageTokenId);
-        assert.equal(res, alice);
-
-        await this.spaceToken.approve(this.plotClarificationManager.address, this.packageTokenId, { from: alice });
-        res = await this.plotClarificationManager.applyForPlotOwnership(
-          this.packageTokenId,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          8,
-          { from: alice }
-        );
-        this.aId = res.logs[0].args.id;
-
-        res = await this.spaceToken.ownerOf(this.packageTokenId);
         assert.equal(res, this.plotClarificationManager.address);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -303,6 +300,46 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         assert.equal(res.precision, 8);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), this.initLedgerIdentifier);
         assert.equal(res.country, web3.utils.asciiToHex('MN'));
+      });
+    });
+
+    describe('#submitApplicationForValudation()', () => {
+      it('should allow an applicant to submit application for valuation', async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.VALUATION_REQUIRED);
+      });
+
+      it('should deny other account to submit application for valuation', async function() {
+        await assertRevert(this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: coreTeam }));
+      });
+
+      it('should deny submition for already submitted applications ', async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await assertRevert(this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice }));
+      });
+    });
+
+    describe('#lockApplicationForValuation()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+      });
+
+      it('should allow validator with role clarification pusher to lock an application', async function() {
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.VALUATION);
+      });
+
+      it('should deny other account lock an application', async function() {
+        await assertRevert(this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: alice }));
+      });
+
+      it('should deny locking for already locked applications ', async function() {
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await assertRevert(this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan }));
       });
     });
   });
