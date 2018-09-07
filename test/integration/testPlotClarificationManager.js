@@ -1,3 +1,4 @@
+const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
@@ -38,10 +39,10 @@ const ApplicationStatus = {
 };
 
 const ValidationStatus = {
-  INTACT: 0,
-  LOCKED: 1,
-  APPROVED: 2,
-  REJECTED: 3,
+  NOT_EXISTS: 0,
+  PENDING: 1,
+  LOCKED: 2,
+  APPROVED: 3,
   REVERTED: 4
 };
 
@@ -73,11 +74,22 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
+    this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
+    await this.plotManager.initialize(
+      this.spaceToken.address,
+      this.splitMerge.address,
+      this.validators.address,
+      this.galtToken.address,
+      galtSpaceOrg,
+      {
+        from: coreTeam
+      }
+    );
     await this.plotClarificationManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
@@ -88,21 +100,28 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         from: coreTeam
       }
     );
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotClarificationManager.address, {
-         from: coreTeam
+    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
+      from: coreTeam
     });
+
+    await this.plotManager.setApplicationFeeInEth(ether(6));
+    await this.plotManager.setApplicationFeeInGalt(ether(45));
+    await this.plotManager.setGaltSpaceEthShare(33);
+    await this.plotManager.setGaltSpaceGaltShare(13);
 
     await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(6));
     await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(45));
     await this.plotClarificationManager.setGaltSpaceEthShare(33);
     await this.plotClarificationManager.setGaltSpaceGaltShare(13);
 
+    await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.plotClarificationManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
 
+    this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotClarificationManagerWeb3 = new web3.eth.Contract(
       this.plotClarificationManager.abi,
       this.plotClarificationManager.address
@@ -115,7 +134,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
     (await this.plotClarificationManager.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 
-  describe.only('contract config modifiers', () => {
+  describe('contract config modifiers', () => {
     describe('#setGaltSpaceRewardsAddress()', () => {
       it('should allow an owner set rewards address', async function() {
         await this.plotClarificationManager.setGaltSpaceRewardsAddress(bob, { from: coreTeam });
@@ -203,6 +222,87 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
 
       it('should deny any other than owner set Galt Space EHT share in percents', async function() {
         await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('20', { from: alice }));
+      });
+    });
+  });
+
+  describe.only('application pipeline for ETH', () => {
+    beforeEach(async function() {
+      this.resNewAddRoles = await this.validators.setApplicationTypeRoles(
+        NEW_APPLICATION,
+        ['foo', 'bar', 'buzz'],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: coreTeam }
+      );
+
+      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+        CLARIFICATION_APPLICATION,
+        ['human', 'dog', 'cat'],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: coreTeam }
+      );
+      // Alice obtains a package token
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        galt.geohashToGeohash5('sezu06'),
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        7,
+        { from: alice, value: ether(6) }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.packageTokenId = res.packageTokenId;
+
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: coreTeam });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+      await this.plotManager.submitApplication(this.aId, { from: alice });
+      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+    });
+
+    describe('#applyForPlotOwnership()', () => {
+      it('should create a new application', async function() {
+        console.log('PlotManager', this.plotManager.address);
+        console.log('alice', alice);
+
+        let res = await this.spaceToken.ownerOf(this.packageTokenId);
+        assert.equal(res, alice);
+
+        await this.spaceToken.approve(this.plotClarificationManager.address, this.packageTokenId, { from: alice });
+        res = await this.plotClarificationManager.applyForPlotOwnership(
+          this.packageTokenId,
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          8,
+          { from: alice }
+        );
+        this.aId = res.logs[0].args.id;
+
+        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        assert.equal(res, this.plotClarificationManager.address);
+
+        res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+        assert.equal(res.packageTokenId, this.packageTokenId);
+        assert.equal(res.applicant.toLowerCase(), alice);
+        assert.equal(res.currency, Currency.ETH);
+        assert.equal(res.precision, 8);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), this.initLedgerIdentifier);
+        assert.equal(res.country, web3.utils.asciiToHex('MN'));
       });
     });
   });

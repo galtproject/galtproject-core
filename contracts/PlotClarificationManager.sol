@@ -101,6 +101,13 @@ contract PlotClarificationManager is Initializable, Ownable {
 
   constructor () public {}
 
+  modifier validatorsReady() {
+    // require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+
+    _;
+  }
+
+
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
@@ -160,25 +167,27 @@ contract PlotClarificationManager is Initializable, Ownable {
 
 
   function applyForPlotOwnership(
-    uint256 _baseGeohash,
+    uint256 _packageTokenId,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     bytes2 _country,
-    uint8 _precision,
-    uint256 _applicationFeeInGalt
+    uint8 _precision
   )
     public
+    validatorsReady
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
+    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the provided token");
+    // TODO: require owner is sender
 
-    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+    spaceToken.transferFrom(msg.sender, address(this), _packageTokenId);
     // TODO: transfer space token here
 
     Application memory a;
     bytes32 _id = keccak256(
       abi.encodePacked(
-        _baseGeohash,
+        _packageTokenId,
         _credentialsHash,
         blockhash(block.number)
       )
@@ -190,6 +199,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     a.id = _id;
     a.applicant = msg.sender;
 
+    a.packageTokenId = _packageTokenId;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -211,11 +221,11 @@ contract PlotClarificationManager is Initializable, Ownable {
     public
     view
     returns (
+      ApplicationStatus status,
+      Currency currency,
       address applicant,
       uint256 packageTokenId,
       bytes32 credentialsHash,
-      ApplicationStatus status,
-      Currency currency,
       uint8 precision,
       bytes2 country,
       bytes32 ledgerIdentifier,
@@ -229,11 +239,11 @@ contract PlotClarificationManager is Initializable, Ownable {
     Application storage m = applications[_id];
 
     return (
+      m.status,
+      m.currency,
       m.applicant,
       m.packageTokenId,
       m.credentialsHash,
-      m.status,
-      m.currency,
       m.precision,
       m.country,
       m.ledgerIdentifier,
