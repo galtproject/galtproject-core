@@ -227,6 +227,170 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
     });
   });
 
+  describe('application pipeline for GALT', () => {
+    beforeEach(async function() {
+      this.resNewAddRoles = await this.validators.setApplicationTypeRoles(
+        NEW_APPLICATION,
+        ['foo', 'bar', 'buzz'],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: coreTeam }
+      );
+
+      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+        CLARIFICATION_APPLICATION,
+        ['human', 'dog', PUSHER_ROLE],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: coreTeam }
+      );
+      // Alice obtains a package token
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        galt.geohashToGeohash5('sezu06'),
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        7,
+        { from: alice, value: ether(6) }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.packageTokenId = res.packageTokenId;
+
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+      await this.plotManager.submitApplication(this.aId, { from: alice });
+      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      assert.equal(res, alice);
+
+      await this.spaceToken.approve(this.plotClarificationManager.address, this.packageTokenId, { from: alice });
+      res = await this.plotClarificationManager.applyForPlotOwnership(
+        this.packageTokenId,
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        8,
+        { from: alice }
+      );
+      this.aId = res.logs[0].args.id;
+    });
+
+    describe('#submitApplicationForReviewGalt()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+      });
+
+      it('should allow an applicant pay commission and gas deposit in Galt', async function() {
+        await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
+        await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(45), {
+          from: alice,
+          value: ether(7)
+        });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.gasDeposit, ether(7));
+      });
+
+      describe('payable', () => {
+        it('should reject applications without neither payment nor gas deposit', async function() {
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, 0, {
+              from: alice
+            })
+          );
+        });
+
+        it('should reject applications with gas deposit which less than required', async function() {
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(45), {
+              from: alice,
+              value: ether(6)
+            })
+          );
+        });
+
+        it('should reject applications with payment which less than required', async function() {
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(43), {
+              from: alice,
+              value: ether(7)
+            })
+          );
+        });
+
+        it('should reject applications with gas deposit greater than required', async function() {
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+              from: alice,
+              value: ether(8)
+            })
+          );
+        });
+
+        it('should calculate corresponding validator and galtspace rewards', async function() {
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
+          await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+            from: alice,
+            value: ether(7)
+          });
+
+          // validator share - 87%
+          // galtspace share - 13%
+
+          const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.validatorsReward, '40890000000000000000');
+          assert.equal(res.galtSpaceReward, '6110000000000000000');
+        });
+
+        it('should calculate validator rewards according to their roles share', async function() {
+          const { aId } = this;
+          await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
+          await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+            from: alice,
+            value: ether(7)
+          });
+
+          // validator share - 87% (50%/25%/25%)
+          // galtspace share - 13%
+
+          let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['clarification pusher', 'dog', 'human']);
+
+          res = await this.plotClarificationManagerWeb3.methods
+            .getApplicationValidator(aId, utf8ToHex('clarification pusher'))
+            .call();
+          assert.equal(res.reward.toString(), '10222500000000000000');
+
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '10222500000000000000');
+
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '20445000000000000000');
+        });
+      });
+    });
+  });
+
   describe('application pipeline for ETH', () => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.validators.setApplicationTypeRoles(

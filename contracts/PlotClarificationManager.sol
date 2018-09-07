@@ -127,7 +127,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     _;
   }
 
-
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
@@ -260,6 +259,40 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     a.gasDeposit = _gasDeposit;
     changeApplicationStatus(a, ApplicationStatus.PAYMENT_REQUIRED);
+  }
+
+  function submitApplicationForReviewGalt(
+    bytes32 _aId,
+    uint256 _applicationFeeInGalt
+  )
+    external
+    payable
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    uint256 deposit = a.gasDeposit;
+
+    require(a.status == ApplicationStatus.PAYMENT_REQUIRED, "ApplicationStatus should be PAYMENT_REQUIRED");
+    require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
+    require(msg.value == deposit, "Incorrect gas deposit (EHT)");
+
+    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+
+    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
+    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+
+    a.validatorsReward = validatorsReward;
+    a.galtSpaceReward = galtSpaceReward;
+
+    a.currency = Currency.GALT;
+    a.validatorsReward = validatorsReward;
+    a.galtSpaceReward = galtSpaceReward;
+
+    assignRequiredValidatorRolesAndRewards(_aId);
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   function submitApplicationForReview(bytes32 _aId) external payable onlyApplicant(_aId) {
