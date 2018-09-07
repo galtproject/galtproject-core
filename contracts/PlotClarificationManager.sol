@@ -407,6 +407,14 @@ contract PlotClarificationManager is Initializable, Ownable {
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
+  function applicationPackingCompleted(bytes32 _aId) external onlyPusherRole {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
+
+    a.status = ApplicationStatus.PACKED;
+  }
+
   function getApplicationById(
     bytes32 _id
   )

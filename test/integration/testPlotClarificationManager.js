@@ -750,5 +750,38 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         );
       });
     });
+
+    describe('#applicationPackingCompleted()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          from: alice,
+          value: ether(6 + 7)
+        });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+      });
+
+      it.only('should allow pusher notify the applicant that packing process completed', async function() {
+        await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.PACKED);
+      });
+
+      it('should deny non pusher invoke this method', async function() {
+        await assertRevert(this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: eve }));
+      });
+
+      it('should deny locking for already locked applications ', async function() {
+        await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
+        await assertRevert(this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan }));
+      });
+    });
   });
 });
