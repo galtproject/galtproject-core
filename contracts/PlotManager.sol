@@ -28,7 +28,8 @@ contract PlotManager is Initializable, Ownable {
   }
 
   enum ValidationStatus {
-    INTACT,
+    NOT_EXISTS,
+    PENDING,
     LOCKED,
     APPROVED,
     REJECTED,
@@ -274,10 +275,10 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    assignRequiredValidatorRolesAndRewards(_id);
-
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
+
+    assignRequiredValidatorRolesAndRewards(_id);
 
     return _id;
   }
@@ -307,12 +308,12 @@ contract PlotManager is Initializable, Ownable {
         .mul(validators.getRoleRewardShare(role))
         .div(100);
       a.assignedRewards[role] = rewardShare;
+      changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
     assert(totalReward == a.validatorsReward);
   }
-
 
   function applyForPlotOwnership(
     uint256[] _packageContour,
@@ -371,10 +372,10 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    assignRequiredValidatorRolesAndRewards(_id);
-
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
+
+    assignRequiredValidatorRolesAndRewards(_id);
 
     return _id;
   }
@@ -469,7 +470,7 @@ contract PlotManager is Initializable, Ownable {
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
-    require(a.validationStatus[_role] == ValidationStatus.INTACT, "Can't lock an application already in work");
+    require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
 
     a.roleAddresses[_role] = msg.sender;
     a.addressRoles[msg.sender] = _role;
@@ -483,12 +484,12 @@ contract PlotManager is Initializable, Ownable {
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(a.validationStatus[_role] != ValidationStatus.INTACT, "Validation status not set");
+    require(a.validationStatus[_role] != ValidationStatus.PENDING, "Validation status not set");
     require(a.roleAddresses[_role] != address(0), "Address should be already set");
 
     // Do not affect on application state
     a.roleAddresses[_role] = address(0);
-    changeValidationStatus(a, _role, ValidationStatus.INTACT);
+    changeValidationStatus(a, _role, ValidationStatus.PENDING);
   }
 
   function approveApplication(
@@ -544,8 +545,8 @@ contract PlotManager is Initializable, Ownable {
 
     for (uint8 i = 0; i < len; i++) {
       bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] == ValidationStatus.INTACT) {
-        revert("One of the roles has INTACT status");
+      if (a.validationStatus[currentRole] == ValidationStatus.PENDING) {
+        revert("One of the roles has PENDING status");
       }
     }
 

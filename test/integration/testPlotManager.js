@@ -37,11 +37,12 @@ const ApplicationStatus = {
 };
 
 const ValidationStatus = {
-  INTACT: 0,
-  LOCKED: 1,
-  APPROVED: 2,
-  REJECTED: 3,
-  REVERTED: 4
+  NOT_EXISTS: 0,
+  PENDING: 1,
+  LOCKED: 2,
+  APPROVED: 3,
+  REJECTED: 4,
+  REVERTED: 5
 };
 
 const PaymentMethods = {
@@ -1075,7 +1076,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
         assert.equal(res.validator.toLowerCase(), zeroAddress);
-        assert.equal(res.status, ValidationStatus.INTACT);
+        assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       // eslint-disable-next-line
@@ -1140,7 +1141,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), zeroAddress);
-        assert.equal(res.status, ValidationStatus.INTACT);
+        assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       it('should deny non-validator to lock an application', async function() {
@@ -1168,7 +1169,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), zeroAddress);
-        assert.equal(res.status, ValidationStatus.INTACT);
+        assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       it('should deny non-owner to unlock an application under consideration', async function() {
