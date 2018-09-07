@@ -367,5 +367,87 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         await assertRevert(this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan }));
       });
     });
+
+    describe('#submitApplicationForReview()', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+      });
+
+      it('should allow an applicant pay commission and gas deposit in ETH', async function() {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          from: alice,
+          value: ether(6 + 7)
+        });
+
+        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.gasDeposit, ether(7));
+      });
+
+      describe('payable', () => {
+        it('should reject applications without payment', async function() {
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReview(this.aId, {
+              from: alice
+            })
+          );
+        });
+
+        it('should reject applications with payment which less than required', async function() {
+          await assertRevert(
+            this.plotClarificationManager.submitApplicationForReview(this.aId, {
+              from: alice,
+              value: 10
+            })
+          );
+        });
+        it('should allow pplications with payment greater than required', async function() {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+            from: alice,
+            value: ether(23)
+          });
+        });
+
+        it('should calculate corresponding validator and galtspace rewards', async function() {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+            from: alice,
+            value: ether(14)
+          });
+          // validator share - 67%
+          // galtspace share - 33%
+
+          const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.galtSpaceReward, '2310000000000000000');
+          assert.equal(res.validatorsReward, '4690000000000000000');
+        });
+
+        it('should calculate validator rewards according to their roles share', async function() {
+          const { aId } = this;
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+            from: alice,
+            value: ether(13)
+          });
+          // validator share - 67%
+          // galtspace share - 33% (50%/25%/25%);
+
+          let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['clarification pusher', 'dog', 'human']);
+
+          res = await this.plotClarificationManagerWeb3.methods
+            .getApplicationValidator(aId, utf8ToHex('clarification pusher'))
+            .call();
+          assert.equal(res.reward.toString(), '1005000000000000000');
+
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '1005000000000000000');
+
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '2010000000000000000');
+        });
+      });
+    });
   });
 });

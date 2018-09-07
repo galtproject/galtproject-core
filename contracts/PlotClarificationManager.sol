@@ -31,7 +31,8 @@ contract PlotClarificationManager is Initializable, Ownable {
   }
 
   enum ValidationStatus {
-    INTACT,
+    NOT_EXISTS,
+    PENDING,
     LOCKED,
     APPROVED,
     REVERTED
@@ -184,7 +185,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     galtSpaceGaltShare = _newShare;
   }
 
-
   function applyForPlotOwnership(
     uint256 _packageTokenId,
     bytes32 _credentialsHash,
@@ -198,10 +198,8 @@ contract PlotClarificationManager is Initializable, Ownable {
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the provided token");
-    // TODO: require owner is sender
 
     spaceToken.transferFrom(msg.sender, address(this), _packageTokenId);
-    // TODO: transfer space token here
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -248,6 +246,10 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     require(a.status == ApplicationStatus.VALUATION_REQUIRED, "ApplicationStatus should be VALUATION_REQUIRED");
 
+    changeValidationStatus(a, PUSHER_ROLE, ValidationStatus.LOCKED);
+    a.roleAddresses[PUSHER_ROLE] = msg.sender;
+    a.addressRoles[msg.sender] = PUSHER_ROLE;
+
     changeApplicationStatus(a, ApplicationStatus.VALUATION);
   }
 
@@ -258,6 +260,28 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     a.gasDeposit = _gasDeposit;
     changeApplicationStatus(a, ApplicationStatus.PAYMENT_REQUIRED);
+  }
+
+  function submitApplicationForReview(bytes32 _aId) external payable onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    uint256 deposit = a.gasDeposit;
+    uint256 minimalPayment = minimalApplicationFeeInEth + deposit;
+
+    require(a.status == ApplicationStatus.PAYMENT_REQUIRED, "ApplicationStatus should be PAYMENT_REQUIRED");
+    require(msg.value >= minimalPayment, "Provided payment insufficient");
+
+    uint256 fee = msg.value.sub(deposit);
+    uint256 galtSpaceReward = galtSpaceEthShare.mul(fee).div(100);
+    uint256 validatorsReward = fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward).add(deposit) == msg.value);
+
+    a.validatorsReward = validatorsReward;
+    a.galtSpaceReward = galtSpaceReward;
+
+    assignRequiredValidatorRolesAndRewards(_aId);
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   function getApplicationById(
@@ -311,6 +335,29 @@ contract PlotClarificationManager is Initializable, Ownable {
     return (m.credentialsHash, m.precision, m.country, m.ledgerIdentifier);
   }
 
+  function getApplicationValidator(
+    bytes32 _aId,
+    bytes32 _role
+  )
+    external
+    view
+    returns (
+      address validator,
+      uint256 reward,
+      ValidationStatus status,
+      string message
+    )
+  {
+    Application storage m = applications[_aId];
+
+    return (
+      m.roleAddresses[_role],
+      m.assignedRewards[_role],
+      m.validationStatus[_role],
+      m.roleMessages[_role]
+    );
+  }
+
   function changeValidationStatus(
     Application storage _a,
     bytes32 _role,
@@ -333,4 +380,45 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     _a.status = _status;
   }
+
+  function calculateAndStoreGaltFee(
+    Application memory _a,
+    uint256 _applicationFeeInGalt
+  )
+    internal
+  {
+    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
+    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+
+    _a.validatorsReward = validatorsReward;
+    _a.galtSpaceReward = galtSpaceReward;
+  }
+
+  function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
+    Application storage a = applications[_aId];
+    assert(a.validatorsReward > 0);
+
+    uint256 totalReward = 0;
+
+    a.assignedRoles = validators.getApplicationTypeRoles(APPLICATION_TYPE);
+    uint256 len = a.assignedRoles.length;
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 role = a.assignedRoles[i];
+      uint256 rewardShare = a
+        .validatorsReward
+        .mul(validators.getRoleRewardShare(role))
+        .div(100);
+
+      a.assignedRewards[role] = rewardShare;
+      if (role != PUSHER_ROLE) {
+        changeValidationStatus(a, role, ValidationStatus.PENDING);
+      }
+      totalReward = totalReward.add(rewardShare);
+    }
+
+    assert(totalReward == a.validatorsReward);
+  }
+
 }
