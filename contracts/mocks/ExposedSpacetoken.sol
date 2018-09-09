@@ -3,6 +3,7 @@ pragma experimental "v0.5.0";
 
 import "../SpaceToken.sol";
 
+
 contract ExposedSpaceToken is SpaceToken {
   constructor(
     string name,

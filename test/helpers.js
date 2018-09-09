@@ -1,5 +1,7 @@
 const Web3 = require('web3');
 
+const { BN } = Web3.utils;
+
 let web3;
 
 module.exports = {
@@ -36,6 +38,17 @@ module.exports = {
       return;
     }
     assert.fail('Expected throw not received');
+  },
+  assertEqualBN(actual, expected) {
+    assert(actual instanceof BN);
+    assert(expected instanceof BN);
+
+    assert(
+      actual.toString(10) === expected.toString(10),
+      `Expected ${web3.utils.fromWei(actual)} (actual) ether to be equal ${web3.utils.fromWei(
+        expected
+      )} ether (expected)`
+    );
   },
   async printStorage(address, slotsToPrint) {
     assert(typeof address !== 'undefined');

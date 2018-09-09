@@ -5,13 +5,13 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
-import "./PlotManager.sol";
+
 
 contract SplitMerge is Initializable, Ownable {
   using SafeMath for uint256;
 
   SpaceToken spaceToken;
-  PlotManager plotManager;
+  address plotManager;
 
   event PackageInit(bytes32 id, address owner);
 
@@ -24,11 +24,7 @@ contract SplitMerge is Initializable, Ownable {
 
   uint256[] allPackages;
 
-  constructor () public {
-
-  }
-
-  function initialize(SpaceToken _spaceToken, PlotManager _plotManager) public isInitializer {
+  function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
     spaceToken = _spaceToken;
     plotManager = _plotManager;

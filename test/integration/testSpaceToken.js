@@ -171,8 +171,8 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
       await this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', {
         from: coreTeam
       });
-      let res = await this.spaceToken.ownerOf('0x010000000000000000000000000000000000000000000000000000000000007b');
-      assert.equal(res, 0x0);
+      let res = await this.spaceToken.exists('0x010000000000000000000000000000000000000000000000000000000000007b');
+      assert.equal(false, res);
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 0);
     });
@@ -180,8 +180,8 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     it('should allow burn tokens to the users in the burners role list', async function() {
       await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
       await this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', { from: bob });
-      const res = await this.spaceToken.ownerOf('0x010000000000000000000000000000000000000000000000000000000000007b');
-      assert.equal(res, 0x0);
+      const res = await this.spaceToken.exists('0x010000000000000000000000000000000000000000000000000000000000007b');
+      assert.equal(false, res);
     });
 
     it('should deny burn some tokens to users not in the burner role list', async function() {

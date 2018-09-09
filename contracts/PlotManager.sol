@@ -4,235 +4,265 @@ pragma experimental "v0.5.0";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
+import "./Validators.sol";
 
 
 contract PlotManager is Initializable, Ownable {
   using SafeMath for uint256;
 
-  enum ApplicationStatuses {
+  bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+
+  enum ApplicationStatus {
     NOT_EXISTS,
     NEW,
     SUBMITTED,
-    CONSIDERATION,
     APPROVED,
     REJECTED,
     REVERTED,
-    DISASSEMBLED,
-    REFUNDED,
-    VALIDATOR_REWARDED,
-    GALTSPACE_REWARDED
+    DISASSEMBLED_BY_APPLICANT,
+    DISASSEMBLED_BY_VALIDATOR,
+    REVOKED
   }
 
-  event LogApplicationStatusChanged(bytes32 application, ApplicationStatuses status);
+  enum ValidationStatus {
+    INTACT,
+    LOCKED,
+    APPROVED,
+    REJECTED,
+    REVERTED
+  }
+
+  enum PaymentMethod {
+    NONE,
+    ETH_ONLY,
+    GALT_ONLY,
+    ETH_AND_GALT
+  }
+
+  enum Currency {
+    ETH,
+    GALT
+  }
+
+  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
+  event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
     address applicant;
-    address validator;
+    address operator;
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageTokenId;
-    uint256 validatorRewardEth;
-    uint256 galtSpaceRewardEth;
-    uint256 validatorRewardGalt;
-    uint256 galtSpaceRewardGalt;
+    uint256 validatorsReward;
+    uint256 galtSpaceReward;
+    bool galtSpaceRewardPaidOut;
     uint8 precision;
     bytes2 country;
-    ApplicationStatuses status;
+    Currency currency;
+    ApplicationStatus status;
+
+    bytes32[] assignedRoles;
+
+    // TODO: combine into role struct
+    mapping(bytes32 => uint256) assignedRewards;
+    mapping(bytes32 => bool) roleRewardPaidOut;
+    mapping(bytes32 => string) roleMessages;
+    mapping(bytes32 => address) roleAddresses;
+    mapping(address => bytes32) addressRoles;
+    mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
-  struct Validator {
-    bytes32 name;
-    bytes2 country;
-    bool active;
-  }
-
+  PaymentMethod public paymentMethod;
   uint256 public applicationFeeInEth;
   uint256 public applicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
-  address galtSpaceRewardsAddress;
+  address private galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
-  mapping(address => Validator) public validators;
   mapping(address => bytes32[]) public applicationsByAddresses;
-  bytes32[] applicationsArray;
-
-  mapping (bytes32 => address) public applicationApprovals;
-  mapping (address => mapping (address => bool)) public operatorApprovals;
+  bytes32[] private applicationsArray;
 
   // WARNING: we do not remove applications from validator's list,
   // so do not rely on this variable to verify whether validator
   // exists or not.
   mapping(address => bytes32[]) public applicationsByValidator;
-  // WARNING: we do not remove validators from validatorsArray,
-  // so do not rely on this variable to verify whether validator
-  // exists or not.
-  address[] validatorsArray;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
+  Validators public validators;
+  ERC20 public galtToken;
 
   constructor () public {}
 
   function initialize(
-    uint256 _validationFeeInEth,
-    uint256 _galtSpaceEthShare,
-    address _galtSpaceRewardsAddress,
     SpaceToken _spaceToken,
-    SplitMerge _splitMerge
+    SplitMerge _splitMerge,
+    Validators _validators,
+    ERC20 _galtToken,
+    address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
     owner = msg.sender;
+
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    applicationFeeInEth = _validationFeeInEth;
-    galtSpaceEthShare = _galtSpaceEthShare;
+    validators = _validators;
+    galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+
+    // Default values for revenue shares and application fees
+    // Override them using one of the corresponding setters
+    applicationFeeInEth = 1;
+    applicationFeeInGalt = 10;
+    galtSpaceEthShare = 33;
+    galtSpaceGaltShare = 33;
+    paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender), "Not valid sender");
-    require(splitMerge != address(0), "SplitMerge address not set");
+    require(
+      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
+      "Applicant invalid");
 
     _;
   }
 
-  modifier onlyApplicantOrValidator(bytes32 _aId) {
-    Application storage a = applications[_aId];
-
-    require(a.applicant == msg.sender || getApproved(_aId) == msg.sender || isApprovedForAll(a.applicant, msg.sender) || a.validator == msg.sender, "Not valid sender");
-    require(splitMerge != address(0), "SplitMerge address not set");
-
-    if (a.validator == msg.sender) {
-      require(isValidator(msg.sender), "Not active validator");
-    }
-
-    _;
-  }
-
-  modifier onlyValidator() {
-    require(validators[msg.sender].active == true, "Not active validator");
+  modifier anyValidator() {
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
     _;
   }
 
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.validator == msg.sender, "Not valid validator");
-    require(splitMerge != address(0), "SplitMerge address not set");
-    require(isValidator(msg.sender), "Not active validator");
+    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
 
     _;
   }
 
-  function isValidator(address account) public view returns (bool) {
-    return validators[account].active == true;
+  modifier ready() {
+    require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+
+    _;
   }
 
-  function getValidator(
-    address validator
+  // TODO: fix incorrect meaning
+  function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
+    galtSpaceRewardsAddress = _newAddress;
+  }
+
+  function setPaymentMethod(PaymentMethod _newMethod) public onlyOwner {
+    paymentMethod = _newMethod;
+  }
+
+  function setApplicationFeeInEth(uint256 _newFee) public onlyOwner {
+    applicationFeeInEth = _newFee;
+  }
+
+  function setApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
+    applicationFeeInGalt = _newFee;
+  }
+
+  function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
+    require(_newShare >= 1, "Percent value should be greater or equal to 1");
+    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+
+    galtSpaceEthShare = _newShare;
+  }
+
+  function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
+    require(_newShare >= 1, "Percent value should be greater or equal to 1");
+    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+
+    galtSpaceGaltShare = _newShare;
+  }
+
+  function approveOperator(bytes32 _aId, address _to) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    require(_to != a.applicant, "Unable to approve to the same account");
+
+    a.operator = _to;
+  }
+
+  function getApplicationOperator(bytes32 _aId) public view returns (address) {
+    return applications[_aId].operator;
+  }
+
+  function changeApplicationDetails(
+    bytes32 _aId,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
+    uint8 _precision,
+    bytes2 _country
   )
     public
-    view
-    returns (
-      bytes32 name,
-      bytes2 country,
-      bool active
-    )
+    onlyApplicant(_aId)
   {
-    Validator storage v = validators[validator];
-
-    return (
-      v.name,
-      v.country,
-      v.active
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
+      "Application status should be NEW or REVERTED."
     );
+
+    a.credentialsHash = _credentialsHash;
+    a.ledgerIdentifier = _ledgerIdentifier;
+    a.precision = _precision;
+    a.country = _country;
   }
 
-  function addValidator(address _validator, bytes32 _name, bytes2 _country) public onlyOwner {
-    require(_validator != address(0), "Missing validator");
-    require(_country != 0x0, "Missing country");
-
-    validators[_validator] = Validator({ name: _name, country: _country, active: true });
-    validatorsArray.push(_validator);
-  }
-
-  function removeValidator(address _validator) public onlyOwner {
-    require(_validator != address(0), "Missing validator");
-
-    validators[_validator].active = false;
-  }
-
-  function approve(address _to, bytes32 _aId) public onlyApplicantOrValidator(_aId) {
-    Application storage a = applications[_aId];
-    require(_to != a.applicant);
-    applicationApprovals[_aId] = _to;
-  }
-
-  function getApproved(bytes32 _aId) public view returns (address) {
-    return applicationApprovals[_aId];
-  }
-
-  function clearApprove(bytes32 _aId) public {
-    Application storage a = applications[_aId];
-    require(msg.sender == a.applicant || isApprovedForAll(owner, msg.sender) || getApproved(_aId) == msg.sender);
-
-    applicationApprovals[_aId] = address(0);
-  }
-
-  function setApprovalForAll(address _to, bool _approved) public {
-    require(_to != msg.sender);
-    operatorApprovals[msg.sender][_to] = _approved;
-  }
-
-  function isApprovedForAll(address _owner, address _operator) public view returns (bool) {
-    return operatorApprovals[_owner][_operator];
-  }
-
-  function applyForPlotOwnership(
-    address _applicant,
+  function applyForPlotOwnershipGalt(
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     bytes2 _country,
-    uint8 _precision
+    uint8 _precision,
+    uint256 _applicationFeeInGalt
   )
     public
-    payable
+    ready
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
-    require(msg.value == applicationFeeInEth, "Incorrect fee passed in");
+    require(_applicationFeeInGalt >= applicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
+
+    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
 
     Application memory a;
-    bytes32 _id = keccak256(abi.encodePacked(_packageContour[0], _packageContour[1], _credentialsHash));
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        _baseGeohash,
+        _packageContour[0],
+        _packageContour[1],
+        _credentialsHash
+      )
+    );
 
-    a.status = ApplicationStatuses.NEW;
+    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    a.status = ApplicationStatus.NEW;
     a.id = _id;
-    a.applicant = _applicant;
+    a.applicant = msg.sender;
     a.country = _country;
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
+    a.currency = Currency.GALT;
 
-    uint256 galtSpaceRewardEth = galtSpaceEthShare.mul(msg.value).div(100);
-    uint256 validatorRewardEth = msg.value.sub(galtSpaceRewardEth);
-
-    assert(validatorRewardEth.add(galtSpaceRewardEth) == msg.value);
-
-    a.validatorRewardEth = validatorRewardEth;
-    a.galtSpaceRewardEth = galtSpaceRewardEth;
+    calculateAndStoreGaltFee(a, _applicationFeeInGalt);
 
     uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
     uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
@@ -244,13 +274,107 @@ contract PlotManager is Initializable, Ownable {
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
 
-    if (msg.sender != _applicant) {
-      applicationApprovals[_id] = msg.sender;
-      applicationsByAddresses[_applicant].push(_id);
-    }
+    assignRequiredValidatorRolesAndRewards(_id);
 
     emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatuses.NEW);
+    emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
+
+    return _id;
+  }
+
+  function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
+    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
+    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+
+    _a.validatorsReward = validatorsReward;
+    _a.galtSpaceReward = galtSpaceReward;
+  }
+
+  function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
+    Application storage a = applications[_aId];
+    assert(a.validatorsReward > 0);
+
+    uint256 totalReward = 0;
+
+    a.assignedRoles = validators.getApplicationTypeRoles(APPLICATION_TYPE);
+    uint256 len = a.assignedRoles.length;
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 role = a.assignedRoles[i];
+      uint256 rewardShare = a
+        .validatorsReward
+        .mul(validators.getRoleRewardShare(role))
+        .div(100);
+      a.assignedRewards[role] = rewardShare;
+      totalReward = totalReward.add(rewardShare);
+    }
+
+    assert(totalReward == a.validatorsReward);
+  }
+
+
+  function applyForPlotOwnership(
+    uint256[] _packageContour,
+    uint256 _baseGeohash,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
+    bytes2 _country,
+    uint8 _precision
+  )
+    public
+    payable
+    ready
+    returns (bytes32)
+  {
+    require(_precision > 5, "Precision should be greater than 5");
+    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
+    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
+    require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
+
+    Application memory a;
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        _baseGeohash,
+        _packageContour[0],
+        _packageContour[1],
+        _credentialsHash
+      )
+    );
+
+    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    a.status = ApplicationStatus.NEW;
+    a.id = _id;
+    a.applicant = msg.sender;
+    a.country = _country;
+    a.credentialsHash = _credentialsHash;
+    a.ledgerIdentifier = _ledgerIdentifier;
+    a.precision = _precision;
+    a.currency = Currency.ETH;
+
+    uint256 galtSpaceReward = galtSpaceEthShare.mul(msg.value).div(100);
+    uint256 validatorsReward = msg.value.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == msg.value);
+
+    a.validatorsReward = validatorsReward;
+    a.galtSpaceReward = galtSpaceReward;
+
+    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
+    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
+    a.packageTokenId = packageTokenId;
+
+    splitMerge.setPackageContour(packageTokenId, _packageContour);
+
+    applications[_id] = a;
+    applicationsArray.push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
+
+    assignRequiredValidatorRolesAndRewards(_id);
+
+    emit LogNewApplication(_id, msg.sender);
+    emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
 
     return _id;
   }
@@ -266,12 +390,12 @@ contract PlotManager is Initializable, Ownable {
   {
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REVERTED."
     );
 
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
       if (spaceToken.exists(geohashTokenId)) {
         require(
           spaceToken.ownerOf(geohashTokenId) == address(this),
@@ -294,16 +418,20 @@ contract PlotManager is Initializable, Ownable {
     bytes2[] _directions2
   )
     public
-    onlyApplicantOrValidator(_aId)
   {
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REJECTED || a.status == ApplicationStatuses.REVERTED,
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REJECTED for this operation."
     );
 
+    require(
+      a.applicant == msg.sender ||
+      (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
+      "Sender is not valid");
+
     for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = _geohashes[i] ^ uint256(spaceToken.GEOHASH_MASK());
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
 
       require(spaceToken.ownerOf(geohashTokenId) == address(splitMerge), "Existing geohash token should belongs to PlotManager contract");
 
@@ -313,8 +441,12 @@ contract PlotManager is Initializable, Ownable {
     // TODO: implement directions
     splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
 
-    if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0 && a.status == ApplicationStatuses.NEW) {
-      a.status = ApplicationStatuses.DISASSEMBLED;
+    if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0) {
+      if (msg.sender == a.applicant) {
+        changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED_BY_APPLICANT);
+      } else {
+        changeApplicationStatus(a, ApplicationStatus.DISASSEMBLED_BY_VALIDATOR);
+      }
     }
   }
 
@@ -322,100 +454,238 @@ contract PlotManager is Initializable, Ownable {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatuses.NEW || a.status == ApplicationStatuses.REVERTED,
-      "Application status should be NEW"
-    );
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
+      "Application status should be NEW");
 
-    if (a.status == ApplicationStatuses.NEW) {
-      a.status = ApplicationStatuses.SUBMITTED;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
-    } else if (a.status == ApplicationStatuses.REVERTED) {
-      a.status = ApplicationStatuses.CONSIDERATION;
-      emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
+  // Application can be locked by a role only once.
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
+    Application storage a = applications[_aId];
+    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
+
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+    require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
+    require(a.validationStatus[_role] == ValidationStatus.INTACT, "Can't lock an application already in work");
+
+    a.roleAddresses[_role] = msg.sender;
+    a.addressRoles[msg.sender] = _role;
+    applicationsByValidator[msg.sender].push(_aId);
+
+    changeValidationStatus(a, _role, ValidationStatus.LOCKED);
+  }
+
+  function resetApplicationRole(bytes32 _aId, bytes32 _role) public onlyOwner {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+    require(a.validationStatus[_role] != ValidationStatus.INTACT, "Validation status not set");
+    require(a.roleAddresses[_role] != address(0), "Address should be already set");
+
+    // Do not affect on application state
+    a.roleAddresses[_role] = address(0);
+    changeValidationStatus(a, _role, ValidationStatus.INTACT);
+  }
+
+  function approveApplication(
+    bytes32 _aId,
+    bytes32 _credentialsHash
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    require(a.credentialsHash == _credentialsHash, "Credentials don't match");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+    require(validators.isValidatorActive(msg.sender), "Validator is not active");
+
+    bytes32 role = a.addressRoles[msg.sender];
+
+    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+
+    changeValidationStatus(a, role, ValidationStatus.APPROVED);
+
+    uint256 len = a.assignedRoles.length;
+    bool allApproved = true;
+
+    for (uint8 i = 0; i < len; i++) {
+      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.APPROVED) {
+        allApproved = false;
+      }
+    }
+
+    if (allApproved) {
+      changeApplicationStatus(a, ApplicationStatus.APPROVED);
+      spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
     }
   }
 
-  function lockApplicationForReview(bytes32 _aId) public onlyValidator {
+  function rejectApplication(
+    bytes32 _aId,
+    string _message
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.SUBMITTED, "Application status should be SUBMITTED");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
 
-    a.validator = msg.sender;
-    applicationsByValidator[msg.sender].push(_aId);
-    a.status = ApplicationStatuses.CONSIDERATION;
+    uint256 len = a.assignedRoles.length;
 
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.CONSIDERATION);
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (a.validationStatus[currentRole] == ValidationStatus.INTACT) {
+        revert("One of the roles has INTACT status");
+      }
+    }
+
+    bytes32 senderRole = a.addressRoles[msg.sender];
+    a.roleMessages[senderRole] = _message;
+
+    changeValidationStatus(a, senderRole, ValidationStatus.REJECTED);
+    changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
-  function unlockApplication(bytes32 _aId) public onlyOwner {
+  function revertApplication(
+    bytes32 _aId,
+    string _message
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
 
-    a.validator = address(0);
-    a.status = ApplicationStatuses.SUBMITTED;
+    bytes32 senderRole = a.addressRoles[msg.sender];
+    uint256 len = a.assignedRoles.length;
 
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.SUBMITTED);
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
+      }
+    }
+
+    a.roleMessages[senderRole] = _message;
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function approveApplication(bytes32 _aId, bytes32 _credentialsHash) public onlyValidatorOfApplication(_aId) {
-    Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
-    require(a.credentialsHash == _credentialsHash, "Credentials don't match");
-
-    a.status = ApplicationStatuses.APPROVED;
-
-    spaceToken.transferFrom(address(this), a.applicant, a.packageTokenId);
-
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.APPROVED);
-  }
-
-  function rejectApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
-    Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
-
-    a.status = ApplicationStatuses.REJECTED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REJECTED);
-  }
-
-  function revertApplication(bytes32 _aId) public onlyValidatorOfApplication(_aId) {
-    Application storage a = applications[_aId];
-    require(a.status == ApplicationStatuses.CONSIDERATION, "Application status should be CONSIDERATION");
-
-    a.status = ApplicationStatuses.REVERTED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.REVERTED);
-  }
-
-  function claimValidatorRewardEth(bytes32 _aId) public onlyValidator {
+  function revokeApplication(bytes32 _aId) public onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatuses.APPROVED || a.status == ApplicationStatuses.REJECTED,
-      "Application status should be ether APPROVED or REJECTED");
-    require(a.validatorRewardEth > 0, "Reward in ETH is 0");
+      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should either NEW or DISASSEMBLED_BY_APPLICANT");
 
-    if (a.status == ApplicationStatuses.REJECTED) {
-      require(
-        splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
-        "Application geohashes count must be 0 for REJECTED status");
+    require(
+      splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
+      "Application package geohashes count should be 0");
+
+    changeApplicationStatus(a, ApplicationStatus.REVOKED);
+
+    uint256 deposit = a.validatorsReward.add(a.galtSpaceReward);
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(deposit);
+    } else {
+      galtToken.transfer(msg.sender, deposit);
     }
-
-    a.status = ApplicationStatuses.VALIDATOR_REWARDED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.VALIDATOR_REWARDED);
-
-    msg.sender.transfer(a.validatorRewardEth);
   }
 
-  function claimGaltSpaceRewardEth(bytes32 _aId) public {
+  function claimValidatorReward(
+    bytes32 _aId,
+    Currency _currency
+  )
+    public 
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+    bytes32 senderRole = a.addressRoles[msg.sender];
+    uint256 reward = a.assignedRewards[senderRole];
+
+    require(
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
+
+    require(reward > 0, "Reward is 0");
+    require(a.currency == _currency, "Reward currency doesn't match");
+    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
+    validators.ensureValidatorActive(msg.sender);
+
+    a.roleRewardPaidOut[senderRole] = true; 
+
+    if (_currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (_currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, reward);
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
+  function claimGaltSpaceReward(
+    bytes32 _aId,
+    Currency _currency
+  )
+    public
+  {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatuses.VALIDATOR_REWARDED, "Application status should be VALIDATOR_REWARDED");
-    require(a.galtSpaceRewardEth > 0, "Reward in ETH is 0");
+    require(
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
+    require(a.galtSpaceReward > 0, "Reward is 0");
+    require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+    require(a.currency == _currency, "Reward currency doesn't match");
 
-    a.status = ApplicationStatuses.GALTSPACE_REWARDED;
-    emit LogApplicationStatusChanged(_aId, ApplicationStatuses.GALTSPACE_REWARDED);
+    a.galtSpaceRewardPaidOut = true;
 
-    msg.sender.transfer(a.galtSpaceRewardEth);
+    if (_currency == Currency.ETH) {
+      msg.sender.transfer(a.galtSpaceReward);
+    } else if (_currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, a.galtSpaceReward);
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
+  function changeValidationStatus(
+    Application storage _a,
+    bytes32 _role,
+    ValidationStatus _status
+  )
+    internal
+  {
+    emit LogValidationStatusChanged(_a.id, _role, _status);
+
+    _a.validationStatus[_role] = _status;
+  }
+
+  // NOTICE: the application should already persist in storage
+  function changeApplicationStatus(
+    Application storage _a,
+    ApplicationStatus _status
+  )
+    internal
+  {
+    emit LogApplicationStatusChanged(_a.id, _status);
+
+    _a.status = _status;
   }
 
   function isCredentialsHashValid(
@@ -436,28 +706,30 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (
       address applicant,
-      address validator,
       uint256 packageTokenId,
       bytes32 credentialsHash,
-      ApplicationStatuses status,
+      ApplicationStatus status,
+      Currency currency,
       uint8 precision,
       bytes2 country,
-      bytes32 ledgerIdentifier
+      bytes32 ledgerIdentifier,
+      bytes32[] assignedValidatorRoles
     )
   {
-    require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
     Application storage m = applications[_id];
 
     return (
       m.applicant,
-      m.validator,
       m.packageTokenId,
       m.credentialsHash,
       m.status,
+      m.currency,
       m.precision,
       m.country,
-      m.ledgerIdentifier
+      m.ledgerIdentifier,
+      m.assignedRoles
     );
   }
 
@@ -467,23 +739,21 @@ contract PlotManager is Initializable, Ownable {
     public
     view
     returns (
-      ApplicationStatuses status,
-      uint256 validatorRewardEth,
-      uint256 galtSpaceRewardEth,
-      uint256 validatorRewardGalt,
-      uint256 galtSpaceRewardGalt
+      ApplicationStatus status,
+      Currency currency,
+      uint256 validatorsReward,
+      uint256 galtSpaceReward
     )
   {
-    require(applications[_id].status != ApplicationStatuses.NOT_EXISTS, "Application doesn't exist");
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
     Application storage m = applications[_id];
 
     return (
       m.status,
-      m.validatorRewardEth,
-      m.galtSpaceRewardEth,
-      m.validatorRewardGalt,
-      m.galtSpaceRewardGalt
+      m.currency,
+      m.validatorsReward,
+      m.galtSpaceReward
     );
   }
 
@@ -491,11 +761,32 @@ contract PlotManager is Initializable, Ownable {
     return applicationsArray;
   }
 
-  function getApplicationsByAddress(address applicant) external view returns (bytes32[]) {
-    return applicationsByAddresses[applicant];
+  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
+    return applicationsByAddresses[_applicant];
   }
 
-  function getApplicationsByValidator(address applicant) external view returns (bytes32[]) {
-    return applicationsByValidator[applicant];
+  function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
+    return applicationsByValidator[_applicant];
+  }
+
+  function getApplicationValidator(
+    bytes32 _aId,
+    bytes32 _role
+  )
+    external
+    view
+    returns (
+      address validator,
+      uint256 reward,
+      ValidationStatus status,
+      string message
+    )
+  {
+    return (
+      applications[_aId].roleAddresses[_role],
+      applications[_aId].assignedRewards[_role],
+      applications[_aId].validationStatus[_role],
+      applications[_aId].roleMessages[_role]
+    );
   }
 }
