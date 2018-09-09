@@ -52,6 +52,7 @@ contract PlotClarificationManager is Initializable, Ownable {
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 packageTokenId);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
@@ -66,6 +67,8 @@ contract PlotClarificationManager is Initializable, Ownable {
     uint256 galtSpaceReward;
     uint256 gasDeposit;
     bool galtSpaceRewardPaidOut;
+    bool tokenWithdrawn;
+    // bool gasDepositWithdrawn;
 
     uint8 precision;
     bytes2 country;
@@ -415,6 +418,26 @@ contract PlotClarificationManager is Initializable, Ownable {
     a.status = ApplicationStatus.PACKED;
   }
 
+  function withdrawPackageToken(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    ApplicationStatus status = a.status;
+
+    /* solium-disable-next-line */
+    require(status == ApplicationStatus.NEW ||
+      status == ApplicationStatus.PAYMENT_REQUIRED ||
+      status == ApplicationStatus.REVERTED ||
+      status == ApplicationStatus.PACKED,
+      "ApplicationStatus should one of NEW, PAYMENT_REQUIRED, REVERTED or PACKED");
+
+    require(a.tokenWithdrawn == false, "Token is already withdrawn");
+
+    spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+    a.tokenWithdrawn = true;
+    emit LogPackageTokenWithdrawn(a.id, a.packageTokenId);
+    // TODO: add in claimApplicantGasDeposit();
+    // a.gasDepositWithdrawn = true;
+  }
+
   function getApplicationById(
     bytes32 _id
   )
@@ -425,6 +448,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       Currency currency,
       address applicant,
       uint256 packageTokenId,
+      bool tokenWithdrawn,
       bytes32[] assignedValidatorRoles,
       uint256 gasDeposit,
       uint256 validatorsReward,
@@ -440,6 +464,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       m.currency,
       m.applicant,
       m.packageTokenId,
+      m.tokenWithdrawn,
       m.assignedRoles,
       m.gasDeposit,
       m.validatorsReward,
