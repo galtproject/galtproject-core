@@ -438,6 +438,30 @@ contract PlotClarificationManager is Initializable, Ownable {
     // a.gasDepositWithdrawn = true;
   }
 
+  function claimValidatorReward(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
+    Application storage a = applications[_aId];
+
+    require(a.tokenWithdrawn == true, "Token is already withdrawn");
+    // TODO: check for gas deposit withdrawn
+
+    require(
+      a.status == ApplicationStatus.REVERTED ||
+      a.status == ApplicationStatus.PACKED,
+      "ApplicationStatus should one of REVERTED or PACKED");
+
+    bytes32 role = a.addressRoles[msg.sender];
+    uint256 reward = a.assignedRewards[role];
+    a.roleRewardPaidOut[role] = true;
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (a.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, reward);
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
   function getApplicationById(
     bytes32 _id
   )
