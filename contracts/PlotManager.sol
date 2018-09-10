@@ -93,6 +93,7 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   mapping(address => bytes32[]) public applicationsByValidator;
+  mapping(address => bool) public feeManagers;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -128,6 +129,11 @@ contract PlotManager is Initializable, Ownable {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
+  modifier onlyFeeManager() {
+    require(feeManagers[msg.sender] == true, "Not a fee manager");
+    _;
+  }
+
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
@@ -158,31 +164,34 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
-  // TODO: fix incorrect meaning
+  function setFeeManager(address _feeManager, bool _active) external onlyOwner {
+    feeManagers[_feeManager] = _active;
+  }
+
   function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
     galtSpaceRewardsAddress = _newAddress;
   }
 
-  function setPaymentMethod(PaymentMethod _newMethod) external onlyOwner {
+  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
     paymentMethod = _newMethod;
   }
 
-  function setApplicationFeeInEth(uint256 _newFee) external onlyOwner {
+  function setApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
     applicationFeeInEth = _newFee;
   }
 
-  function setApplicationFeeInGalt(uint256 _newFee) external onlyOwner {
+  function setApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
     applicationFeeInGalt = _newFee;
   }
 
-  function setGaltSpaceEthShare(uint256 _newShare) external onlyOwner {
+  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceEthShare = _newShare;
   }
 
-  function setGaltSpaceGaltShare(uint256 _newShare) external onlyOwner {
+  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
@@ -505,7 +514,6 @@ contract PlotManager is Initializable, Ownable {
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(validators.isValidatorActive(msg.sender), "Validator is not active");
 
     bytes32 role = a.addressRoles[msg.sender];
 
@@ -622,7 +630,6 @@ contract PlotManager is Initializable, Ownable {
 
     require(reward > 0, "Reward is 0");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
-    validators.ensureValidatorActive(msg.sender);
 
     a.roleRewardPaidOut[senderRole] = true; 
 

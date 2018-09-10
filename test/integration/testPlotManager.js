@@ -66,7 +66,7 @@ Object.freeze(Currency);
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve, frank]) => {
+contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve, frank]) => {
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -93,11 +93,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       }
     );
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
+    await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
 
-    await this.plotManager.setApplicationFeeInEth(ether(6));
-    await this.plotManager.setApplicationFeeInGalt(ether(45));
-    await this.plotManager.setGaltSpaceEthShare(33);
-    await this.plotManager.setGaltSpaceGaltShare(13);
+    await this.plotManager.setApplicationFeeInEth(ether(6), { from: feeManager });
+    await this.plotManager.setApplicationFeeInGalt(ether(45), { from: feeManager });
+    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
+    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -122,86 +123,86 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         // assert.equal(res, bob);
       });
 
-      it('should deny non-owner set rewards address', async function() {
+      it('should deny any other than a fee manager account set rewards address', async function() {
         await assertRevert(this.plotManager.setGaltSpaceRewardsAddress(bob, { from: alice }));
       });
     });
 
     describe('#setPaymentMethod()', () => {
-      it('should allow an owner set a payment method', async function() {
-        await this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam });
+      it('should allow a fee manager set a payment method', async function() {
+        await this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
         const res = await this.plotManager.paymentMethod();
         assert.equal(res, PaymentMethods.ETH_ONLY);
       });
 
-      it('should deny non-owner set a payment method', async function() {
-        await assertRevert(this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
+      it('should deny any other than a fee manager account set a payment method', async function() {
+        await assertRevert(this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam }));
         const res = await this.plotManager.paymentMethod();
         assert.equal(res, PaymentMethods.ETH_AND_GALT);
       });
     });
 
     describe('#setApplicationFeeInEth()', () => {
-      it('should allow an owner set a new minimum fee in ETH', async function() {
-        await this.plotManager.setApplicationFeeInEth(ether(0.05), { from: coreTeam });
+      it('should allow a fee manager set a new minimum fee in ETH', async function() {
+        await this.plotManager.setApplicationFeeInEth(ether(0.05), { from: feeManager });
         const res = await this.plotManager.applicationFeeInEth();
         assert.equal(res, ether(0.05));
       });
 
-      it('should deny any other than owner person set fee in ETH', async function() {
-        await assertRevert(this.plotManager.setApplicationFeeInEth(ether(0.05), { from: alice }));
+      it('should deny any other than a fee manager account set fee in ETH', async function() {
+        await assertRevert(this.plotManager.setApplicationFeeInEth(ether(0.05), { from: coreTeam }));
       });
     });
 
     describe('#setApplicationFeeInGalt()', () => {
-      it('should allow an owner set a new minimum fee in GALT', async function() {
-        await this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: coreTeam });
+      it('should allow a fee manager set a new minimum fee in GALT', async function() {
+        await this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: feeManager });
         const res = await this.plotManager.applicationFeeInGalt();
         assert.equal(res, ether(0.15));
       });
 
-      it('should deny any other than owner person set fee in GALT', async function() {
-        await assertRevert(this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: alice }));
+      it('should deny any other than a fee manager account set fee in GALT', async function() {
+        await assertRevert(this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: coreTeam }));
       });
     });
 
     describe('#setGaltSpaceEthShare()', () => {
-      it('should allow an owner set galtSpace ETH share in percents', async function() {
-        await this.plotManager.setGaltSpaceEthShare('42', { from: coreTeam });
+      it('should allow fee manager set galtSpace ETH share in percents', async function() {
+        await this.plotManager.setGaltSpaceEthShare('42', { from: feeManager });
         const res = await this.plotManager.galtSpaceEthShare();
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('0.5', { from: coreTeam }));
+      it('should deny fee manager set Galt Space EHT share less than 1 percent', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('0.5', { from: feeManager }));
       });
 
-      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('101', { from: coreTeam }));
+      it('should deny fee manager set Galt Space EHT share grater than 100 percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('101', { from: feeManager }));
       });
 
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('20', { from: alice }));
+      it('should deny any other than a fee manager account set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceEthShare('20', { from: coreTeam }));
       });
     });
 
     describe('#setGaltSpaceGaltShare()', () => {
-      it('should allow an owner set galtSpace Galt share in percents', async function() {
-        await this.plotManager.setGaltSpaceGaltShare('42', { from: coreTeam });
+      it('should allow a fee manager set galtSpace Galt share in percents', async function() {
+        await this.plotManager.setGaltSpaceGaltShare('42', { from: feeManager });
         const res = await this.plotManager.galtSpaceGaltShare();
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('0.5', { from: coreTeam }));
+      it('should deny a fee manager set Galt Space Galt share less than 1 percent', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('0.5', { from: feeManager }));
       });
 
-      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('101', { from: coreTeam }));
+      it('should deny a fee manager set Galt Space Galt share grater than 100 percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
 
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('20', { from: alice }));
+      it('should deny any other than a fee manager account set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotManager.setGaltSpaceGaltShare('20', { from: coreTeam }));
       });
     });
   });
