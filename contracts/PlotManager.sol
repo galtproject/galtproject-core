@@ -227,7 +227,7 @@ contract PlotManager is Initializable, Ownable {
     a.country = _country;
   }
 
-  function applyForPlotOwnershipGalt(
+  function applyForPlotOwnership(
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
@@ -236,16 +236,32 @@ contract PlotManager is Initializable, Ownable {
     uint8 _precision,
     uint256 _applicationFeeInGalt
   )
-    external
+    public
+    payable
     ready
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
-    require(_applicationFeeInGalt >= applicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
 
-    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
+
+    // ETH
+    if (msg.value > 0) {
+      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
+      require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
+      fee =  msg.value;
+    // GALT
+    } else {
+      require(msg.value == 0, "Could not accept both ETH and GALT");
+      require(_applicationFeeInGalt >= applicationFeeInGalt, "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      fee =  _applicationFeeInGalt;
+      currency = Currency.GALT;
+    }
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -266,15 +282,13 @@ contract PlotManager is Initializable, Ownable {
     a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
-    a.currency = Currency.GALT;
+    a.currency = currency;
 
-    calculateAndStoreGaltFee(a, _applicationFeeInGalt);
+    calculateAndStoreFee(a, fee);
 
-    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
-    a.packageTokenId = packageTokenId;
+    a.packageTokenId = splitMerge.initPackage(spaceToken.mintGeohash(address(this), _baseGeohash));
 
-    splitMerge.setPackageContour(packageTokenId, _packageContour);
+    splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
     applications[_id] = a;
     applicationsArray.push(_id);
@@ -288,16 +302,31 @@ contract PlotManager is Initializable, Ownable {
     return _id;
   }
 
-  function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
-    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+  // >>>>>>>>
+  function calculateAndStoreFee(
+    Application memory _a,
+    uint256 _fee
+  )
+    internal
+  {
+    uint256 share;
 
-    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+    if (_a.currency == Currency.ETH) {
+      share =  galtSpaceEthShare;
+    } else {
+      share =  galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _fee);
 
     _a.validatorsReward = validatorsReward;
     _a.galtSpaceReward = galtSpaceReward;
   }
 
+  // >>>>>>>>
   function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
     assert(a.validatorsReward > 0);
@@ -309,80 +338,15 @@ contract PlotManager is Initializable, Ownable {
     for (uint8 i = 0; i < len; i++) {
       bytes32 role = a.assignedRoles[i];
       uint256 rewardShare = a
-        .validatorsReward
-        .mul(validators.getRoleRewardShare(role))
-        .div(100);
+      .validatorsReward
+      .mul(validators.getRoleRewardShare(role))
+      .div(100);
       a.assignedRewards[role] = rewardShare;
       changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
     assert(totalReward == a.validatorsReward);
-  }
-
-  function applyForPlotOwnershipEth(
-    uint256[] _packageContour,
-    uint256 _baseGeohash,
-    bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
-    bytes2 _country,
-    uint8 _precision
-  )
-    public
-    payable
-    ready
-    returns (bytes32)
-  {
-    require(_precision > 5, "Precision should be greater than 5");
-    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
-    require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
-
-    Application memory a;
-    bytes32 _id = keccak256(
-      abi.encodePacked(
-        _baseGeohash,
-        _packageContour[0],
-        _packageContour[1],
-        _credentialsHash
-      )
-    );
-
-    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-
-    a.status = ApplicationStatus.NEW;
-    a.id = _id;
-    a.applicant = msg.sender;
-    a.country = _country;
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-    a.currency = Currency.ETH;
-
-    uint256 galtSpaceReward = galtSpaceEthShare.mul(msg.value).div(100);
-    uint256 validatorsReward = msg.value.sub(galtSpaceReward);
-
-    assert(validatorsReward.add(galtSpaceReward) == msg.value);
-
-    a.validatorsReward = validatorsReward;
-    a.galtSpaceReward = galtSpaceReward;
-
-    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
-    a.packageTokenId = packageTokenId;
-
-    splitMerge.setPackageContour(packageTokenId, _packageContour);
-
-    applications[_id] = a;
-    applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
-
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
-
-    assignRequiredValidatorRolesAndRewards(_id);
-
-    return _id;
   }
 
   function addGeohashesToApplication(

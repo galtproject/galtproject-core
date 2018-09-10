@@ -219,13 +219,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
 
-      const res = await this.plotManager.applyForPlotOwnershipEth(
+      const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
+        0,
         { from: alice, value: ether(6) }
       );
 
@@ -347,7 +348,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         { from: coreTeam }
       );
       await this.galtToken.approve(this.plotManager.address, ether(47), { from: alice });
-      const res = await this.plotManager.applyForPlotOwnershipGalt(
+      const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
@@ -361,7 +362,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       this.aId = res.logs[0].args.id;
     });
 
-    describe('#applyForPlotOwnershipGalt()', () => {
+    describe('#applyForPlotOwnership() Galt', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -407,7 +408,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         it('should reject fees less than the minial', async function() {
           await this.galtToken.approve(this.plotManager.address, ether(37), { from: alice });
           await assertRevert(
-            this.plotManager.applyForPlotOwnershipGalt(
+            this.plotManager.applyForPlotOwnership(
               this.contour,
               galt.geohashToGeohash5('sezu07'),
               this.credentials,
@@ -422,7 +423,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         it('accept fees greater than the minimal', async function() {
           await this.galtToken.approve(this.plotManager.address, ether(87), { from: alice });
-          const res = await this.plotManager.applyForPlotOwnershipGalt(
+          const res = await this.plotManager.applyForPlotOwnership(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
@@ -447,7 +448,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           );
 
           await this.galtToken.approve(this.plotManager.address, ether(53), { from: alice });
-          let res = await this.plotManager.applyForPlotOwnershipGalt(
+          let res = await this.plotManager.applyForPlotOwnership(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
@@ -550,7 +551,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         );
 
         await this.galtToken.approve(this.plotManager.address, ether(57), { from: alice });
-        let res = await this.plotManager.applyForPlotOwnershipGalt(
+        let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu07'),
           this.credentials,
@@ -668,13 +669,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         { from: coreTeam }
       );
 
-      let res = await this.plotManager.applyForPlotOwnershipEth(
+      let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
+        0,
         { from: alice, value: ether(6) }
       );
 
@@ -691,7 +693,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
     });
 
-    describe('#applyForPlotOwnershipEth()', () => {
+    describe('#applyForPlotOwnership() ETH', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -729,13 +731,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.plotManager.applyForPlotOwnershipEth(
+            this.plotManager.applyForPlotOwnership(
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
               this.ledgerIdentifier,
               web3.utils.asciiToHex('MN'),
               7,
+              0,
               { from: alice }
             )
           );
@@ -743,26 +746,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
-            this.plotManager.applyForPlotOwnershipEth(
+            this.plotManager.applyForPlotOwnership(
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
               this.ledgerIdentifier,
               web3.utils.asciiToHex('MN'),
               7,
+              0,
               { from: alice, value: ether(3) }
             )
           );
         });
 
         it('should allow applications with payment greater than required', async function() {
-          await this.plotManager.applyForPlotOwnershipEth(
+          await this.plotManager.applyForPlotOwnership(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
             this.ledgerIdentifier,
             web3.utils.asciiToHex('MN'),
             7,
+            0,
             { from: alice, value: ether(7) }
           );
         });
@@ -784,13 +789,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             { from: coreTeam }
           );
 
-          let res = await this.plotManager.applyForPlotOwnershipEth(
+          let res = await this.plotManager.applyForPlotOwnership(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
             this.ledgerIdentifier,
             web3.utils.asciiToHex('MN'),
             7,
+            0,
             { from: alice, value: ether(9) }
           );
           const aId = res.logs[0].args.id;
@@ -1098,13 +1104,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       it('should push an application id to the validators list for caching', async function() {
         // submit first
-        let res = await this.plotManager.applyForPlotOwnershipEth(
+        let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu19'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
+          0,
           { from: charlie, value: ether(6) }
         );
         const a1Id = res.logs[0].args.id;
@@ -1114,13 +1121,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
 
         // submit second
-        res = await this.plotManager.applyForPlotOwnershipEth(
+        res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu09'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
+          0,
           { from: alice, value: ether(6) }
         );
         const a2Id = res.logs[0].args.id;
@@ -1136,13 +1144,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator to lock an application which is new', async function() {
-        let res = await this.plotManager.applyForPlotOwnershipEth(
+        let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu05'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
+          0,
           { from: alice, value: ether(6) }
         );
         const a2Id = res.logs[0].args.id;
@@ -1262,13 +1271,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       // eslint-disable-next-line
       it('should deny validator approve application with other than consideration or partially locked status', async function() {
-        let res = await this.plotManager.applyForPlotOwnershipEth(
+        let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu36'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
+          0,
           { from: alice, value: ether(6) }
         );
 
@@ -1331,13 +1341,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        let res = await this.plotManager.applyForPlotOwnershipEth(
+        let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu96'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
+          0,
           { from: alice, value: ether(6) }
         );
         const aId = res.logs[0].args.id;
@@ -1475,18 +1486,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           assert.equal(res, 18);
         });
 
-        it('can be disassembled by any validator role', async function() {
-          let res;
-
-          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
-            from: dan
-          });
-
-          res = await this.splitMerge.getPackageGeohashesCount(this.packageTokenId);
-          assert.equal(res, 0);
-
-          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.DISASSEMBLED_BY_VALIDATOR);
+        it('cant be disassembled by any validator role', async function() {
+          await assertRevert(
+            this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashesToRemove, [], [], {
+              from: dan
+            })
+          );
         });
 
         it('can be disassembled by an applicant', async function() {
