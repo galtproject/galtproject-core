@@ -61,6 +61,7 @@ contract PlotManager is Initializable, Ownable {
     uint256 packageTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
+    uint256 gasDepositEstimation;
     bool galtSpaceRewardPaidOut;
     uint8 precision;
     bytes2 country;
@@ -362,6 +363,8 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW or REVERTED."
     );
 
+    uint256 initGas = gasleft();
+
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
       if (spaceToken.exists(geohashTokenId)) {
@@ -377,6 +380,8 @@ contract PlotManager is Initializable, Ownable {
     }
 
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
+
+    a.gasDepositEstimation = a.gasDepositEstimation.add(initGas.sub(gasleft()));
   }
 
   function removeGeohashesFromApplication(
@@ -673,6 +678,7 @@ contract PlotManager is Initializable, Ownable {
     returns (
       address applicant,
       uint256 packageTokenId,
+      uint256 gasDepositEstimation,
       bytes32 credentialsHash,
       ApplicationStatus status,
       Currency currency,
@@ -689,6 +695,7 @@ contract PlotManager is Initializable, Ownable {
     return (
       m.applicant,
       m.packageTokenId,
+      m.gasDepositEstimation,
       m.credentialsHash,
       m.status,
       m.currency,

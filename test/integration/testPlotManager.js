@@ -841,6 +841,22 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
       });
 
+      it('should add a list of geohashes', async function() {
+        let geohashes1 = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        let geohashes2 = `gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        geohashes1 = geohashes1.split(' ').map(galt.geohashToGeohash5);
+        geohashes2 = geohashes2.split(' ').map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes1, [], [], { from: alice });
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const firstAddGas = res.gasDepositEstimation;
+
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes2, [], [], { from: alice });
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert(res.gasDepositEstimation > firstAddGas);
+      });
+
       it('should re-use geohash space tokens if they belong to PlotManager', async function() {
         const tokenId = galt.geohashToNumber('sezu05');
         let res = await this.spaceToken.mintGeohash(this.plotManager.address, tokenId.toString(10), {
