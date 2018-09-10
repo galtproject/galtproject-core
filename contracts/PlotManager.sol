@@ -159,30 +159,30 @@ contract PlotManager is Initializable, Ownable {
   }
 
   // TODO: fix incorrect meaning
-  function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
+  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
     galtSpaceRewardsAddress = _newAddress;
   }
 
-  function setPaymentMethod(PaymentMethod _newMethod) public onlyOwner {
+  function setPaymentMethod(PaymentMethod _newMethod) external onlyOwner {
     paymentMethod = _newMethod;
   }
 
-  function setApplicationFeeInEth(uint256 _newFee) public onlyOwner {
+  function setApplicationFeeInEth(uint256 _newFee) external onlyOwner {
     applicationFeeInEth = _newFee;
   }
 
-  function setApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
+  function setApplicationFeeInGalt(uint256 _newFee) external onlyOwner {
     applicationFeeInGalt = _newFee;
   }
 
-  function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
+  function setGaltSpaceEthShare(uint256 _newShare) external onlyOwner {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceEthShare = _newShare;
   }
 
-  function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
+  function setGaltSpaceGaltShare(uint256 _newShare) external onlyOwner {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
@@ -196,10 +196,6 @@ contract PlotManager is Initializable, Ownable {
     a.operator = _to;
   }
 
-  function getApplicationOperator(bytes32 _aId) public view returns (address) {
-    return applications[_aId].operator;
-  }
-
   function changeApplicationDetails(
     bytes32 _aId,
     bytes32 _credentialsHash,
@@ -207,7 +203,7 @@ contract PlotManager is Initializable, Ownable {
     uint8 _precision,
     bytes2 _country
   )
-    public
+    external
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
@@ -231,7 +227,7 @@ contract PlotManager is Initializable, Ownable {
     uint8 _precision,
     uint256 _applicationFeeInGalt
   )
-    public
+    external
     ready
     returns (bytes32)
   {
@@ -451,7 +447,7 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
-  function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
+  function submitApplication(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(
@@ -462,7 +458,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   // Application can be locked by a role only once.
-  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
@@ -479,7 +475,7 @@ contract PlotManager is Initializable, Ownable {
     changeValidationStatus(a, _role, ValidationStatus.LOCKED);
   }
 
-  function resetApplicationRole(bytes32 _aId, bytes32 _role) public onlyOwner {
+  function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.SUBMITTED,
@@ -496,7 +492,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     bytes32 _credentialsHash
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -533,7 +529,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     string _message
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -561,7 +557,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     string _message
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -584,7 +580,7 @@ contract PlotManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function revokeApplication(bytes32 _aId) public onlyApplicant(_aId) {
+  function revokeApplication(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(
@@ -610,7 +606,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     Currency _currency
   )
-    public 
+    external 
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -641,7 +637,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     Currency _currency
   )
-    public
+    external
   {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
@@ -693,7 +689,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _id,
     bytes32 _hash
   )
-    public
+    external
     view
     returns (bool)
   {
@@ -703,7 +699,7 @@ contract PlotManager is Initializable, Ownable {
   function getApplicationById(
     bytes32 _id
   )
-    public
+    external
     view
     returns (
       address applicant,
@@ -737,7 +733,7 @@ contract PlotManager is Initializable, Ownable {
   function getApplicationFinanceById(
     bytes32 _id
   )
-    public
+    external
     view
     returns (
       ApplicationStatus status,
@@ -768,6 +764,10 @@ contract PlotManager is Initializable, Ownable {
 
   function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
     return applicationsByValidator[_applicant];
+  }
+
+  function getApplicationOperator(bytes32 _aId) public view returns (address) {
+    return applications[_aId].operator;
   }
 
   function getApplicationValidator(

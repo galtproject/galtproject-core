@@ -73,7 +73,7 @@ contract Validators is Ownable {
     uint8[] _shares,
     bytes32[] _descriptions
   )
-    public
+    external
     onlyOwner
   {
     uint8 len = uint8(_roles.length);
@@ -106,7 +106,7 @@ contract Validators is Ownable {
   function deleteApplicationType(
     bytes32 _applicationType
   )
-    public
+    external
     onlyOwner
   {
     bytes32[] memory aRoles = applicationTypeRoles[_applicationType];
@@ -119,14 +119,14 @@ contract Validators is Ownable {
     delete applicationTypeRoles[_applicationType];
   }
 
-  function isApplicationTypeReady(bytes32 _applicationType) public view returns (bool) {
+  function isApplicationTypeReady(bytes32 _applicationType) external view returns (bool) {
     return applicationTypeRoles[_applicationType].length > 0;
   }
 
   function getApplicationTypeRoles(
     bytes32 _applicationType
   )
-    public
+    external
     view
     returns (bytes32[])
   {
@@ -136,7 +136,7 @@ contract Validators is Ownable {
   function getApplicationTypeRolesCount(
     bytes32 _applicationType
   )
-    public
+    external
     view
     returns (uint256)
   {
@@ -145,11 +145,11 @@ contract Validators is Ownable {
     return count;
   }
 
-  function getRoleRewardShare(bytes32 _role) public view returns (uint8) {
+  function getRoleRewardShare(bytes32 _role) external view returns (uint8) {
     return roles[_role].rewardShare;
   }
 
-  function getRoleApplicationType(bytes32 _role) public view returns (bytes32) {
+  function getRoleApplicationType(bytes32 _role) external view returns (bytes32) {
     return roles[_role].applicationType;
   }
 
@@ -161,7 +161,7 @@ contract Validators is Ownable {
     bytes32[] _descriptionHashes,
     bytes32[] _roles
   )
-    public
+    external
     onlyOwner
   {
     require(_validator != address(0), "Validator address is empty");
@@ -185,28 +185,28 @@ contract Validators is Ownable {
     validatorsArray.push(_validator);
   }
 
-  function removeValidator(address _validator) public onlyOwner {
+  function removeValidator(address _validator) external onlyOwner {
     require(_validator != address(0), "Missing validator");
     // TODO: use index to remove validator
     validators[_validator].active = false;
   }
 
-  function ensureValidatorActive(address _validator) public view returns (bool) {
+  function ensureValidatorActive(address _validator) external view returns (bool) {
     require(validators[_validator].active == true, "Validator is not active");
   }
 
-  function isValidatorActive(address _validator) public view returns (bool) {
+  function isValidatorActive(address _validator) external view returns (bool) {
     return validators[_validator].active == true;
   }
 
-  function hasRole(address _validator, bytes32 _role) public view returns (bool) {
+  function hasRole(address _validator, bytes32 _role) external view returns (bool) {
     return validators[_validator].roles[_role] == true;
   }
 
   function getValidator(
     address validator
   )
-    public
+    external
     view
     returns (
       bytes32 name,
@@ -223,7 +223,7 @@ contract Validators is Ownable {
     );
   }
 
-  function getValidatorRoles() public view returns (bytes32[]) {
+  function getValidatorRoles() external view returns (bytes32[]) {
     return validatorRolesIndex;
   }
 }
