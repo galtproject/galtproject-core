@@ -84,6 +84,7 @@ contract PlotManager is Initializable, Ownable {
   uint256 public minimalApplicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
+  uint256 public gasPriceForDeposits;
   address private galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
@@ -127,6 +128,7 @@ contract PlotManager is Initializable, Ownable {
     minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
+    gasPriceForDeposits = 4 wei;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
@@ -183,6 +185,10 @@ contract PlotManager is Initializable, Ownable {
 
   function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
     minimalApplicationFeeInGalt = _newFee;
+  }
+
+  function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
+    gasPriceForDeposits = _newPrice;
   }
 
   function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
@@ -427,12 +433,23 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
-  function submitApplication(bytes32 _aId) external onlyApplicant(_aId) {
+  function submitApplication(
+    bytes32 _aId
+  )
+    external
+    payable
+    onlyApplicant(_aId)
+  {
     Application storage a = applications[_aId];
 
+    // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
+    require(a.gasDepositEstimation != 0, "No gas deposit estimated");
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW");
+
+    uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
+    require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }

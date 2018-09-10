@@ -8,7 +8,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const { ether, gwei, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -99,6 +99,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
+    await this.plotManager.setGasPriceForDeposits(gwei(4), { from: feeManager });
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -1031,11 +1032,18 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     });
 
     describe('#submitApplication()', () => {
+      beforeEach(async function() {
+        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+      });
+
       it('should change status of an application from from new to submitted', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        await this.plotManager.submitApplication(this.aId, { from: alice });
+        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1046,10 +1054,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        await this.plotManager.submitApplication(this.aId, { from: alice });
+        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+
+        console.log('deposit', web3.utils.fromWei(deposit.toString()));
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1063,7 +1075,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        await this.plotManager.submitApplication(this.aId, { from: alice });
+        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
 
@@ -1077,7 +1092,20 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        await assertRevert(this.plotManager.submitApplication(this.aId, { from: bob }));
+        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+
+        await assertRevert(this.plotManager.submitApplication(this.aId, { from: bob, value: deposit }));
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+      });
+
+      it('should reject when incorrect deposit provided', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice, value: 123 }));
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
