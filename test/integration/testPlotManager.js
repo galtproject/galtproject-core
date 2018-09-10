@@ -502,7 +502,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       describe('with status REVERTED', () => {
-        it('should change status to REVOKED and give refund', async function() {
+        beforeEach(async function() {
           await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
           await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
           await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
@@ -510,7 +510,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           await this.plotManager.submitApplication(this.aId, { from: alice });
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
           await this.plotManager.revertApplication(this.aId, 'dont like it', { from: charlie });
+        });
 
+        it('should change status to REVOKED and give refund', async function() {
           await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashToRemove, [], [], {
             from: alice
           });
@@ -523,6 +525,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           assert.equal(res.status, ApplicationStatus.REVOKED);
 
           assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN('47000000000000000000')));
+        });
+
+        it('should deny any validator disassemble REVERTed application', async function() {
+          await assertRevert(
+            this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashToRemove, [], [], {
+              from: charlie
+            })
+          );
         });
       });
     });

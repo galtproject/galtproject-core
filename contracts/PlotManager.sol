@@ -422,6 +422,10 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW or REJECTED for this operation."
     );
 
+    if (a.status == ApplicationStatus.REVERTED) {
+      require(msg.sender == a.applicant, "Only applicant is allowed to disassemble REVERTED applications");
+    }
+
     require(
       a.applicant == msg.sender ||
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
