@@ -311,7 +311,7 @@ contract PlotManager is Initializable, Ownable {
     assert(totalReward == a.validatorsReward);
   }
 
-  function applyForPlotOwnership(
+  function applyForPlotOwnershipEth(
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,

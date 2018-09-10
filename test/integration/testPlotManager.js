@@ -218,7 +218,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
       assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
 
-      const res = await this.plotManager.applyForPlotOwnership(
+      const res = await this.plotManager.applyForPlotOwnershipEth(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
@@ -657,7 +657,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         { from: coreTeam }
       );
 
-      let res = await this.plotManager.applyForPlotOwnership(
+      let res = await this.plotManager.applyForPlotOwnershipEth(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
@@ -680,7 +680,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
     });
 
-    describe('#applyForPlotOwnership()', () => {
+    describe('#applyForPlotOwnershipEth()', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -718,7 +718,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.plotManager.applyForPlotOwnership(
+            this.plotManager.applyForPlotOwnershipEth(
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
@@ -732,7 +732,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
-            this.plotManager.applyForPlotOwnership(
+            this.plotManager.applyForPlotOwnershipEth(
               this.contour,
               galt.geohashToGeohash5('sezu06'),
               this.credentials,
@@ -745,7 +745,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         });
 
         it('should allow applications with payment greater than required', async function() {
-          await this.plotManager.applyForPlotOwnership(
+          await this.plotManager.applyForPlotOwnershipEth(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
@@ -773,7 +773,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
             { from: coreTeam }
           );
 
-          let res = await this.plotManager.applyForPlotOwnership(
+          let res = await this.plotManager.applyForPlotOwnershipEth(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
             this.credentials,
@@ -1087,7 +1087,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
       it('should push an application id to the validators list for caching', async function() {
         // submit first
-        let res = await this.plotManager.applyForPlotOwnership(
+        let res = await this.plotManager.applyForPlotOwnershipEth(
           this.contour,
           galt.geohashToGeohash5('sezu19'),
           this.credentials,
@@ -1103,7 +1103,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
 
         // submit second
-        res = await this.plotManager.applyForPlotOwnership(
+        res = await this.plotManager.applyForPlotOwnershipEth(
           this.contour,
           galt.geohashToGeohash5('sezu09'),
           this.credentials,
@@ -1125,7 +1125,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       it('should deny validator to lock an application which is new', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
+        let res = await this.plotManager.applyForPlotOwnershipEth(
           this.contour,
           galt.geohashToGeohash5('sezu05'),
           this.credentials,
@@ -1251,7 +1251,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
       // eslint-disable-next-line
       it('should deny validator approve application with other than consideration or partially locked status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
+        let res = await this.plotManager.applyForPlotOwnershipEth(
           this.contour,
           galt.geohashToGeohash5('sezu36'),
           this.credentials,
@@ -1320,7 +1320,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
+        let res = await this.plotManager.applyForPlotOwnershipEth(
           this.contour,
           galt.geohashToGeohash5('sezu96'),
           this.credentials,
