@@ -211,6 +211,7 @@ contract Validators is Ownable {
     returns (
       bytes32 name,
       bytes32 position,
+      bytes32[] roles,
       bool active
     )
   {
@@ -219,6 +220,7 @@ contract Validators is Ownable {
     return (
     v.name,
     v.position,
+    v.rolesList,
     v.active
     );
   }
