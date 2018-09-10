@@ -95,8 +95,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
 
-    await this.plotManager.setApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotManager.setApplicationFeeInGalt(ether(45), { from: feeManager });
+    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
+    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
@@ -112,7 +112,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
   });
 
   it('should be initialized successfully', async function() {
-    (await this.plotManager.applicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    (await this.plotManager.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 
   describe('contract config modifiers', () => {
@@ -142,27 +142,27 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
     });
 
-    describe('#setApplicationFeeInEth()', () => {
+    describe('#setMinimalApplicationFeeInEth()', () => {
       it('should allow a fee manager set a new minimum fee in ETH', async function() {
-        await this.plotManager.setApplicationFeeInEth(ether(0.05), { from: feeManager });
-        const res = await this.plotManager.applicationFeeInEth();
+        await this.plotManager.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
+        const res = await this.plotManager.minimalApplicationFeeInEth();
         assert.equal(res, ether(0.05));
       });
 
       it('should deny any other than a fee manager account set fee in ETH', async function() {
-        await assertRevert(this.plotManager.setApplicationFeeInEth(ether(0.05), { from: coreTeam }));
+        await assertRevert(this.plotManager.setMinimalApplicationFeeInEth(ether(0.05), { from: coreTeam }));
       });
     });
 
-    describe('#setApplicationFeeInGalt()', () => {
+    describe('#setMinimalApplicationFeeInGalt()', () => {
       it('should allow a fee manager set a new minimum fee in GALT', async function() {
-        await this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: feeManager });
-        const res = await this.plotManager.applicationFeeInGalt();
+        await this.plotManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
+        const res = await this.plotManager.minimalApplicationFeeInGalt();
         assert.equal(res, ether(0.15));
       });
 
       it('should deny any other than a fee manager account set fee in GALT', async function() {
-        await assertRevert(this.plotManager.setApplicationFeeInGalt(ether(0.15), { from: coreTeam }));
+        await assertRevert(this.plotManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: coreTeam }));
       });
     });
 

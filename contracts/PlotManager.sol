@@ -79,8 +79,8 @@ contract PlotManager is Initializable, Ownable {
   }
 
   PaymentMethod public paymentMethod;
-  uint256 public applicationFeeInEth;
-  uint256 public applicationFeeInGalt;
+  uint256 public minimalApplicationFeeInEth;
+  uint256 public minimalApplicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
   address private galtSpaceRewardsAddress;
@@ -122,8 +122,8 @@ contract PlotManager is Initializable, Ownable {
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
-    applicationFeeInEth = 1;
-    applicationFeeInGalt = 10;
+    minimalApplicationFeeInEth = 1;
+    minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
@@ -176,12 +176,12 @@ contract PlotManager is Initializable, Ownable {
     paymentMethod = _newMethod;
   }
 
-  function setApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
-    applicationFeeInEth = _newFee;
+  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
+    minimalApplicationFeeInEth = _newFee;
   }
 
-  function setApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
-    applicationFeeInGalt = _newFee;
+  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
+    minimalApplicationFeeInGalt = _newFee;
   }
 
   function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
@@ -252,12 +252,12 @@ contract PlotManager is Initializable, Ownable {
     // ETH
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
+      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
       fee =  msg.value;
     // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= applicationFeeInGalt, "Incorrect fee passed in");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
       galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee =  _applicationFeeInGalt;
       currency = Currency.GALT;
@@ -302,7 +302,6 @@ contract PlotManager is Initializable, Ownable {
     return _id;
   }
 
-  // >>>>>>>>
   function calculateAndStoreFee(
     Application memory _a,
     uint256 _fee
@@ -326,7 +325,6 @@ contract PlotManager is Initializable, Ownable {
     _a.galtSpaceReward = galtSpaceReward;
   }
 
-  // >>>>>>>>
   function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
     assert(a.validatorsReward > 0);
