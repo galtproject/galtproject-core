@@ -590,10 +590,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
           const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
 
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: bob });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: dan });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.GALT, { from: galtSpaceOrg });
+          await this.plotManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
@@ -633,10 +633,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
           const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
 
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: bob });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: dan });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.GALT, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.GALT, { from: galtSpaceOrg });
+          await this.plotManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
@@ -1595,10 +1595,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
           const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
           const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
-          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: dan });
-          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.ETH, { from: galtSpaceOrg });
+          await this.plotManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotManager.claimValidatorReward(this.aId, { from: dan });
+          await this.plotManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
           const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
@@ -1696,8 +1696,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve,
 
           const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
           const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
-          await this.plotManager.claimValidatorReward(this.aId, Currency.ETH, { from: bob });
-          await this.plotManager.claimGaltSpaceReward(this.aId, Currency.ETH, { from: galtSpaceOrg });
+          await this.plotManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
           const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 

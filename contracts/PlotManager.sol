@@ -607,8 +607,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function claimValidatorReward(
-    bytes32 _aId,
-    Currency _currency
+    bytes32 _aId
   )
     external 
     onlyValidatorOfApplication(_aId)
@@ -622,15 +621,14 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
 
     require(reward > 0, "Reward is 0");
-    require(a.currency == _currency, "Reward currency doesn't match");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
     validators.ensureValidatorActive(msg.sender);
 
     a.roleRewardPaidOut[senderRole] = true; 
 
-    if (_currency == Currency.ETH) {
+    if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
-    } else if (_currency == Currency.GALT) {
+    } else if (a.currency == Currency.GALT) {
       galtToken.transfer(msg.sender, reward);
     } else {
       revert("Unknown currency");
@@ -638,8 +636,7 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function claimGaltSpaceReward(
-    bytes32 _aId,
-    Currency _currency
+    bytes32 _aId
   )
     external
   {
@@ -652,13 +649,12 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
     require(a.galtSpaceReward > 0, "Reward is 0");
     require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-    require(a.currency == _currency, "Reward currency doesn't match");
 
     a.galtSpaceRewardPaidOut = true;
 
-    if (_currency == Currency.ETH) {
+    if (a.currency == Currency.ETH) {
       msg.sender.transfer(a.galtSpaceReward);
-    } else if (_currency == Currency.GALT) {
+    } else if (a.currency == Currency.GALT) {
       galtToken.transfer(msg.sender, a.galtSpaceReward);
     } else {
       revert("Unknown currency");
