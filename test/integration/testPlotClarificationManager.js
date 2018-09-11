@@ -9,13 +9,12 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const { ether, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const CLARIFICATION_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
-const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6ca3060ac1e46095';
 const PUSHER_ROLE = 'clarification pusher';
 
 // TODO: move to helpers
@@ -26,7 +25,6 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-const GEOHASH_MASK = new BN('0100000000000000000000000000000000000000000000000000000000000000', 16);
 const ApplicationStatus = {
   NOT_EXISTS: 0,
   NEW: 1,
