@@ -266,13 +266,13 @@ contract PlotManager is Initializable, Ownable {
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
       require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
-      fee =  msg.value;
+      fee = msg.value;
     // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
       require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
       galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
-      fee =  _applicationFeeInGalt;
+      fee = _applicationFeeInGalt;
       currency = Currency.GALT;
     }
 
@@ -328,9 +328,9 @@ contract PlotManager is Initializable, Ownable {
     uint256 share;
 
     if (_a.currency == Currency.ETH) {
-      share =  galtSpaceEthShare;
+      share = galtSpaceEthShare;
     } else {
-      share =  galtSpaceGaltShare;
+      share = galtSpaceGaltShare;
     }
 
     uint256 galtSpaceReward = share.mul(_fee).div(100);
