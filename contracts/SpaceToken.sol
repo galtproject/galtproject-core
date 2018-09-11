@@ -122,7 +122,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   function mintPack(
     address _to
   )
-    public
+    external
     onlyMinter
     returns (uint256)
   {
@@ -137,7 +137,7 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     address _to,
     uint256 _geohash5
   )
-    public
+    external
     onlyMinter
     returns (uint256)
   {
@@ -272,11 +272,11 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     return newId;
   }
 
-  function addRoleTo(address _operator, string _role) public onlyOwner {
+  function addRoleTo(address _operator, string _role) external onlyOwner {
     super.addRole(_operator, _role);
   }
 
-  function removeRoleFrom(address _operator, string _role) public onlyOwner {
+  function removeRoleFrom(address _operator, string _role) external onlyOwner {
     super.removeRole(_operator, _role);
   }
 }

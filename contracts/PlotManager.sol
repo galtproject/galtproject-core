@@ -56,14 +56,13 @@ contract PlotManager is Initializable, Ownable {
     bytes32 id;
     address applicant;
     address operator;
-    bytes32 credentialsHash;
-    bytes32 ledgerIdentifier;
     uint256 packageTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
+    uint256 gasDepositEstimation;
+    bool gasDepositRedeemed;
     bool galtSpaceRewardPaidOut;
-    uint8 precision;
-    bytes2 country;
+    ApplicationDetails details;
     Currency currency;
     ApplicationStatus status;
 
@@ -78,11 +77,19 @@ contract PlotManager is Initializable, Ownable {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
+  struct ApplicationDetails {
+    bytes32 credentialsHash;
+    bytes32 ledgerIdentifier;
+    uint8 precision;
+    bytes2 country;
+  }
+
   PaymentMethod public paymentMethod;
-  uint256 public applicationFeeInEth;
-  uint256 public applicationFeeInGalt;
+  uint256 public minimalApplicationFeeInEth;
+  uint256 public minimalApplicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
+  uint256 public gasPriceForDeposits;
   address private galtSpaceRewardsAddress;
 
   mapping(bytes32 => Application) public applications;
@@ -93,6 +100,7 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   mapping(address => bytes32[]) public applicationsByValidator;
+  mapping(address => bool) public feeManagers;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -121,11 +129,17 @@ contract PlotManager is Initializable, Ownable {
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
-    applicationFeeInEth = 1;
-    applicationFeeInGalt = 10;
+    minimalApplicationFeeInEth = 1;
+    minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
+    gasPriceForDeposits = 4 wei;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
+  }
+
+  modifier onlyFeeManager() {
+    require(feeManagers[msg.sender] == true, "Not a fee manager");
+    _;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -158,31 +172,38 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
-  // TODO: fix incorrect meaning
-  function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
+  function setFeeManager(address _feeManager, bool _active) external onlyOwner {
+    feeManagers[_feeManager] = _active;
+  }
+
+  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
     galtSpaceRewardsAddress = _newAddress;
   }
 
-  function setPaymentMethod(PaymentMethod _newMethod) public onlyOwner {
+  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
     paymentMethod = _newMethod;
   }
 
-  function setApplicationFeeInEth(uint256 _newFee) public onlyOwner {
-    applicationFeeInEth = _newFee;
+  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
+    minimalApplicationFeeInEth = _newFee;
   }
 
-  function setApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
-    applicationFeeInGalt = _newFee;
+  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
+    minimalApplicationFeeInGalt = _newFee;
   }
 
-  function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
+  function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
+    gasPriceForDeposits = _newPrice;
+  }
+
+  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceEthShare = _newShare;
   }
 
-  function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
+  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
@@ -196,10 +217,6 @@ contract PlotManager is Initializable, Ownable {
     a.operator = _to;
   }
 
-  function getApplicationOperator(bytes32 _aId) public view returns (address) {
-    return applications[_aId].operator;
-  }
-
   function changeApplicationDetails(
     bytes32 _aId,
     bytes32 _credentialsHash,
@@ -207,22 +224,23 @@ contract PlotManager is Initializable, Ownable {
     uint8 _precision,
     bytes2 _country
   )
-    public
+    external
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
+    ApplicationDetails storage d = a.details;
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REVERTED."
     );
 
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-    a.country = _country;
+    d.credentialsHash = _credentialsHash;
+    d.ledgerIdentifier = _ledgerIdentifier;
+    d.precision = _precision;
+    d.country = _country;
   }
 
-  function applyForPlotOwnershipGalt(
+  function applyForPlotOwnership(
     uint256[] _packageContour,
     uint256 _baseGeohash,
     bytes32 _credentialsHash,
@@ -232,15 +250,31 @@ contract PlotManager is Initializable, Ownable {
     uint256 _applicationFeeInGalt
   )
     public
+    payable
     ready
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
     require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
-    require(_applicationFeeInGalt >= applicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
 
-    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
+
+    // ETH
+    if (msg.value > 0) {
+      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
+      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
+      fee = msg.value;
+    // GALT
+    } else {
+      require(msg.value == 0, "Could not accept both ETH and GALT");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      fee = _applicationFeeInGalt;
+      currency = Currency.GALT;
+    }
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -257,23 +291,25 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatus.NEW;
     a.id = _id;
     a.applicant = msg.sender;
-    a.country = _country;
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-    a.currency = Currency.GALT;
+    a.currency = currency;
 
-    calculateAndStoreGaltFee(a, _applicationFeeInGalt);
+    calculateAndStoreFee(a, fee);
 
-    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
-    a.packageTokenId = packageTokenId;
+    a.packageTokenId = splitMerge.initPackage(spaceToken.mintGeohash(address(this), _baseGeohash));
 
-    splitMerge.setPackageContour(packageTokenId, _packageContour);
+    splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
     applications[_id] = a;
+
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
+
+    applications[_id].details = ApplicationDetails({
+      ledgerIdentifier: _ledgerIdentifier,
+      credentialsHash: _credentialsHash,
+      country: _country,
+      precision: _precision
+    });
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
@@ -283,11 +319,24 @@ contract PlotManager is Initializable, Ownable {
     return _id;
   }
 
-  function calculateAndStoreGaltFee(Application memory _a, uint256 _applicationFeeInGalt) internal {
-    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+  function calculateAndStoreFee(
+    Application memory _a,
+    uint256 _fee
+  )
+    internal
+  {
+    uint256 share;
 
-    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+    if (_a.currency == Currency.ETH) {
+      share = galtSpaceEthShare;
+    } else {
+      share = galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _fee);
 
     _a.validatorsReward = validatorsReward;
     _a.galtSpaceReward = galtSpaceReward;
@@ -304,80 +353,15 @@ contract PlotManager is Initializable, Ownable {
     for (uint8 i = 0; i < len; i++) {
       bytes32 role = a.assignedRoles[i];
       uint256 rewardShare = a
-        .validatorsReward
-        .mul(validators.getRoleRewardShare(role))
-        .div(100);
+      .validatorsReward
+      .mul(validators.getRoleRewardShare(role))
+      .div(100);
       a.assignedRewards[role] = rewardShare;
       changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
     assert(totalReward == a.validatorsReward);
-  }
-
-  function applyForPlotOwnership(
-    uint256[] _packageContour,
-    uint256 _baseGeohash,
-    bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
-    bytes2 _country,
-    uint8 _precision
-  )
-    public
-    payable
-    ready
-    returns (bytes32)
-  {
-    require(_precision > 5, "Precision should be greater than 5");
-    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
-    require(msg.value >= applicationFeeInEth, "Incorrect fee passed in");
-
-    Application memory a;
-    bytes32 _id = keccak256(
-      abi.encodePacked(
-        _baseGeohash,
-        _packageContour[0],
-        _packageContour[1],
-        _credentialsHash
-      )
-    );
-
-    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-
-    a.status = ApplicationStatus.NEW;
-    a.id = _id;
-    a.applicant = msg.sender;
-    a.country = _country;
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-    a.currency = Currency.ETH;
-
-    uint256 galtSpaceReward = galtSpaceEthShare.mul(msg.value).div(100);
-    uint256 validatorsReward = msg.value.sub(galtSpaceReward);
-
-    assert(validatorsReward.add(galtSpaceReward) == msg.value);
-
-    a.validatorsReward = validatorsReward;
-    a.galtSpaceReward = galtSpaceReward;
-
-    uint256 geohashTokenId = spaceToken.mintGeohash(address(this), _baseGeohash);
-    uint256 packageTokenId = splitMerge.initPackage(geohashTokenId);
-    a.packageTokenId = packageTokenId;
-
-    splitMerge.setPackageContour(packageTokenId, _packageContour);
-
-    applications[_id] = a;
-    applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
-
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
-
-    assignRequiredValidatorRolesAndRewards(_id);
-
-    return _id;
   }
 
   function addGeohashesToApplication(
@@ -395,6 +379,8 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be NEW or REVERTED."
     );
 
+    uint256 initGas = gasleft();
+
     for (uint8 i = 0; i < _geohashes.length; i++) {
       uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
       if (spaceToken.exists(geohashTokenId)) {
@@ -410,6 +396,8 @@ contract PlotManager is Initializable, Ownable {
     }
 
     splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
+
+    a.gasDepositEstimation = a.gasDepositEstimation.add(initGas.sub(gasleft()));
   }
 
   function removeGeohashesFromApplication(
@@ -425,6 +413,10 @@ contract PlotManager is Initializable, Ownable {
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REJECTED for this operation."
     );
+
+    if (a.status == ApplicationStatus.REVERTED) {
+      require(msg.sender == a.applicant, "Only applicant is allowed to disassemble REVERTED applications");
+    }
 
     require(
       a.applicant == msg.sender ||
@@ -451,18 +443,33 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
-  function submitApplication(bytes32 _aId) public onlyApplicant(_aId) {
+  function submitApplication(
+    bytes32 _aId
+  )
+    external
+    payable
+    onlyApplicant(_aId)
+  {
     Application storage a = applications[_aId];
 
+    // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
+    require(a.gasDepositEstimation != 0, "No gas deposit estimated");
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW");
+
+    if (a.status == ApplicationStatus.NEW) {
+      uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
+      require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
+    } else {
+      require(msg.value == 0, "No deposit required on re-submition");
+    }
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   // Application can be locked by a role only once.
-  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
@@ -479,7 +486,7 @@ contract PlotManager is Initializable, Ownable {
     changeValidationStatus(a, _role, ValidationStatus.LOCKED);
   }
 
-  function resetApplicationRole(bytes32 _aId, bytes32 _role) public onlyOwner {
+  function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.SUBMITTED,
@@ -496,16 +503,15 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     bytes32 _credentialsHash
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
-    require(a.credentialsHash == _credentialsHash, "Credentials don't match");
+    require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(validators.isValidatorActive(msg.sender), "Validator is not active");
 
     bytes32 role = a.addressRoles[msg.sender];
 
@@ -533,7 +539,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     string _message
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -561,7 +567,7 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _aId,
     string _message
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -584,7 +590,7 @@ contract PlotManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function revokeApplication(bytes32 _aId) public onlyApplicant(_aId) {
+  function revokeApplication(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(
@@ -607,10 +613,9 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function claimValidatorReward(
-    bytes32 _aId,
-    Currency _currency
+    bytes32 _aId
   )
-    public 
+    external 
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -622,15 +627,13 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
 
     require(reward > 0, "Reward is 0");
-    require(a.currency == _currency, "Reward currency doesn't match");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
-    validators.ensureValidatorActive(msg.sender);
 
     a.roleRewardPaidOut[senderRole] = true; 
 
-    if (_currency == Currency.ETH) {
+    if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
-    } else if (_currency == Currency.GALT) {
+    } else if (a.currency == Currency.GALT) {
       galtToken.transfer(msg.sender, reward);
     } else {
       revert("Unknown currency");
@@ -638,10 +641,9 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function claimGaltSpaceReward(
-    bytes32 _aId,
-    Currency _currency
+    bytes32 _aId
   )
-    public
+    external
   {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
@@ -652,17 +654,42 @@ contract PlotManager is Initializable, Ownable {
       "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
     require(a.galtSpaceReward > 0, "Reward is 0");
     require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-    require(a.currency == _currency, "Reward currency doesn't match");
 
     a.galtSpaceRewardPaidOut = true;
 
-    if (_currency == Currency.ETH) {
+    if (a.currency == Currency.ETH) {
       msg.sender.transfer(a.galtSpaceReward);
-    } else if (_currency == Currency.GALT) {
+    } else if (a.currency == Currency.GALT) {
       galtToken.transfer(msg.sender, a.galtSpaceReward);
     } else {
       revert("Unknown currency");
     }
+  }
+
+  function claimGasDepositByApplicant(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.APPROVED ||
+      a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should be APPROVED or DISASSEMBLED_BY_APPLICANT");
+    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+
+    a.gasDepositRedeemed = true;
+    msg.sender.transfer(a.gasDepositEstimation);
+  }
+
+  // TODO: track validator
+  function claimGasDepositByValidator(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be DISASSEMBLED_BY_VALIDATOR");
+    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+
+    a.gasDepositRedeemed = true;
+    msg.sender.transfer(a.gasDepositEstimation);
   }
 
   function changeValidationStatus(
@@ -693,21 +720,22 @@ contract PlotManager is Initializable, Ownable {
     bytes32 _id,
     bytes32 _hash
   )
-    public
+    external
     view
     returns (bool)
   {
-    return (_hash == applications[_id].credentialsHash);
+    return (_hash == applications[_id].details.credentialsHash);
   }
 
   function getApplicationById(
     bytes32 _id
   )
-    public
+    external
     view
     returns (
       address applicant,
       uint256 packageTokenId,
+      uint256 gasDepositEstimation,
       bytes32 credentialsHash,
       ApplicationStatus status,
       Currency currency,
@@ -724,12 +752,13 @@ contract PlotManager is Initializable, Ownable {
     return (
       m.applicant,
       m.packageTokenId,
-      m.credentialsHash,
+      m.gasDepositEstimation,
+      m.details.credentialsHash,
       m.status,
       m.currency,
-      m.precision,
-      m.country,
-      m.ledgerIdentifier,
+      m.details.precision,
+      m.details.country,
+      m.details.ledgerIdentifier,
       m.assignedRoles
     );
   }
@@ -737,7 +766,7 @@ contract PlotManager is Initializable, Ownable {
   function getApplicationFinanceById(
     bytes32 _id
   )
-    public
+    external
     view
     returns (
       ApplicationStatus status,
@@ -768,6 +797,10 @@ contract PlotManager is Initializable, Ownable {
 
   function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
     return applicationsByValidator[_applicant];
+  }
+
+  function getApplicationOperator(bytes32 _aId) public view returns (address) {
+    return applications[_aId].operator;
   }
 
   function getApplicationValidator(
