@@ -53,31 +53,28 @@ contract PlotClarificationManager is Initializable, Ownable {
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
   event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 packageTokenId);
+  event LogGasDepositWithdrawnByApplicant(bytes32 applicationId);
+  event LogGasDepositWithdrawnByValidator(bytes32 applicationId);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
     address applicant;
-
-    bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     uint256 packageTokenId;
-
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 gasDeposit;
     bool galtSpaceRewardPaidOut;
     bool tokenWithdrawn;
-    // bool gasDepositWithdrawn;
+    bool gasDepositWithdrawn;
 
     uint8 precision;
-    bytes2 country;
     Currency currency;
     ApplicationStatus status;
 
     bytes32[] assignedRoles;
 
-    // TODO: combine into role struct
     mapping(bytes32 => uint256) assignedRewards;
     mapping(bytes32 => bool) roleRewardPaidOut;
     mapping(bytes32 => string) roleMessages;
@@ -201,11 +198,9 @@ contract PlotClarificationManager is Initializable, Ownable {
     galtSpaceGaltShare = _newShare;
   }
 
-  function applyForPlotOwnership(
+  function applyForPlotClarification(
     uint256 _packageTokenId,
-    bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
-    bytes2 _country,
     uint8 _precision
   )
     public
@@ -221,7 +216,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     bytes32 _id = keccak256(
       abi.encodePacked(
         _packageTokenId,
-        _credentialsHash,
         blockhash(block.number)
       )
     );
@@ -233,8 +227,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     a.applicant = msg.sender;
 
     a.packageTokenId = _packageTokenId;
-    a.country = _country;
-    a.credentialsHash = _credentialsHash;
     a.ledgerIdentifier = _ledgerIdentifier;
     a.precision = _precision;
 
@@ -380,6 +372,59 @@ contract PlotClarificationManager is Initializable, Ownable {
     }
   }
 
+  function revertApplication(
+    bytes32 _aId,
+    string _message
+  )
+    public
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
+
+    bytes32 senderRole = a.addressRoles[msg.sender];
+
+    require(a.validationStatus[senderRole] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[senderRole] == msg.sender, "Sender not assigned to this application");
+
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (a.validationStatus[currentRole] == ValidationStatus.PENDING) {
+        revert("All validator roles should lock the application first");
+      }
+    }
+
+    a.roleMessages[senderRole] = _message;
+
+    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
+
+  function resubmitApplication(
+    bytes32 _aId
+  )
+    public
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.REVERTED, "ApplicationStatus should be REVERTED");
+
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = a.assignedRoles[i];
+      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
+      }
+    }
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
   function addGeohashesToApplication(
     bytes32 _aId,
     uint256[] _geohashes,
@@ -432,10 +477,45 @@ contract PlotClarificationManager is Initializable, Ownable {
     require(a.tokenWithdrawn == false, "Token is already withdrawn");
 
     spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+
     a.tokenWithdrawn = true;
     emit LogPackageTokenWithdrawn(a.id, a.packageTokenId);
-    // TODO: add in claimApplicantGasDeposit();
-    // a.gasDepositWithdrawn = true;
+  }
+
+  function claimGasDepositAsApplicant(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.REVERTED,
+      "ApplicationStatus should be REVERTED");
+    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
+    require(a.gasDepositWithdrawn == false, "Gas deposit is already withdrawn");
+
+    a.gasDepositWithdrawn = true;
+    msg.sender.transfer(a.gasDeposit);
+
+    emit LogGasDepositWithdrawnByApplicant(_aId);
+  }
+
+  function claimGasDepositAsValidator(
+    bytes32 _aId
+  )
+    external
+    onlyValidatorOfApplication(_aId)
+    onlyPusherRole
+  {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.PACKED,
+      "ApplicationStatus should be PACKED");
+    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
+    require(a.gasDepositWithdrawn == false, "Gas deposit is already withdrawn");
+
+    a.gasDepositWithdrawn = true;
+    msg.sender.transfer(a.gasDeposit);
+
+    emit LogGasDepositWithdrawnByValidator(_aId);
   }
 
   function claimValidatorReward(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
@@ -473,6 +553,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       address applicant,
       uint256 packageTokenId,
       bool tokenWithdrawn,
+      bool gasDepositWithdrawn,
       bytes32[] assignedValidatorRoles,
       uint256 gasDeposit,
       uint256 validatorsReward,
@@ -489,6 +570,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       m.applicant,
       m.packageTokenId,
       m.tokenWithdrawn,
+      m.gasDepositWithdrawn,
       m.assignedRoles,
       m.gasDeposit,
       m.validatorsReward,
@@ -502,9 +584,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     external
     view
     returns(
-      bytes32 credentialsHash,
       uint8 precision,
-      bytes2 country,
       bytes32 ledgerIdentifier
     )
   {
@@ -512,7 +592,7 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     Application storage m = applications[_id];
 
-    return (m.credentialsHash, m.precision, m.country, m.ledgerIdentifier);
+    return (m.precision, m.ledgerIdentifier);
   }
 
   function getApplicationValidator(
