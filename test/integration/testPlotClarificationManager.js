@@ -64,7 +64,8 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charlie, dan, eve, frank]) => {
+// eslint-disable-next-line
+contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve]) => {
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -104,11 +105,12 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
+    await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
 
-    await this.plotManager.setApplicationFeeInEth(ether(6));
-    await this.plotManager.setApplicationFeeInGalt(ether(45));
-    await this.plotManager.setGaltSpaceEthShare(33);
-    await this.plotManager.setGaltSpaceGaltShare(13);
+    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
+    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
+    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
+    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
     await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(6));
     await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(45));
@@ -252,19 +254,23 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
+        0,
         { from: alice, value: ether(6) }
       );
       this.aId = res.logs[0].args.id;
 
+      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
+      const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+      this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: coreTeam });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice });
+      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
@@ -416,19 +422,23 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, alice, bob, charl
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
+        0,
         { from: alice, value: ether(6) }
       );
       this.aId = res.logs[0].args.id;
 
+      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
+      const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+      this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice });
+      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
