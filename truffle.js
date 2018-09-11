@@ -22,7 +22,7 @@ const config = {
       provider: Ganache.provider({
         unlocked_accounts: [0, 1, 2, 3, 4, 5],
         vmErrorsOnRPCResponse: true,
-        default_balance_ether: 500,
+        default_balance_ether: 5000,
         // 7 800 000
         gasLimit: 0x7704c0
       }),
