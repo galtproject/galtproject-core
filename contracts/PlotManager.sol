@@ -56,15 +56,13 @@ contract PlotManager is Initializable, Ownable {
     bytes32 id;
     address applicant;
     address operator;
-    bytes32 credentialsHash;
-    bytes32 ledgerIdentifier;
     uint256 packageTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 gasDepositEstimation;
+    bool gasDepositRedeemed;
     bool galtSpaceRewardPaidOut;
-    uint8 precision;
-    bytes2 country;
+    ApplicationDetails details;
     Currency currency;
     ApplicationStatus status;
 
@@ -77,6 +75,13 @@ contract PlotManager is Initializable, Ownable {
     mapping(bytes32 => address) roleAddresses;
     mapping(address => bytes32) addressRoles;
     mapping(bytes32 => ValidationStatus) validationStatus;
+  }
+
+  struct ApplicationDetails {
+    bytes32 credentialsHash;
+    bytes32 ledgerIdentifier;
+    uint8 precision;
+    bytes2 country;
   }
 
   PaymentMethod public paymentMethod;
@@ -223,15 +228,16 @@ contract PlotManager is Initializable, Ownable {
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
+    ApplicationDetails storage d = a.details;
     require(
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW or REVERTED."
     );
 
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-    a.country = _country;
+    d.credentialsHash = _credentialsHash;
+    d.ledgerIdentifier = _ledgerIdentifier;
+    d.precision = _precision;
+    d.country = _country;
   }
 
   function applyForPlotOwnership(
@@ -285,10 +291,6 @@ contract PlotManager is Initializable, Ownable {
     a.status = ApplicationStatus.NEW;
     a.id = _id;
     a.applicant = msg.sender;
-    a.country = _country;
-    a.credentialsHash = _credentialsHash;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
     a.currency = currency;
 
     calculateAndStoreFee(a, fee);
@@ -298,8 +300,16 @@ contract PlotManager is Initializable, Ownable {
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
     applications[_id] = a;
+
     applicationsArray.push(_id);
     applicationsByAddresses[msg.sender].push(_id);
+
+    applications[_id].details = ApplicationDetails({
+      ledgerIdentifier: _ledgerIdentifier,
+      credentialsHash: _credentialsHash,
+      country: _country,
+      precision: _precision
+    });
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
@@ -494,7 +504,7 @@ contract PlotManager is Initializable, Ownable {
   {
     Application storage a = applications[_aId];
 
-    require(a.credentialsHash == _credentialsHash, "Credentials don't match");
+    require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
@@ -652,6 +662,32 @@ contract PlotManager is Initializable, Ownable {
     }
   }
 
+  function claimGasDepositByApplicant(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.APPROVED ||
+      a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should be APPROVED or DISASSEMBLED_BY_APPLICANT");
+    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+
+    a.gasDepositRedeemed = true;
+    msg.sender.transfer(a.gasDepositEstimation);
+  }
+
+  // TODO: track validator
+  function claimGasDepositByValidator(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
+      "Application status should be DISASSEMBLED_BY_VALIDATOR");
+    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+
+    a.gasDepositRedeemed = true;
+    msg.sender.transfer(a.gasDepositEstimation);
+  }
+
   function changeValidationStatus(
     Application storage _a,
     bytes32 _role,
@@ -684,7 +720,7 @@ contract PlotManager is Initializable, Ownable {
     view
     returns (bool)
   {
-    return (_hash == applications[_id].credentialsHash);
+    return (_hash == applications[_id].details.credentialsHash);
   }
 
   function getApplicationById(
@@ -713,12 +749,12 @@ contract PlotManager is Initializable, Ownable {
       m.applicant,
       m.packageTokenId,
       m.gasDepositEstimation,
-      m.credentialsHash,
+      m.details.credentialsHash,
       m.status,
       m.currency,
-      m.precision,
-      m.country,
-      m.ledgerIdentifier,
+      m.details.precision,
+      m.details.country,
+      m.details.ledgerIdentifier,
       m.assignedRoles
     );
   }
