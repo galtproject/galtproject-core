@@ -1079,7 +1079,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
-      // TODO: fix when approve implemented
       it('should allow submit reverted application to the same validator who reverted it', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
@@ -1087,11 +1086,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
         const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
 
-        console.log('deposit', web3.utils.fromWei(deposit.toString()));
         await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
+        await this.plotManager.submitApplication(this.aId, { from: alice });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1101,7 +1099,21 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
-      it('shotuld reject if status is not new or rejected', async function() {
+      it('should not require payment if application is re-submitted', async function() {
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
+        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+
+        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
+
+        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice, value: deposit }));
+      });
+
+      it('should not reject if status is not new or rejected', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 

@@ -458,8 +458,12 @@ contract PlotManager is Initializable, Ownable {
       a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
       "Application status should be NEW");
 
-    uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
-    require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
+    if (a.status == ApplicationStatus.NEW) {
+      uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
+      require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
+    } else {
+      require(msg.value == 0, "No deposit required on re-submition");
+    }
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
