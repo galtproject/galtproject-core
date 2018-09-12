@@ -9,6 +9,7 @@ import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
 
+
 contract PlotClarificationManager is Initializable, Ownable {
   using SafeMath for uint256;
 
@@ -148,7 +149,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
-    public
+    external
     isInitializer
   {
     owner = msg.sender;
@@ -168,30 +169,30 @@ contract PlotClarificationManager is Initializable, Ownable {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
-  function setGaltSpaceRewardsAddress(address _newAddress) public onlyOwner {
+  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
     galtSpaceRewardsAddress = _newAddress;
   }
 
-  function setPaymentMethod(PaymentMethod _newMethod) public onlyOwner {
+  function setPaymentMethod(PaymentMethod _newMethod) external onlyOwner {
     paymentMethod = _newMethod;
   }
 
-  function setMinimalApplicationFeeInEth(uint256 _newFee) public onlyOwner {
+  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyOwner {
     minimalApplicationFeeInEth = _newFee;
   }
 
-  function setMinimalApplicationFeeInGalt(uint256 _newFee) public onlyOwner {
+  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyOwner {
     minimalApplicationFeeInGalt = _newFee;
   }
 
-  function setGaltSpaceEthShare(uint256 _newShare) public onlyOwner {
+  function setGaltSpaceEthShare(uint256 _newShare) external onlyOwner {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
     galtSpaceEthShare = _newShare;
   }
 
-  function setGaltSpaceGaltShare(uint256 _newShare) public onlyOwner {
+  function setGaltSpaceGaltShare(uint256 _newShare) external onlyOwner {
     require(_newShare >= 1, "Percent value should be greater or equal to 1");
     require(_newShare <= 100, "Percent value should be greater or equal to 100");
 
@@ -203,7 +204,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     bytes32 _ledgerIdentifier,
     uint8 _precision
   )
-    public
+    external
     validatorsReady
     returns (bytes32)
   {
@@ -307,7 +308,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
-  function lockApplicationForReview(bytes32 _aId, bytes32 _role) public anyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
 
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
@@ -325,7 +326,7 @@ contract PlotClarificationManager is Initializable, Ownable {
   function approveApplication(
     bytes32 _aId
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -357,7 +358,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     bytes32 _aId,
     string _message
   )
-    public
+    external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -387,7 +388,7 @@ contract PlotClarificationManager is Initializable, Ownable {
   function resubmitApplication(
     bytes32 _aId
   )
-    public
+    external
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
@@ -404,36 +405,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     }
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
-  }
-
-  function addGeohashesToApplication(
-    bytes32 _aId,
-    uint256[] _geohashes,
-    uint256[] _neighborsGeohashTokens,
-    bytes2[] _directions
-  )
-    public
-    onlyPusherRole
-  {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
-
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-      if (spaceToken.exists(geohashTokenId)) {
-        require(
-          spaceToken.ownerOf(geohashTokenId) == address(this),
-          "Existing geohash token should belongs to PlotClarificationManager contract"
-        );
-      } else {
-        spaceToken.mintGeohash(address(this), _geohashes[i]);
-      }
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
   function applicationPackingCompleted(bytes32 _aId) external onlyPusherRole {
@@ -551,7 +522,7 @@ contract PlotClarificationManager is Initializable, Ownable {
   function getApplicationById(
     bytes32 _id
   )
-    public
+    external
     view
     returns (
       ApplicationStatus status,
@@ -628,6 +599,36 @@ contract PlotClarificationManager is Initializable, Ownable {
     );
   }
 
+  function addGeohashesToApplication(
+    bytes32 _aId,
+    uint256[] _geohashes,
+    uint256[] _neighborsGeohashTokens,
+    bytes2[] _directions
+  )
+    public
+    onlyPusherRole
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
+
+    for (uint8 i = 0; i < _geohashes.length; i++) {
+      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
+      if (spaceToken.exists(geohashTokenId)) {
+        require(
+          spaceToken.ownerOf(geohashTokenId) == address(this),
+          "Existing geohash token should belongs to PlotClarificationManager contract"
+        );
+      } else {
+        spaceToken.mintGeohash(address(this), _geohashes[i]);
+      }
+
+      _geohashes[i] = geohashTokenId;
+    }
+
+    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
+  }
+
   function changeValidationStatus(
     Application storage _a,
     bytes32 _role,
@@ -699,5 +700,4 @@ contract PlotClarificationManager is Initializable, Ownable {
 
     assert(totalReward == a.validatorsReward);
   }
-
 }
