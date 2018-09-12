@@ -270,7 +270,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     changeApplicationStatus(a, ApplicationStatus.PAYMENT_REQUIRED);
   }
 
-  function submitApplicationForReviewGalt(
+  function submitApplicationForReview(
     bytes32 _aId,
     uint256 _applicationFeeInGalt
   )
@@ -282,45 +282,26 @@ contract PlotClarificationManager is Initializable, Ownable {
     uint256 deposit = a.gasDeposit;
 
     require(a.status == ApplicationStatus.PAYMENT_REQUIRED, "ApplicationStatus should be PAYMENT_REQUIRED");
-    require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Application fee should be greater or equal to the minimum value");
-    require(msg.value == deposit, "Incorrect gas deposit (EHT)");
 
-    galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
 
-    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+    // GALT
+    if (_applicationFeeInGalt > 0) {
+      require(msg.value == deposit, "Provided gas deposit should exactly match valuation");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      fee = _applicationFeeInGalt;
+      a.currency = Currency.GALT;
+    // ETH
+    } else {
+      require(msg.value >= (minimalApplicationFeeInEth + deposit), "Provided payment insufficient");
 
-    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+      fee = msg.value.sub(deposit);
+    }
 
-    a.validatorsReward = validatorsReward;
-    a.galtSpaceReward = galtSpaceReward;
-
-    a.currency = Currency.GALT;
-    a.validatorsReward = validatorsReward;
-    a.galtSpaceReward = galtSpaceReward;
-
-    assignRequiredValidatorRolesAndRewards(_aId);
-
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
-  }
-
-  function submitApplicationForReview(bytes32 _aId) external payable onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-    uint256 deposit = a.gasDeposit;
-    uint256 minimalPayment = minimalApplicationFeeInEth + deposit;
-
-    require(a.status == ApplicationStatus.PAYMENT_REQUIRED, "ApplicationStatus should be PAYMENT_REQUIRED");
-    require(msg.value >= minimalPayment, "Provided payment insufficient");
-
-    uint256 fee = msg.value.sub(deposit);
-    uint256 galtSpaceReward = galtSpaceEthShare.mul(fee).div(100);
-    uint256 validatorsReward = fee.sub(galtSpaceReward);
-
-    assert(validatorsReward.add(galtSpaceReward).add(deposit) == msg.value);
-
-    a.validatorsReward = validatorsReward;
-    a.galtSpaceReward = galtSpaceReward;
-
+    calculateAndStoreFee(a, fee);
     assignRequiredValidatorRolesAndRewards(_aId);
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
@@ -670,16 +651,25 @@ contract PlotClarificationManager is Initializable, Ownable {
     _a.status = _status;
   }
 
-  function calculateAndStoreGaltFee(
-    Application memory _a,
-    uint256 _applicationFeeInGalt
+  function calculateAndStoreFee(
+    Application storage _a,
+    uint256 _fee
   )
     internal
   {
-    uint256 galtSpaceReward = galtSpaceGaltShare.mul(_applicationFeeInGalt).div(100);
-    uint256 validatorsReward = _applicationFeeInGalt.sub(galtSpaceReward);
+    uint256 share;
+    assert(_fee > 0);
 
-    assert(validatorsReward.add(galtSpaceReward) == _applicationFeeInGalt);
+    if (_a.currency == Currency.ETH) {
+      share = galtSpaceEthShare;
+    } else {
+      share = galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _fee);
 
     _a.validatorsReward = validatorsReward;
     _a.galtSpaceReward = galtSpaceReward;

@@ -289,7 +289,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       this.aId = res.logs[0].args.id;
     });
 
-    describe('#submitApplicationForReviewGalt()', () => {
+    describe('#submitApplicationForReview()', () => {
       beforeEach(async function() {
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
@@ -298,7 +298,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
         await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
-        await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(45), {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, ether(45), {
           from: alice,
           value: ether(7)
         });
@@ -313,7 +313,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         it('should reject applications without neither payment nor gas deposit', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, 0, {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
               from: alice
             })
           );
@@ -322,7 +322,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         it('should reject applications with gas deposit which less than required', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(45), {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, ether(45), {
               from: alice,
               value: ether(6)
             })
@@ -332,7 +332,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(43), {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, ether(43), {
               from: alice,
               value: ether(7)
             })
@@ -342,7 +342,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         it('should reject applications with gas deposit greater than required', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, ether(47), {
               from: alice,
               value: ether(8)
             })
@@ -351,7 +351,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
-          await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, ether(47), {
             from: alice,
             value: ether(7)
           });
@@ -367,7 +367,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         it('should calculate validator rewards according to their roles share', async function() {
           const { aId } = this;
           await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
-          await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(47), {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, ether(47), {
             from: alice,
             value: ether(7)
           });
@@ -398,7 +398,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
         await this.galtToken.approve(this.plotClarificationManager.address, ether(57), { from: alice });
-        await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(57), {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, ether(57), {
           from: alice,
           value: ether(7)
         });
@@ -751,7 +751,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       });
 
       it('should allow an applicant pay commission and gas deposit in ETH', async function() {
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -765,7 +765,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReview(this.aId, {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
               from: alice
             })
           );
@@ -773,21 +773,21 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReview(this.aId, {
+            this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
               from: alice,
               value: 10
             })
           );
         });
         it('should allow pplications with payment greater than required', async function() {
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
             from: alice,
             value: ether(23)
           });
         });
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
             from: alice,
             value: ether(14)
           });
@@ -801,7 +801,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
         it('should calculate validator rewards according to their roles share', async function() {
           const { aId } = this;
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
             from: alice,
             value: ether(13)
           });
@@ -830,7 +830,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -881,7 +881,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -931,7 +931,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -999,7 +999,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -1046,7 +1046,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -1082,7 +1082,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -1115,7 +1115,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -1141,7 +1141,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
@@ -1216,7 +1216,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
         await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
         await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, {
+        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
           from: alice,
           value: ether(6 + 7)
         });
