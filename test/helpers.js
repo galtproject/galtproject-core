@@ -12,6 +12,9 @@ module.exports = {
   hex(input) {
     return web3.utils.toHex(input);
   },
+  gwei(number) {
+    return web3.utils.toWei(number.toString(), 'gwei');
+  },
   szabo(number) {
     return web3.utils.toWei(number.toString(), 'szabo');
   },
