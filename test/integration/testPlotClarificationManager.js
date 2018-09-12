@@ -9,7 +9,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertRevert, zeroAddress } = require('../helpers');
+const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -388,6 +388,214 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
           res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '20445000000000000000');
+        });
+      });
+    });
+
+    describe('claim reward', () => {
+      beforeEach(async function() {
+        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
+        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
+        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
+        await this.galtToken.approve(this.plotClarificationManager.address, ether(57), { from: alice });
+        await this.plotClarificationManager.submitApplicationForReviewGalt(this.aId, ether(57), {
+          from: alice,
+          value: ether(7)
+        });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+      });
+
+      describe('for approved applications', () => {
+        beforeEach(async function() {
+          await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
+          await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+          await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+          await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
+        });
+
+        describe('after package token was withdrawn by user', () => {
+          beforeEach(async function() {
+            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+          });
+
+          it('should be allowed', async function() {
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+            let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+
+            assert.equal(res.status, ApplicationStatus.PACKED);
+            assert.equal(res.tokenWithdrawn, true);
+            assert.equal(res.galtSpaceRewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('human'))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('dog'))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+          });
+
+          it('should send funds to claimers', async function() {
+            const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+            const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+            const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+            const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+            const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+            const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+            const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+            const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+            const res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('human'))
+              .call();
+            assert.equal(res.reward.toString(), '24795000000000000000');
+
+            // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
+
+            assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
+            assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
+            assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
+            assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
+          });
+
+          it('should revert on double claim', async function() {
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob }));
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan }));
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+          });
+
+          it('should revert on non-validator claim', async function() {
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: bob }));
+          });
+
+          it('should revert on applicant claim attempt', async function() {
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: alice }));
+          });
+        });
+
+        it('should revert on claim without token been withdrawn', async function() {
+          await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+        });
+      });
+
+      describe('for reverted applications', () => {
+        beforeEach(async function() {
+          await this.plotClarificationManager.revertApplication(this.aId, 'some reason', { from: bob });
+        });
+
+        describe('after package token was withdrawn by user', () => {
+          beforeEach(async function() {
+            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+          });
+
+          it('should revert on claim without token been withdrawn', async function() {
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+            let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+
+            assert.equal(res.status, ApplicationStatus.REVERTED);
+            assert.equal(res.tokenWithdrawn, true);
+            assert.equal(res.galtSpaceRewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('human'))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+
+            res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('dog'))
+              .call();
+            assert.equal(res.rewardPaidOut, true);
+          });
+
+          it('should send funds to claimers', async function() {
+            const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+            const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+            const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+            const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+            const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+            const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
+            const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+            const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+            const res = await this.plotClarificationManagerWeb3.methods
+              .getApplicationValidator(this.aId, utf8ToHex('human'))
+              .call();
+            assert.equal(res.reward.toString(), '24795000000000000000');
+
+            // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
+
+            assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
+            assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
+            assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
+            assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
+          });
+
+          it('should revert on double claim', async function() {
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan });
+            await this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve });
+            await this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: bob }));
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: dan }));
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: eve }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+          });
+
+          it('should revert on non-validator claim', async function() {
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: bob }));
+          });
+
+          it('should revert on applicant claim attempt', async function() {
+            await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+            await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: alice }));
+          });
+        });
+
+        it('should revert on claim without token been withdrawn', async function() {
+          await assertRevert(this.plotClarificationManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotClarificationManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
       });
     });
