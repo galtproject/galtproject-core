@@ -108,7 +108,7 @@ contract PlotClarificationManager is Initializable, Ownable {
   constructor () public {}
 
   modifier validatorsReady() {
-    // require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+     require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
 
     _;
   }
@@ -277,6 +277,7 @@ contract PlotClarificationManager is Initializable, Ownable {
   )
     external
     payable
+    validatorsReady
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
