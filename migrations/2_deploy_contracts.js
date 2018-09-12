@@ -6,9 +6,7 @@ const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
-const galt = require('@galtproject/utils');
 
-const web3 = new Web3(GaltToken.web3.currentProvider);
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const fs = require('fs');
@@ -21,8 +19,6 @@ module.exports = async function(deployer, network, accounts) {
 
   deployer.then(async () => {
     const coreTeam = accounts[0];
-    const alice = accounts[1];
-    const bob = accounts[2];
     // const proxiesAdmin = accounts[1];
 
     // Deploy contracts...
