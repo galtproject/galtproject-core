@@ -521,17 +521,42 @@ contract PlotClarificationManager is Initializable, Ownable {
   function claimValidatorReward(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.tokenWithdrawn == true, "Token is already withdrawn");
-    // TODO: check for gas deposit withdrawn
-
     require(
       a.status == ApplicationStatus.REVERTED ||
       a.status == ApplicationStatus.PACKED,
       "ApplicationStatus should one of REVERTED or PACKED");
 
     bytes32 role = a.addressRoles[msg.sender];
+
+    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
+    require(a.roleRewardPaidOut[role] == false, "Reward is already withdrawn");
+
     uint256 reward = a.assignedRewards[role];
     a.roleRewardPaidOut[role] = true;
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (a.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, reward);
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
+  function claimGaltSpaceReward(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.REVERTED ||
+      a.status == ApplicationStatus.PACKED,
+      "ApplicationStatus should one of REVERTED or PACKED");
+    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+
+    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
+    require(a.galtSpaceRewardPaidOut == false, "Reward is already withdrawn");
+
+    a.galtSpaceRewardPaidOut = true;
+    uint256 reward = a.galtSpaceReward;
 
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
@@ -554,6 +579,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       uint256 packageTokenId,
       bool tokenWithdrawn,
       bool gasDepositWithdrawn,
+      bool galtSpaceRewardPaidOut,
       bytes32[] assignedValidatorRoles,
       uint256 gasDeposit,
       uint256 validatorsReward,
@@ -571,6 +597,7 @@ contract PlotClarificationManager is Initializable, Ownable {
       m.packageTokenId,
       m.tokenWithdrawn,
       m.gasDepositWithdrawn,
+      m.galtSpaceRewardPaidOut,
       m.assignedRoles,
       m.gasDeposit,
       m.validatorsReward,
@@ -604,6 +631,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     returns (
       address validator,
       uint256 reward,
+      bool rewardPaidOut,
       ValidationStatus status,
       string message
     )
@@ -613,6 +641,7 @@ contract PlotClarificationManager is Initializable, Ownable {
     return (
       m.roleAddresses[_role],
       m.assignedRewards[_role],
+      m.roleRewardPaidOut[_role],
       m.validationStatus[_role],
       m.roleMessages[_role]
     );
