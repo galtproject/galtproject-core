@@ -50,14 +50,14 @@ module.exports = async function(deployer, network, accounts) {
     };
 
     const APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(APPLICATION_TYPE, ['foo', 'bar', 'buzz'], [50, 25, 25], ['', '', ''], {
+    await validators.setApplicationTypeRoles(APPLICATION_TYPE, ['cadastral', 'notary'], [75, 25], ['', ''], {
       from: coreTeam
     });
 
     const promises = [];
     _.forEach(users, (address, name) => {
       if (_.includes(validatorsList, name)) {
-        promises.push(validators.addValidator(address, name, 'MN', [], ['foo'], { from: coreTeam }));
+        promises.push(validators.addValidator(address, name, 'MN', [], ['cadastral', 'notary'], { from: coreTeam }));
       }
 
       if (_.includes(adminsList, name)) {
