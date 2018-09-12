@@ -40,10 +40,7 @@
     "test": "truffle test --network test",
     "test-gas": "USE_GAS_REPORTER=yes truffle test --network development",
     "eslint": "eslint .",
-    "solium": "solium --dir .",
-    "deploy-ganache": "rm -rf build && truffle migrate --network ganache && ./node_modules/.bin/surge ./deployed $DOMAIN && echo \"CONTRACTS_CONFIG_URL=$DOMAIN\\ganache.json\"",
-    "deploy-testnet57": "rm -rf build && truffle migrate --network testnet57 && ./node_modules/.bin/surge ./deployed $DOMAIN && echo \"CONTRACTS_CONFIG_URL=$DOMAIN\\testnet57.json\"",
-    "deploy-local": "rm -rf build && truffle migrate --network local && ./node_modules/.bin/surge ./deployed $DOMAIN && echo \"CONTRACTS_CONFIG_URL=$DOMAIN\\local.json\""
+    "solium": "solium --dir ."
   },
   "author": "",
   "license": "ISC"
