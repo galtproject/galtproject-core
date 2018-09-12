@@ -42,4 +42,13 @@ The project will be developed according to the following plan:
 
 Who is John Galt? We are! Join now!
 
-
+### Deploy
+You need to run parity [testnet57](https://github.com/galtspace/testnet-57) in local environment for deploy contracts.
+#### Test
+```
+DOMAIN=galt-test-contracts.surge.sh make deploy-testnet57
+```
+#### Production
+```
+DOMAIN=galt-prod-contracts.surge.sh make deploy-testnet57
+```
