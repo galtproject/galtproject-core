@@ -463,6 +463,14 @@ contract PlotManager is Initializable, Ownable {
       require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
     } else {
       require(msg.value == 0, "No deposit required on re-submition");
+
+      uint256 len = a.assignedRoles.length;
+
+      for (uint8 i = 0; i < len; i++) {
+        if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
+          changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
+        }
+      }
     }
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
@@ -578,15 +586,17 @@ contract PlotManager is Initializable, Ownable {
     bytes32 senderRole = a.addressRoles[msg.sender];
     uint256 len = a.assignedRoles.length;
 
+    require(a.validationStatus[senderRole] == ValidationStatus.LOCKED, "Application should be locked first");
+
     for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
+      if (a.validationStatus[a.assignedRoles[i]] == ValidationStatus.PENDING) {
+        revert("All validator roles should lock the application first");
       }
     }
 
     a.roleMessages[senderRole] = _message;
 
+    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
