@@ -216,6 +216,7 @@ contract Validators is Ownable, RBAC {
       bytes32 name,
       bytes32 position,
       bytes32[] roles,
+      bytes32[] descriptionHashes,
       bool active
     )
   {
@@ -225,6 +226,7 @@ contract Validators is Ownable, RBAC {
     v.name,
     v.position,
     v.rolesList,
+    v.descriptionHashes,
     v.active
     );
   }
