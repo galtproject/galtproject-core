@@ -210,8 +210,13 @@ contract PlotManager is Initializable, Ownable {
     galtSpaceGaltShare = _newShare;
   }
 
-  function approveOperator(bytes32 _aId, address _to) external onlyApplicant(_aId) {
+  function approveOperator(bytes32 _aId, address _to) external {
     Application storage a = applications[_aId];
+    require(
+      msg.sender == a.applicant ||
+      (a.status == ApplicationStatus.REJECTED && a.addressRoles[msg.sender] != 0x0),
+      "Unable to approve"
+    );
     require(_to != a.applicant, "Unable to approve to the same account");
 
     a.operator = _to;
