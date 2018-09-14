@@ -22,7 +22,7 @@ const NEW_APPLICATION = '0x41e691fcbdc41a0c9c62caec68dbbdb99b245cbb72f06df6f40fa
 const NON_EXISTING_APPLICATION = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('Validators', ([coreTeam, validatorManager, applicationManager, alice, bob]) => {
+contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, bob]) => {
   beforeEach(async function() {
     this.validators = await Validators.new({ from: coreTeam, gas: 6700000 });
     await this.validators.addRoleTo(validatorManager, 'validator_manager', { from: coreTeam });
