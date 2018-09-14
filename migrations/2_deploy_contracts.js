@@ -68,6 +68,17 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
+
+    await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
+
+    await plotManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
+      from: coreTeam
+    });
+    await plotManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
+      from: coreTeam
+    });
+
     await landUtils.initialize({ from: coreTeam });
 
     await galtDex.initialize(
@@ -114,11 +125,5 @@ module.exports = async function(deployer, network, accounts) {
         resolve
       );
     });
-
-    // Log out proxy addresses
-    console.log('SpaceToken Proxy:', spaceToken.address);
-    console.log('SplitMerge Proxy:', splitMerge.address);
-    console.log('PlotManager Proxy:', plotManager.address);
-    console.log('LandUtils Proxy:', landUtils.address);
   });
 };
