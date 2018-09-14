@@ -53,7 +53,7 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
-    await validators.addRoleTo(coreTeam, 'application_manager', { from: coreTeam });
+    await validators.addRoleTo(coreTeam, 'roles_manager', { from: coreTeam });
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 

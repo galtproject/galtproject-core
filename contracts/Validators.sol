@@ -17,7 +17,7 @@ contract Validators is Ownable, RBAC {
   event LogNotReadyForApplications(uint256 total);
 
   string public constant ROLE_VALIDATOR_MANAGER = "validator_manager";
-  string public constant ROLE_APPLICATION_MANAGER = "application_manager";
+  string public constant ROLE_ROLES_MANAGER = "roles_manager";
   
   uint256 public constant ROLES_LIMIT = 50;
 
@@ -241,7 +241,7 @@ contract Validators is Ownable, RBAC {
   }
   
   modifier onlyApplicationManager() {
-    checkRole(msg.sender, ROLE_APPLICATION_MANAGER);
+    checkRole(msg.sender, ROLE_ROLES_MANAGER);
     _;
   }
 

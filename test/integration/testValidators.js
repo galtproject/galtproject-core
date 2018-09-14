@@ -26,7 +26,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
   beforeEach(async function() {
     this.validators = await Validators.new({ from: coreTeam, gas: 6700000 });
     await this.validators.addRoleTo(validatorManager, 'validator_manager', { from: coreTeam });
-    await this.validators.addRoleTo(applicationManager, 'application_manager', { from: coreTeam });
+    await this.validators.addRoleTo(applicationManager, 'roles_manager', { from: coreTeam });
   });
 
   describe('roles management', () => {
