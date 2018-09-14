@@ -5,12 +5,13 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
 
 
-contract PlotManager is Initializable, Ownable {
+contract PlotManager is Initializable, Ownable, AbstractApplication {
   using SafeMath for uint256;
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
@@ -34,18 +35,6 @@ contract PlotManager is Initializable, Ownable {
     APPROVED,
     REJECTED,
     REVERTED
-  }
-
-  enum PaymentMethod {
-    NONE,
-    ETH_ONLY,
-    GALT_ONLY,
-    ETH_AND_GALT
-  }
-
-  enum Currency {
-    ETH,
-    GALT
   }
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
@@ -84,14 +73,7 @@ contract PlotManager is Initializable, Ownable {
     bytes2 country;
   }
 
-  PaymentMethod public paymentMethod;
-  uint256 public minimalApplicationFeeInEth;
-  uint256 public minimalApplicationFeeInGalt;
-  uint256 public galtSpaceEthShare;
-  uint256 public galtSpaceGaltShare;
   uint256 public gasPriceForDeposits;
-  address private galtSpaceRewardsAddress;
-
   mapping(bytes32 => Application) public applications;
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
@@ -100,7 +82,6 @@ contract PlotManager is Initializable, Ownable {
   // so do not rely on this variable to verify whether validator
   // exists or not.
   mapping(address => bytes32[]) public applicationsByValidator;
-  mapping(address => bool) public feeManagers;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -137,11 +118,6 @@ contract PlotManager is Initializable, Ownable {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
-  modifier onlyFeeManager() {
-    require(feeManagers[msg.sender] == true, "Not a fee manager");
-    _;
-  }
-
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
@@ -172,42 +148,8 @@ contract PlotManager is Initializable, Ownable {
     _;
   }
 
-  function setFeeManager(address _feeManager, bool _active) external onlyOwner {
-    feeManagers[_feeManager] = _active;
-  }
-
-  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
-    galtSpaceRewardsAddress = _newAddress;
-  }
-
-  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
-    paymentMethod = _newMethod;
-  }
-
-  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInEth = _newFee;
-  }
-
-  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInGalt = _newFee;
-  }
-
   function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
     gasPriceForDeposits = _newPrice;
-  }
-
-  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
-
-    galtSpaceEthShare = _newShare;
-  }
-
-  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
-
-    galtSpaceGaltShare = _newShare;
   }
 
   function approveOperator(bytes32 _aId, address _to) external onlyApplicant(_aId) {
