@@ -18,8 +18,10 @@ contract SpaceDex is Initializable, Ownable {
   GaltToken galtToken;
   SpaceToken spaceToken;
 
-  uint256 public galtToSpaceSum;
   uint256 public spaceToGaltSum;
+  uint256 public galtToSpaceSum;
+  
+  uint256 public spacePriceOnSaleSum;
   
   bytes23[] public operationsArray;
   mapping(uint256 => bytes23) public lastOperationByTokenId;
@@ -67,6 +69,8 @@ contract SpaceDex is Initializable, Ownable {
       "Not allowed space for sale"
     );
     
+    require(availableForSale(_spaceTokenId), "Not available for sale");
+    
     bytes32 _operationId = keccak256(
       abi.encodePacked(
         _spaceTokenId,
@@ -92,6 +96,9 @@ contract SpaceDex is Initializable, Ownable {
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
     operationsArray.push(_operationId);
+
+    spaceToGaltSum += 1;
+    spacePriceOnSaleSum += _galtToSend;
   }
   
   function getSpaceTokensOnSale(){
@@ -111,6 +118,8 @@ contract SpaceDex is Initializable, Ownable {
     );
     
     bytes32 _previousOperation = lastOperationByTokenId[_spaceTokenId];
+    
+    OperationDetails memory _previousOperationDetails = operationsDetails[_previousOperation];
 
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
@@ -126,10 +135,18 @@ contract SpaceDex is Initializable, Ownable {
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
     operationsArray.push(_operationId);
+
+    galtToSpaceSum += _galtToSend;
+    spacePriceOnSaleSum -= _previousOperationDetails.galtAmount;
   }
   
   function getSpaceTokenPrice(uint256 tokenId) {
     require(tokenId > 0, "tokenId cant be null");
     return 10 ether;
+  }
+
+  function availableForSale(uint256 tokenId) {
+    require(tokenId > 0, "tokenId cant be null");
+    return true;
   }
 }
