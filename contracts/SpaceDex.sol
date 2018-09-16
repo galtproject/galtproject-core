@@ -23,15 +23,16 @@ contract SpaceDex is Initializable, Ownable {
   
   uint256 public spacePriceOnSaleSum;
   
-  bytes23[] public operationsArray;
-  mapping(uint256 => bytes23) public lastOperationByTokenId;
-  mapping(bytes23 => OperationDetails) public operationsDetails;
+  bytes32[] public operationsArray;
+  mapping(uint256 => bytes32) public lastOperationByTokenId;
+  mapping(bytes32 => OperationDetails) public operationsDetails;
 
   struct OperationDetails {
     uint256 spaceTokenId;
     uint256 galtAmount;
     address user;
-    bytes23 previousOperation;
+    bytes32 previousOperation;
+    uint256 timestamp;
     OperationDirection direction;
   }
   
@@ -68,7 +69,7 @@ contract SpaceDex is Initializable, Ownable {
       spaceToken.getApproved(_spaceTokenId) == address(this), 
       "Not allowed space for sale"
     );
-    
+
     require(availableForSale(_spaceTokenId), "Not available for sale");
     
     bytes32 _operationId = keccak256(
@@ -87,11 +88,12 @@ contract SpaceDex is Initializable, Ownable {
       galtAmount: _galtToSend,
       user: msg.sender,
       previousOperation: _previousOperation,
-      direction: OperationDirection.SPACE_TO_GALT
+      direction: OperationDirection.SPACE_TO_GALT,
+      timestamp: now
     });
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
-    galtToken.transferFrom(address(this), msg.sender, _galtToSend);
+    galtToken.transfer(msg.sender, _galtToSend);
 
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
@@ -99,10 +101,6 @@ contract SpaceDex is Initializable, Ownable {
 
     spaceToGaltSum += 1;
     spacePriceOnSaleSum += _galtToSend;
-  }
-  
-  function getSpaceTokensOnSale(){
-    return spaceToken.tokensOfOwner(address(this));
   }
 
   function exchangeGaltToSpace(uint256 _spaceTokenId) public {
@@ -126,7 +124,8 @@ contract SpaceDex is Initializable, Ownable {
       galtAmount: _galtToSend,
       user: msg.sender,
       previousOperation: _previousOperation,
-      direction: OperationDirection.GALT_TO_SPACE
+      direction: OperationDirection.GALT_TO_SPACE,
+      timestamp: now
     });
 
     galtToken.transferFrom(msg.sender, address(this), _galtToSend);
@@ -139,13 +138,17 @@ contract SpaceDex is Initializable, Ownable {
     galtToSpaceSum += _galtToSend;
     spacePriceOnSaleSum -= _previousOperationDetails.galtAmount;
   }
+
+  function getSpaceTokensOnSale() public view returns (uint256[]) {
+    return spaceToken.tokensOfOwner(address(this));
+  }
   
-  function getSpaceTokenPrice(uint256 tokenId) {
+  function getSpaceTokenPrice(uint256 tokenId) public view returns (uint256) {
     require(tokenId > 0, "tokenId cant be null");
     return 10 ether;
   }
 
-  function availableForSale(uint256 tokenId) {
+  function availableForSale(uint256 tokenId) public view returns (bool) {
     require(tokenId > 0, "tokenId cant be null");
     return true;
   }
