@@ -2,17 +2,16 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
+const galt = require('@galtproject/utils');
 
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether, szabo } = require('../helpers');
-const galt = require('@galtproject/utils');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
-const { BN } = Web3.utils;
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -26,7 +25,7 @@ chai.should();
  * Alice is an applicant
  * Bob is a validator
  */
-contract.only('SpaceDex', ([coreTeam, alice]) => {
+contract('SpaceDex', ([coreTeam, alice]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
@@ -70,6 +69,29 @@ contract.only('SpaceDex', ([coreTeam, alice]) => {
 
       const aliceGaltBalance = await this.galtToken.balanceOf(alice);
       assert.equal(aliceGaltBalance.toString(10), geohashPrice.toString(10));
+    });
+  });
+
+  describe('#exchangeGaltToSpace()', async () => {
+    it('should successfully buy spaceToken', async function() {
+      const geohash5 = galt.geohashToGeohash5('sezu05');
+      await this.spaceToken.mintGeohash(this.spaceDex.address, geohash5, {
+        from: coreTeam
+      });
+
+      const geohashTokenId = galt.geohashToTokenId('sezu05');
+
+      const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
+
+      await this.galtToken.mint(alice, geohashPrice);
+      await this.galtToken.approve(this.spaceDex.address, geohashPrice, { from: alice });
+
+      await this.spaceDex.exchangeGaltToSpace(geohashTokenId, {
+        from: alice
+      });
+
+      const ownerOfGeohashToken = await this.spaceToken.ownerOf(geohashTokenId);
+      assert.equal(ownerOfGeohashToken, alice);
     });
   });
 });
