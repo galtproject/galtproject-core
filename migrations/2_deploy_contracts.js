@@ -93,6 +93,8 @@ module.exports = async function(deployer, network, accounts) {
 
     await spaceDex.initialize(galtToken.address, spaceToken.address, { from: coreTeam });
 
+    await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
+
     await galtToken.mint(galtDex.address, Web3.utils.toWei('1000000', 'ether'));
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000', 'ether'));
 
