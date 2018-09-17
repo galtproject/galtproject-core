@@ -3,9 +3,10 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 
 
-contract Validators is Ownable {
+contract Validators is Ownable, RBAC {
   using SafeMath for uint256;
 
   event LogValidatorRoleAdded(bytes32 role, uint8 share);
@@ -15,6 +16,9 @@ contract Validators is Ownable {
   event LogReadyForApplications();
   event LogNotReadyForApplications(uint256 total);
 
+  string public constant ROLE_VALIDATOR_MANAGER = "validator_manager";
+  string public constant ROLE_ROLES_MANAGER = "roles_manager";
+  
   uint256 public constant ROLES_LIMIT = 50;
 
   bytes32 public constant ROLE_NOT_EXISTS = 0x0;
@@ -74,7 +78,7 @@ contract Validators is Ownable {
     bytes32[] _descriptions
   )
     external
-    onlyOwner
+    onlyApplicationManager
   {
     uint8 len = uint8(_roles.length);
     require(len == uint8(_shares.length), "Roles and shares array lenghts don't match");
@@ -107,7 +111,7 @@ contract Validators is Ownable {
     bytes32 _applicationType
   )
     external
-    onlyOwner
+    onlyApplicationManager
   {
     bytes32[] memory aRoles = applicationTypeRoles[_applicationType];
     uint8 len = uint8(aRoles.length);
@@ -162,7 +166,7 @@ contract Validators is Ownable {
     bytes32[] _roles
   )
     external
-    onlyOwner
+    onlyValidatorManager
   {
     require(_validator != address(0), "Validator address is empty");
     require(_position != 0x0, "Missing position");
@@ -185,7 +189,7 @@ contract Validators is Ownable {
     validatorsArray.push(_validator);
   }
 
-  function removeValidator(address _validator) external onlyOwner {
+  function removeValidator(address _validator) external onlyValidatorManager {
     require(_validator != address(0), "Missing validator");
     // TODO: use index to remove validator
     validators[_validator].active = false;
@@ -212,6 +216,7 @@ contract Validators is Ownable {
       bytes32 name,
       bytes32 position,
       bytes32[] roles,
+      bytes32[] descriptionHashes,
       bool active
     )
   {
@@ -221,11 +226,34 @@ contract Validators is Ownable {
     v.name,
     v.position,
     v.rolesList,
+    v.descriptionHashes,
     v.active
     );
   }
 
   function getValidatorRoles() external view returns (bytes32[]) {
     return validatorRolesIndex;
+  }
+
+  function getValidators() external view returns (address[]) {
+    return validatorsArray;
+  }
+  
+  modifier onlyValidatorManager() {
+    checkRole(msg.sender, ROLE_VALIDATOR_MANAGER);
+    _;
+  }
+  
+  modifier onlyApplicationManager() {
+    checkRole(msg.sender, ROLE_ROLES_MANAGER);
+    _;
+  }
+
+  function addRoleTo(address _operator, string _role) external onlyOwner {
+    super.addRole(_operator, _role);
+  }
+
+  function removeRoleFrom(address _operator, string _role) external onlyOwner {
+    super.removeRole(_operator, _role);
   }
 }

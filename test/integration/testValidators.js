@@ -22,9 +22,11 @@ const NEW_APPLICATION = '0x41e691fcbdc41a0c9c62caec68dbbdb99b245cbb72f06df6f40fa
 const NON_EXISTING_APPLICATION = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Validators', ([coreTeam, alice, bob]) => {
+contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, bob]) => {
   beforeEach(async function() {
     this.validators = await Validators.new({ from: coreTeam, gas: 6700000 });
+    await this.validators.addRoleTo(validatorManager, 'validator_manager', { from: coreTeam });
+    await this.validators.addRoleTo(applicationManager, 'roles_manager', { from: coreTeam });
   });
 
   describe('roles management', () => {
@@ -34,7 +36,7 @@ contract('Validators', ([coreTeam, alice, bob]) => {
         ['human', 'cat', 'dog'],
         [25, 30, 45],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationManager }
       );
     });
 
@@ -53,7 +55,7 @@ contract('Validators', ([coreTeam, alice, bob]) => {
       assert.equal(await this.validators.getRoleRewardShare('dog'), 45);
     });
 
-    it('should prevent non-owner from overwriting an existing application type', async function() {
+    it('should prevent non-applicationManager from overwriting an existing application type', async function() {
       await assertRevert(
         this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
           from: bob
@@ -61,10 +63,10 @@ contract('Validators', ([coreTeam, alice, bob]) => {
       );
     });
 
-    it('should prevent an owner owerwriting existing application type', async function() {
+    it('should prevent an applicationManager owerwriting existing application type', async function() {
       await assertRevert(
         this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
-          from: coreTeam
+          from: applicationManager
         })
       );
       let res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
@@ -76,7 +78,7 @@ contract('Validators', ([coreTeam, alice, bob]) => {
     it('should provide an ability to delete all roles of the given type', async function() {
       assert.equal(await this.validators.getRoleRewardShare('human'), '25');
 
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationManager });
 
       const res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
       assert.equal(res.length, 0);
@@ -91,13 +93,13 @@ contract('Validators', ([coreTeam, alice, bob]) => {
     });
 
     it('should allow add a brand new list of roles after deletion', async function() {
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationManager });
       await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['foo', 'bar', 'buzz'],
         [30, 30, 40],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationManager }
       );
       assert.equal(await this.validators.getRoleApplicationType('foo'), NEW_APPLICATION);
       assert.equal(await this.validators.getRoleApplicationType('bar'), NEW_APPLICATION);
@@ -116,33 +118,33 @@ contract('Validators', ([coreTeam, alice, bob]) => {
         ['🦄', '🦆', '🦋'],
         [30, 30, 40],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationManager }
       );
       assert.isNotNull(res);
     });
 
     describe('#addValidator()', () => {
-      it('should allow an owner to assign validators', async function() {
-        await this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: coreTeam });
+      it('should allow an validatorManager to assign validators', async function() {
+        await this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: validatorManager });
       });
 
-      it('should deny an owner to assign validator with non-existent role', async function() {
+      it('should deny an validatorManager to assign validator with non-existent role', async function() {
         await assertRevert(
-          this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: coreTeam })
+          this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: validatorManager })
         );
       });
 
-      it('should deny any other person than owner to assign validators', async function() {
+      it('should deny any other person than validatorManager to assign validators', async function() {
         await assertRevert(this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: alice }));
       });
     });
 
     describe('#removeValidator()', () => {
       it('should allow an ower to remove validators', async function() {
-        await this.validators.removeValidator(alice, { from: coreTeam });
+        await this.validators.removeValidator(alice, { from: validatorManager });
       });
 
-      it('should deny any other person than owner to remove validators', async function() {
+      it('should deny any other person than validatorManager to remove validators', async function() {
         await assertRevert(this.validators.removeValidator(alice, { from: alice }));
       });
     });
@@ -150,9 +152,9 @@ contract('Validators', ([coreTeam, alice, bob]) => {
     describe('#isValidatorActive()', () => {
       it('return true if validator is active', async function() {
         assert(!(await this.validators.isValidatorActive(alice)));
-        await this.validators.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: coreTeam });
+        await this.validators.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: validatorManager });
         assert(await this.validators.isValidatorActive(alice));
-        await this.validators.removeValidator(alice, { from: coreTeam });
+        await this.validators.removeValidator(alice, { from: validatorManager });
         assert(!(await this.validators.isValidatorActive(alice)));
       });
     });
