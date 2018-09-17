@@ -66,7 +66,7 @@ Object.freeze(Currency);
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve, frank]) => {
+contract.only('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve, frank]) => {
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
