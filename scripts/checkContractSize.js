@@ -1,6 +1,7 @@
 const fs = require('fs');
 
 console.log('\nSize limit is about', 24577, '\n');
+checkSize('AbstractApplication');
 checkSize('PlotManager');
 checkSize('PlotClarificationManager');
 checkSize('SplitMerge');

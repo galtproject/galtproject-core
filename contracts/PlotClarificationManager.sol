@@ -1,8 +1,6 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./SpaceToken.sol";
@@ -11,7 +9,7 @@ import "./Validators.sol";
 import "./AbstractApplication.sol";
 
 
-contract PlotClarificationManager is Initializable, Ownable, AbstractApplication {
+contract PlotClarificationManager is AbstractApplication {
   using SafeMath for uint256;
 
   // 'PlotClarificationManager' hash
@@ -74,28 +72,15 @@ contract PlotClarificationManager is Initializable, Ownable, AbstractApplication
   }
 
   mapping(bytes32 => Application) public applications;
-  mapping(address => bytes32[]) public applicationsByAddresses;
-  bytes32[] private applicationsArray;
-  // WARNING: we do not remove applications from validator's list,
-  // so do not rely on this variable to verify whether validator
-  // exists or not.
-  mapping(address => bytes32[]) public applicationsByValidator;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
-  Validators public validators;
-  ERC20 public galtToken;
 
   constructor () public {}
 
   modifier validatorsReady() {
     require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
 
-    _;
-  }
-
-  modifier anyValidator() {
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
     _;
   }
 

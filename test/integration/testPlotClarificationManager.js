@@ -104,16 +104,17 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       from: coreTeam
     });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
+    await this.plotClarificationManager.setFeeManager(feeManager, true, { from: coreTeam });
 
     await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
-    await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(6));
-    await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(45));
-    await this.plotClarificationManager.setGaltSpaceEthShare(33);
-    await this.plotClarificationManager.setGaltSpaceGaltShare(13);
+    await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
+    await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
+    await this.plotClarificationManager.setGaltSpaceEthShare(33, { from: feeManager });
+    await this.plotClarificationManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.plotClarificationManager.address, 'minter');
@@ -150,7 +151,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
     describe('#setPaymentMethod()', () => {
       it('should allow an owner set a payment method', async function() {
-        await this.plotClarificationManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam });
+        await this.plotClarificationManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
         const res = await this.plotClarificationManager.paymentMethod();
         assert.equal(res, PaymentMethods.ETH_ONLY);
       });
@@ -164,7 +165,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
     describe('#setApplicationFeeInEth()', () => {
       it('should allow an owner set a new minimum fee in ETH', async function() {
-        await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(0.05), { from: coreTeam });
+        await this.plotClarificationManager.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
         const res = await this.plotClarificationManager.minimalApplicationFeeInEth();
         assert.equal(res, ether(0.05));
       });
@@ -176,7 +177,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
     describe('#setApplicationFeeInGalt()', () => {
       it('should allow an owner set a new minimum fee in GALT', async function() {
-        await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: coreTeam });
+        await this.plotClarificationManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
         const res = await this.plotClarificationManager.minimalApplicationFeeInGalt();
         assert.equal(res, ether(0.15));
       });
@@ -188,17 +189,17 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
     describe('#setGaltSpaceEthShare()', () => {
       it('should allow an owner set galtSpace ETH share in percents', async function() {
-        await this.plotClarificationManager.setGaltSpaceEthShare('42', { from: coreTeam });
+        await this.plotClarificationManager.setGaltSpaceEthShare('42', { from: feeManager });
         const res = await this.plotClarificationManager.galtSpaceEthShare();
         assert.equal(res.toString(10), '42');
       });
 
       it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('0.5', { from: coreTeam }));
+        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('0.5', { from: feeManager }));
       });
 
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
-        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('101', { from: coreTeam }));
+        await assertRevert(this.plotClarificationManager.setGaltSpaceEthShare('101', { from: feeManager }));
       });
 
       it('should deny any other than owner set Galt Space EHT share in percents', async function() {
@@ -208,17 +209,17 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
 
     describe('#setGaltSpaceGaltShare()', () => {
       it('should allow an owner set galtSpace Galt share in percents', async function() {
-        await this.plotClarificationManager.setGaltSpaceGaltShare('42', { from: coreTeam });
+        await this.plotClarificationManager.setGaltSpaceGaltShare('42', { from: feeManager });
         const res = await this.plotClarificationManager.galtSpaceGaltShare();
         assert.equal(res.toString(10), '42');
       });
 
       it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('0.5', { from: coreTeam }));
+        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('0.5', { from: feeManager }));
       });
 
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
-        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('101', { from: coreTeam }));
+        await assertRevert(this.plotClarificationManager.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
 
       it('should deny any other than owner set Galt Space EHT share in percents', async function() {

@@ -1,8 +1,6 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./AbstractApplication.sol";
@@ -11,7 +9,7 @@ import "./SplitMerge.sol";
 import "./Validators.sol";
 
 
-contract PlotManager is Initializable, Ownable, AbstractApplication {
+contract PlotManager is AbstractApplication {
   using SafeMath for uint256;
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
@@ -128,11 +126,6 @@ contract PlotManager is Initializable, Ownable, AbstractApplication {
     _;
   }
 
-  modifier anyValidator() {
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
-    _;
-  }
-
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
@@ -157,6 +150,10 @@ contract PlotManager is Initializable, Ownable, AbstractApplication {
     require(_to != a.applicant, "Unable to approve to the same account");
 
     a.operator = _to;
+  }
+  modifier anyValidator() {
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
+    _;
   }
 
   function changeApplicationDetails(
