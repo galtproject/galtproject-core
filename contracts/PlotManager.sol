@@ -424,6 +424,7 @@ contract PlotManager is Initializable, Ownable {
     }
 
     require(
+      /* solium-disable-next-line */
       a.applicant == msg.sender ||
       getApplicationOperator(_aId) == msg.sender ||
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
