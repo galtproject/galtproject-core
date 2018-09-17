@@ -129,21 +129,15 @@ contract GaltDex is Initializable, Ownable, RBAC {
 
   function exchangeRate(uint256 minusBalance) public view returns(uint256) {
     if (ethToGaltSum > 0 && address(this).balance > 0) {
-      uint256 galtSum = galtToken.totalSupply()
-                                .sub(galtToken.balanceOf(address(this)))
-                                .add(galtFeePayout);
+      uint256 galtSum = galtToken.totalSupply().sub(galtToken.balanceOf(address(this))).add(galtFeePayout);
       
-      if(spaceDex != address(0)) {
-        galtSum = galtSum
-                      .sub(galtToken.balanceOf(address(spaceDex)))
-                      .sub(spaceDex.spacePriceOnSaleSum());
+      if (spaceDex != address(0)) {
+        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum());
       }
       
       uint256 ethSum = address(this).balance.sub(ethFeePayout).sub(minusBalance);
       
-      return galtSum
-              .mul(exchangeRatePrecision)
-              .div(ethSum);
+      return galtSum.mul(exchangeRatePrecision).div(ethSum);
     } else {
       return baseExchangeRate;
     }
