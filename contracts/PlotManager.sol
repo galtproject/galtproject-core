@@ -425,6 +425,7 @@ contract PlotManager is Initializable, Ownable {
 
     require(
       a.applicant == msg.sender ||
+      getApplicationOperator(_aId) == msg.sender ||
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
       "Sender is not valid");
 
