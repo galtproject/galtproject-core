@@ -1,7 +1,10 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
+const SpaceDex = artifacts.require('./SpaceDex.sol');
+const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
+const galt = require('@galtproject/utils');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether, szabo } = require('../helpers');
@@ -22,25 +25,37 @@ chai.should();
  * Alice is an applicant
  * Bob is a validator
  */
-contract('GaltDex', ([coreTeam, alice]) => {
+contract('GaltDex', ([coreTeam, alice, bob]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
   beforeEach(async function() {
+    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
+    this.spaceDex = await SpaceDex.new({ from: coreTeam });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
       from: coreTeam
     });
 
-    this.galtDex.addRoleTo(coreTeam, 'fee_manager');
+    this.spaceDex.initialize(this.galtToken.address, this.spaceToken.address, {
+      from: coreTeam
+    });
+
+    await this.spaceToken.addRoleTo(coreTeam, 'minter');
+
+    await this.galtDex.addRoleTo(coreTeam, 'fee_manager');
+    await this.galtDex.setSpaceDex(this.spaceDex.address);
 
     await this.galtToken.mint(this.galtDex.address, ether(100));
 
     this.showGaltDexStatus = async function() {
       const totalSupply = (await this.galtToken.totalSupply()) / 10 ** 18;
       const galtBalanceOfGaltDex = (await this.galtToken.balanceOf(this.galtDex.address)) / 10 ** 18;
+      const galtBalanceOfSpaceDex = (await this.galtToken.balanceOf(this.spaceDex.address)) / 10 ** 18;
+      const spacePriceOnSaleSum = (await this.spaceDex.spacePriceOnSaleSum()) / 10 ** 18;
       const totalSupplyMinusGaltBalance = totalSupply - galtBalanceOfGaltDex;
       const ethBalanceOfGaltDex = (await web3.eth.getBalance(this.galtDex.address)) / 10 ** 18;
       const exchangeRate = (await this.galtDex.exchangeRate('0')) / 10 ** 12;
@@ -56,6 +71,12 @@ contract('GaltDex', ([coreTeam, alice]) => {
         ethBalanceOfGaltDex.toString(10),
         'exchangeRate',
         exchangeRate.toString(10)
+      );
+      console.log(
+        'galtBalanceOfSpaceDex',
+        galtBalanceOfSpaceDex.toString(10),
+        'spacePriceOnSaleSum',
+        spacePriceOnSaleSum.toString(10)
       );
     };
 
@@ -176,6 +197,36 @@ contract('GaltDex', ([coreTeam, alice]) => {
 
       const totalGaltFeePayout = await this.galtDex.galtFeeTotalPayout();
       totalGaltFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
+    });
+
+    describe.only('spaceDex dependency', async () => {
+      it('should be correct exchangeRate after exchange on spaceDex', async function() {
+        const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
+
+        await this.galtToken.mint(this.spaceDex.address, ether(100));
+
+        const geohash5 = galt.geohashToGeohash5('sezu05');
+        await this.spaceToken.mintGeohash(bob, geohash5, {
+          from: coreTeam
+        });
+
+        const geohashTokenId = galt.geohashToTokenId('sezu05');
+
+        await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
+          from: bob
+        });
+
+        const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
+        await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+          from: bob
+        });
+
+        const bobGaltBalance = await this.galtToken.balanceOf(bob);
+        assert.equal(bobGaltBalance.toString(10), geohashPrice.toString(10));
+
+        const galtDexEchangeRateAfter = await this.galtDex.exchangeRate('0');
+        assert.equal(galtDexEchangeRateBefore.toString(10), galtDexEchangeRateAfter.toString(10));
+      });
     });
   });
 });

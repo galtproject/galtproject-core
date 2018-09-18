@@ -105,6 +105,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
+    await this.validators.addRoleTo(coreTeam, 'validator_manager');
+    await this.validators.addRoleTo(coreTeam, 'roles_manager');
+
     await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
@@ -279,7 +282,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     it('should allow application details hash to the owner when status is REVERTED', async function() {
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
       await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
       await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
 
       let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -521,6 +528,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
           await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
+          await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
+          await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
           await this.plotManager.revertApplication(this.aId, 'dont like it', { from: charlie });
         });
 
@@ -920,6 +929,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
 
         res = await this.splitMerge.getPackageGeohashesCount(
@@ -1023,6 +1034,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
             await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
             await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+            await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+            await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
             await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
 
             res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1088,11 +1101,22 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
         await this.plotManager.submitApplication(this.aId, { from: alice });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
         assert.equal(res.validator.toLowerCase(), bob);
@@ -1108,6 +1132,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
 
         await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice, value: deposit }));
@@ -1430,7 +1456,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
-      it('should reset validation statuses of another validators', async function() {
+      it('should not reset validation statuses of another validators', async function() {
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
         await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: eve });
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1442,11 +1469,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
         assert.equal(res.validator.toLowerCase(), dan);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+        assert.equal(res.status, ValidationStatus.APPROVED);
 
         res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
         assert.equal(res.validator.toLowerCase(), eve);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+        assert.equal(res.status, ValidationStatus.REVERTED);
       });
 
       it('should deny non-validator revert application', async function() {
@@ -1599,6 +1626,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
           await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
           await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+          await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
           await this.plotManager.revertApplication(this.aId, 'some reason', { from: bob });
 
           let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();

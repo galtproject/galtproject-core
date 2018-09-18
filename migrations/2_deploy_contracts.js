@@ -4,6 +4,7 @@ const LandUtils = artifacts.require('./LandUtils');
 const PlotManager = artifacts.require('./PlotManager');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
+const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
 
@@ -30,6 +31,7 @@ module.exports = async function(deployer, network, accounts) {
     const landUtils = await LandUtils.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
+    const spaceDex = await SpaceDex.new({ from: coreTeam });
     const validators = await Validators.new({ from: coreTeam });
 
     // Setup proxies...
@@ -52,6 +54,9 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
+    await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
+    await validators.addRoleTo(coreTeam, 'roles_manager', { from: coreTeam });
+
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
@@ -65,6 +70,17 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
+
+    await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
+
+    await plotManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
+      from: coreTeam
+    });
+    await plotManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
+      from: coreTeam
+    });
+
     await landUtils.initialize({ from: coreTeam });
 
     await galtDex.initialize(
@@ -75,7 +91,12 @@ module.exports = async function(deployer, network, accounts) {
       { from: coreTeam }
     );
 
+    await spaceDex.initialize(galtToken.address, spaceToken.address, { from: coreTeam });
+
+    await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
+
     await galtToken.mint(galtDex.address, Web3.utils.toWei('1000000', 'ether'));
+    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000', 'ether'));
 
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
@@ -102,6 +123,8 @@ module.exports = async function(deployer, network, accounts) {
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
+            spaceDexAddress: spaceDex.address,
+            spaceDexAbi: spaceDex.abi,
             validatorsAddress: validators.address,
             validatorsAbi: validators.abi
           },
@@ -111,11 +134,5 @@ module.exports = async function(deployer, network, accounts) {
         resolve
       );
     });
-
-    // Log out proxy addresses
-    console.log('SpaceToken Proxy:', spaceToken.address);
-    console.log('SplitMerge Proxy:', splitMerge.address);
-    console.log('PlotManager Proxy:', plotManager.address);
-    console.log('LandUtils Proxy:', landUtils.address);
   });
 };

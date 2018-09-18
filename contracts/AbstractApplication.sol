@@ -74,15 +74,13 @@ contract AbstractApplication is Initializable, Ownable {
   }
 
   function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
 
     galtSpaceEthShare = _newShare;
   }
 
   function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
 
     galtSpaceGaltShare = _newShare;
   }

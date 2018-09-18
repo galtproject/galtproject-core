@@ -129,8 +129,7 @@ contract PlotManager is AbstractApplication {
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
+    require(a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender), "Not valid validator");
 
     _;
   }
@@ -145,15 +144,16 @@ contract PlotManager is AbstractApplication {
     gasPriceForDeposits = _newPrice;
   }
 
-  function approveOperator(bytes32 _aId, address _to) external onlyApplicant(_aId) {
+  function approveOperator(bytes32 _aId, address _to) external {
     Application storage a = applications[_aId];
+    require(
+      msg.sender == a.applicant ||
+      (a.status == ApplicationStatus.REJECTED && a.addressRoles[msg.sender] != 0x0),
+      "Unable to approve"
+    );
     require(_to != a.applicant, "Unable to approve to the same account");
 
     a.operator = _to;
-  }
-  modifier anyValidator() {
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
-    _;
   }
 
   function changeApplicationDetails(
@@ -194,8 +194,10 @@ contract PlotManager is AbstractApplication {
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
-    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
+    require(
+      _packageContour.length >= 3 && _packageContour.length <= 50, 
+      "Number of contour elements should be between 3 and 50"
+    );
 
     // Default is ETH
     Currency currency;
@@ -234,7 +236,11 @@ contract PlotManager is AbstractApplication {
 
     calculateAndStoreFee(a, fee);
 
-    a.packageTokenId = splitMerge.initPackage(spaceToken.mintGeohash(address(this), _baseGeohash));
+    uint256 geohashTokenId = spaceToken.geohashToTokenId(_baseGeohash);
+    if (!spaceToken.exists(geohashTokenId)) {
+      spaceToken.mintGeohash(address(this), _baseGeohash);
+    }
+    a.packageTokenId = splitMerge.initPackage(geohashTokenId);
 
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
@@ -358,7 +364,9 @@ contract PlotManager is AbstractApplication {
     }
 
     require(
+      /* solium-disable-next-line */
       a.applicant == msg.sender ||
+      getApplicationOperator(_aId) == msg.sender ||
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
       "Sender is not valid");
 
@@ -402,6 +410,14 @@ contract PlotManager is AbstractApplication {
       require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
     } else {
       require(msg.value == 0, "No deposit required on re-submition");
+
+      uint256 len = a.assignedRoles.length;
+
+      for (uint8 i = 0; i < len; i++) {
+        if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
+          changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
+        }
+      }
     }
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
@@ -517,15 +533,17 @@ contract PlotManager is AbstractApplication {
     bytes32 senderRole = a.addressRoles[msg.sender];
     uint256 len = a.assignedRoles.length;
 
+    require(a.validationStatus[senderRole] == ValidationStatus.LOCKED, "Application should be locked first");
+
     for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
+      if (a.validationStatus[a.assignedRoles[i]] == ValidationStatus.PENDING) {
+        revert("All validator roles should lock the application first");
       }
     }
 
     a.roleMessages[senderRole] = _message;
 
+    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 

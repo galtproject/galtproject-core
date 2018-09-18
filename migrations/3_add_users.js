@@ -25,6 +25,7 @@ module.exports = async function(deployer, network, accounts) {
 
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
+      Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
       Nikita: '0x8d362af4c86b05d6F256147A6E76b9d7aF205A24',
       Igor: '0x06dba6eb6a1044b8cbcaa0033ea3897bf37e6671',
       Igor2: '0x8052C9fc345dB9c1A70Afc0A81416029F23E5f76',
@@ -36,7 +37,7 @@ module.exports = async function(deployer, network, accounts) {
     };
 
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin'];
-    const validatorsList = ['Jonybang', 'Nikita', 'Igor', 'Igor2', 'Nik', 'Nik2', 'NickValidator'];
+    const validatorsList = ['Jonybang', 'Jonybang2', 'Nikita', 'Igor', 'Igor2', 'Nik', 'Nik2', 'NickValidator'];
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -62,6 +63,8 @@ module.exports = async function(deployer, network, accounts) {
 
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(validators.addRoleTo(address, 'validator_manager', { from: coreTeam }));
+        promises.push(validators.addRoleTo(address, 'roles_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
