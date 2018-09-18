@@ -210,6 +210,7 @@ contract PlotValuation is AbstractApplication {
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
     require(
+      /* solium-disable-next-line */
       a.status == ApplicationStatus.SUBMITTED ||
       a.status == ApplicationStatus.VALUATED ||
       a.status == ApplicationStatus.REVERTED ||
