@@ -134,6 +134,10 @@ contract PlotValuation is AbstractApplication {
 
     _;
   }
+  
+  function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
+    gasPriceForDeposits = _newPrice;
+  }
 
   /**
    * @dev Submit a new plot valuation application
