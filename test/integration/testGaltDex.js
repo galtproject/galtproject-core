@@ -199,7 +199,7 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
       totalGaltFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
     });
 
-    describe.only('spaceDex dependency', async () => {
+    describe('spaceDex dependency', async () => {
       it('should be correct exchangeRate after exchange on spaceDex', async function() {
         const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
 
