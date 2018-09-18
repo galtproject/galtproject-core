@@ -240,6 +240,7 @@ contract PlotManager is AbstractApplication {
     if (!spaceToken.exists(geohashTokenId)) {
       spaceToken.mintGeohash(address(this), _baseGeohash);
     }
+    // TODO: ELSE ensure geohashTokenId belongs to this contract
     a.packageTokenId = splitMerge.initPackage(geohashTokenId);
 
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
@@ -424,8 +425,9 @@ contract PlotManager is AbstractApplication {
   }
 
   // Application can be locked by a role only once.
-  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external {
     Application storage a = applications[_aId];
+    require(validators.isValidatorActive(msg.sender), "Not active validator");
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
     require(

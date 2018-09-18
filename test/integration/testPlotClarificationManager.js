@@ -63,7 +63,20 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve]) => {
+contract('PlotClarificationManager', (accounts) => {
+  const [
+    coreTeam,
+    galtSpaceOrg,
+    feeManager,
+    applicationTypeManager,
+    validatorManager,
+    alice,
+    bob,
+    charlie,
+    dan,
+    eve
+  ] = accounts;
+
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -105,6 +118,13 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
     });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotClarificationManager.setFeeManager(feeManager, true, { from: coreTeam });
+
+    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
 
     await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
@@ -238,7 +258,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         ['foo', 'bar', 'buzz'],
         [50, 25, 25],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationTypeManager }
       );
 
       this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
@@ -246,7 +266,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         ['human', 'dog', PUSHER_ROLE],
         [50, 25, 25],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationTypeManager }
       );
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
@@ -267,10 +287,10 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
       this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: coreTeam });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
 
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
@@ -612,7 +632,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         ['foo', 'bar', 'buzz'],
         [50, 25, 25],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationTypeManager }
       );
 
       this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
@@ -620,7 +640,7 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
         ['human', 'dog', PUSHER_ROLE],
         [50, 25, 25],
         ['', '', ''],
-        { from: coreTeam }
+        { from: applicationTypeManager }
       );
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
@@ -641,10 +661,10 @@ contract('PlotClarificationManager', ([coreTeam, galtSpaceOrg, feeManager, alice
       const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
       this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: coreTeam });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: coreTeam });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: coreTeam });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
 
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });

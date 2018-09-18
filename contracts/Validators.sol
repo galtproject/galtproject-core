@@ -17,7 +17,7 @@ contract Validators is Ownable, RBAC {
   event LogNotReadyForApplications(uint256 total);
 
   string public constant ROLE_VALIDATOR_MANAGER = "validator_manager";
-  string public constant ROLE_ROLES_MANAGER = "roles_manager";
+  string public constant ROLE_APPLICATION_TYPE_MANAGER = "application_type_manager";
   
   uint256 public constant ROLES_LIMIT = 50;
 
@@ -59,6 +59,16 @@ contract Validators is Ownable, RBAC {
   // exists or not.
   address[] public validatorsArray;
 
+  modifier onlyValidatorManager() {
+    require(hasRole(msg.sender, ROLE_VALIDATOR_MANAGER), "No permissions for validator management");
+    _;
+  }
+
+  modifier onlyApplicationTypeManager() {
+    require(hasRole(msg.sender, ROLE_APPLICATION_TYPE_MANAGER), "No permissions for application type management");
+    _;
+  }
+
   // >>> Roles management
   /**
    * Set roles for a given type.
@@ -78,7 +88,7 @@ contract Validators is Ownable, RBAC {
     bytes32[] _descriptions
   )
     external
-    onlyApplicationManager
+    onlyApplicationTypeManager
   {
     uint8 len = uint8(_roles.length);
     require(len == uint8(_shares.length), "Roles and shares array lenghts don't match");
@@ -111,7 +121,7 @@ contract Validators is Ownable, RBAC {
     bytes32 _applicationType
   )
     external
-    onlyApplicationManager
+    onlyApplicationTypeManager
   {
     bytes32[] memory aRoles = applicationTypeRoles[_applicationType];
     uint8 len = uint8(aRoles.length);
@@ -237,16 +247,6 @@ contract Validators is Ownable, RBAC {
 
   function getValidators() external view returns (address[]) {
     return validatorsArray;
-  }
-  
-  modifier onlyValidatorManager() {
-    checkRole(msg.sender, ROLE_VALIDATOR_MANAGER);
-    _;
-  }
-  
-  modifier onlyApplicationManager() {
-    checkRole(msg.sender, ROLE_ROLES_MANAGER);
-    _;
   }
 
   function addRoleTo(address _operator, string _role) external onlyOwner {
