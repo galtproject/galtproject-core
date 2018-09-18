@@ -105,8 +105,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.validators.addRoleTo(coreTeam, 'validator_manager');
-    await this.validators.addRoleTo(coreTeam, 'roles_manager');
+    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
 
     await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
 

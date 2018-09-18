@@ -22,11 +22,15 @@ const NEW_APPLICATION = '0x41e691fcbdc41a0c9c62caec68dbbdb99b245cbb72f06df6f40fa
 const NON_EXISTING_APPLICATION = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, bob]) => {
+contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, alice, bob]) => {
   beforeEach(async function() {
     this.validators = await Validators.new({ from: coreTeam, gas: 6700000 });
-    await this.validators.addRoleTo(validatorManager, 'validator_manager', { from: coreTeam });
-    await this.validators.addRoleTo(applicationManager, 'roles_manager', { from: coreTeam });
+    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
   });
 
   describe('roles management', () => {
@@ -36,7 +40,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
         ['human', 'cat', 'dog'],
         [25, 30, 45],
         ['', '', ''],
-        { from: applicationManager }
+        { from: applicationTypeManager }
       );
     });
 
@@ -66,7 +70,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
     it('should prevent an applicationManager owerwriting existing application type', async function() {
       await assertRevert(
         this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
-          from: applicationManager
+          from: applicationTypeManager
         })
       );
       let res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
@@ -78,7 +82,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
     it('should provide an ability to delete all roles of the given type', async function() {
       assert.equal(await this.validators.getRoleRewardShare('human'), '25');
 
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationManager });
+      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
 
       const res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
       assert.equal(res.length, 0);
@@ -93,13 +97,13 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
     });
 
     it('should allow add a brand new list of roles after deletion', async function() {
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationManager });
+      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
       await this.validators.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['foo', 'bar', 'buzz'],
         [30, 30, 40],
         ['', '', ''],
-        { from: applicationManager }
+        { from: applicationTypeManager }
       );
       assert.equal(await this.validators.getRoleApplicationType('foo'), NEW_APPLICATION);
       assert.equal(await this.validators.getRoleApplicationType('bar'), NEW_APPLICATION);
@@ -118,7 +122,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationManager, alice, 
         ['🦄', '🦆', '🦋'],
         [30, 30, 40],
         ['', '', ''],
-        { from: applicationManager }
+        { from: applicationTypeManager }
       );
       assert.isNotNull(res);
     });

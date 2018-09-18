@@ -1,16 +1,15 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
+import "./AbstractApplication.sol";
 
 
-contract PlotClarificationManager is Initializable, Ownable {
+contract PlotClarificationManager is AbstractApplication {
   using SafeMath for uint256;
 
   // 'PlotClarificationManager' hash
@@ -37,18 +36,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     LOCKED,
     APPROVED,
     REVERTED
-  }
-
-  enum PaymentMethod {
-    NONE,
-    ETH_ONLY,
-    GALT_ONLY,
-    ETH_AND_GALT
-  }
-
-  enum Currency {
-    ETH,
-    GALT
   }
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
@@ -85,36 +72,15 @@ contract PlotClarificationManager is Initializable, Ownable {
   }
 
   mapping(bytes32 => Application) public applications;
-  mapping(address => bytes32[]) public applicationsByAddresses;
-  bytes32[] private applicationsArray;
-  // WARNING: we do not remove applications from validator's list,
-  // so do not rely on this variable to verify whether validator
-  // exists or not.
-  mapping(address => bytes32[]) public applicationsByValidator;
-
-  PaymentMethod public paymentMethod;
-  uint256 public minimalApplicationFeeInEth;
-  uint256 public minimalApplicationFeeInGalt;
-  uint256 public galtSpaceEthShare;
-  uint256 public galtSpaceGaltShare;
-  address private galtSpaceRewardsAddress;
-
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
-  Validators public validators;
-  ERC20 public galtToken;
 
   constructor () public {}
 
   modifier validatorsReady() {
     require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
 
-    _;
-  }
-
-  modifier anyValidator() {
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
     _;
   }
 
@@ -169,35 +135,6 @@ contract PlotClarificationManager is Initializable, Ownable {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
-  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
-    galtSpaceRewardsAddress = _newAddress;
-  }
-
-  function setPaymentMethod(PaymentMethod _newMethod) external onlyOwner {
-    paymentMethod = _newMethod;
-  }
-
-  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyOwner {
-    minimalApplicationFeeInEth = _newFee;
-  }
-
-  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyOwner {
-    minimalApplicationFeeInGalt = _newFee;
-  }
-
-  function setGaltSpaceEthShare(uint256 _newShare) external onlyOwner {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
-
-    galtSpaceEthShare = _newShare;
-  }
-
-  function setGaltSpaceGaltShare(uint256 _newShare) external onlyOwner {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
-
-    galtSpaceGaltShare = _newShare;
-  }
 
   function applyForPlotClarification(
     uint256 _packageTokenId,
