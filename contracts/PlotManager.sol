@@ -160,8 +160,7 @@ contract PlotManager is Initializable, Ownable {
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
+    require(a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender), "Not valid validator");
 
     _;
   }
@@ -197,15 +196,13 @@ contract PlotManager is Initializable, Ownable {
   }
 
   function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
 
     galtSpaceEthShare = _newShare;
   }
 
   function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1, "Percent value should be greater or equal to 1");
-    require(_newShare <= 100, "Percent value should be greater or equal to 100");
+    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
 
     galtSpaceGaltShare = _newShare;
   }
@@ -260,8 +257,10 @@ contract PlotManager is Initializable, Ownable {
     returns (bytes32)
   {
     require(_precision > 5, "Precision should be greater than 5");
-    require(_packageContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_packageContour.length <= 50, "Number of contour elements should be equal or less than 50");
+    require(
+      _packageContour.length >= 3 && _packageContour.length <= 50, 
+      "Number of contour elements should be between 3 and 50"
+    );
 
     // Default is ETH
     Currency currency;
@@ -300,7 +299,11 @@ contract PlotManager is Initializable, Ownable {
 
     calculateAndStoreFee(a, fee);
 
-    a.packageTokenId = splitMerge.initPackage(spaceToken.mintGeohash(address(this), _baseGeohash));
+    uint256 geohashTokenId = spaceToken.geohashToTokenId(_baseGeohash);
+    if (!spaceToken.exists(geohashTokenId)) {
+      spaceToken.mintGeohash(address(this), _baseGeohash);
+    }
+    a.packageTokenId = splitMerge.initPackage(geohashTokenId);
 
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
@@ -424,7 +427,9 @@ contract PlotManager is Initializable, Ownable {
     }
 
     require(
+      /* solium-disable-next-line */
       a.applicant == msg.sender ||
+      getApplicationOperator(_aId) == msg.sender ||
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
       "Sender is not valid");
 
