@@ -12,7 +12,15 @@ import "./Validators.sol";
 contract PlotValuation is AbstractApplication {
   using SafeMath for uint256;
 
-  bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+  // `PlotValuation` keccak256 hash
+  bytes32 public constant APPLICATION_TYPE = 0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9;
+
+  // `APPRAISER_ROLE` bytes32 representation hash
+  bytes32 public constant APPRAISER_ROLE = 0x4150505241495345525f524f4c45000000000000000000000000000000000000;
+  // `APPRAISER2_ROLE` bytes32 representation
+  bytes32 public constant APPRAISER2_ROLE = 0x415050524149534552325f524f4c450000000000000000000000000000000000;
+  // `AUDITOR_ROLE` bytes32 representation
+  bytes32 public constant AUDITOR_ROLE = 0x41554449544f525f524f4c450000000000000000000000000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -36,12 +44,11 @@ contract PlotValuation is AbstractApplication {
   struct Application {
     bytes32 id;
     address applicant;
-    address operator;
     uint256 packageTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
-    uint256 gasDepositEstimation;
-    bool gasDepositRedeemed;
+    uint256 firstValuation;
+    uint256 secondValuation;
     bool galtSpaceRewardPaidOut;
     ApplicationDetails details;
     Currency currency;
@@ -106,8 +113,8 @@ contract PlotValuation is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(
-      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
-      "Applicant invalid");
+      a.applicant == msg.sender,
+      "Invalid applicant");
 
     _;
   }
@@ -115,7 +122,7 @@ contract PlotValuation is AbstractApplication {
   modifier onlyValidatorOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
+    require(a.addressRoles[msg.sender] != 0x0, "The validator is not assigned to any role");
     require(validators.isValidatorActive(msg.sender), "Not active validator");
 
     _;
@@ -128,6 +135,12 @@ contract PlotValuation is AbstractApplication {
     _;
   }
 
+  /**
+   * @dev Submit a new plot valuation application
+   * @param _packageTokenId application id
+   * @param _attachedDocuments IPFS hashes
+   * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
+   */
   function submitApplication(
     uint256 _packageTokenId,
     bytes32[] _attachedDocuments,
@@ -138,6 +151,10 @@ contract PlotValuation is AbstractApplication {
     rolesReady
     returns (bytes32)
   {
+    require(_attachedDocuments.length > 0, "At least one document should be attached");
+    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
+
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -187,15 +204,17 @@ contract PlotValuation is AbstractApplication {
     return _id;
   }
 
-
   // Application can be locked by a role only once.
   function lockApplication(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
     require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
 
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      a.status == ApplicationStatus.SUBMITTED ||
+      a.status == ApplicationStatus.VALUATED ||
+      a.status == ApplicationStatus.REVERTED ||
+      a.status == ApplicationStatus.CONFIRMED,
+      "Application status should be SUBMITTED, REVERTED, VALUATED or CONFIRMED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
 
@@ -210,9 +229,9 @@ contract PlotValuation is AbstractApplication {
   function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
-    require(a.validationStatus[_role] != ValidationStatus.PENDING, "Validation status not set");
+      a.status != ApplicationStatus.APPROVED &&
+      a.status != ApplicationStatus.NOT_EXISTS,
+      "Could not reset applications in state NOT_EXISTS or APPROVED");
     require(a.roleAddresses[_role] != address(0), "Address should be already set");
 
     // Do not affect on application state
@@ -235,13 +254,16 @@ contract PlotValuation is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.REVERTED,
+      "Application status should be SUBMITTED or REVERTED");
 
     bytes32 role = a.addressRoles[msg.sender];
 
+    require(role == APPRAISER_ROLE, "APPRAISER_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+
+    a.firstValuation = _valuation;
 
     changeApplicationStatus(a, ApplicationStatus.VALUATED);
   }
@@ -267,33 +289,39 @@ contract PlotValuation is AbstractApplication {
 
     bytes32 role = a.addressRoles[msg.sender];
 
+    require(role == APPRAISER2_ROLE, "APPRAISER2_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
-    changeApplicationStatus(a, ApplicationStatus.CONFIRMED);
+    a.secondValuation = _valuation;
+
+    if (a.firstValuation == _valuation) {
+      changeApplicationStatus(a, ApplicationStatus.CONFIRMED);
+    } else {
+      changeApplicationStatus(a, ApplicationStatus.REVERTED);
+    }
   }
 
   /**
    * @dev Auditor approves plot valuation.
-   * If the values match, status becomes CONFIRMED, if not - REVERTED.
+   * Changes status to APPROVED.
    * @param _aId application id
    */
-  function approveApplication(
-    bytes32 _aId,
-    bytes32 _credentialsHash
+  function approveValuation(
+    bytes32 _aId
   )
     external
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
-    require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
     require(
       a.status == ApplicationStatus.CONFIRMED,
       "Application status should be CONFIRMED");
 
     bytes32 role = a.addressRoles[msg.sender];
 
+    require(role == AUDITOR_ROLE, "AUDITOR_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
@@ -362,14 +390,14 @@ contract PlotValuation is AbstractApplication {
     returns (
       address applicant,
       uint256 packageTokenId,
-      uint256 gasDepositEstimation,
-      bytes32 credentialsHash,
       ApplicationStatus status,
       Currency currency,
-      uint8 precision,
-      bytes2 country,
-      bytes32 ledgerIdentifier,
-      bytes32[] assignedValidatorRoles
+      uint256 firstValuation,
+      uint256 secondValuation,
+      bytes32[] assignedValidatorRoles,
+      uint256 galtSpaceReward,
+      uint256 validatorsReward,
+      bool galtSpaceRewardPaidOut
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -379,14 +407,14 @@ contract PlotValuation is AbstractApplication {
     return (
       m.applicant,
       m.packageTokenId,
-      m.gasDepositEstimation,
-      m.details.credentialsHash,
       m.status,
       m.currency,
-      m.details.precision,
-      m.details.country,
-      m.details.ledgerIdentifier,
-      m.assignedRoles
+      m.firstValuation,
+      m.secondValuation,
+      m.assignedRoles,
+      m.galtSpaceReward,
+      m.validatorsReward,
+      m.galtSpaceRewardPaidOut
     );
   }
 
@@ -402,10 +430,6 @@ contract PlotValuation is AbstractApplication {
     return applicationsByValidator[_applicant];
   }
 
-  function getApplicationOperator(bytes32 _aId) public view returns (address) {
-    return applications[_aId].operator;
-  }
-
   function getApplicationValidator(
     bytes32 _aId,
     bytes32 _role
@@ -415,6 +439,7 @@ contract PlotValuation is AbstractApplication {
     returns (
       address validator,
       uint256 reward,
+      bool rewardPaidOut,
       ValidationStatus status,
       string message
     )
@@ -422,6 +447,7 @@ contract PlotValuation is AbstractApplication {
     return (
       applications[_aId].roleAddresses[_role],
       applications[_aId].assignedRewards[_role],
+      applications[_aId].roleRewardPaidOut[_role],
       applications[_aId].validationStatus[_role],
       applications[_aId].roleMessages[_role]
     );
@@ -473,6 +499,9 @@ contract PlotValuation is AbstractApplication {
     _a.galtSpaceReward = galtSpaceReward;
   }
 
+  /**
+   * Completely relies on Validator contract share values without any check
+   */
   function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
     assert(a.validatorsReward > 0);
@@ -487,6 +516,7 @@ contract PlotValuation is AbstractApplication {
       .validatorsReward
       .mul(validators.getRoleRewardShare(role))
       .div(100);
+
       a.assignedRewards[role] = rewardShare;
       changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
