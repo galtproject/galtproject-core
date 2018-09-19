@@ -75,6 +75,8 @@ contract PlotValuation is AbstractApplication {
   uint256 public gasPriceForDeposits;
 
   mapping(bytes32 => Application) public applications;
+  // packageTokenId => valuationInWei
+  mapping(uint256 => uint256) public plotValuations;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -330,6 +332,7 @@ contract PlotValuation is AbstractApplication {
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
+    plotValuations[a.packageTokenId] = a.firstValuation;
     changeApplicationStatus(a, ApplicationStatus.APPROVED);
   }
 
