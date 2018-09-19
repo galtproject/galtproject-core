@@ -55,7 +55,7 @@ module.exports = async function(deployer, network, accounts) {
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_MANAGER_APPLICATION_TYPE,
-      ['cadastral', 'notary'],
+      ['pm_cadastral', 'pm_auditor'],
       [75, 25],
       ['', ''],
       {
@@ -66,9 +66,9 @@ module.exports = async function(deployer, network, accounts) {
     const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_VALUATION_APPLICATION_TYPE,
-      ['cadastral', 'notary'],
-      [75, 25],
-      ['', ''],
+      ['pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+      [35, 35, 30],
+      ['', '', ''],
       {
         from: coreTeam
       }
@@ -77,7 +77,16 @@ module.exports = async function(deployer, network, accounts) {
     const promises = [];
     _.forEach(users, (address, name) => {
       if (_.includes(validatorsList, name)) {
-        promises.push(validators.addValidator(address, name, 'MN', [], ['cadastral', 'notary'], { from: coreTeam }));
+        promises.push(
+          validators.addValidator(
+            address,
+            name,
+            'MN',
+            [],
+            ['pm_cadastral', 'pm_auditor', 'pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+            { from: coreTeam }
+          )
+        );
       }
 
       if (_.includes(adminsList, name)) {
