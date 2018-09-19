@@ -765,6 +765,15 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.secondValuation, ether(4500));
       });
 
+      // eslint-disable-next-line
+      it('should make a record in plotValuations mapping when an auditor approves plot valuation', async function() {
+        await this.plotValuation.lockApplication(this.aId, AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.approveValuation(this.aId, { from: eve });
+
+        const res = await this.plotValuationWeb3.methods.plotValuations(this.packageTokenId).call();
+        assert.equal(res, ether(4500));
+      });
+
       it('should deny non-auditor audit a plot', async function() {
         await assertRevert(this.plotValuation.approveValuation(this.aId, { from: coreTeam }));
         const res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
