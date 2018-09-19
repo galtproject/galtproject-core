@@ -32,7 +32,7 @@ const AUDITOR_ROLE = 'AUDITOR_ROLE';
  * Alice is an applicant
  * Bob is a validator
  */
-contract.only('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
+contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
