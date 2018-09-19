@@ -7,7 +7,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "surge": "^0.20.1",
     "@galtproject/eslint-config-galt": "https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/utils": "0.4.0",
     "@types/chai": "^4.1.4",
@@ -28,7 +27,9 @@
     "openzeppelin-solidity": "^1.11.0",
     "p-iteration": "^1.1.7",
     "prettier": "^1.14.2",
+    "surge": "^0.20.1",
     "truffle": "^4.1.14",
+    "typedarray-to-buffer": "^3.1.5",
     "web3": "1.0.0-beta.36",
     "zos-lib": "1.4.1"
   },

@@ -2,6 +2,7 @@ const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
 const LandUtils = artifacts.require('./LandUtils');
 const PlotManager = artifacts.require('./PlotManager');
+const PlotValuation = artifacts.require('./PlotValuation');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
@@ -27,12 +28,15 @@ module.exports = async function(deployer, network, accounts) {
     const galtToken = await GaltToken.new({ from: coreTeam });
     const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const splitMerge = await SplitMerge.new({ from: coreTeam });
-    const plotManager = await PlotManager.new({ from: coreTeam });
     const landUtils = await LandUtils.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
     const spaceDex = await SpaceDex.new({ from: coreTeam });
+
     const validators = await Validators.new({ from: coreTeam });
+
+    const plotManager = await PlotManager.new({ from: coreTeam });
+    const plotValuation = await PlotValuation.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -55,7 +59,7 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
-    await validators.addRoleTo(coreTeam, 'roles_manager', { from: coreTeam });
+    await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
@@ -70,14 +74,34 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    await plotValuation.initialize(
+      spaceToken.address,
+      splitMerge.address,
+      validators.address,
+      galtToken.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
 
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
+    await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
 
     await plotManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
       from: coreTeam
     });
+    await plotValuation.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
+      from: coreTeam
+    });
+
     await plotManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
+      from: coreTeam
+    });
+    await plotValuation.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
       from: coreTeam
     });
 
@@ -119,6 +143,8 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeAbi: splitMerge.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
+            plotValuationAddress: plotValuation.address,
+            plotValuationAbi: plotValuation.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,
