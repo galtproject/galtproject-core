@@ -60,6 +60,7 @@ contract PlotCustodianManager is AbstractApplication {
     Currency currency;
     ApplicationStatus status;
 
+    bytes32[] custodianDocuments;
     bytes32[] assignedRoles;
 
     // TODO: combine into role struct
@@ -338,7 +339,24 @@ contract PlotCustodianManager is AbstractApplication {
   }
 
   /**
-   * @dev Approve application
+   * @dev Custodian attaches documents to the application.
+   * Allows multiple calls. Each call replaces the previous document hashes array with a new one.
+   *
+   * @param _aId application ID
+   * @param _documents to attach
+   */
+  function attachDocuments(bytes32 _aId, bytes32[] _documents) external {
+    Application storage a = applications[_aId];
+    validators.ensureValidatorActive(msg.sender);
+
+    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
+
+    a.custodianDocuments = _documents;
+  }
+
+  /**
+   * @dev Custodian, Auditor and Applicant approve application
    * Requires all the participants to call this method in order to confirm that they are agree on the given terms
    * @param _aId application ID
    */
@@ -440,10 +458,10 @@ contract PlotCustodianManager is AbstractApplication {
       uint256 packageTokenId,
       address chosenCustodian,
       uint8 approveConfirmations,
+      bytes32[] custodianDocuments,
       ApplicationStatus status,
       Currency currency,
       Action action,
-      bytes32[] assignedValidatorRoles,
       uint256 galtSpaceReward,
       uint256 validatorsReward,
       bool galtSpaceRewardPaidOut
@@ -458,10 +476,10 @@ contract PlotCustodianManager is AbstractApplication {
       m.packageTokenId,
       m.chosenCustodian,
       m.approveConfirmations,
+      m.custodianDocuments,
       m.status,
       m.currency,
       m.action,
-      m.assignedRoles,
       m.galtSpaceReward,
       m.validatorsReward,
       m.galtSpaceRewardPaidOut

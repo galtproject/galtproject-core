@@ -91,9 +91,9 @@ contract('PlotCustodianManager', (accounts) => {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
     this.attachedDocuments = [
-      'a80470dba00d5faf620fd6c51a1ca94668e13cd66fffaee3702f5497a8549053',
-      'e96a061ac2a6eeb4a87eecdba4624500b6eae61e18c64ff0672434d3ae137825',
-      '9850d829b57b233101525397603baedc32d20288a866514dd5441abe286f4d2e'
+      'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
+      'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
+      'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
 
     this.contour = this.initContour.map(galt.geohashToNumber);
@@ -340,10 +340,16 @@ contract('PlotCustodianManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
       res = await this.spaceToken.ownerOf(this.packageTokenId);
       assert.equal(res, alice);
+      console.log('docs', this.attachedDocuments.map(galt.ipfsHashToBytes32));
       await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
-      res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(45), {
-        from: alice
-      });
+      res = await this.plotValuation.submitApplication(
+        this.packageTokenId,
+        this.attachedDocuments.map(galt.ipfsHashToBytes32),
+        ether(45),
+        {
+          from: alice
+        }
+      );
       this.aId = res.logs[0].args.id;
       await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
       await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
@@ -482,7 +488,7 @@ contract('PlotCustodianManager', (accounts) => {
         { from: alice, value: ether(6) }
       );
       this.aId = res.logs[0].args.id;
-
+      //
       await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
@@ -795,6 +801,40 @@ contract('PlotCustodianManager', (accounts) => {
 
       it('should deny a non-validator attaching token to an application', async function() {
         await assertRevert(this.plotCustodianManager.attachToken(this.aId, { from: charlie }));
+      });
+    });
+
+    describe('#attachDocuments() by a custodian', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+      });
+
+      it('should allow a custodian attaching documents to an application', async function() {
+        await this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments.map(galt.ipfsHashToBytes32), {
+          from: bob
+        });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVIEW);
+        assert.sameMembers(res.custodianDocuments.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
+      });
+
+      it('should deny a non-custodian of the application attaching documents to it', async function() {
+        await assertRevert(
+          this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments.map(galt.ipfsHashToBytes32), {
+            from: charlie
+          })
+        );
       });
     });
 
