@@ -858,12 +858,46 @@ contract('PlotCustodianManager', (accounts) => {
         await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
         await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
 
-        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.approveConfirmations, 7);
         assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        assert.equal(res.toLowerCase(), bob);
       });
 
-      it('should make a corresponding record in a ledger');
+      it('should provide an option to remove an already assigned custodian', async function() {
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+
+        let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.approveConfirmations, 7);
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        assert.equal(res.toLowerCase(), bob);
+        await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+
+        // Detaching
+        res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        assert.equal(res, zeroAddress);
+      });
 
       it('should keep application status in REVIEW if not all participants voted yet', async function() {
         await this.plotCustodianManager.approveApplication(this.aId, { from: bob });

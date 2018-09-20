@@ -82,6 +82,7 @@ contract PlotCustodianManager is AbstractApplication {
   uint256 public gasPriceForDeposits;
 
   mapping(bytes32 => Application) public applications;
+  mapping(uint256 => address) public assignedCustodians;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -376,6 +377,12 @@ contract PlotCustodianManager is AbstractApplication {
     }
 
     if (a.approveConfirmations == 7) {
+      if (a.action == Action.DETACH) {
+        delete assignedCustodians[a.packageTokenId];
+      } else {
+        assignedCustodians[a.packageTokenId] = a.chosenCustodian;
+      }
+
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
