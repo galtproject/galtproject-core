@@ -945,5 +945,56 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
       });
     });
+
+    describe('#closeApplication() by an applicant', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+      });
+
+      describe('when application status is LOCKED', () => {
+        it('should allow an applicant close the application', async function() {
+          await this.plotCustodianManager.closeApplication(this.aId, { from: alice });
+
+          const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.CLOSED);
+        });
+
+        it('should deny non-applicant closing the application', async function() {
+          await assertRevert(this.plotCustodianManager.closeApplication(this.aId, { from: eve }));
+        });
+      });
+
+      describe('when application status is REJECTED', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+          await this.plotCustodianManager.attachToken(this.aId, {
+            from: alice
+          });
+          await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+          await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+          await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+        });
+
+        it('should allow an applicant to close the application', async function() {
+          await this.plotCustodianManager.closeApplication(this.aId, { from: alice });
+
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.CLOSED);
+
+          res = await this.spaceToken.ownerOf(this.packageTokenId);
+          assert.equal(res.toLowerCase(), alice);
+        });
+
+        it('should deny non-applicant closing the application', async function() {
+          await assertRevert(this.plotCustodianManager.closeApplication(this.aId, { from: eve }));
+        });
+      });
+    });
   });
 });

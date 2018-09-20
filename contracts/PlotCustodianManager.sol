@@ -407,6 +407,25 @@ contract PlotCustodianManager is AbstractApplication {
     changeApplicationStatus(a, ApplicationStatus.COMPLETED);
   }
 
+  /**
+   * @dev Close the application by the applicant without attaching/detaching a custodian
+   * @param _aId application ID
+   */
+  function closeApplication(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.REJECTED ||
+      a.status == ApplicationStatus.LOCKED,
+      "Application status should be either REJECTED or LOCKED");
+
+    if (a.status == ApplicationStatus.REJECTED) {
+      spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+    }
+
+    changeApplicationStatus(a, ApplicationStatus.CLOSED);
+  }
+
   // DANGER: could reset non-existing role
   function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
