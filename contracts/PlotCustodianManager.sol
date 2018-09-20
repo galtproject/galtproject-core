@@ -146,6 +146,7 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Submit a new custodian management application
    * @param _packageTokenId application id
    * @param _action either ATTACH or DETACH custodian
+   * @param _chosenCustodian which would consider working on this application
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
    */
   function submitApplication(
@@ -230,6 +231,7 @@ contract PlotCustodianManager is AbstractApplication {
       "Application status should be SUBMITTED");
     require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't revert a role not in PENDING status");
+    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
@@ -248,6 +250,7 @@ contract PlotCustodianManager is AbstractApplication {
       "Application status should be SUBMITTED");
     require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't accept a role not in PENDING status");
+    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
 
     a.roleAddresses[PC_CUSTODIAN_ROLE] = msg.sender;
     a.addressRoles[msg.sender] = PC_CUSTODIAN_ROLE;
