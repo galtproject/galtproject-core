@@ -144,7 +144,7 @@ contract PlotCustodianManager is AbstractApplication {
 
   /**
    * @dev Submit a new custodian management application
-   * @param _packageTokenId application id
+   * @param _packageTokenId package SpaceToken ID
    * @param _action either ATTACH or DETACH custodian
    * @param _chosenCustodian which would consider working on this application
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
@@ -201,6 +201,7 @@ contract PlotCustodianManager is AbstractApplication {
     a.chosenCustodian = _chosenCustodian;
     a.currency = currency;
     a.packageTokenId = _packageTokenId;
+    a.action = _action;
 
     calculateAndStoreFee(a, fee);
 
@@ -215,6 +216,40 @@ contract PlotCustodianManager is AbstractApplication {
     assignRequiredValidatorRolesAndRewards(_id);
 
     return _id;
+  }
+
+  /**
+   * @dev Resubmit an already reverted application
+   * @param _aId application ID
+   * @param _packageTokenId package SpaceToken ID
+   * @param _action either ATTACH or DETACH custodian
+   * @param _chosenCustodian which would consider working on this application
+   */
+  function resubmitApplication(
+    bytes32 _aId,
+    uint256 _packageTokenId,
+    Action _action,
+    address _chosenCustodian
+  )
+    external
+    onlyApplicant(_aId)
+    returns (bytes32)
+  {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
+    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
+    require(
+      validators.hasRole(_chosenCustodian, PC_CUSTODIAN_ROLE),
+      "Unable to assign the application to the chosen custodian");
+    validators.ensureValidatorActive(_chosenCustodian);
+
+    a.packageTokenId = _packageTokenId;
+    a.action = _action;
+    a.chosenCustodian = _chosenCustodian;
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   /**
@@ -365,6 +400,7 @@ contract PlotCustodianManager is AbstractApplication {
     returns (
       address applicant,
       uint256 packageTokenId,
+      address chosenCustodian,
       ApplicationStatus status,
       Currency currency,
       Action action,
@@ -381,6 +417,7 @@ contract PlotCustodianManager is AbstractApplication {
     return (
       m.applicant,
       m.packageTokenId,
+      m.chosenCustodian,
       m.status,
       m.currency,
       m.action,

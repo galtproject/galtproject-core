@@ -729,5 +729,44 @@ contract('PlotCustodianManager', (accounts) => {
         await assertRevert(this.plotCustodianManager.revertApplication(this.aId, { from: eve }));
       });
     });
+
+    describe('#resubmitApplication() by an applicant', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.revertApplication(this.aId, { from: bob });
+      });
+
+      it('should allow an applicant to resubmit an application with the same payload', async function() {
+        await this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.ATTACH, bob, {
+          from: alice
+        });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+      });
+
+      it('should allow an applicant to resubmit an application with different payload', async function() {
+        await this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.DETACH, charlie, {
+          from: alice
+        });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.action, Action.DETACH);
+        assert.equal(res.chosenCustodian.toLowerCase(), charlie);
+      });
+
+      it('should deny a non-applicant resubmitting an  application', async function() {
+        await assertRevert(
+          this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.DETACH, charlie, {
+            from: charlie
+          })
+        );
+      });
+    });
   });
 });
