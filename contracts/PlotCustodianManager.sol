@@ -381,7 +381,7 @@ contract PlotCustodianManager is AbstractApplication {
   }
 
   /**
-   * @dev RejectApplication by custodian if he changed his mind or the application looks suspicious.
+   * @dev Reject the application by a custodian if he changed his mind or the application looks suspicious.
    * @param _aId application ID
    */
   function rejectApplication(bytes32 _aId) external {
@@ -391,6 +391,20 @@ contract PlotCustodianManager is AbstractApplication {
     require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE], "Only a custodian role is allowed to perform this action");
 
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
+  }
+
+  /**
+   * @dev Withdraw the attached SpaceToken back by the applicant
+   * @param _aId application ID
+   */
+  function withdrawToken(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
+
+    spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+
+    changeApplicationStatus(a, ApplicationStatus.COMPLETED);
   }
 
   // DANGER: could reset non-existing role

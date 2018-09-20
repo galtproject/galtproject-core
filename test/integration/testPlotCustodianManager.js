@@ -863,6 +863,8 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
+      it('should make a corresponding record in a ledger');
+
       it('should keep application status in REVIEW if not all participants voted yet', async function() {
         await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
         await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
@@ -902,6 +904,45 @@ contract('PlotCustodianManager', (accounts) => {
 
         const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVIEW);
+      });
+    });
+
+    describe('#withdrawToken() by an applicant', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+      });
+
+      it('should allow an applicant withdraw the attached token', async function() {
+        await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+
+        let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.COMPLETED);
+
+        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        assert.equal(res.toLowerCase(), alice);
+      });
+
+      it('should deny non-applicant withdraw the token', async function() {
+        await assertRevert(this.plotCustodianManager.withdrawToken(this.aId, { from: eve }));
+
+        let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
       });
     });
   });
