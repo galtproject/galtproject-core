@@ -1030,5 +1030,136 @@ contract('PlotCustodianManager', (accounts) => {
         });
       });
     });
+
+    describe('claim reward', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+        await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+      });
+
+      it('should be allowed', async function() {
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+        await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+        let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.COMPLETED);
+        assert.equal(res.galtSpaceRewardPaidOut, true);
+
+        res = await this.plotCustodianManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+          .call();
+        assert.equal(res.rewardPaidOut, true);
+
+        res = await this.plotCustodianManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PC_AUDITOR_ROLE))
+          .call();
+        assert.equal(res.rewardPaidOut, true);
+      });
+
+      it('should send funds to claimers', async function() {
+        const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
+        const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
+        const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+        await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+        const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
+        const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
+        const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+
+        const res = await this.plotCustodianManagerWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+          .call();
+        assert.equal(res.reward.toString(), '2814000000000000000');
+
+        // eves fee is around (100 - 33) / 100 * 7 ether * 40%  = 1876000000000000000 wei
+        // assume that the commission paid by bob isn't greater than 0.1 ether
+
+        const diffBob = bobsFinalBalance
+          .sub(new BN('2814000000000000000')) // <- the diff
+          .sub(bobsInitialBalance)
+          .add(new BN('10000000000000000')); // <- 0.01 ether
+
+        const diffEve = evesFinalBalance
+          .sub(new BN('1876000000000000000')) // <- the diff
+          .sub(evesInitialBalance)
+          .add(new BN('10000000000000000')); // <- 0.01 ether
+
+        const diffOrg = orgsFinalBalance
+          .sub(new BN('2310000000000000000')) // <- the diff
+          .sub(orgsInitialBalance)
+          .add(new BN('10000000000000000')); // <- 0.01 ether
+
+        const max = new BN('10000000000000000'); // <- 0.01 ether
+        const min = new BN('0');
+
+        // lt
+        assert(
+          diffBob.lt(max), // diff < 0.01 ether
+          `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be less than 0.01 ether`
+        );
+
+        assert(
+          diffEve.lt(max), // diff < 0.01 ether
+          `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be less than 0.01 ether`
+        );
+
+        assert(
+          diffOrg.lt(max), // diff < 0.01 ether
+          `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be less than 0.01 ether`
+        );
+
+        // gt
+        assert(
+          diffBob.gt(min), // diff > 0
+          `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be greater than 0`
+        );
+
+        assert(
+          diffEve.gt(min), // diff > 0
+          `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be greater than 0`
+        );
+
+        assert(
+          diffOrg.gt(min), // diff > 0
+          `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be greater than 0`
+        );
+      });
+
+      it('should revert on double claim', async function() {
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+        await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+        await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+        await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob }));
+        await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve }));
+        await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+      });
+
+      it('should revert on non-validator claim', async function() {
+        await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+        await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
+      });
+
+      it('should revert on applicant claim attempt', async function() {
+        await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+        await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
+      });
+    });
   });
 });

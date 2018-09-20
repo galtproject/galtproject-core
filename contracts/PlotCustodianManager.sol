@@ -458,8 +458,9 @@ contract PlotCustodianManager is AbstractApplication {
     uint256 reward = a.assignedRewards[senderRole];
 
     require(
-      a.status == ApplicationStatus.APPROVED,
-      "Application status should be APPROVED");
+      a.status == ApplicationStatus.COMPLETED ||
+      a.status == ApplicationStatus.CLOSED,
+      "Application status should be either COMPLETED or CLOSED");
 
     require(reward > 0, "Reward is 0");
     require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
@@ -485,8 +486,9 @@ contract PlotCustodianManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatus.APPROVED,
-      "Application status should be APPROVED");
+      a.status == ApplicationStatus.COMPLETED ||
+      a.status == ApplicationStatus.CLOSED,
+      "Application status should be either COMPLETED or CLOSED");
     require(a.galtSpaceReward > 0, "Reward is 0");
     require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
 
