@@ -52,12 +52,11 @@ contract PlotCustodianManager is AbstractApplication {
     address applicant;
     address chosenCustodian;
     uint256 packageTokenId;
-
     Action action;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     bool galtSpaceRewardPaidOut;
-    ApplicationDetails details;
+    uint8 approveConfirmations;
     Currency currency;
     ApplicationStatus status;
 
@@ -338,6 +337,31 @@ contract PlotCustodianManager is AbstractApplication {
     changeApplicationStatus(a, ApplicationStatus.REVIEW);
   }
 
+  /**
+   * @dev Approve application
+   * Requires all the participants to call this method in order to confirm that they are agree on the given terms
+   * @param _aId application ID
+   */
+  function approveApplication(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+
+    if (msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE]) {
+      a.approveConfirmations = a.approveConfirmations + 1;
+    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ROLE]){
+      a.approveConfirmations = a.approveConfirmations + 2;
+    } else if (msg.sender == a.applicant){
+      a.approveConfirmations = a.approveConfirmations + 4;
+    } else {
+      revert("Invalid role");
+    }
+
+    if (a.approveConfirmations == 7) {
+      changeApplicationStatus(a, ApplicationStatus.APPROVED);
+    }
+  }
+
   // DANGER: could reset non-existing role
   function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
@@ -415,6 +439,7 @@ contract PlotCustodianManager is AbstractApplication {
       address applicant,
       uint256 packageTokenId,
       address chosenCustodian,
+      uint8 approveConfirmations,
       ApplicationStatus status,
       Currency currency,
       Action action,
@@ -432,6 +457,7 @@ contract PlotCustodianManager is AbstractApplication {
       m.applicant,
       m.packageTokenId,
       m.chosenCustodian,
+      m.approveConfirmations,
       m.status,
       m.currency,
       m.action,

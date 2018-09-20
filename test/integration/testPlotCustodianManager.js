@@ -797,5 +797,40 @@ contract('PlotCustodianManager', (accounts) => {
         await assertRevert(this.plotCustodianManager.attachToken(this.aId, { from: charlie }));
       });
     });
+
+    describe('#approveApplication() by 3 of 3 (applicant, custodian and auditor)', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+      });
+
+      it('should change application status to APPROVED if all 3 roles voted', async function() {
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.approveConfirmations, 7);
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+      });
+
+      it('should keep application status in REVIEW if not all participants voted yet', async function() {
+        await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.approveConfirmations, 5);
+        assert.equal(res.status, ApplicationStatus.REVIEW);
+      });
+    });
   });
 });
