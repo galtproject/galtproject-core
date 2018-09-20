@@ -356,8 +356,8 @@ contract PlotCustodianManager is AbstractApplication {
   }
 
   /**
-   * @dev Custodian, Auditor and Applicant approve application
-   * Requires all the participants to call this method in order to confirm that they are agree on the given terms
+   * @dev Custodian, Auditor and Applicant approve application.
+   * Requires all the participants to call this method in order to confirm that they are agree on the given terms.
    * @param _aId application ID
    */
   function approveApplication(bytes32 _aId) external {
@@ -378,6 +378,19 @@ contract PlotCustodianManager is AbstractApplication {
     if (a.approveConfirmations == 7) {
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
+  }
+
+  /**
+   * @dev RejectApplication by custodian if he changed his mind or the application looks suspicious.
+   * @param _aId application ID
+   */
+  function rejectApplication(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE], "Only a custodian role is allowed to perform this action");
+
+    changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
   // DANGER: could reset non-existing role

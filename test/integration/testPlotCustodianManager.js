@@ -872,5 +872,37 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.REVIEW);
       });
     });
+
+    describe('#rejectApplication() by custodian', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+      });
+
+      it('should change application status to REJECTED', async function() {
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+        await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
+      });
+
+      it('should deny non-custodian perform this action', async function() {
+        await assertRevert(this.plotCustodianManager.rejectApplication(this.aId, { from: eve }));
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVIEW);
+      });
+    });
   });
 });
