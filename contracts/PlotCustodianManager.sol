@@ -324,6 +324,20 @@ contract PlotCustodianManager is AbstractApplication {
     }
   }
 
+  /**
+   * @dev Attach SpaceToken to an application
+   * @param _aId application ID
+   */
+  function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.LOCKED, "Application status should be LOCKED");
+
+    spaceToken.transferFrom(msg.sender, address(this), a.packageTokenId);
+
+    changeApplicationStatus(a, ApplicationStatus.REVIEW);
+  }
+
   // DANGER: could reset non-existing role
   function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
