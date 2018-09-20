@@ -666,5 +666,39 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.LOCKED);
       });
     });
+
+    describe('#revertApplication() by a custodian', () => {
+      beforeEach(async function() {
+        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+          from: alice,
+          value: ether(7)
+        });
+        this.aId = res.logs[0].args.id;
+      });
+
+      it('should allow custodian revert application if he wont work on it', async function() {
+        await this.plotCustodianManager.revertApplication(this.aId, { from: bob });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+      });
+
+      it('should allow custodian revert application even if an auditor already locked it', async function() {
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.revertApplication(this.aId, { from: bob });
+
+        const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+      });
+
+      it('should deny double revert of the same application', async function() {
+        await this.plotCustodianManager.revertApplication(this.aId, { from: bob });
+        await assertRevert(this.plotCustodianManager.revertApplication(this.aId, { from: bob }));
+      });
+
+      it('should deny non-custodian revert an application', async function() {
+        await assertRevert(this.plotCustodianManager.revertApplication(this.aId, { from: eve }));
+      });
+    });
   });
 });

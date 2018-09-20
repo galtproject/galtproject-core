@@ -50,7 +50,9 @@ contract PlotCustodianManager is AbstractApplication {
   struct Application {
     bytes32 id;
     address applicant;
+    address chosenCustodian;
     uint256 packageTokenId;
+
     Action action;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
@@ -149,6 +151,7 @@ contract PlotCustodianManager is AbstractApplication {
   function submitApplication(
     uint256 _packageTokenId,
     Action _action,
+    address _chosenCustodian,
     uint256 _applicationFeeInGalt
   )
     external
@@ -186,10 +189,15 @@ contract PlotCustodianManager is AbstractApplication {
     );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+    require(
+      validators.hasRole(_chosenCustodian, PC_CUSTODIAN_ROLE),
+      "Unable to assign the application to the chosen custodian");
+    validators.ensureValidatorActive(_chosenCustodian);
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
     a.applicant = msg.sender;
+    a.chosenCustodian = _chosenCustodian;
     a.currency = currency;
     a.packageTokenId = _packageTokenId;
 
@@ -209,6 +217,24 @@ contract PlotCustodianManager is AbstractApplication {
   }
 
   /**
+   * @dev Application can be reverted by a custodian
+   * @param _aId application ID
+   */
+  function revertApplication(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+    require(validators.hasRole(msg.sender, PC_CUSTODIAN_ROLE), "Unable to lock with given roles");
+    validators.ensureValidatorActive(msg.sender);
+
+    require(
+      a.status == ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+    require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Validator is already assigned on this role");
+    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't revert a role not in PENDING status");
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
+
+  /**
    * @dev Application can be accepted by a custodian
    * @param _aId application ID
    */
@@ -221,7 +247,7 @@ contract PlotCustodianManager is AbstractApplication {
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
     require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Validator is already assigned on this role");
-    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't accept a role not in PENDING status");
 
     a.roleAddresses[PC_CUSTODIAN_ROLE] = msg.sender;
     a.addressRoles[msg.sender] = PC_CUSTODIAN_ROLE;
