@@ -16,9 +16,9 @@ const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
 
-const APPRAISER_ROLE = 'APPRAISER_ROLE';
-const APPRAISER2_ROLE = 'APPRAISER2_ROLE';
-const AUDITOR_ROLE = 'AUDITOR_ROLE';
+const PV_APPRAISER_ROLE = 'PV_APPRAISER_ROLE';
+const PV_APPRAISER2_ROLE = 'PV_APPRAISER2_ROLE';
+const PV_AUDITOR_ROLE = 'PV_AUDITOR_ROLE';
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -257,7 +257,7 @@ contract('PlotValuation', (accounts) => {
 
       this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
         VALUATION_APPLICATION,
-        [APPRAISER_ROLE, APPRAISER2_ROLE, AUDITOR_ROLE],
+        [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
         [50, 25, 25],
         ['', '', ''],
         { from: applicationTypeManager }
@@ -281,10 +281,12 @@ contract('PlotValuation', (accounts) => {
       const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
       this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [APPRAISER_ROLE, 'foo'], { from: validatorManager });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [APPRAISER2_ROLE, 'buzz'], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [AUDITOR_ROLE], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
+        from: validatorManager
+      });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: validatorManager });
 
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
@@ -359,21 +361,23 @@ contract('PlotValuation', (accounts) => {
 
           res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
           assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), [
-            APPRAISER_ROLE,
-            APPRAISER2_ROLE,
-            AUDITOR_ROLE
+            PV_APPRAISER_ROLE,
+            PV_APPRAISER2_ROLE,
+            PV_AUDITOR_ROLE
           ]);
 
           res = await this.plotValuationWeb3.methods
-            .getApplicationValidator(this.aId, utf8ToHex(APPRAISER2_ROLE))
+            .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER2_ROLE))
             .call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(AUDITOR_ROLE)).call();
+          res = await this.plotValuationWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PV_AUDITOR_ROLE))
+            .call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
           res = await this.plotValuationWeb3.methods
-            .getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE))
+            .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
             .call();
           assert.equal(res.reward.toString(), '20445000000000000000');
         });
@@ -387,9 +391,9 @@ contract('PlotValuation', (accounts) => {
           from: alice
         });
         this.aId = res.logs[0].args.id;
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
-        await this.plotValuation.lockApplication(this.aId, AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
         await this.plotValuation.valuatePlot2(this.aId, ether(4500), { from: dan });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
@@ -405,13 +409,17 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.galtSpaceRewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
+          .call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER2_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER2_ROLE))
+          .call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(AUDITOR_ROLE)).call();
+        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(PV_AUDITOR_ROLE)).call();
         assert.equal(res.rewardPaidOut, true);
       });
 
@@ -432,7 +440,7 @@ contract('PlotValuation', (accounts) => {
         const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
 
         const res = await this.plotValuationWeb3.methods
-          .getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE))
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
           .call();
         assert.equal(res.reward.toString(), '24795000000000000000');
 
@@ -479,7 +487,7 @@ contract('PlotValuation', (accounts) => {
 
       this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
         VALUATION_APPLICATION,
-        [APPRAISER_ROLE, APPRAISER2_ROLE, AUDITOR_ROLE],
+        [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
         [50, 25, 25],
         ['', '', ''],
         { from: applicationTypeManager }
@@ -503,10 +511,12 @@ contract('PlotValuation', (accounts) => {
       const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
       this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [APPRAISER_ROLE, 'foo'], { from: validatorManager });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [APPRAISER2_ROLE, 'buzz'], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [AUDITOR_ROLE], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
+        from: validatorManager
+      });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: validatorManager });
 
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
@@ -583,22 +593,24 @@ contract('PlotValuation', (accounts) => {
 
           res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
           assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), [
-            APPRAISER_ROLE,
-            APPRAISER2_ROLE,
-            AUDITOR_ROLE
+            PV_APPRAISER_ROLE,
+            PV_APPRAISER2_ROLE,
+            PV_AUDITOR_ROLE
           ]);
 
           res = await this.plotValuationWeb3.methods
-            .getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE))
+            .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
             .call();
           assert.equal(res.reward.toString(), '4355000000000000000');
 
           res = await this.plotValuationWeb3.methods
-            .getApplicationValidator(this.aId, utf8ToHex(APPRAISER2_ROLE))
+            .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER2_ROLE))
             .call();
           assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(AUDITOR_ROLE)).call();
+          res = await this.plotValuationWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PV_AUDITOR_ROLE))
+            .call();
           assert.equal(res.reward.toString(), '2177500000000000000');
         });
       });
@@ -614,33 +626,37 @@ contract('PlotValuation', (accounts) => {
       });
 
       it('should allow multiple validators of different roles to lock a submitted application', async function() {
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
 
         let res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
+          .call();
         assert.equal(res.validator.toLowerCase(), bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER2_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER2_ROLE))
+          .call();
         assert.equal(res.validator.toLowerCase(), dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(AUDITOR_ROLE)).call();
+        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(PV_AUDITOR_ROLE)).call();
         assert.equal(res.validator.toLowerCase(), zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       // eslint-disable-next-line
       it('should deny a validator with the same role to lock an application which is already on consideration', async function() {
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await assertRevert(this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: charlie }));
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await assertRevert(this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: charlie }));
       });
 
       it('should deny non-validator lock application', async function() {
-        await assertRevert(this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: coreTeam }));
+        await assertRevert(this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: coreTeam }));
       });
     });
 
@@ -651,7 +667,7 @@ contract('PlotValuation', (accounts) => {
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
       });
 
       it('should allow first appraiser valuate a submitted application', async function() {
@@ -665,7 +681,7 @@ contract('PlotValuation', (accounts) => {
       it('should allow first appraiser valuate a reverted application', async function() {
         await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
 
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
         await this.plotValuation.valuatePlot2(this.aId, ether(4502), { from: dan });
 
         await this.plotValuation.valuatePlot(this.aId, ether(6400), { from: bob });
@@ -694,8 +710,8 @@ contract('PlotValuation', (accounts) => {
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
         await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
       });
 
@@ -750,14 +766,14 @@ contract('PlotValuation', (accounts) => {
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
         await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
         await this.plotValuation.valuatePlot2(this.aId, ether(4500), { from: dan });
       });
 
       it('should change status to APPROVED when an auditor approves plot valuation', async function() {
-        await this.plotValuation.lockApplication(this.aId, AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
 
         const res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
@@ -784,9 +800,9 @@ contract('PlotValuation', (accounts) => {
           value: ether(6)
         });
         this.aId = res.logs[0].args.id;
-        await this.plotValuation.lockApplication(this.aId, APPRAISER_ROLE, { from: bob });
-        await this.plotValuation.lockApplication(this.aId, APPRAISER2_ROLE, { from: dan });
-        await this.plotValuation.lockApplication(this.aId, AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER_ROLE, { from: bob });
+        await this.plotValuation.lockApplication(this.aId, PV_APPRAISER2_ROLE, { from: dan });
+        await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
         await this.plotValuation.valuatePlot2(this.aId, ether(4500), { from: dan });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
@@ -802,13 +818,17 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.galtSpaceRewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
+          .call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(APPRAISER2_ROLE)).call();
+        res = await this.plotValuationWeb3.methods
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER2_ROLE))
+          .call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(AUDITOR_ROLE)).call();
+        res = await this.plotValuationWeb3.methods.getApplicationValidator(this.aId, utf8ToHex(PV_AUDITOR_ROLE)).call();
         assert.equal(res.rewardPaidOut, true);
       });
 
@@ -829,7 +849,7 @@ contract('PlotValuation', (accounts) => {
         const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
         const res = await this.plotValuationWeb3.methods
-          .getApplicationValidator(this.aId, utf8ToHex(APPRAISER_ROLE))
+          .getApplicationValidator(this.aId, utf8ToHex(PV_APPRAISER_ROLE))
           .call();
         assert.equal(res.reward.toString(), '2010000000000000000');
 
