@@ -437,9 +437,9 @@ contract PlotCustodianManager is AbstractApplication {
   function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
     Application storage a = applications[_aId];
     require(
-      a.status != ApplicationStatus.APPROVED &&
-      a.status != ApplicationStatus.NOT_EXISTS,
-      "Could not reset applications in state NOT_EXISTS or APPROVED");
+      a.status == ApplicationStatus.LOCKED &&
+      a.status == ApplicationStatus.REVIEW,
+      "Could not reset applications in state LOCKED or REVIEW");
     require(a.roleAddresses[_role] != address(0), "Address should be already set");
 
     // Do not affect on application state
