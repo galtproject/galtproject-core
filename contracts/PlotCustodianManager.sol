@@ -368,9 +368,9 @@ contract PlotCustodianManager is AbstractApplication {
 
     if (msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE]) {
       a.approveConfirmations = a.approveConfirmations + 1;
-    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ROLE]){
+    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ROLE]) {
       a.approveConfirmations = a.approveConfirmations + 2;
-    } else if (msg.sender == a.applicant){
+    } else if (msg.sender == a.applicant) {
       a.approveConfirmations = a.approveConfirmations + 4;
     } else {
       revert("Invalid role");
