@@ -1,4 +1,5 @@
 const PlotManager = artifacts.require('./PlotManager');
+const PlotValuation = artifacts.require('./PlotValuation');
 const GaltDex = artifacts.require('./GaltDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
@@ -20,6 +21,7 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${network}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
+    const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
 
@@ -50,24 +52,51 @@ module.exports = async function(deployer, network, accounts) {
       production: 0
     };
 
-    const APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(APPLICATION_TYPE, ['cadastral', 'notary'], [75, 25], ['', ''], {
-      from: coreTeam
-    });
+    const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(
+      PLOT_MANAGER_APPLICATION_TYPE,
+      ['pm_cadastral', 'pm_auditor'],
+      [75, 25],
+      ['', ''],
+      {
+        from: coreTeam
+      }
+    );
+
+    const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(
+      PLOT_VALUATION_APPLICATION_TYPE,
+      ['pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+      [35, 35, 30],
+      ['', '', ''],
+      {
+        from: coreTeam
+      }
+    );
 
     const promises = [];
     _.forEach(users, (address, name) => {
       if (_.includes(validatorsList, name)) {
-        promises.push(validators.addValidator(address, name, 'MN', [], ['cadastral', 'notary'], { from: coreTeam }));
+        promises.push(
+          validators.addValidator(
+            address,
+            name,
+            'MN',
+            [],
+            ['pm_cadastral', 'pm_auditor', 'pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+            { from: coreTeam }
+          )
+        );
       }
 
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(validators.addRoleTo(address, 'validator_manager', { from: coreTeam }));
-        promises.push(validators.addRoleTo(address, 'roles_manager', { from: coreTeam }));
+        promises.push(validators.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
