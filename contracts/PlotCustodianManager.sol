@@ -87,36 +87,6 @@ contract PlotCustodianManager is AbstractApplication {
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
 
-  constructor () public {}
-
-  function initialize(
-    SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
-    Validators _validators,
-    ERC20 _galtToken,
-    address _galtSpaceRewardsAddress
-  )
-    public
-    isInitializer
-  {
-    owner = msg.sender;
-
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
-    validators = _validators;
-    galtToken = _galtToken;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
-
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
-    gasPriceForDeposits = 4 wei;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
-  }
-
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
@@ -141,6 +111,36 @@ contract PlotCustodianManager is AbstractApplication {
     require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
 
     _;
+  }
+
+  constructor () public {}
+
+  function initialize(
+    SpaceToken _spaceToken,
+    SplitMerge _splitMerge,
+    Validators _validators,
+    ERC20 _galtToken,
+    address _galtSpaceRewardsAddress
+  )
+    external
+    isInitializer
+  {
+    owner = msg.sender;
+
+    spaceToken = _spaceToken;
+    splitMerge = _splitMerge;
+    validators = _validators;
+    galtToken = _galtToken;
+    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+
+    // Default values for revenue shares and application fees
+    // Override them using one of the corresponding setters
+    minimalApplicationFeeInEth = 1;
+    minimalApplicationFeeInGalt = 10;
+    galtSpaceEthShare = 33;
+    galtSpaceGaltShare = 33;
+    gasPriceForDeposits = 4 wei;
+    paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
   /**
