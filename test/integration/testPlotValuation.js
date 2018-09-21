@@ -783,7 +783,7 @@ contract('PlotValuation', (accounts) => {
 
       // eslint-disable-next-line
       it('should make a record in plotValuations mapping when an auditor approves plot valuation', async function() {
-        await this.plotValuation.lockApplication(this.aId, AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
 
         const res = await this.plotValuationWeb3.methods.plotValuations(this.packageTokenId).call();
