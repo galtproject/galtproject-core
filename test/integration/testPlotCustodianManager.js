@@ -324,11 +324,15 @@ contract('PlotCustodianManager', (accounts) => {
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
       });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+        from: validatorManager
+      });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
         from: validatorManager
       });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE, PC_AUDITOR_ROLE], {
+        from: validatorManager
+      });
 
       await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
@@ -340,7 +344,6 @@ contract('PlotCustodianManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
       res = await this.spaceToken.ownerOf(this.packageTokenId);
       assert.equal(res, alice);
-      console.log('docs', this.attachedDocuments.map(galt.ipfsHashToBytes32));
       await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
       res = await this.plotValuation.submitApplication(
         this.packageTokenId,
@@ -435,9 +438,6 @@ contract('PlotCustodianManager', (accounts) => {
           // validator share - 87% (60%/40%)
           // galtspace share - 13%
 
-          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), [PC_AUDITOR_ROLE, PC_CUSTODIAN_ROLE]);
-
           res = await this.plotCustodianManagerWeb3.methods
             .getApplicationValidator(this.aId, utf8ToHex(PC_AUDITOR_ROLE))
             .call();
@@ -447,6 +447,174 @@ contract('PlotCustodianManager', (accounts) => {
             .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
             .call();
           assert.equal(res.reward.toString(), '24534000000000000000');
+        });
+      });
+    });
+
+    describe('claim reward', () => {
+      beforeEach(async function() {
+        await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
+        const res = await this.plotCustodianManager.submitApplication(
+          this.packageTokenId,
+          Action.ATTACH,
+          bob,
+          ether(47),
+          {
+            from: alice
+          }
+        );
+        this.aId = res.logs[0].args.id;
+        await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.plotCustodianManager.attachToken(this.aId, {
+          from: alice
+        });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+        await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+      });
+
+      describe('for COMPLETED applications', () => {
+        beforeEach(async function() {
+          await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+        });
+
+        it('should be allowed', async function() {
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+
+          assert.equal(res.status, ApplicationStatus.COMPLETED);
+          assert.equal(res.galtSpaceRewardPaidOut, true);
+
+          res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+            .call();
+          assert.equal(res.rewardPaidOut, true);
+
+          res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_AUDITOR_ROLE))
+            .call();
+          assert.equal(res.rewardPaidOut, true);
+        });
+
+        it('should send funds to claimers', async function() {
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          const res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+            .call();
+          assert.equal(res.reward.toString(), '24534000000000000000');
+
+          // bobs fee is (100 - 13) / 100 * 47 ether * 60%  = 24534000000000000000 wei
+
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24534000000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('16356000000000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('6110000000000000000')));
+        });
+
+        it('should revert on double claim', async function() {
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob }));
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+        });
+
+        it('should revert on non-validator claim', async function() {
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
+        });
+
+        it('should revert on applicant claim attempt', async function() {
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
+        });
+      });
+
+      describe('for CLOSED applications', () => {
+        beforeEach(async function() {
+          await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.closeApplication(this.aId, { from: alice });
+        });
+
+        it('should be allowed', async function() {
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+
+          assert.equal(res.status, ApplicationStatus.CLOSED);
+          assert.equal(res.galtSpaceRewardPaidOut, true);
+
+          res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+            .call();
+          assert.equal(res.rewardPaidOut, true);
+
+          res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_AUDITOR_ROLE))
+            .call();
+          assert.equal(res.rewardPaidOut, true);
+        });
+
+        it('should send funds to claimers', async function() {
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+
+          const res = await this.plotCustodianManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex(PC_CUSTODIAN_ROLE))
+            .call();
+          assert.equal(res.reward.toString(), '24534000000000000000');
+
+          // bobs fee is (100 - 13) / 100 * 47 ether * 60%  = 24534000000000000000 wei
+
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24534000000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('16356000000000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('6110000000000000000')));
+        });
+
+        it('should revert on double claim', async function() {
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob });
+          await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
+          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: bob }));
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+        });
+
+        it('should revert on non-validator claim', async function() {
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
+        });
+
+        it('should revert on applicant claim attempt', async function() {
+          await assertRevert(this.plotCustodianManager.claimValidatorReward(this.aId, { from: alice }));
+          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
         });
       });
     });
@@ -587,9 +755,6 @@ contract('PlotCustodianManager', (accounts) => {
           this.aId = res.logs[0].args.id;
           // validator share - 67% (60%/40%);
           // galtspace share - 33%;
-
-          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE]);
 
           res = await this.plotCustodianManagerWeb3.methods
             .getApplicationValidator(this.aId, utf8ToHex(PC_AUDITOR_ROLE))
