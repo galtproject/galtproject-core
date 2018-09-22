@@ -2,6 +2,7 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const PlotValuation = artifacts.require('./PlotValuation.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const galt = require('@galtproject/utils');
@@ -35,12 +36,13 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
+    this.plotValuation = await PlotValuation.new({ from: coreTeam });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
       from: coreTeam
     });
 
-    this.spaceDex.initialize(this.galtToken.address, this.spaceToken.address, {
+    this.spaceDex.initialize(this.galtToken.address, this.spaceToken.address, this.plotValuation.address, {
       from: coreTeam
     });
 
