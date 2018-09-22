@@ -54,6 +54,7 @@ contract PlotValuation is AbstractApplication {
     Currency currency;
     ApplicationStatus status;
 
+    bytes32[] attachedDocuments;
     bytes32[] assignedRoles;
 
     // TODO: combine into role struct
@@ -194,6 +195,7 @@ contract PlotValuation is AbstractApplication {
     a.applicant = msg.sender;
     a.currency = currency;
     a.packageTokenId = _packageTokenId;
+    a.attachedDocuments = _attachedDocuments;
 
     calculateAndStoreFee(a, fee);
 
@@ -402,6 +404,7 @@ contract PlotValuation is AbstractApplication {
       Currency currency,
       uint256 firstValuation,
       uint256 secondValuation,
+      bytes32[] attachedDocuments,
       bytes32[] assignedValidatorRoles,
       uint256 galtSpaceReward,
       uint256 validatorsReward,
@@ -419,6 +422,7 @@ contract PlotValuation is AbstractApplication {
       m.currency,
       m.firstValuation,
       m.secondValuation,
+      m.attachedDocuments,
       m.assignedRoles,
       m.galtSpaceReward,
       m.validatorsReward,
