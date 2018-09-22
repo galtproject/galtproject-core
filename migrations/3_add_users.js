@@ -63,10 +63,13 @@ module.exports = async function(deployer, network, accounts) {
       production: 0
     };
 
+    const PM_CADASTRAL_ROLE = 'pm_cadastral';
+    const PM_AUDITOR_ROLE = 'pm_auditor';
+
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_MANAGER_APPLICATION_TYPE,
-      ['pm_cadastral', 'pm_auditor'],
+      [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE],
       [75, 25],
       ['', ''],
       {
@@ -74,10 +77,14 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PV_APPRAISER_ROLE = await plotValuation.PV_APPRAISER_ROLE.call();
+    const PV_APPRAISER2_ROLE = await plotValuation.PV_APPRAISER2_ROLE.call();
+    const PV_AUDITOR_ROLE = await plotValuation.PV_AUDITOR_ROLE.call();
+
     const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_VALUATION_APPLICATION_TYPE,
-      ['pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+      [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
       [35, 35, 30],
       ['', '', ''],
       {
@@ -94,7 +101,7 @@ module.exports = async function(deployer, network, accounts) {
             name,
             'MN',
             [],
-            ['pm_cadastral', 'pm_auditor', 'pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+            [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE, PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
             { from: coreTeam }
           )
         );

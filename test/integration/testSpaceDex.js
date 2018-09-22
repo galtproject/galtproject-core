@@ -24,14 +24,6 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-const APPRAISER_ROLE = 'APPRAISER_ROLE';
-const APPRAISER2_ROLE = 'APPRAISER2_ROLE';
-const AUDITOR_ROLE = 'AUDITOR_ROLE';
-
-/**
- * Alice is an applicant
- * Bob is a validator
- */
 contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
@@ -63,17 +55,21 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       from: coreTeam
     });
 
+    const PV_APPRAISER_ROLE = await this.plotValuation.PV_APPRAISER_ROLE.call();
+    const PV_APPRAISER2_ROLE = await this.plotValuation.PV_APPRAISER2_ROLE.call();
+    const PV_AUDITOR_ROLE = await this.plotValuation.PV_AUDITOR_ROLE.call();
+
     await this.validators.setApplicationTypeRoles(
       await this.plotValuation.APPLICATION_TYPE(),
-      [APPRAISER_ROLE, APPRAISER2_ROLE, AUDITOR_ROLE],
+      [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
       [50, 25, 25],
       ['', '', ''],
       { from: coreTeam }
     );
 
-    await this.validators.addValidator(bob, 'Bob', 'MN', [], [APPRAISER_ROLE], { from: coreTeam });
-    await this.validators.addValidator(dan, 'Dan', 'MN', [], [APPRAISER2_ROLE], { from: coreTeam });
-    await this.validators.addValidator(eve, 'Eve', 'MN', [], [AUDITOR_ROLE], { from: coreTeam });
+    await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE], { from: coreTeam });
+    await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE], { from: coreTeam });
+    await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: coreTeam });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
       from: coreTeam
@@ -94,12 +90,12 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
         value: ether(1)
       });
       const aId = res.logs[0].args.id;
-      await this.plotValuation.lockApplication(aId, APPRAISER_ROLE, { from: bob });
-      await this.plotValuation.lockApplication(aId, APPRAISER2_ROLE, { from: dan });
+      await this.plotValuation.lockApplication(aId, PV_APPRAISER_ROLE, { from: bob });
+      await this.plotValuation.lockApplication(aId, PV_APPRAISER2_ROLE, { from: dan });
       await this.plotValuation.valuatePlot(aId, price, { from: bob });
       await this.plotValuation.valuatePlot2(aId, price, { from: dan });
 
-      await this.plotValuation.lockApplication(aId, AUDITOR_ROLE, { from: eve });
+      await this.plotValuation.lockApplication(aId, PV_AUDITOR_ROLE, { from: eve });
       await this.plotValuation.approveValuation(aId, { from: eve });
     };
   });
