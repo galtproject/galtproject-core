@@ -16,11 +16,11 @@ contract PlotValuation is AbstractApplication {
   bytes32 public constant APPLICATION_TYPE = 0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9;
 
   // `APPRAISER_ROLE` bytes32 representation hash
-  bytes32 public constant APPRAISER_ROLE = 0x4150505241495345525f524f4c45000000000000000000000000000000000000;
+  bytes32 public constant PV_APPRAISER_ROLE = 0x50565f4150505241495345525f524f4c45000000000000000000000000000000;
   // `APPRAISER2_ROLE` bytes32 representation
-  bytes32 public constant APPRAISER2_ROLE = 0x415050524149534552325f524f4c450000000000000000000000000000000000;
+  bytes32 public constant PV_APPRAISER2_ROLE = 0x50565f415050524149534552325f524f4c450000000000000000000000000000;
   // `AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant AUDITOR_ROLE = 0x41554449544f525f524f4c450000000000000000000000000000000000000000;
+  bytes32 public constant PV_AUDITOR_ROLE = 0x50565f41554449544f525f524f4c450000000000000000000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -266,7 +266,7 @@ contract PlotValuation is AbstractApplication {
 
     bytes32 role = a.addressRoles[msg.sender];
 
-    require(role == APPRAISER_ROLE, "APPRAISER_ROLE expected");
+    require(role == PV_APPRAISER_ROLE, "PV_APPRAISER_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
@@ -296,7 +296,7 @@ contract PlotValuation is AbstractApplication {
 
     bytes32 role = a.addressRoles[msg.sender];
 
-    require(role == APPRAISER2_ROLE, "APPRAISER2_ROLE expected");
+    require(role == PV_APPRAISER2_ROLE, "PV_APPRAISER2_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
@@ -328,7 +328,7 @@ contract PlotValuation is AbstractApplication {
 
     bytes32 role = a.addressRoles[msg.sender];
 
-    require(role == AUDITOR_ROLE, "AUDITOR_ROLE expected");
+    require(role == PV_AUDITOR_ROLE, "PV_AUDITOR_ROLE expected");
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 

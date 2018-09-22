@@ -205,7 +205,7 @@ contract Validators is Ownable, RBAC {
     validators[_validator].active = false;
   }
 
-  function ensureValidatorActive(address _validator) external view returns (bool) {
+  function ensureValidatorActive(address _validator) external view {
     require(validators[_validator].active == true, "Validator is not active");
   }
 
