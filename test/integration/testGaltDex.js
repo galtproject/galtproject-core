@@ -28,10 +28,6 @@ const APPRAISER_ROLE = 'APPRAISER_ROLE';
 const APPRAISER2_ROLE = 'APPRAISER2_ROLE';
 const AUDITOR_ROLE = 'AUDITOR_ROLE';
 
-/**
- * Alice is an applicant
- * Bob is a validator
- */
 contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
