@@ -2,7 +2,9 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const SplitMerge = artifacts.require('./SplitMerge.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
+const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const galt = require('@galtproject/utils');
@@ -22,11 +24,15 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
+const APPRAISER_ROLE = 'APPRAISER_ROLE';
+const APPRAISER2_ROLE = 'APPRAISER2_ROLE';
+const AUDITOR_ROLE = 'AUDITOR_ROLE';
+
 /**
  * Alice is an applicant
  * Bob is a validator
  */
-contract('GaltDex', ([coreTeam, alice, bob]) => {
+contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
@@ -36,6 +42,8 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
+    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.validators = await Validators.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
@@ -52,6 +60,36 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
     await this.galtDex.setSpaceDex(this.spaceDex.address);
 
     await this.galtToken.mint(this.galtDex.address, ether(100));
+
+    await this.plotValuation.initialize(
+      this.spaceToken.address,
+      this.splitMerge.address,
+      this.validators.address,
+      this.galtToken.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
+    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+
+    await this.validators.setApplicationTypeRoles(
+      await this.plotValuation.APPLICATION_TYPE(),
+      [APPRAISER_ROLE, APPRAISER2_ROLE, AUDITOR_ROLE],
+      [50, 25, 25],
+      ['', '', ''],
+      { from: coreTeam }
+    );
+
+    await this.validators.addValidator(bob, 'Bob', 'MN', [], [APPRAISER_ROLE], { from: coreTeam });
+    await this.validators.addValidator(dan, 'Dan', 'MN', [], [APPRAISER2_ROLE], { from: coreTeam });
+    await this.validators.addValidator(eve, 'Eve', 'MN', [], [AUDITOR_ROLE], { from: coreTeam });
 
     this.showGaltDexStatus = async function() {
       const totalSupply = (await this.galtToken.totalSupply()) / 10 ** 18;
@@ -91,6 +129,21 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
     this.shouldReceiveEth = async function(galtToSend) {
       const exchangeRate = await this.galtDex.exchangeRate(0);
       return galtToSend / exchangeRate / szabo(1);
+    };
+
+    this.valuatePlot = async (tokenId, price) => {
+      const res = await this.plotValuation.submitApplication(tokenId, [''], 0, {
+        from: alice,
+        value: ether(1)
+      });
+      const aId = res.logs[0].args.id;
+      await this.plotValuation.lockApplication(aId, APPRAISER_ROLE, { from: bob });
+      await this.plotValuation.lockApplication(aId, APPRAISER2_ROLE, { from: dan });
+      await this.plotValuation.valuatePlot(aId, price, { from: bob });
+      await this.plotValuation.valuatePlot2(aId, price, { from: dan });
+
+      await this.plotValuation.lockApplication(aId, AUDITOR_ROLE, { from: eve });
+      await this.plotValuation.approveValuation(aId, { from: eve });
     };
   });
 
@@ -200,35 +253,37 @@ contract('GaltDex', ([coreTeam, alice, bob]) => {
       const totalGaltFeePayout = await this.galtDex.galtFeeTotalPayout();
       totalGaltFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
     });
+  });
 
-    describe('spaceDex dependency', async () => {
-      it('should be correct exchangeRate after exchange on spaceDex', async function() {
-        const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
+  describe('spaceDex dependency', async () => {
+    it('should be correct exchangeRate after exchange on spaceDex', async function() {
+      const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
 
-        await this.galtToken.mint(this.spaceDex.address, ether(100));
+      await this.galtToken.mint(this.spaceDex.address, ether(100));
 
-        const geohash5 = galt.geohashToGeohash5('sezu05');
-        await this.spaceToken.mintGeohash(bob, geohash5, {
-          from: coreTeam
-        });
-
-        const geohashTokenId = galt.geohashToTokenId('sezu05');
-
-        await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
-          from: bob
-        });
-
-        const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
-        await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
-          from: bob
-        });
-
-        const bobGaltBalance = await this.galtToken.balanceOf(bob);
-        assert.equal(bobGaltBalance.toString(10), geohashPrice.toString(10));
-
-        const galtDexEchangeRateAfter = await this.galtDex.exchangeRate('0');
-        assert.equal(galtDexEchangeRateBefore.toString(10), galtDexEchangeRateAfter.toString(10));
+      const geohash5 = galt.geohashToGeohash5('sezu05');
+      await this.spaceToken.mintGeohash(alice, geohash5, {
+        from: coreTeam
       });
+
+      const geohashTokenId = galt.geohashToTokenId('sezu05');
+
+      await this.valuatePlot(geohashTokenId, ether(5));
+
+      await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
+        from: alice
+      });
+
+      const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
+      await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+        from: alice
+      });
+
+      const aliceGaltBalance = await this.galtToken.balanceOf(alice);
+      assert.equal(aliceGaltBalance.toString(10), geohashPrice.toString(10));
+
+      const galtDexEchangeRateAfter = await this.galtDex.exchangeRate('0');
+      assert.equal(galtDexEchangeRateBefore.toString(10), galtDexEchangeRateAfter.toString(10));
     });
   });
 });
