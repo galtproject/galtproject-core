@@ -6,6 +6,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
 import "./SpaceToken.sol";
+import "./PlotValuation.sol";
 
 contract SpaceDex is Initializable, Ownable {
   using SafeMath for uint256;
@@ -17,6 +18,7 @@ contract SpaceDex is Initializable, Ownable {
   
   GaltToken galtToken;
   SpaceToken spaceToken;
+  PlotValuation plotValuation;
 
   uint256 public spaceToGaltSum;
   uint256 public galtToSpaceSum;
@@ -40,7 +42,8 @@ contract SpaceDex is Initializable, Ownable {
 
   function initialize(
     GaltToken _galtToken,
-    SpaceToken _spaceToken
+    SpaceToken _spaceToken,
+    PlotValuation _plotValuation
   )
     public
     isInitializer
@@ -48,6 +51,7 @@ contract SpaceDex is Initializable, Ownable {
     owner = msg.sender;
     galtToken = _galtToken;
     spaceToken = _spaceToken;
+    plotValuation = _plotValuation;
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
@@ -107,6 +111,8 @@ contract SpaceDex is Initializable, Ownable {
     uint256 _galtToSend = getSpaceTokenPrice(_spaceTokenId);
     require(galtToken.allowance(msg.sender, address(this)) >= _galtToSend, "Not enough galt allowance");
 
+    require(availableForSale(_spaceTokenId), "Not available for sale");
+
     bytes32 _operationId = keccak256(
       abi.encodePacked(
         _spaceTokenId,
@@ -145,11 +151,11 @@ contract SpaceDex is Initializable, Ownable {
   
   function getSpaceTokenPrice(uint256 tokenId) public view returns (uint256) {
     require(tokenId > 0, "tokenId cant be null");
-    return 10 ether;
+    return plotValuation.plotValuations(tokenId);
   }
 
   function availableForSale(uint256 tokenId) public view returns (bool) {
     require(tokenId > 0, "tokenId cant be null");
-    return true;
+    return plotValuation.plotValuations(tokenId) > 0;
   }
 }

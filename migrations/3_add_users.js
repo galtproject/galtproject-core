@@ -28,6 +28,7 @@ module.exports = async function(deployer, network, accounts) {
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
       Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
+      Jonybang3: '0x029001F6C2dc2C8B28Ff201C3a451714637Af4E3',
       Nikita: '0x8d362af4c86b05d6F256147A6E76b9d7aF205A24',
       Igor: '0x06dba6eb6a1044b8cbcaa0033ea3897bf37e6671',
       Igor2: '0x8052C9fc345dB9c1A70Afc0A81416029F23E5f76',
@@ -39,7 +40,17 @@ module.exports = async function(deployer, network, accounts) {
     };
 
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin'];
-    const validatorsList = ['Jonybang', 'Jonybang2', 'Nikita', 'Igor', 'Igor2', 'Nik', 'Nik2', 'NickValidator'];
+    const validatorsList = [
+      'Jonybang',
+      'Jonybang2',
+      'Jonybang3',
+      'Nikita',
+      'Igor',
+      'Igor2',
+      'Nik',
+      'Nik2',
+      'NickValidator'
+    ];
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -52,10 +63,13 @@ module.exports = async function(deployer, network, accounts) {
       production: 0
     };
 
+    const PM_CADASTRAL_ROLE = 'pm_cadastral';
+    const PM_AUDITOR_ROLE = 'pm_auditor';
+
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_MANAGER_APPLICATION_TYPE,
-      ['pm_cadastral', 'pm_auditor'],
+      [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE],
       [75, 25],
       ['', ''],
       {
@@ -63,10 +77,14 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PV_APPRAISER_ROLE = await plotValuation.PV_APPRAISER_ROLE.call();
+    const PV_APPRAISER2_ROLE = await plotValuation.PV_APPRAISER2_ROLE.call();
+    const PV_AUDITOR_ROLE = await plotValuation.PV_AUDITOR_ROLE.call();
+
     const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(
       PLOT_VALUATION_APPLICATION_TYPE,
-      ['pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+      [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
       [35, 35, 30],
       ['', '', ''],
       {
@@ -83,7 +101,7 @@ module.exports = async function(deployer, network, accounts) {
             name,
             'MN',
             [],
-            ['pm_cadastral', 'pm_auditor', 'pv_appraiser', 'pv_appraiser2', 'pv_auditor'],
+            [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE, PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
             { from: coreTeam }
           )
         );
