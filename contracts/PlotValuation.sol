@@ -341,6 +341,35 @@ contract PlotValuation is AbstractApplication {
     plotValuations[a.packageTokenId] = a.firstValuation;
     changeApplicationStatus(a, ApplicationStatus.APPROVED);
   }
+  
+  /**
+   * @dev Auditor reject plot valuation.
+   * Changes status to REVERTED.
+   * @param _aId application id
+   */
+  function rejectValuation(
+    bytes32 _aId,
+    string _message
+  )
+    external
+    onlyValidatorOfApplication(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    require(
+      a.status == ApplicationStatus.CONFIRMED,
+      "Application status should be CONFIRMED");
+
+    bytes32 role = a.addressRoles[msg.sender];
+
+    require(role == PV_AUDITOR_ROLE, "PV_AUDITOR_ROLE expected");
+    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+
+    a.roleMessages[role] = _message;
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
 
   function claimValidatorReward(
     bytes32 _aId
