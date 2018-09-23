@@ -7,6 +7,7 @@ import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
+import "./PlotManagerLib.sol";
 
 
 contract PlotManager is AbstractApplication {
@@ -325,25 +326,14 @@ contract PlotManager is AbstractApplication {
       "Application status should be NEW or REVERTED."
     );
 
-    uint256 initGas = gasleft();
-
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-      if (spaceToken.exists(geohashTokenId)) {
-        require(
-          spaceToken.ownerOf(geohashTokenId) == address(this),
-          "Existing geohash token should belongs to PlotManager contract"
-        );
-      } else {
-        spaceToken.mintGeohash(address(this), _geohashes[i]);
-      }
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
-
-    a.gasDepositEstimation = a.gasDepositEstimation.add(initGas.sub(gasleft()));
+    PlotManagerLib.addGeohashesToApplication(
+      a,
+      spaceToken,
+      splitMerge,
+      _geohashes,
+      _neighborsGeohashTokens,
+      _directions
+    );
   }
 
   function removeGeohashesFromApplication(
@@ -371,16 +361,14 @@ contract PlotManager is AbstractApplication {
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
       "Sender is not valid");
 
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-
-      require(spaceToken.ownerOf(geohashTokenId) == address(splitMerge), "Existing geohash token should belongs to PlotManager contract");
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    // TODO: implement directions
-    splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
+    PlotManagerLib.removeGeohashesFromApplication(
+      a,
+      spaceToken,
+      splitMerge,
+      _geohashes,
+      _directions1,
+      _directions2
+    );
 
     if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0) {
       if (msg.sender == a.applicant) {

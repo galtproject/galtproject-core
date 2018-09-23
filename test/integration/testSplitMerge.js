@@ -1,4 +1,5 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
+const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const Web3 = require('web3');
@@ -29,6 +30,10 @@ contract('SplitMerge', ([coreTeam, alice, bob]) => {
     this.firstGeohashTokenId = galt.geohashToTokenId(this.initFirstGeohash);
     console.log('this.firstGeohashTokenId', this.firstGeohashTokenId);
     this.contour = this.initContour.map(galt.geohashToGeohash5);
+
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+
+    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });

@@ -1,8 +1,6 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
-
 library LandUtils {
   uint256 constant C1_GEOHASH = 31;
   uint256 constant C2_GEOHASH = 1023;
@@ -17,7 +15,7 @@ library LandUtils {
   uint256 constant C11_GEOHASH = 36028797018963967;
   uint256 constant C12_GEOHASH = 1152921504606846975;
 
-  function geohash5Capacity(uint256 _geohash5) external view returns (uint256) {
+  function geohash5Capacity(uint256 _geohash5) public view returns (uint256) {
     if (_geohash5 == 0) {
       revert("Invalid geohash5");
     } else if (_geohash5 <= C1_GEOHASH) {
@@ -49,5 +47,9 @@ library LandUtils {
     } else {
       revert("Invalid geohash5");
     }
+  }
+
+  function workWithStorage() public pure returns (uint256) {
+    return 1;
   }
 }

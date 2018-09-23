@@ -1,4 +1,5 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
+const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
@@ -84,6 +85,10 @@ contract('PlotClarificationManager', (accounts) => {
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
+
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+
+    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
