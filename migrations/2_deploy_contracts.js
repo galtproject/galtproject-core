@@ -141,7 +141,7 @@ module.exports = async function(deployer, network, accounts) {
     await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
 
     await galtToken.mint(galtDex.address, Web3.utils.toWei('1000000', 'ether'));
-    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000', 'ether'));
+    await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
 
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
