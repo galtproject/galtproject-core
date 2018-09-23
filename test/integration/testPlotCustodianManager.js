@@ -488,6 +488,7 @@ contract.only('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
 
           assert.equal(res.status, ApplicationStatus.COMPLETED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
