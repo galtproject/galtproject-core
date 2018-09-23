@@ -3,6 +3,7 @@ const SpaceToken = artifacts.require('./SpaceToken');
 const LandUtils = artifacts.require('./LandUtils');
 const PlotManager = artifacts.require('./PlotManager');
 const PlotValuation = artifacts.require('./PlotValuation');
+const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
@@ -37,6 +38,7 @@ module.exports = async function(deployer, network, accounts) {
 
     const plotManager = await PlotManager.new({ from: coreTeam });
     const plotValuation = await PlotValuation.new({ from: coreTeam });
+    const plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -85,8 +87,20 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    await plotCustodian.initialize(
+      spaceToken.address,
+      splitMerge.address,
+      validators.address,
+      galtToken.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
 
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
     await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
@@ -97,11 +111,17 @@ module.exports = async function(deployer, network, accounts) {
     await plotValuation.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
       from: coreTeam
     });
+    await plotCustodian.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
+      from: coreTeam
+    });
 
     await plotManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
       from: coreTeam
     });
     await plotValuation.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
+      from: coreTeam
+    });
+    await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
       from: coreTeam
     });
 
@@ -120,7 +140,7 @@ module.exports = async function(deployer, network, accounts) {
     await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
 
     await galtToken.mint(galtDex.address, Web3.utils.toWei('1000000', 'ether'));
-    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000', 'ether'));
+    await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
 
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
@@ -145,6 +165,8 @@ module.exports = async function(deployer, network, accounts) {
             plotManagerAbi: plotManager.abi,
             plotValuationAddress: plotValuation.address,
             plotValuationAbi: plotValuation.abi,
+            plotCustodianAddress: plotCustodian.address,
+            plotCustodianAbi: plotCustodian.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,

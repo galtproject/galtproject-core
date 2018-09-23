@@ -1,5 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager');
 const PlotValuation = artifacts.require('./PlotValuation');
+const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const GaltDex = artifacts.require('./GaltDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
@@ -22,35 +23,9 @@ module.exports = async function(deployer, network, accounts) {
     const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${network}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
+    const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
-
-    const users = {
-      Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
-      Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
-      Jonybang3: '0x029001F6C2dc2C8B28Ff201C3a451714637Af4E3',
-      Nikita: '0x8d362af4c86b05d6F256147A6E76b9d7aF205A24',
-      Igor: '0x06dba6eb6a1044b8cbcaa0033ea3897bf37e6671',
-      Igor2: '0x8052C9fc345dB9c1A70Afc0A81416029F23E5f76',
-      Nik: '0x486129f16423bb74786abc99eab06897f73310f5',
-      Nik2: '0x83d61498cc955c4201042f12bd34e818f781b90b',
-      NickUser: '0x7184e0fF3c8D6FC24B986177c131290A0a7A9B28',
-      NickValidator: '0x82a79ccdDFf049bE2715621c3CD17a6A4BaFC099',
-      NickAdmin: '0x8EE35beC646E131e07ece099c2Eb2697d0a588D5'
-    };
-
-    const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin'];
-    const validatorsList = [
-      'Jonybang',
-      'Jonybang2',
-      'Jonybang3',
-      'Nikita',
-      'Igor',
-      'Igor2',
-      'Nik',
-      'Nik2',
-      'NickValidator'
-    ];
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -92,18 +67,69 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PC_CUSTODIAN_ROLE = await plotCustodian.PC_CUSTODIAN_ROLE.call();
+    const PC_AUDITOR_ROLE = await plotCustodian.PC_AUDITOR_ROLE.call();
+
+    const PLOT_CUSTODIAN_APPLICATION_TYPE = await plotCustodian.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(
+      PLOT_CUSTODIAN_APPLICATION_TYPE,
+      [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+      [75, 25],
+      ['', ''],
+      {
+        from: coreTeam
+      }
+    );
+
+    const users = {
+      Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
+      Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
+      Jonybang3: '0x029001F6C2dc2C8B28Ff201C3a451714637Af4E3',
+      Nikita: '0x8d362af4c86b05d6F256147A6E76b9d7aF205A24',
+      Igor: '0x06dba6eb6a1044b8cbcaa0033ea3897bf37e6671',
+      Igor2: '0x8052C9fc345dB9c1A70Afc0A81416029F23E5f76',
+      Nik: '0x486129f16423bb74786abc99eab06897f73310f5',
+      Nik2: '0x83d61498cc955c4201042f12bd34e818f781b90b',
+      Nik3: '0x8b54b27EB527E670BE5f46dD3aC134d1a629A3F7',
+      Nik4: '0x3b79ca864e2349fe869D009F9F3CBB5064B630Da',
+      Nik5: '0xa583ac4bD05794a9BBCc64Aa3c853529A0eCA996',
+      NickUser: '0x7184e0fF3c8D6FC24B986177c131290A0a7A9B28',
+      NickValidator: '0x82a79ccdDFf049bE2715621c3CD17a6A4BaFC099',
+      NickAdmin: '0x8EE35beC646E131e07ece099c2Eb2697d0a588D5'
+    };
+
+    const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin'];
+
+    const allRoles = [
+      PM_CADASTRAL_ROLE,
+      PM_AUDITOR_ROLE,
+      PV_APPRAISER_ROLE,
+      PV_APPRAISER2_ROLE,
+      PV_AUDITOR_ROLE,
+      PC_CUSTODIAN_ROLE,
+      PC_AUDITOR_ROLE
+    ];
+
+    const validatorsSpecificRoles = {
+      Jonybang: allRoles,
+      Jonybang2: allRoles,
+      Jonybang3: allRoles,
+      Nikita: allRoles,
+      Igor: allRoles,
+      Igor2: allRoles,
+      Nik: allRoles,
+      Nik2: allRoles,
+      NickValidator: allRoles,
+      Nik3: [PV_APPRAISER_ROLE],
+      Nik4: [PV_APPRAISER2_ROLE],
+      Nik5: [PV_AUDITOR_ROLE]
+    };
+
     const promises = [];
     _.forEach(users, (address, name) => {
-      if (_.includes(validatorsList, name)) {
+      if (validatorsSpecificRoles[name]) {
         promises.push(
-          validators.addValidator(
-            address,
-            name,
-            'MN',
-            [],
-            [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE, PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
-            { from: coreTeam }
-          )
+          validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
         );
       }
 
@@ -115,6 +141,7 @@ module.exports = async function(deployer, network, accounts) {
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
