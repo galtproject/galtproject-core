@@ -113,6 +113,10 @@ contract PlotCustodianManager is AbstractApplication {
     _;
   }
 
+  function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
+    gasPriceForDeposits = _newPrice;
+  }
+
   constructor () public {}
 
   function initialize(
