@@ -1,5 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager');
 const PlotValuation = artifacts.require('./PlotValuation');
+const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const GaltDex = artifacts.require('./GaltDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
@@ -22,6 +23,7 @@ module.exports = async function(deployer, network, accounts) {
     const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${network}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
+    const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
 
@@ -65,6 +67,20 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PC_CUSTODIAN_ROLE = await plotCustodian.PC_CUSTODIAN_ROLE.call();
+    const PC_AUDITOR_ROLE = await plotCustodian.PC_AUDITOR_ROLE.call();
+
+    const PLOT_CUSTODIAN_APPLICATION_TYPE = await plotCustodian.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(
+      PLOT_CUSTODIAN_APPLICATION_TYPE,
+      [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+      [75, 25],
+      ['', ''],
+      {
+        from: coreTeam
+      }
+    );
+
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
       Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
@@ -84,7 +100,15 @@ module.exports = async function(deployer, network, accounts) {
 
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin'];
 
-    const allRoles = [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE, PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE];
+    const allRoles = [
+      PM_CADASTRAL_ROLE,
+      PM_AUDITOR_ROLE,
+      PV_APPRAISER_ROLE,
+      PV_APPRAISER2_ROLE,
+      PV_AUDITOR_ROLE,
+      PC_CUSTODIAN_ROLE,
+      PC_AUDITOR_ROLE
+    ];
 
     const validatorsSpecificRoles = {
       Jonybang: allRoles,
@@ -117,6 +141,7 @@ module.exports = async function(deployer, network, accounts) {
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
