@@ -517,10 +517,7 @@ contract PlotCustodianManager is AbstractApplication {
       bytes32[] custodianDocuments,
       ApplicationStatus status,
       Currency currency,
-      Action action,
-      uint256 galtSpaceReward,
-      uint256 validatorsReward,
-      bool galtSpaceRewardPaidOut
+      Action action
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -536,9 +533,32 @@ contract PlotCustodianManager is AbstractApplication {
       m.custodianDocuments,
       m.status,
       m.currency,
-      m.action,
-      m.galtSpaceReward,
+      m.action
+    );
+  }
+
+  function getApplicationFinanceById(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      ApplicationStatus status,
+      Currency currency,
+      uint256 validatorsReward,
+      uint256 galtSpaceReward,
+      bool galtSpaceRewardPaidOut
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (
+      m.status,
+      m.currency,
       m.validatorsReward,
+      m.galtSpaceReward,
       m.galtSpaceRewardPaidOut
     );
   }
