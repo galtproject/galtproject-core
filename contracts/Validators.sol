@@ -54,10 +54,11 @@ contract Validators is Ownable, RBAC {
   mapping(bytes32 => ValidatorRole) public validatorRolesMap;
   bool public readyForApplications;
 
-  // WARNING: we do not remove validators from validatorsArray,
+  // WARNING: we do not remove validators from validatorsArray and validatorsByRoles,
   // so do not rely on this variable to verify whether validator
   // exists or not.
   address[] public validatorsArray;
+  mapping(bytes32 => address[]) public validatorsByRoles;
 
   modifier onlyValidatorManager() {
     require(hasRole(msg.sender, ROLE_VALIDATOR_MANAGER), "No permissions for validator management");
@@ -194,6 +195,7 @@ contract Validators is Ownable, RBAC {
       bytes32 role = _roles[i];
       require(roles[role].applicationType != 0x0, "Role doesn't exist");
       validators[_validator].roles[role] = true;
+      validatorsByRoles[role].push(_validator);
     }
 
     validatorsArray.push(_validator);
@@ -248,6 +250,11 @@ contract Validators is Ownable, RBAC {
   function getValidators() external view returns (address[]) {
     return validatorsArray;
   }
+
+  function getValidatorsByRole(bytes32 role) external view returns (address[]) {
+    return validatorsByRoles[role];
+  }
+
 
   function addRoleTo(address _operator, string _role) external onlyOwner {
     super.addRole(_operator, _role);
