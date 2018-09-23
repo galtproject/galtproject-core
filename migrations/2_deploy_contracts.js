@@ -104,7 +104,6 @@ module.exports = async function(deployer, network, accounts) {
 
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
     await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
-    await plotCustodian.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
 
     await plotManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
       from: coreTeam
