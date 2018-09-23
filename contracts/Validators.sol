@@ -251,6 +251,11 @@ contract Validators is Ownable, RBAC {
     return validatorsArray;
   }
 
+  function getValidatorsByRole(bytes32 role) external view returns (address[]) {
+    return validatorsByRoles[role];
+  }
+
+
   function addRoleTo(address _operator, string _role) external onlyOwner {
     super.addRole(_operator, _role);
   }
