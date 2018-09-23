@@ -7,6 +7,7 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
+const _ = require('lodash');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
@@ -73,7 +74,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract('PlotCustodianManager', (accounts) => {
+contract.only('PlotCustodianManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -418,6 +419,7 @@ contract('PlotCustodianManager', (accounts) => {
           // galtspace share - 13%
 
           res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
           assert.equal(res.validatorsReward, '40890000000000000000');
           assert.equal(res.galtSpaceReward, '6110000000000000000');
         });
@@ -558,6 +560,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
 
           assert.equal(res.status, ApplicationStatus.CLOSED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
@@ -743,6 +746,7 @@ contract('PlotCustodianManager', (accounts) => {
           // galtspace share - 33%
 
           res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
           assert.equal(res.galtSpaceReward, '2310000000000000000');
           assert.equal(res.validatorsReward, '4690000000000000000');
         });
@@ -1225,6 +1229,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
           assert.equal(res.status, ApplicationStatus.COMPLETED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
 
@@ -1343,6 +1348,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
           assert.equal(res.status, ApplicationStatus.CLOSED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
 
