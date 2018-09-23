@@ -274,7 +274,7 @@ contract PlotValuation is AbstractApplication {
 
     a.firstValuation = _valuation;
 
-    if(a.firstValuation == a.secondValuation) {
+    if (a.firstValuation == a.secondValuation) {
       changeApplicationStatus(a, ApplicationStatus.CONFIRMED);
     } else {
       changeApplicationStatus(a, ApplicationStatus.VALUATED);
