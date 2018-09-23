@@ -772,6 +772,14 @@ contract('PlotValuation', (accounts) => {
         await this.plotValuation.valuatePlot2(this.aId, ether(4500), { from: dan });
       });
 
+      it('should change status to REVERTED when an auditor reject plot valuation', async function() {
+        await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
+        await this.plotValuation.rejectValuation(this.aId, 'Fix it', { from: eve });
+
+        const res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+      });
+
       it('should change status to APPROVED when an auditor approves plot valuation', async function() {
         await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
