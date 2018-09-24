@@ -418,8 +418,7 @@ contract('PlotCustodianManager', (accounts) => {
           // validator share - 87%
           // galtspace share - 13%
 
-          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.validatorsReward, '40890000000000000000');
           assert.equal(res.galtSpaceReward, '6110000000000000000');
         });
@@ -487,8 +486,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
 
           assert.equal(res.status, ApplicationStatus.COMPLETED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
@@ -551,7 +549,7 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('for CLOSED applications', () => {
         beforeEach(async function() {
-          await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.rejectApplication(this.aId, 'fix it', { from: bob });
           await this.plotCustodianManager.closeApplication(this.aId, { from: alice });
         });
 
@@ -560,8 +558,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
 
           assert.equal(res.status, ApplicationStatus.CLOSED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
@@ -746,8 +743,7 @@ contract('PlotCustodianManager', (accounts) => {
           // validator share - 67%
           // galtspace share - 33%
 
-          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.galtSpaceReward, '2310000000000000000');
           assert.equal(res.validatorsReward, '4690000000000000000');
         });
@@ -1097,14 +1093,14 @@ contract('PlotCustodianManager', (accounts) => {
       it('should change application status to REJECTED', async function() {
         await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
         await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
-        await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+        await this.plotCustodianManager.rejectApplication(this.aId, 'fix it', { from: bob });
 
         const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REJECTED);
       });
 
       it('should deny non-custodian perform this action', async function() {
-        await assertRevert(this.plotCustodianManager.rejectApplication(this.aId, { from: eve }));
+        await assertRevert(this.plotCustodianManager.rejectApplication(this.aId, 'fix it', { from: eve }));
 
         const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVIEW);
@@ -1182,7 +1178,7 @@ contract('PlotCustodianManager', (accounts) => {
           });
           await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
           await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
-          await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.rejectApplication(this.aId, 'fix it', { from: bob });
         });
 
         it('should allow an applicant to close the application', async function() {
@@ -1229,8 +1225,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.COMPLETED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
 
@@ -1339,7 +1334,7 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('for CLOSED applications', () => {
         beforeEach(async function() {
-          await this.plotCustodianManager.rejectApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.rejectApplication(this.aId, 'fix it', { from: bob });
           await this.plotCustodianManager.closeApplication(this.aId, { from: alice });
         });
 
@@ -1348,8 +1343,7 @@ contract('PlotCustodianManager', (accounts) => {
           await this.plotCustodianManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
-          _.extend(res, await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call());
+          let res = await this.plotCustodianManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.CLOSED);
           assert.equal(res.galtSpaceRewardPaidOut, true);
 

@@ -391,12 +391,13 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Reject the application by a custodian if he changed his mind or the application looks suspicious.
    * @param _aId application ID
    */
-  function rejectApplication(bytes32 _aId) external {
+  function rejectApplication(bytes32 _aId, string _message) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
     require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE], "Only a custodian role is allowed to perform this action");
 
+    a.roleMessages[PC_CUSTODIAN_ROLE] = _message;
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
