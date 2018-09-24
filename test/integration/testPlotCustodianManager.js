@@ -7,7 +7,6 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
-const _ = require('lodash');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
