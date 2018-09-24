@@ -203,11 +203,9 @@ contract PlotManager is AbstractApplication {
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     bytes2 _country,
-    uint8 _precision,
-    uint256 _applicationFeeInGalt
+    uint8 _precision
   )
     public
-    payable
     ready
     returns (bytes32)
   {
@@ -216,24 +214,6 @@ contract PlotManager is AbstractApplication {
       _packageContour.length >= 3 && _packageContour.length <= 50, 
       "Number of contour elements should be between 3 and 50"
     );
-
-    // Default is ETH
-    Currency currency;
-    uint256 fee;
-
-    // ETH
-    if (msg.value > 0) {
-      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
-      fee = msg.value;
-    // GALT
-    } else {
-      require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
-      fee = _applicationFeeInGalt;
-      currency = Currency.GALT;
-    }
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -250,9 +230,6 @@ contract PlotManager is AbstractApplication {
     a.status = ApplicationStatus.NEW;
     a.id = _id;
     a.applicant = msg.sender;
-    a.currency = currency;
-
-    calculateAndStoreFee(a, fee);
 
     uint256 geohashTokenId = spaceToken.geohashToTokenId(_baseGeohash);
     if (!spaceToken.exists(geohashTokenId)) {
@@ -279,13 +256,11 @@ contract PlotManager is AbstractApplication {
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
 
-    assignRequiredValidatorRolesAndRewards(_id);
-
     return _id;
   }
 
   function calculateAndStoreFee(
-    Application memory _a,
+    Application storage _a,
     uint256 _fee
   )
     internal
@@ -398,32 +373,66 @@ contract PlotManager is AbstractApplication {
   }
 
   function submitApplication(
-    bytes32 _aId
+    bytes32 _aId,
+    uint256 _submissionFeeInGalt
   )
     external
     payable
     onlyApplicant(_aId)
   {
     Application storage a = applications[_aId];
+    uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
 
     // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
     require(a.gasDepositEstimation != 0, "No gas deposit estimated");
     require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
+      a.status == ApplicationStatus.NEW,
       "Application status should be NEW");
 
-    if (a.status == ApplicationStatus.NEW) {
-      uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
-      require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
+
+    // GALT
+    if (_submissionFeeInGalt > 0) {
+      require(msg.value == expectedDepositInEth, "ETH value should be exactly equal expectedDeposit");
+      require(_submissionFeeInGalt == getSubmissionFee(a.id, Currency.GALT), "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
+      fee = _submissionFeeInGalt;
+      a.currency = Currency.GALT;
+    // ETH
     } else {
-      require(msg.value == 0, "No deposit required on re-submition");
+      fee = getSubmissionFee(a.id, Currency.ETH);
+      require(
+        msg.value == expectedDepositInEth.add(fee),
+        "Incorrect msg.value passed in");
+    }
 
-      uint256 len = a.assignedRoles.length;
+    calculateAndStoreFee(a, fee);
+    assignRequiredValidatorRolesAndRewards(_aId);
 
-      for (uint8 i = 0; i < len; i++) {
-        if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
-          changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
-        }
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
+  function resubmitApplication(
+    bytes32 _aId
+  )
+    external
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+
+    // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
+    require(msg.value == 0, "No deposit required on re-submition");
+    require(
+      a.status == ApplicationStatus.REVERTED,
+      "Application status should be REVERTED");
+
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
       }
     }
 
@@ -559,8 +568,8 @@ contract PlotManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
-      "Application status should either NEW or DISASSEMBLED_BY_APPLICANT");
+      a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should either or DISASSEMBLED_BY_APPLICANT");
 
     require(
       splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
@@ -768,11 +777,25 @@ contract PlotManager is AbstractApplication {
     return applications[_aId].operator;
   }
 
+  function getEstimatedGasDeposit(bytes32 _aId) public view returns (uint256) {
+    return applications[_aId].gasDepositEstimation * gasPriceForDeposits;
+  }
+
   function getSubmissionFee(bytes32 _aId, Currency _currency) public view returns (uint256) {
     if (_currency == Currency.GALT) {
       return applications[_aId].areaWeight * submissionFeeRateGalt;
     } else {
       return applications[_aId].areaWeight * submissionFeeRateEth;
+    }
+  }
+
+  function getSubmissionPaymentInEth(bytes32 _aId, Currency _currency) public view returns (uint256) {
+    uint256 deposit = getEstimatedGasDeposit(_aId);
+
+    if (_currency == Currency.GALT) {
+      return deposit;
+    } else {
+      return (applications[_aId].areaWeight * submissionFeeRateEth) + deposit;
     }
   }
 

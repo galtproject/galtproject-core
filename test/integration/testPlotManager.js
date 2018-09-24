@@ -120,7 +120,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       from: coreTeam
     });
 
-    await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
+    await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
@@ -260,16 +260,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
 
       this.aId = res.logs[0].args.id;
 
       await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-      this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+      this.payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
     });
 
     it('should allow change application fields to the owner when status is NEW', async function() {
@@ -310,7 +307,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     });
 
     it('should allow application details hash to the owner when status is REVERTED', async function() {
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
@@ -356,7 +353,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     });
 
     it('should deny hash change if applicaiton is submitted', async function() {
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
       await assertRevert(
         this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', 9, 'SG', {
           from: alice
@@ -390,7 +387,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         ['', '', ''],
         { from: coreTeam }
       );
-      await this.galtToken.approve(this.plotManager.address, ether(47), { from: alice });
       const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
@@ -398,7 +394,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        ether(47),
         { from: alice }
       );
 
@@ -439,45 +434,33 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert(res, 1);
       });
+    });
+
+    describe('#submitApplication()', () => {
+      beforeEach(async function() {
+        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+        this.fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+        this.deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+        await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
+      });
+
+      it('should submit applications in galt', async function() {
+        await this.plotManager.submitApplication(this.aId, this.fee, { from: alice, value: this.deposit });
+      });
 
       describe('payable', () => {
         it('should split fee between GaltSpace and Validator', async function() {
+          await this.plotManager.submitApplication(this.aId, this.fee, { from: alice, value: this.deposit });
           const res4 = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
           assert.equal(res4.currency, Currency.GALT);
-          assert.equal(res4.validatorsReward, '40890000000000000000');
-          assert.equal(res4.galtSpaceReward, '6110000000000000000');
+          assert.equal(res4.validatorsReward, '9341553868800000000000');
+          assert.equal(res4.galtSpaceReward, '1395864371200000000000');
         });
 
-        it('should reject fees less than the minial', async function() {
-          await this.galtToken.approve(this.plotManager.address, ether(37), { from: alice });
+        it('should reject fees not equal returned from getter', async function() {
           await assertRevert(
-            this.plotManager.applyForPlotOwnership(
-              this.contour,
-              galt.geohashToGeohash5('sezu07'),
-              this.credentials,
-              this.ledgerIdentifier,
-              web3.utils.asciiToHex('MN'),
-              7,
-              ether(37),
-              { from: alice }
-            )
+            this.plotManager.submitApplication(this.aId, '123123123123', { from: alice, value: this.deposit })
           );
-        });
-
-        it('accept fees greater than the minimal', async function() {
-          await this.galtToken.approve(this.plotManager.address, ether(87), { from: alice });
-          const res = await this.plotManager.applyForPlotOwnership(
-            this.contour,
-            galt.geohashToGeohash5('sezu07'),
-            this.credentials,
-            this.ledgerIdentifier,
-            web3.utils.asciiToHex('MN'),
-            7,
-            ether(87),
-            { from: alice }
-          );
-
-          this.aId = res.logs[0].args.id;
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
@@ -490,7 +473,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             { from: coreTeam }
           );
 
-          await this.galtToken.approve(this.plotManager.address, ether(53), { from: alice });
           let res = await this.plotManager.applyForPlotOwnership(
             this.contour,
             galt.geohashToGeohash5('sezu07'),
@@ -498,28 +480,33 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             this.ledgerIdentifier,
             web3.utils.asciiToHex('MN'),
             7,
-            ether(53),
             { from: alice }
           );
           const aId = res.logs[0].args.id;
 
+          await this.plotManager.addGeohashesToApplication(aId, [], [], [], { from: alice });
+          const fee = await this.plotManagerWeb3.methods.getSubmissionFee(aId, Currency.GALT).call();
+          const deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(aId, Currency.GALT).call();
+          await this.galtToken.approve(this.plotManager.address, fee, { from: alice });
+          await this.plotManager.submitApplication(aId, fee, { from: alice, value: deposit });
+
           res = await this.plotManagerWeb3.methods.getApplicationFinanceById(aId).call();
-          assert.equal(res.status, 1);
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(res.currency, Currency.GALT);
-          res.validatorsReward.should.be.a.bignumber.eq(new BN('46110000000000000000'));
-          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('6890000000000000000'));
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('9341553868800000000000'));
+          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('1395864371200000000000'));
 
           res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
           assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('cat')).call();
-          assert.equal(res.reward.toString(), '23977200000000000000');
+          assert.equal(res.reward.toString(), '4857608011776000000000');
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('dog')).call();
-          assert.equal(res.reward.toString(), '21671700000000000000');
+          assert.equal(res.reward.toString(), '4390530318336000000000');
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '461100000000000000');
+          assert.equal(res.reward.toString(), '93415538688000000000');
         });
       });
     });
@@ -528,26 +515,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       beforeEach(async function() {
         this.geohashToRemove = [galt.geohashToGeohash5('sezu06')];
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
-      });
-
-      describe('with status NEW', () => {
-        it('should change status to REVOKED and give refund', async function() {
-          await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashToRemove, [], [], {
-            from: alice
-          });
-
-          const aliceInitialBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
-          await this.plotManager.revokeApplication(this.aId, { from: alice });
-          const aliceFinalBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
-
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.REVOKED);
-
-          assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN('47000000000000000000')));
-        });
       });
 
       describe('with status REVERTED', () => {
@@ -556,7 +523,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
           await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
 
-          await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
           await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
           await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
@@ -572,10 +540,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           await this.plotManager.revokeApplication(this.aId, { from: alice });
           const aliceFinalBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.REVOKED);
 
-          assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN('47000000000000000000')));
+          res = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+
+          assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN(res.toString())));
         });
 
         it('should deny any validator disassemble REVERTed application', async function() {
@@ -599,7 +569,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           { from: coreTeam }
         );
 
-        await this.galtToken.approve(this.plotManager.address, ether(57), { from: alice });
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
           galt.geohashToGeohash5('sezu07'),
@@ -607,7 +576,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          ether(57),
           { from: alice }
         );
 
@@ -623,11 +591,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        const fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+        const deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+        await this.galtToken.approve(this.plotManager.address, fee, { from: alice });
+        await this.plotManager.submitApplication(this.aId, fee, { from: alice, value: deposit });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -642,30 +610,28 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         });
 
         it('should allow shareholders claim reward', async function() {
-          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
-          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
-          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
+          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
           await this.plotManager.claimValidatorReward(this.aId, { from: bob });
           await this.plotManager.claimValidatorReward(this.aId, { from: dan });
           await this.plotManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
-          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
-          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
+          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
           const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '24795000000000000000');
+          assert.equal(res.reward.toString(), '4670776934400000000000');
 
-          // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
-
-          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
-          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
-          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
-          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('4670776934400000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('2335388467200000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('2335388467200000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('1395864371200000000000')));
         });
       });
 
@@ -685,9 +651,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             from: bob
           });
 
-          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
-          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
-          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
+          const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
+          const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
+          const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
           const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
 
           await this.plotManager.claimValidatorReward(this.aId, { from: bob });
@@ -695,20 +661,18 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           await this.plotManager.claimValidatorReward(this.aId, { from: eve });
           await this.plotManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
 
-          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
-          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
-          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
+          const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
+          const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '24795000000000000000');
+          assert.equal(res.reward.toString(), '4670776934400000000000');
 
-          // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
-
-          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('24795000000000000000')));
-          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('12397500000000000000')));
-          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('12397500000000000000')));
-          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('7410000000000000000')));
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('4670776934400000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('2335388467200000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('2335388467200000000000')));
+          assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('1395864371200000000000')));
         });
       });
     });
@@ -731,8 +695,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
 
       this.aId = res.logs[0].args.id;
@@ -782,98 +745,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert(res, 1);
       });
-
-      describe('payable', () => {
-        it('should reject applications without payment', async function() {
-          await assertRevert(
-            this.plotManager.applyForPlotOwnership(
-              this.contour,
-              galt.geohashToGeohash5('sezu06'),
-              this.credentials,
-              this.ledgerIdentifier,
-              web3.utils.asciiToHex('MN'),
-              7,
-              0,
-              { from: alice }
-            )
-          );
-        });
-
-        it('should reject applications with payment less than required', async function() {
-          await assertRevert(
-            this.plotManager.applyForPlotOwnership(
-              this.contour,
-              galt.geohashToGeohash5('sezu06'),
-              this.credentials,
-              this.ledgerIdentifier,
-              web3.utils.asciiToHex('MN'),
-              7,
-              0,
-              { from: alice, value: ether(3) }
-            )
-          );
-        });
-
-        it('should allow applications with payment greater than required', async function() {
-          await this.plotManager.applyForPlotOwnership(
-            this.contour,
-            galt.geohashToGeohash5('sezu07'),
-            this.credentials,
-            this.ledgerIdentifier,
-            web3.utils.asciiToHex('MN'),
-            7,
-            0,
-            { from: alice, value: ether(7) }
-          );
-        });
-
-        it('should calculate corresponding validator and coreTeam rewards in Eth', async function() {
-          const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.NEW);
-          res.validatorsReward.should.be.a.bignumber.eq(new BN('4020000000000000000'));
-          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('1980000000000000000'));
-        });
-
-        it('should calculate validator rewards according to their roles share', async function() {
-          await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-          this.resAddRoles = await this.validators.setApplicationTypeRoles(
-            NEW_APPLICATION,
-            ['cat', 'dog', 'human'],
-            [52, 33, 15],
-            ['', '', ''],
-            { from: coreTeam }
-          );
-
-          let res = await this.plotManager.applyForPlotOwnership(
-            this.contour,
-            galt.geohashToGeohash5('sezu07'),
-            this.credentials,
-            this.ledgerIdentifier,
-            web3.utils.asciiToHex('MN'),
-            7,
-            0,
-            { from: alice, value: ether(9) }
-          );
-          const aId = res.logs[0].args.id;
-
-          res = await this.plotManagerWeb3.methods.getApplicationFinanceById(aId).call();
-          assert.equal(res.status, 1);
-          assert.equal(res.currency, Currency.ETH);
-          res.validatorsReward.should.be.a.bignumber.eq(new BN('6030000000000000000'));
-
-          res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
-          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
-
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('cat')).call();
-          assert.equal(res.reward.toString(), '3135600000000000000');
-
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('dog')).call();
-          assert.equal(res.reward.toString(), '1989900000000000000');
-
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '904500000000000000');
-        });
-      });
     });
 
     describe('#addGeohashesToApplication', () => {
@@ -896,7 +767,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
       });
 
-      it('should allow the operator to add goehashes', async function() {
+      it('should allow the operator to add geohashes', async function() {
         let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
         geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
         geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
@@ -905,7 +776,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.approveOperator(this.aId, frank, { from: alice });
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
 
-        const res = await this.plotManager.getSubmissionFee(this.aId);
+        const res = await this.plotManager.getSubmissionFee(this.aId, Currency.ETH);
         assert.equal(res.toString(10), ether(1083.441152));
       });
 
@@ -966,11 +837,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         assert.equal(await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashes1[0])), this.splitMerge.address);
         assert.equal(await this.spaceToken.ownerOf(galt.geohash5ToTokenId(geohashes1[1])), this.splitMerge.address);
 
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
@@ -1012,10 +881,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
 
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
         await assertRevert(this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice }));
       });
@@ -1036,52 +903,18 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.geohashToRemove = [galt.geohashToGeohash5('sezu06')];
         });
 
-        describe('with status NEW', () => {
-          it('should change status to REVOKED and give refund', async function() {
-            await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashToRemove, [], [], {
-              from: alice
-            });
-            const aliceInitialBalance = new BN(await web3.eth.getBalance(alice));
-            await this.plotManager.revokeApplication(this.aId, { from: alice });
-            const aliceFinalBalance = new BN(await web3.eth.getBalance(alice));
-
-            const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-            assert.equal(res.status, ApplicationStatus.REVOKED);
-
-            const max = new BN('10000000000000000'); // <- 0.01 ether
-            const min = new BN('0');
-
-            const diff = aliceFinalBalance
-              .sub(new BN('6000000000000000000')) // <- the diff
-              .sub(aliceInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            assert(
-              diff.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diff.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diff.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diff.toString(10))} to be less than 0.01 ether`
-            );
-          });
-        });
-
         describe('with status REVERTED', () => {
           it('should change status to REVOKED and give refund', async function() {
             await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-            let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-            const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-            this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+            const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-            await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+            await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
             await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
             await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
             await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
             await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
 
-            res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+            let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
             assert.equal(res.status, ApplicationStatus.REVERTED);
 
             await this.plotManager.removeGeohashesFromApplication(this.aId, this.geohashToRemove, [], [], {
@@ -1099,7 +932,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             const min = new BN('0');
 
             const diff = aliceFinalBalance
-              .sub(new BN('6000000000000000000')) // <- the diff
+              .sub(new BN('719407022080000000000')) // <- validatorsReward
+              .sub(new BN('354334801920000000000')) // <- galtSpaceReward
               .sub(aliceInitialBalance)
               .add(new BN('10000000000000000')); // <- 0.01 ether
 
@@ -1126,74 +960,25 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-      });
-
-      it('should allow submit reverted application to the same validator who reverted it', async function() {
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
-
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
-        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-        await this.plotManager.submitApplication(this.aId, { from: alice });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.validator.toLowerCase(), bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
-
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.validator.toLowerCase(), bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
-
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.validator.toLowerCase(), bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
-      it('should not require payment if application is re-submitted', async function() {
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
-
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-
-        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice, value: deposit }));
-      });
-
-      it('should not reject if status is not new or rejected', async function() {
+      it('should reject if status is not new or rejected', async function() {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
 
-        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice }));
+        await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, payment }));
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1203,34 +988,108 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
 
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString()));
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await assertRevert(this.plotManager.submitApplication(this.aId, { from: bob, value: deposit }));
+        await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: bob, value: payment }));
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
       });
 
-      it('should reject when incorrect deposit provided', async function() {
+      describe('payable', () => {
+        it('should reject applications without payment', async function() {
+          await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, value: 0 }));
+        });
+
+        it('should reject applications with payment not equal required', async function() {
+          await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, value: ether(3) }));
+        });
+
+        it('should calculate corresponding validator and coreTeam rewards in Eth', async function() {
+          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+
+          const res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('719407022080000000000'));
+          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('354334801920000000000'));
+
+          const fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.ETH).call();
+          fee.should.be.a.bignumber.eq(new BN('719407022080000000000').add(new BN('354334801920000000000')));
+        });
+
+        it('should calculate validator rewards according to their roles share', async function() {
+          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+
+          // TODO: submission required
+          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+
+          let res = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+          assert.equal(res.currency, Currency.ETH);
+          res.validatorsReward.should.be.a.bignumber.eq(new BN('719407022080000000000'));
+
+          res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
+
+          // 50%
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '359703511040000000000');
+
+          // 25%
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+          assert.equal(res.reward.toString(), '179851755520000000000');
+
+          // 25%
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '179851755520000000000');
+        });
+      });
+    });
+
+    describe('#resubmitApplication()', () => {
+      beforeEach(async function() {
+        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
+      });
+
+      it('should allow submit reverted application to the same validator who reverted it', async function() {
+        await this.plotManager.resubmitApplication(this.aId, { from: alice });
+
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await assertRevert(this.plotManager.submitApplication(this.aId, { from: alice, value: 123 }));
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+        assert.equal(res.validator.toLowerCase(), dan);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+        assert.equal(res.validator.toLowerCase(), eve);
+        assert.equal(res.status, ValidationStatus.LOCKED);
       });
     });
 
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        this.payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1262,7 +1121,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
       });
 
-      it('should push an application id to the validators list for caching', async function() {
+      it('shot uld push an application id to the validators list for caching', async function() {
         // submit first
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
@@ -1271,15 +1130,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          0,
-          { from: charlie, value: ether(6) }
+          { from: charlie }
         );
         const a1Id = res.logs[0].args.id;
         await this.plotManager.addGeohashesToApplication(a1Id, [], [], [], { from: charlie });
-        res = await this.plotManagerWeb3.methods.getApplicationById(a1Id).call();
-        let gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        let deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
-        await this.plotManager.submitApplication(a1Id, { from: charlie, value: deposit });
+        let payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a1Id, Currency.ETH).call();
+        await this.plotManager.submitApplication(a1Id, 0, { from: charlie, value: payment });
 
         // lock first
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
@@ -1292,16 +1148,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          0,
-          { from: alice, value: ether(6) }
+          { from: alice }
         );
         const a2Id = res.logs[0].args.id;
         await this.plotManager.addGeohashesToApplication(a2Id, [], [], [], { from: alice });
-        res = await this.plotManagerWeb3.methods.getApplicationById(a2Id).call();
-        gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a2Id, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(a2Id, { from: alice, value: deposit });
+        await this.plotManager.submitApplication(a2Id, 0, { from: alice, value: payment });
 
         // lock second
         await this.plotManager.lockApplicationForReview(a2Id, 'human', { from: bob });
@@ -1320,8 +1173,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          0,
-          { from: alice, value: ether(6) }
+          { from: alice }
         );
         const a2Id = res.logs[0].args.id;
         await assertRevert(this.plotManager.lockApplicationForReview(a2Id, 'human', { from: charlie }));
@@ -1343,13 +1195,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     describe('#resetApplicationRole()', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
@@ -1381,13 +1231,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     describe('#approveApplication', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
@@ -1457,8 +1305,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          0,
-          { from: alice, value: ether(6) }
+          { from: alice }
         );
 
         const aId = res.logs[0].args.id;
@@ -1471,13 +1318,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     describe('#revertApplication()', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
@@ -1533,16 +1378,13 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
           7,
-          0,
-          { from: alice, value: ether(6) }
+          { from: alice }
         );
         const aId = res.logs[0].args.id;
         await this.plotManager.addGeohashesToApplication(aId, [], [], [], { from: alice });
-        res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        const deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(aId, { from: alice, value: deposit });
+        await this.plotManager.submitApplication(aId, 0, { from: alice, value: payment });
 
         await assertRevert(this.plotManager.revertApplication(aId, 'blah', { from: bob }));
         res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
@@ -1553,13 +1395,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     describe('#rejectApplication()', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
@@ -1606,9 +1446,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         this.geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
 
         await this.plotManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], { from: alice });
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        this.payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
       });
 
       describe('new application', () => {
@@ -1666,7 +1504,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       describe('reverted application', () => {
         beforeEach(async function() {
-          await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
           await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
           await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
           await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
@@ -1726,7 +1564,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       describe('rejected application', () => {
         beforeEach(async function() {
-          await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
           await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
           await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
           await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
@@ -1777,13 +1615,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     describe('claim reward', () => {
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-        this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
-        await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
@@ -1814,29 +1650,30 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '2010000000000000000');
-
-          // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
-          // assume that the commission paid by bob isn't greater than 0.1 ether
+          let res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          assert.equal(res.reward.toString(), '359703511040000000000');
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+          assert.equal(res.reward.toString(), '179851755520000000000');
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+          assert.equal(res.reward.toString(), '179851755520000000000');
 
           const diffBob = bobsFinalBalance
-            .sub(new BN('2010000000000000000')) // <- the diff
+            .sub(new BN('359703511040000000000')) // <- the diff
             .sub(bobsInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const diffDan = dansFinalBalance
-            .sub(new BN('1005000000000000000')) // <- the diff
+            .sub(new BN('179851755520000000000')) // <- the diff
             .sub(dansInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const diffEve = evesFinalBalance
-            .sub(new BN('1005000000000000000')) // <- the diff
+            .sub(new BN('179851755520000000000')) // <- the diff
             .sub(evesInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const diffOrg = orgsFinalBalance
-            .sub(new BN('1980000000000000000')) // <- the diff
+            .sub(new BN('354334801920000000000')) // <- the diff
             .sub(orgsInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
@@ -1911,18 +1748,18 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
           res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '2010000000000000000');
+          assert.equal(res.reward.toString(), '359703511040000000000');
 
           // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
           // assume that the commission paid by bob isn't greater than 0.1 ether
 
           const diffOrg = orgsFinalBalance
-            .sub(new BN('1980000000000000000')) // <- the diff
+            .sub(new BN('354334801920000000000')) // <- the diff
             .sub(orgsInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
           const diff = bobsFinalBalance
-            .sub(new BN('2010000000000000000')) // <- the diff
+            .sub(new BN('359703511040000000000')) // <- the diff
             .sub(bobsInitialBalance)
             .add(new BN('10000000000000000')); // <- 0.01 ether
 
