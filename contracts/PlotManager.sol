@@ -73,9 +73,13 @@ contract PlotManager is AbstractApplication {
     bytes2 country;
   }
 
-  // rate per one 12-symbol geohash
-  uint256 public submissionFeeRate;
+  // rate per one 12-symbol geohash in GALT
+  uint256 public submissionFeeRateGalt;
+  // rate per one 12-symbol geohash in ETH
+  uint256 public submissionFeeRateEth;
+  // in ETH
   uint256 public gasPriceForDeposits;
+
   mapping(bytes32 => Application) public applications;
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
@@ -118,8 +122,10 @@ contract PlotManager is AbstractApplication {
     galtSpaceGaltShare = 33;
     // 4 gwei
     gasPriceForDeposits = 4000000000;
-    // 1000 gwei
-    submissionFeeRate = 1 szabo;
+    // 1_000 gwei
+    submissionFeeRateEth = 1 szabo;
+    // 10_000 gwei
+    submissionFeeRateGalt = 10 szabo;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
@@ -151,8 +157,9 @@ contract PlotManager is AbstractApplication {
     gasPriceForDeposits = _newPrice;
   }
 
-  function setSubmissionFeeRate(uint256 _newRate) external onlyFeeManager {
-    submissionFeeRate = _newRate;
+  function setSubmissionFeeRate(uint256 _newEthRate, uint256 _newGaltRate) external onlyFeeManager {
+    submissionFeeRateGalt = _newGaltRate;
+    submissionFeeRateEth = _newEthRate;
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -761,8 +768,12 @@ contract PlotManager is AbstractApplication {
     return applications[_aId].operator;
   }
 
-  function getSubmissionFee(bytes32 _aId) public view returns (uint256) {
-    return applications[_aId].areaWeight * submissionFeeRate;
+  function getSubmissionFee(bytes32 _aId, Currency _currency) public view returns (uint256) {
+    if (_currency == Currency.GALT) {
+      return applications[_aId].areaWeight * submissionFeeRateGalt;
+    } else {
+      return applications[_aId].areaWeight * submissionFeeRateEth;
+    }
   }
 
   function getApplicationValidator(

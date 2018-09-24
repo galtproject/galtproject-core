@@ -182,6 +182,24 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
     });
 
+    describe('#setSubmissionFeeRate()', () => {
+      it('should allow a fee manager set a submission fee rate in ETH and GALT', async function() {
+        await this.plotManager.setSubmissionFeeRate(ether(0.02), ether(0.1), { from: feeManager });
+        let res = await this.plotManagerWeb3.methods.submissionFeeRateEth().call();
+        assert.equal(res, ether(0.02));
+        res = await this.plotManagerWeb3.methods.submissionFeeRateGalt().call();
+        assert.equal(res, ether(0.1));
+      });
+
+      it('should deny any other than a fee manager account set fee in ETH', async function() {
+        await assertRevert(
+          this.plotManager.setSubmissionFeeRate(ether(0.05), ether(0.05), {
+            from: coreTeam
+          })
+        );
+      });
+    });
+
     describe('#setGaltSpaceEthShare()', () => {
       it('should allow fee manager set galtSpace ETH share in percents', async function() {
         await this.plotManager.setGaltSpaceEthShare('42', { from: feeManager });
