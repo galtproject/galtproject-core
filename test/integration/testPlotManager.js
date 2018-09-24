@@ -1,5 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
+const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -76,8 +77,10 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+    this.landUtils = await LandUtils.new({ from: coreTeam });
+    PlotManagerLib.link('LandUtils', this.landUtils.address);
 
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
@@ -873,6 +876,19 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         // TODO: pass neighbours and directions
         await this.plotManager.approveOperator(this.aId, frank, { from: alice });
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
+      });
+
+      it('should allow the operator to add goehashes', async function() {
+        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
+        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
+        geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
+
+        // TODO: pass neighbours and directions
+        await this.plotManager.approveOperator(this.aId, frank, { from: alice });
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: frank });
+
+        const res = await this.plotManager.getSubmissionFee(this.aId);
+        assert.equal(res.toString(10), ether(1083.441152));
       });
 
       it('should add a list of geohashes', async function() {

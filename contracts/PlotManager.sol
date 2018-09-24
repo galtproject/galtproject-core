@@ -48,6 +48,7 @@ contract PlotManager is AbstractApplication {
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 gasDepositEstimation;
+    uint256 areaWeight;
     bool gasDepositRedeemed;
     bool galtSpaceRewardPaidOut;
     ApplicationDetails details;
@@ -72,6 +73,8 @@ contract PlotManager is AbstractApplication {
     bytes2 country;
   }
 
+  // rate per one 12-symbol geohash
+  uint256 public submissionFeeRate;
   uint256 public gasPriceForDeposits;
   mapping(bytes32 => Application) public applications;
   mapping(address => bytes32[]) public applicationsByAddresses;
@@ -113,7 +116,10 @@ contract PlotManager is AbstractApplication {
     minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
-    gasPriceForDeposits = 4 wei;
+    // 4 gwei
+    gasPriceForDeposits = 4000000000;
+    // 1000 gwei
+    submissionFeeRate = 1 szabo;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
@@ -143,6 +149,10 @@ contract PlotManager is AbstractApplication {
 
   function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
     gasPriceForDeposits = _newPrice;
+  }
+
+  function setSubmissionFeeRate(uint256 _newRate) external onlyFeeManager {
+    submissionFeeRate = _newRate;
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -243,6 +253,7 @@ contract PlotManager is AbstractApplication {
     }
     // TODO: ELSE ensure geohashTokenId belongs to this contract
     a.packageTokenId = splitMerge.initPackage(geohashTokenId);
+    a.areaWeight = a.areaWeight.add(PlotManagerLib.geohash5Weight(_baseGeohash));
 
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
@@ -748,6 +759,10 @@ contract PlotManager is AbstractApplication {
 
   function getApplicationOperator(bytes32 _aId) public view returns (address) {
     return applications[_aId].operator;
+  }
+
+  function getSubmissionFee(bytes32 _aId) public view returns (uint256) {
+    return applications[_aId].areaWeight * submissionFeeRate;
   }
 
   function getApplicationValidator(
