@@ -309,8 +309,9 @@ contract PlotCustodianManager is AbstractApplication {
     validators.ensureValidatorActive(msg.sender);
 
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      a.status == ApplicationStatus.SUBMITTED ||
+      a.status == ApplicationStatus.REVIEW,
+      "Application status should be SUBMITTED or REVIEW");
     require(a.roleAddresses[PC_AUDITOR_ROLE] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[PC_AUDITOR_ROLE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
 
@@ -320,7 +321,7 @@ contract PlotCustodianManager is AbstractApplication {
 
     changeValidationStatus(a, PC_AUDITOR_ROLE, ValidationStatus.LOCKED);
 
-    if (a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED) {
+    if (a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED && a.status != ApplicationStatus.REVIEW) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
