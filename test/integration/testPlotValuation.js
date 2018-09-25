@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
+const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -89,8 +90,10 @@ contract('PlotValuation', (accounts) => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+    this.landUtils = await LandUtils.new({ from: coreTeam });
+    PlotManagerLib.link('LandUtils', this.landUtils.address);
 
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
@@ -148,7 +151,7 @@ contract('PlotValuation', (accounts) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotValuationWeb3 = new web3.eth.Contract(this.plotValuation.abi, this.plotValuation.address);
@@ -275,16 +278,13 @@ contract('PlotValuation', (accounts) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
       this.aId = res.logs[0].args.id;
 
       await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
-      const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-      this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -293,7 +293,10 @@ contract('PlotValuation', (accounts) => {
       });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: validatorManager });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+      const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+      await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
+      await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
@@ -505,16 +508,13 @@ contract('PlotValuation', (accounts) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
       this.aId = res.logs[0].args.id;
 
       await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
-      const gasPrice = await this.plotManagerWeb3.methods.gasPriceForDeposits().call();
-      this.deposit = new BN(res.gasDepositEstimation.toString()).mul(new BN(gasPrice.toString())).toString(10);
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -523,7 +523,8 @@ contract('PlotValuation', (accounts) => {
       });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: validatorManager });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });

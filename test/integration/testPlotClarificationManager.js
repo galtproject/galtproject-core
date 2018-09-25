@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
+const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -86,8 +87,10 @@ contract('PlotClarificationManager', (accounts) => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+    this.landUtils = await LandUtils.new({ from: coreTeam });
+    PlotManagerLib.link('LandUtils', this.landUtils.address);
 
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
@@ -149,7 +152,7 @@ contract('PlotClarificationManager', (accounts) => {
     await this.validators.addRoleTo(coreTeam, 'validator_manager');
     await this.validators.addRoleTo(coreTeam, 'application_type_manager');
 
-    await this.galtToken.mint(alice, ether(10000), { from: coreTeam });
+    await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotClarificationManagerWeb3 = new web3.eth.Contract(
@@ -281,8 +284,7 @@ contract('PlotClarificationManager', (accounts) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
       this.aId = res.logs[0].args.id;
 
@@ -297,7 +299,11 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: validatorManager });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+      const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+      await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
+      await this.plotManager.submitApplication(this.aId, galts.toString(), { from: alice, value: eths });
+
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
@@ -655,8 +661,7 @@ contract('PlotClarificationManager', (accounts) => {
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
         7,
-        0,
-        { from: alice, value: ether(6) }
+        { from: alice }
       );
       this.aId = res.logs[0].args.id;
 
@@ -671,7 +676,8 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [PUSHER_ROLE, 'buzz'], { from: validatorManager });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
 
-      await this.plotManager.submitApplication(this.aId, { from: alice, value: this.deposit });
+      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });

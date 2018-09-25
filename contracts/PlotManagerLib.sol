@@ -53,7 +53,7 @@ library PlotManagerLib {
     _splitMerge.addGeohashesToPackage(_a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
 
     _a.areaWeight = _a.areaWeight.add(totalAreaWeight);
-    _a.gasDepositEstimation = _a.gasDepositEstimation.add(initGas.sub(gasleft()));
+    _a.finance.gasDepositEstimation = _a.finance.gasDepositEstimation.add(initGas.sub(gasleft()));
   }
 
   function removeGeohashesFromApplication(
@@ -81,5 +81,28 @@ library PlotManagerLib {
     _splitMerge.removeGeohashesFromPackage(_a.packageTokenId, _geohashes, _directions1, _directions2);
 
     _a.areaWeight = _a.areaWeight.sub(totalAreaWeight);
+  }
+
+  function rejectApplicationHelper(
+    PlotManager.Application storage _a,
+    string _message
+  )
+    external
+  {
+    require(
+      _a.status == PlotManager.ApplicationStatus.SUBMITTED,
+      "Application status should be SUBMITTED");
+
+    uint256 len = _a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      bytes32 currentRole = _a.assignedRoles[i];
+      if (_a.validationStatus[currentRole] == PlotManager.ValidationStatus.PENDING) {
+        revert("One of the roles has PENDING status");
+      }
+    }
+
+    bytes32 senderRole = _a.addressRoles[msg.sender];
+    _a.roleMessages[senderRole] = _message;
   }
 }

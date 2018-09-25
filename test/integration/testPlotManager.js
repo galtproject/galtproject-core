@@ -253,7 +253,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
 
-      let res = await this.plotManager.applyForPlotOwnership(
+      const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         galt.geohashToGeohash5('sezu06'),
         this.credentials,
@@ -440,6 +440,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       beforeEach(async function() {
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         this.fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+
         this.deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
       });
@@ -555,6 +556,165 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             })
           );
         });
+      });
+    });
+
+    describe('#resubmitApplication()', () => {
+      beforeEach(async function() {
+        await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+          NEW_APPLICATION,
+          ['cat', 'dog', 'human'],
+          [52, 47, 1],
+          ['', '', ''],
+          { from: coreTeam }
+        );
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        const geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+        const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+
+        await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
+        await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
+      });
+
+      describe('when new geohashes were added', () => {
+        beforeEach(async function() {
+          const geohashes = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
+          await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], {
+            from: alice
+          });
+          this.galts = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+          assert(this.galts > 0);
+        });
+
+        it('should require another payment', async function() {
+          await this.plotManager.resubmitApplication(this.aId, this.galts, { from: alice });
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        });
+
+        it('should reject on unexpected fee in GALT', async function() {
+          await assertRevert(this.plotManager.resubmitApplication(this.aId, 123, { from: alice }));
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+
+        it('should reject on payment both in ETH and GALT', async function() {
+          await assertRevert(
+            this.plotManager.resubmitApplication(this.aId, this.galts, {
+              from: alice,
+              value: '123'
+            })
+          );
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+      });
+
+      describe('when geohashes were removed', () => {
+        beforeEach(async function() {
+          const geohashes = ['sezu1110'].map(galt.geohashToGeohash5);
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
+            from: alice
+          });
+          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+          assert(this.fee < 0);
+        });
+
+        it('should not require another payment', async function() {
+          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        });
+      });
+    });
+
+    describe('#withdrawSubmissionFee()', () => {
+      beforeEach(async function() {
+        await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+          NEW_APPLICATION,
+          ['cat', 'dog', 'human'],
+          [52, 47, 1],
+          ['', '', ''],
+          { from: coreTeam }
+        );
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+        let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+        const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+        await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
+
+        await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
+        geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
+          from: alice
+        });
+      });
+
+      it('should allow withdraw unused fee after resubmission', async function() {
+        let finance = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+        assert.equal(finance.feeRefundAvailable, 0);
+
+        this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+
+        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+
+        finance = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+        assert.equal(finance.feeRefundAvailable, '20971520000000000000');
+
+        const aliceInitialBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
+        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
+        const aliceFinalBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
+
+        assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN('20971520000000000000')));
+      });
+
+      it('should reject fee withdrawals before resubmission', async function() {
+        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
+      });
+
+      it('should reject on double-refund', async function() {
+        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
+        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
       });
     });
 
@@ -845,7 +1005,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
 
-        res = await this.splitMerge.getPackageGeohashesCount(
+        let res = await this.splitMerge.getPackageGeohashesCount(
           '0x0200000000000000000000000000000000000000000000000000000000000000'
         );
         assert.equal(res, 9);
@@ -1050,7 +1210,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
     describe('#resubmitApplication()', () => {
       beforeEach(async function() {
-        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+        const geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
 
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
@@ -1064,23 +1225,144 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
 
-      it('should allow submit reverted application to the same validator who reverted it', async function() {
-        await this.plotManager.resubmitApplication(this.aId, { from: alice });
+      describe('when new geohashes were not changed', () => {
+        it('should allow submit reverted application to the same validator who reverted it', async function() {
+          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
 
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.validator.toLowerCase(), bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          assert.equal(res.validator.toLowerCase(), bob);
+          assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.validator.toLowerCase(), dan);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+          assert.equal(res.validator.toLowerCase(), dan);
+          assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
-        assert.equal(res.validator.toLowerCase(), eve);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+          assert.equal(res.validator.toLowerCase(), eve);
+          assert.equal(res.status, ValidationStatus.LOCKED);
+        });
+      });
+
+      describe('when new geohashes were added', () => {
+        beforeEach(async function() {
+          const geohashes = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
+          await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], {
+            from: alice
+          });
+          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+          assert(this.fee > 0);
+        });
+
+        it('should require another payment', async function() {
+          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice, value: this.fee });
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        });
+
+        it('should reject on unexpected fee in ETH', async function() {
+          await assertRevert(this.plotManager.resubmitApplication(this.aId, 0, { from: alice, value: 123 }));
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+
+        it('should reject on payment both in ETH and GALT', async function() {
+          await assertRevert(this.plotManager.resubmitApplication(this.aId, 123, { from: alice, value: this.fee }));
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+      });
+
+      describe('when geohashes were removed', () => {
+        beforeEach(async function() {
+          const geohashes = ['sezu1110'].map(galt.geohashToGeohash5);
+          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
+            from: alice
+          });
+          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+          assert(this.fee < 0);
+        });
+
+        it('should not require another payment', async function() {
+          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+
+          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        });
+      });
+    });
+
+    describe('#withdrawSubmissionFee()', () => {
+      beforeEach(async function() {
+        let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
+        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
+
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.NEW);
+
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
+        geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
+        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
+          from: alice
+        });
+        // TODO: remove one and get refund
+      });
+
+      it('should reject fee withdrawals before resubmission', async function() {
+        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
+      });
+
+      it('should reject on double-refund', async function() {
+        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
+        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
+      });
+
+      it('should allow withdraw unused fee after resubmission', async function() {
+        let finance = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+        assert.equal(finance.feeRefundAvailable, 0);
+
+        this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
+
+        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+
+        finance = await this.plotManagerWeb3.methods.getApplicationFinanceById(this.aId).call();
+        assert.equal(finance.feeRefundAvailable, '2097152000000000000');
+
+        const aliceInitialBalance = new BN(await web3.eth.getBalance(alice));
+        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
+        const aliceFinalBalance = new BN(await web3.eth.getBalance(alice));
+        // TODO: check balances
+
+        const diffAlice = aliceFinalBalance
+          .sub(new BN('2097152000000000000')) // <- the diff
+          .sub(aliceInitialBalance)
+          .add(new BN('10000000000000000')); // <- 0.01 ether
+
+        const max = new BN('10000000000000000'); // <- 0.01 ether
+        const min = new BN('0');
+
+        assert(
+          diffAlice.lt(max), // diff < 0.01 ether
+          `Expected ${web3.utils.fromWei(diffAlice.toString(10))} to be less than 0.01 ether`
+        );
+
+        // gt
+        assert(
+          diffAlice.gt(min), // diff > 0
+          `Expected ${web3.utils.fromWei(diffAlice.toString(10))} to be greater than 0`
+        );
       });
     });
 
@@ -1091,7 +1373,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
 
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
