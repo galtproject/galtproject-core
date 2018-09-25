@@ -332,7 +332,7 @@ contract PlotCustodianManager is AbstractApplication {
   function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.LOCKED, "Application status should be LOCKED");
+    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
 
     spaceToken.transferFrom(msg.sender, address(this), a.packageTokenId);
 
