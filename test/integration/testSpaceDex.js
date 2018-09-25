@@ -14,9 +14,6 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether, szabo } = require('../helpers');
 
-const PC_CUSTODIAN_ROLE = 'PC_CUSTODIAN_ROLE';
-const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
-
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
 
@@ -83,6 +80,9 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       { from: coreTeam }
     );
 
+    const PC_CUSTODIAN_ROLE = await this.plotCustodian.PC_CUSTODIAN_ROLE.call();
+    const PC_AUDITOR_ROLE = await this.plotCustodian.PC_AUDITOR_ROLE.call();
+
     await this.validators.setApplicationTypeRoles(
       await this.plotCustodian.APPLICATION_TYPE(),
       [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
@@ -120,6 +120,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     await this.galtToken.mint(this.galtDex.address, ether(100));
     await this.galtToken.mint(this.spaceDex.address, ether(1000000));
 
+    // TODO: move to helper
     this.valuatePlot = async (tokenId, price) => {
       const res = await this.plotValuation.submitApplication(tokenId, [''], 0, {
         from: alice,
@@ -135,6 +136,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       await this.plotValuation.approveValuation(aId, { from: eve });
     };
 
+    // TODO: move to helper
     this.setCustodianForPlot = async (tokenId, custodian) => {
       const auditor = dan;
       const tokenOwner = alice;
@@ -143,7 +145,6 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
         ATTACH: 0,
         DETACH: 1
       };
-
       const res = await this.plotCustodian.submitApplication(tokenId, Action.ATTACH, custodian, 0, {
         from: tokenOwner,
         value: ether(1)
@@ -198,6 +199,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
       await this.valuatePlot(geohashTokenId, ether(5));
+      await this.setCustodianForPlot(geohashTokenId, bob);
 
       await this.spaceToken.transferFrom(alice, this.spaceDex.address, geohashTokenId, {
         from: alice
