@@ -158,7 +158,7 @@ contract SpaceDex is Initializable, Ownable {
   }
   
   function getSpaceTokenActualPrice(uint256 tokenId) public view returns (uint256) {
-    if(spaceToken.ownerOf(tokenId) == address(this)){
+    if (spaceToken.ownerOf(tokenId) == address(this)) {
       return getSpaceTokenPriceForBuy(tokenId);
     } else {
       return getSpaceTokenPriceForSell(tokenId);

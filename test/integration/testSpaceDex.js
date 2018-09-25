@@ -28,7 +28,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
+contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
