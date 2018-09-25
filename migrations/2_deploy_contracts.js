@@ -135,7 +135,9 @@ module.exports = async function(deployer, network, accounts) {
       { from: coreTeam }
     );
 
-    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, { from: coreTeam });
+    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, plotCustodian.address, {
+      from: coreTeam
+    });
 
     await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
 
