@@ -7,6 +7,7 @@ import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
+import "./PlotManagerLib.sol";
 
 
 contract PlotManager is AbstractApplication {
@@ -44,12 +45,9 @@ contract PlotManager is AbstractApplication {
     address applicant;
     address operator;
     uint256 packageTokenId;
-    uint256 validatorsReward;
-    uint256 galtSpaceReward;
-    uint256 gasDepositEstimation;
-    bool gasDepositRedeemed;
-    bool galtSpaceRewardPaidOut;
+    uint256 areaWeight;
     ApplicationDetails details;
+    ApplicationFinance finance;
     Currency currency;
     ApplicationStatus status;
 
@@ -64,6 +62,16 @@ contract PlotManager is AbstractApplication {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
+  struct ApplicationFinance {
+    uint256 validatorsReward;
+    uint256 galtSpaceReward;
+    uint256 gasDepositEstimation;
+    uint256 latestCommittedFee;
+    uint256 feeRefundAvailable;
+    bool gasDepositRedeemed;
+    bool galtSpaceRewardPaidOut;
+  }
+
   struct ApplicationDetails {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
@@ -71,7 +79,13 @@ contract PlotManager is AbstractApplication {
     bytes2 country;
   }
 
+  // rate per one 12-symbol geohash in GALT
+  uint256 public submissionFeeRateGalt;
+  // rate per one 12-symbol geohash in ETH
+  uint256 public submissionFeeRateEth;
+  // in ETH
   uint256 public gasPriceForDeposits;
+
   mapping(bytes32 => Application) public applications;
   mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
@@ -112,7 +126,12 @@ contract PlotManager is AbstractApplication {
     minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
-    gasPriceForDeposits = 4 wei;
+    // 4 gwei
+    gasPriceForDeposits = 4000000000;
+    // 1_000 gwei
+    submissionFeeRateEth = 1 szabo;
+    // 10_000 gwei
+    submissionFeeRateGalt = 10 szabo;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
@@ -142,6 +161,11 @@ contract PlotManager is AbstractApplication {
 
   function setGasPriceForDeposits(uint256 _newPrice) external onlyFeeManager {
     gasPriceForDeposits = _newPrice;
+  }
+
+  function setSubmissionFeeRate(uint256 _newEthRate, uint256 _newGaltRate) external onlyFeeManager {
+    submissionFeeRateGalt = _newGaltRate;
+    submissionFeeRateEth = _newEthRate;
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -185,11 +209,9 @@ contract PlotManager is AbstractApplication {
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     bytes2 _country,
-    uint8 _precision,
-    uint256 _applicationFeeInGalt
+    uint8 _precision
   )
     public
-    payable
     ready
     returns (bytes32)
   {
@@ -198,24 +220,6 @@ contract PlotManager is AbstractApplication {
       _packageContour.length >= 3 && _packageContour.length <= 50, 
       "Number of contour elements should be between 3 and 50"
     );
-
-    // Default is ETH
-    Currency currency;
-    uint256 fee;
-
-    // ETH
-    if (msg.value > 0) {
-      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
-      fee = msg.value;
-    // GALT
-    } else {
-      require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
-      fee = _applicationFeeInGalt;
-      currency = Currency.GALT;
-    }
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -232,9 +236,6 @@ contract PlotManager is AbstractApplication {
     a.status = ApplicationStatus.NEW;
     a.id = _id;
     a.applicant = msg.sender;
-    a.currency = currency;
-
-    calculateAndStoreFee(a, fee);
 
     uint256 geohashTokenId = spaceToken.geohashToTokenId(_baseGeohash);
     if (!spaceToken.exists(geohashTokenId)) {
@@ -242,6 +243,7 @@ contract PlotManager is AbstractApplication {
     }
     // TODO: ELSE ensure geohashTokenId belongs to this contract
     a.packageTokenId = splitMerge.initPackage(geohashTokenId);
+    a.areaWeight = a.areaWeight.add(PlotManagerLib.geohash5Weight(_baseGeohash));
 
     splitMerge.setPackageContour(a.packageTokenId, _packageContour);
 
@@ -260,13 +262,11 @@ contract PlotManager is AbstractApplication {
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
 
-    assignRequiredValidatorRolesAndRewards(_id);
-
     return _id;
   }
 
   function calculateAndStoreFee(
-    Application memory _a,
+    Application storage _a,
     uint256 _fee
   )
     internal
@@ -284,13 +284,13 @@ contract PlotManager is AbstractApplication {
 
     assert(validatorsReward.add(galtSpaceReward) == _fee);
 
-    _a.validatorsReward = validatorsReward;
-    _a.galtSpaceReward = galtSpaceReward;
+    _a.finance.validatorsReward = validatorsReward;
+    _a.finance.galtSpaceReward = galtSpaceReward;
   }
 
   function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
-    assert(a.validatorsReward > 0);
+    assert(a.finance.validatorsReward > 0);
 
     uint256 totalReward = 0;
 
@@ -299,15 +299,17 @@ contract PlotManager is AbstractApplication {
     for (uint8 i = 0; i < len; i++) {
       bytes32 role = a.assignedRoles[i];
       uint256 rewardShare = a
+      .finance
       .validatorsReward
       .mul(validators.getRoleRewardShare(role))
       .div(100);
+
       a.assignedRewards[role] = rewardShare;
       changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward == a.validatorsReward);
+    assert(totalReward == a.finance.validatorsReward);
   }
 
   function addGeohashesToApplication(
@@ -325,25 +327,14 @@ contract PlotManager is AbstractApplication {
       "Application status should be NEW or REVERTED."
     );
 
-    uint256 initGas = gasleft();
-
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-      if (spaceToken.exists(geohashTokenId)) {
-        require(
-          spaceToken.ownerOf(geohashTokenId) == address(this),
-          "Existing geohash token should belongs to PlotManager contract"
-        );
-      } else {
-        spaceToken.mintGeohash(address(this), _geohashes[i]);
-      }
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
-
-    a.gasDepositEstimation = a.gasDepositEstimation.add(initGas.sub(gasleft()));
+    PlotManagerLib.addGeohashesToApplication(
+      a,
+      spaceToken,
+      splitMerge,
+      _geohashes,
+      _neighborsGeohashTokens,
+      _directions
+    );
   }
 
   function removeGeohashesFromApplication(
@@ -371,16 +362,14 @@ contract PlotManager is AbstractApplication {
       (a.addressRoles[msg.sender] != 0x0 && validators.isValidatorActive(msg.sender)),
       "Sender is not valid");
 
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-
-      require(spaceToken.ownerOf(geohashTokenId) == address(splitMerge), "Existing geohash token should belongs to PlotManager contract");
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    // TODO: implement directions
-    splitMerge.removeGeohashesFromPackage(a.packageTokenId, _geohashes, _directions1, _directions2);
+    PlotManagerLib.removeGeohashesFromApplication(
+      a,
+      spaceToken,
+      splitMerge,
+      _geohashes,
+      _directions1,
+      _directions2
+    );
 
     if (splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0) {
       if (msg.sender == a.applicant) {
@@ -392,7 +381,52 @@ contract PlotManager is AbstractApplication {
   }
 
   function submitApplication(
-    bytes32 _aId
+    bytes32 _aId,
+    uint256 _submissionFeeInGalt
+  )
+    external
+    payable
+    onlyApplicant(_aId)
+  {
+    Application storage a = applications[_aId];
+    uint256 expectedDepositInEth = a.finance.gasDepositEstimation.mul(gasPriceForDeposits);
+
+    // TODO: add check for >= 1 geohash
+    // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
+    require(a.finance.gasDepositEstimation != 0, "No gas deposit estimated");
+    require(
+      a.status == ApplicationStatus.NEW,
+      "Application status should be NEW");
+
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
+
+    // GALT
+    if (_submissionFeeInGalt > 0) {
+      require(msg.value == expectedDepositInEth, "ETH value should be exactly equal expectedDeposit");
+      require(_submissionFeeInGalt == getSubmissionFee(a.id, Currency.GALT), "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
+      fee = _submissionFeeInGalt;
+      a.currency = Currency.GALT;
+    // ETH
+    } else {
+      fee = getSubmissionFee(a.id, Currency.ETH);
+      require(
+        msg.value == expectedDepositInEth.add(fee),
+        "Incorrect msg.value passed in");
+    }
+
+    calculateAndStoreFee(a, fee);
+    assignRequiredValidatorRolesAndRewards(_aId);
+    a.finance.latestCommittedFee = fee;
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
+  function resubmitApplication(
+    bytes32 _aId,
+    uint256 _resubmissionFeeInGalt
   )
     external
     payable
@@ -400,24 +434,44 @@ contract PlotManager is AbstractApplication {
   {
     Application storage a = applications[_aId];
 
+    // TODO: add check for >= 1 geohash
     // NOTICE: use #addGeohashesToApplication() event if there are no geohashes in a package
-    require(a.gasDepositEstimation != 0, "No gas deposit estimated");
     require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.REVERTED,
-      "Application status should be NEW");
+      a.status == ApplicationStatus.REVERTED,
+      "Application status should be REVERTED");
 
-    if (a.status == ApplicationStatus.NEW) {
-      uint256 expectedDepositInEth = a.gasDepositEstimation.mul(gasPriceForDeposits);
-      require(msg.value == expectedDepositInEth, "Incorrect gas deposit");
+    Currency currency = a.currency;
+    uint256 fee;
+
+    if (a.currency == Currency.GALT) {
+      require(msg.value == 0, "ETH payment not expected");
+      fee = _resubmissionFeeInGalt;
     } else {
-      require(msg.value == 0, "No deposit required on re-submition");
+      require(_resubmissionFeeInGalt == 0, "GALT payment not expected");
+      fee = msg.value;
+    }
 
-      uint256 len = a.assignedRoles.length;
+    uint256 newTotalFee = getSubmissionFee(a.id, a.currency);
+    uint256 alreadyPaid = a.finance.latestCommittedFee;
 
-      for (uint8 i = 0; i < len; i++) {
-        if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
-          changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
-        }
+    if (newTotalFee > alreadyPaid) {
+      uint256 requiredPayment = newTotalFee.sub(alreadyPaid);
+      require(fee == requiredPayment, "Incorrect fee passed in");
+    } else if (newTotalFee < alreadyPaid) {
+      require(fee == 0, "Unexpected payment");
+      uint256 requiredRefund = alreadyPaid.sub(newTotalFee);
+      a.finance.feeRefundAvailable = a.finance.feeRefundAvailable.add(requiredRefund);
+    } else {
+      require(fee == 0, "Unexpected payment");
+    }
+
+    a.finance.latestCommittedFee = newTotalFee;
+
+    uint256 len = a.assignedRoles.length;
+
+    for (uint8 i = 0; i < len; i++) {
+      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, a.assignedRoles[i], ValidationStatus.LOCKED);
       }
     }
 
@@ -500,23 +554,9 @@ contract PlotManager is AbstractApplication {
     onlyValidatorOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+    PlotManagerLib.rejectApplicationHelper(a, _message);
 
-    uint256 len = a.assignedRoles.length;
-
-    for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] == ValidationStatus.PENDING) {
-        revert("One of the roles has PENDING status");
-      }
-    }
-
-    bytes32 senderRole = a.addressRoles[msg.sender];
-    a.roleMessages[senderRole] = _message;
-
-    changeValidationStatus(a, senderRole, ValidationStatus.REJECTED);
+    changeValidationStatus(a, a.addressRoles[msg.sender], ValidationStatus.REJECTED);
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
@@ -553,8 +593,8 @@ contract PlotManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(
-      a.status == ApplicationStatus.NEW || a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
-      "Application status should either NEW or DISASSEMBLED_BY_APPLICANT");
+      a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
+      "Application status should either or DISASSEMBLED_BY_APPLICANT");
 
     require(
       splitMerge.getPackageGeohashesCount(a.packageTokenId) == 0,
@@ -562,7 +602,7 @@ contract PlotManager is AbstractApplication {
 
     changeApplicationStatus(a, ApplicationStatus.REVOKED);
 
-    uint256 deposit = a.validatorsReward.add(a.galtSpaceReward);
+    uint256 deposit = a.finance.validatorsReward.add(a.finance.galtSpaceReward);
 
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(deposit);
@@ -611,15 +651,15 @@ contract PlotManager is AbstractApplication {
     require(
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
       "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
-    require(a.galtSpaceReward > 0, "Reward is 0");
-    require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+    require(a.finance.galtSpaceReward > 0, "Reward is 0");
+    require(a.finance.galtSpaceRewardPaidOut == false, "Reward is already paid out");
 
-    a.galtSpaceRewardPaidOut = true;
+    a.finance.galtSpaceRewardPaidOut = true;
 
     if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.galtSpaceReward);
+      msg.sender.transfer(a.finance.galtSpaceReward);
     } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.galtSpaceReward);
+      galtToken.transfer(msg.sender, a.finance.galtSpaceReward);
     } else {
       revert("Unknown currency");
     }
@@ -632,10 +672,10 @@ contract PlotManager is AbstractApplication {
       a.status == ApplicationStatus.APPROVED ||
       a.status == ApplicationStatus.DISASSEMBLED_BY_APPLICANT,
       "Application status should be APPROVED or DISASSEMBLED_BY_APPLICANT");
-    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+    require(a.finance.gasDepositRedeemed == false, "Deposit is already redeemed");
 
-    a.gasDepositRedeemed = true;
-    msg.sender.transfer(a.gasDepositEstimation);
+    a.finance.gasDepositRedeemed = true;
+    msg.sender.transfer(a.finance.gasDepositEstimation);
   }
 
   // TODO: track validator
@@ -645,10 +685,27 @@ contract PlotManager is AbstractApplication {
     require(
       a.status == ApplicationStatus.DISASSEMBLED_BY_VALIDATOR,
       "Application status should be DISASSEMBLED_BY_VALIDATOR");
-    require(a.gasDepositRedeemed == false, "Deposit is already redeemed");
+    require(a.finance.gasDepositRedeemed == false, "Deposit is already redeemed");
 
-    a.gasDepositRedeemed = true;
-    msg.sender.transfer(a.gasDepositEstimation);
+    a.finance.gasDepositRedeemed = true;
+    msg.sender.transfer(a.finance.gasDepositEstimation);
+  }
+
+  /**
+   * @dev Withdraw total unused submission fee back
+   */
+  function withdrawSubmissionFee(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    uint256 refund = a.finance.feeRefundAvailable;
+
+    require(refund > 0, "No refund available");
+    a.finance.feeRefundAvailable = 0;
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(refund);
+    } else if (a.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, refund);
+    }
   }
 
   function changeValidationStatus(
@@ -686,6 +743,9 @@ contract PlotManager is AbstractApplication {
     return (_hash == applications[_id].details.credentialsHash);
   }
 
+  /**
+   * @dev Get common application details
+   */
   function getApplicationById(
     bytes32 _id
   )
@@ -711,7 +771,7 @@ contract PlotManager is AbstractApplication {
     return (
       m.applicant,
       m.packageTokenId,
-      m.gasDepositEstimation,
+      m.finance.gasDepositEstimation,
       m.details.credentialsHash,
       m.status,
       m.currency,
@@ -722,6 +782,9 @@ contract PlotManager is AbstractApplication {
     );
   }
 
+  /**
+   * @dev Get application finance-related information
+   */
   function getApplicationFinanceById(
     bytes32 _id
   )
@@ -731,7 +794,12 @@ contract PlotManager is AbstractApplication {
       ApplicationStatus status,
       Currency currency,
       uint256 validatorsReward,
-      uint256 galtSpaceReward
+      uint256 galtSpaceReward,
+      uint256 gasDepositEstimation,
+      uint256 latestCommittedFee,
+      uint256 feeRefundAvailable,
+      bool gasDepositRedeemed,
+      bool galtSpaceRewardPaidOut
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -741,8 +809,13 @@ contract PlotManager is AbstractApplication {
     return (
       m.status,
       m.currency,
-      m.validatorsReward,
-      m.galtSpaceReward
+      m.finance.validatorsReward,
+      m.finance.galtSpaceReward,
+      m.finance.gasDepositEstimation,
+      m.finance.latestCommittedFee,
+      m.finance.feeRefundAvailable,
+      m.finance.gasDepositRedeemed,
+      m.finance.galtSpaceRewardPaidOut
     );
   }
 
@@ -760,6 +833,54 @@ contract PlotManager is AbstractApplication {
 
   function getApplicationOperator(bytes32 _aId) public view returns (address) {
     return applications[_aId].operator;
+  }
+
+  function getEstimatedGasDeposit(bytes32 _aId) public view returns (uint256) {
+    return applications[_aId].finance.gasDepositEstimation * gasPriceForDeposits;
+  }
+
+  /**
+   * @dev Fee to pass in to #submitApplication() function either in GALT or in ETH
+   */
+  function getSubmissionFee(bytes32 _aId, Currency _currency) public view returns (uint256) {
+    if (_currency == Currency.GALT) {
+      return applications[_aId].areaWeight * submissionFeeRateGalt;
+    } else {
+      return applications[_aId].areaWeight * submissionFeeRateEth;
+    }
+  }
+
+  /**
+   * @dev Payment to pass in to #submitApplication() in msg.value field.
+   * For ETH includes both submissionFee and gasDeposit.
+   * For GALT includes only gasDeposit.
+   */
+  function getSubmissionPaymentInEth(bytes32 _aId, Currency _currency) public view returns (uint256) {
+    uint256 deposit = getEstimatedGasDeposit(_aId);
+
+    if (_currency == Currency.GALT) {
+      return deposit;
+    } else {
+      return (applications[_aId].areaWeight * submissionFeeRateEth) + deposit;
+    }
+  }
+
+  /**
+   * @dev Fee to pass in to #resubmitApplication().
+   *
+   * if newTotalFee > latestPaidFee:
+   *   (result > 0) and should be sent either as GALT or as ETH depending on application currency.
+   * if newTotalFee == latestPaidFee:
+   *   (result == 0)
+   * if newTotalFee < latestPaidFee:
+   *   (result < 0) and could be claimed back.
+   */
+  function getResubmissionFee(bytes32 _aId) external returns (int256) {
+    Application storage a = applications[_aId];
+    uint256 newTotalFee = getSubmissionFee(a.id, a.currency);
+    uint256 latest = a.finance.latestCommittedFee;
+
+    return int256(newTotalFee) - int256(latest);
   }
 
   function getApplicationValidator(

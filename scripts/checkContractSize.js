@@ -2,12 +2,17 @@ const fs = require('fs');
 
 console.log('\nSize limit is about', 24577, '\n');
 checkSize('AbstractApplication');
-checkSize('PlotManager');
-checkSize('PlotClarificationManager');
-checkSize('SplitMerge');
-checkSize('SpaceToken');
 checkSize('GaltToken');
 checkSize('GaltDex');
+checkSize('LandUtils');
+checkSize('PlotClarificationManager');
+checkSize('PlotCustodianManager');
+checkSize('PlotManager');
+checkSize('PlotManagerLib');
+checkSize('PlotValutaion');
+checkSize('SpaceDex');
+checkSize('SpaceToken');
+checkSize('SplitMerge');
 checkSize('Validators');
 console.log('\n');
 

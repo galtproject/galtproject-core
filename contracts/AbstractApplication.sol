@@ -1,9 +1,11 @@
 pragma solidity 0.4.24;
+pragma experimental "v0.5.0";
+
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Validators.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
-pragma experimental "v0.5.0";
+
 
 contract AbstractApplication is Initializable, Ownable {
   PaymentMethod public paymentMethod;
