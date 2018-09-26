@@ -2,6 +2,7 @@ const PlotManager = artifacts.require('./PlotManager');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const GaltDex = artifacts.require('./GaltDex');
+const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
 const Web3 = require('web3');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
@@ -25,6 +26,7 @@ module.exports = async function(deployer, network, accounts) {
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
+    const spaceDex = await GaltDex.at(data.spaceDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
@@ -135,6 +137,7 @@ module.exports = async function(deployer, network, accounts) {
 
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(spaceDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(validators.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(validators.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
