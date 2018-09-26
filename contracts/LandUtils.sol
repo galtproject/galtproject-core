@@ -23,8 +23,6 @@ library LandUtils {
       return 1;
     } else if (_geohash5 <= C2_GEOHASH) {
       return 2;
-    } else if (_geohash5 <= C2_GEOHASH) {
-      return 2;
     } else if (_geohash5 <= C3_GEOHASH) {
       return 3;
     } else if (_geohash5 <= C4_GEOHASH) {
