@@ -63,6 +63,9 @@ module.exports = async function(deployer, network, accounts) {
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
     await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
 
+    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
