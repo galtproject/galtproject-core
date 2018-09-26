@@ -132,7 +132,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
       uint256 galtSum = galtToken.totalSupply().sub(galtToken.balanceOf(address(this))).add(galtFeePayout);
       
       if (spaceDex != address(0)) {
-        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum());
+        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum()).sub(spaceDex.feePayout());
       }
       
       uint256 ethSum = address(this).balance.sub(ethFeePayout).sub(minusBalance);

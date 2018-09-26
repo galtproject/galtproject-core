@@ -54,6 +54,9 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
       }
     );
 
+    await this.spaceDex.addRoleTo(coreTeam, 'fee_manager');
+    await this.spaceDex.setFee(szabo(fee));
+
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
     await this.galtDex.addRoleTo(coreTeam, 'fee_manager');
@@ -330,16 +333,13 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
 
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
-      console.log('owner', await this.spaceToken.ownerOf(geohashTokenId));
-      console.log('alice', alice);
-
       await this.valuatePlot(geohashTokenId, ether(5));
       await this.setCustodianForPlot(geohashTokenId, bob);
       await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPrice(geohashTokenId);
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
       await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
         from: alice
       });
