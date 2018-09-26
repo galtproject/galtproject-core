@@ -309,8 +309,9 @@ contract PlotCustodianManager is AbstractApplication {
     validators.ensureValidatorActive(msg.sender);
 
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      a.status == ApplicationStatus.SUBMITTED ||
+      a.status == ApplicationStatus.REVIEW,
+      "Application status should be SUBMITTED or REVIEW");
     require(a.roleAddresses[PC_AUDITOR_ROLE] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[PC_AUDITOR_ROLE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
 
@@ -320,7 +321,7 @@ contract PlotCustodianManager is AbstractApplication {
 
     changeValidationStatus(a, PC_AUDITOR_ROLE, ValidationStatus.LOCKED);
 
-    if (a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED) {
+    if (a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED && a.status != ApplicationStatus.REVIEW) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -332,7 +333,7 @@ contract PlotCustodianManager is AbstractApplication {
   function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.LOCKED, "Application status should be LOCKED");
+    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
 
     spaceToken.transferFrom(msg.sender, address(this), a.packageTokenId);
 
@@ -391,12 +392,13 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Reject the application by a custodian if he changed his mind or the application looks suspicious.
    * @param _aId application ID
    */
-  function rejectApplication(bytes32 _aId) external {
+  function rejectApplication(bytes32 _aId, string _message) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
     require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE], "Only a custodian role is allowed to perform this action");
 
+    a.roleMessages[PC_CUSTODIAN_ROLE] = _message;
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
@@ -513,13 +515,11 @@ contract PlotCustodianManager is AbstractApplication {
       uint256 packageTokenId,
       address chosenCustodian,
       uint8 approveConfirmations,
+      bytes32[] assignedValidatorRoles,
       bytes32[] custodianDocuments,
       ApplicationStatus status,
       Currency currency,
-      Action action,
-      uint256 galtSpaceReward,
-      uint256 validatorsReward,
-      bool galtSpaceRewardPaidOut
+      Action action
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -531,12 +531,36 @@ contract PlotCustodianManager is AbstractApplication {
       m.packageTokenId,
       m.chosenCustodian,
       m.approveConfirmations,
+      m.assignedRoles,
       m.custodianDocuments,
       m.status,
       m.currency,
-      m.action,
-      m.galtSpaceReward,
+      m.action
+    );
+  }
+
+  function getApplicationFinanceById(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      ApplicationStatus status,
+      Currency currency,
+      uint256 validatorsReward,
+      uint256 galtSpaceReward,
+      bool galtSpaceRewardPaidOut
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (
+      m.status,
+      m.currency,
       m.validatorsReward,
+      m.galtSpaceReward,
       m.galtSpaceRewardPaidOut
     );
   }
