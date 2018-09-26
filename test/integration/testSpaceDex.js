@@ -27,7 +27,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
+contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
   const feePercent = 5;
   const plotPriceGalt = 150;
 
