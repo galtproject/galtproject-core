@@ -14,6 +14,8 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether, szabo } = require('../helpers');
 
+const { BN } = Web3.utils;
+
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
 
@@ -25,9 +27,9 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
-  const fee = 15;
-  const baseExchangeRate = 1;
+contract.only('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
+  const feePercent = 5;
+  const plotPriceGalt = 150;
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -101,11 +103,11 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       from: coreTeam
     });
 
-    this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
+    await this.galtDex.initialize(szabo(1), szabo(5), szabo(5), this.galtToken.address, {
       from: coreTeam
     });
 
-    this.spaceDex.initialize(
+    await this.spaceDex.initialize(
       this.galtToken.address,
       this.spaceToken.address,
       this.plotValuation.address,
@@ -115,9 +117,13 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       }
     );
 
+    await this.spaceDex.addRoleTo(coreTeam, 'fee_manager');
+
+    await this.spaceDex.setFee(szabo(feePercent));
+
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
-    await this.galtToken.mint(this.galtDex.address, ether(100));
+    await this.galtToken.mint(this.galtDex.address, ether(1000000));
     await this.galtToken.mint(this.spaceDex.address, ether(1000000));
 
     // TODO: move to helper
@@ -172,20 +178,27 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
-      await this.valuatePlot(geohashTokenId, ether(5));
+      await this.valuatePlot(geohashTokenId, ether(plotPriceGalt));
       await this.setCustodianForPlot(geohashTokenId, bob);
 
       await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPrice(geohashTokenId);
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
       await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
         from: alice
       });
 
       const aliceGaltBalance = await this.galtToken.balanceOf(alice);
       assert.equal(aliceGaltBalance.toString(10), geohashPrice.toString(10));
+
+      const expectedFeeGalt = ether((plotPriceGalt * feePercent) / 100);
+      await this.spaceDex.withdrawFee({
+        from: coreTeam
+      });
+      const coreTeamBalance = await this.galtToken.balanceOf(coreTeam);
+      assert.equal(coreTeamBalance.toString(10), expectedFeeGalt.toString(10));
     });
   });
 
@@ -198,14 +211,21 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
-      await this.valuatePlot(geohashTokenId, ether(5));
+      await this.valuatePlot(geohashTokenId, ether(plotPriceGalt));
       await this.setCustodianForPlot(geohashTokenId, bob);
 
-      await this.spaceToken.transferFrom(alice, this.spaceDex.address, geohashTokenId, {
+      await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPrice(geohashTokenId);
+      await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+        from: alice
+      });
+
+      const expectedFeeGalt = ether((plotPriceGalt * feePercent) / 100);
+
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
+      assert.equal(geohashPrice.toString(10), new BN(expectedFeeGalt).add(new BN(ether(plotPriceGalt))).toString(10));
 
       await this.galtToken.mint(alice, geohashPrice);
       await this.galtToken.approve(this.spaceDex.address, geohashPrice, { from: alice });
@@ -216,6 +236,15 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
       const ownerOfGeohashToken = await this.spaceToken.ownerOf(geohashTokenId);
       assert.equal(ownerOfGeohashToken, alice);
+
+      const feePayout = await this.spaceDex.feePayout();
+      assert.equal(feePayout.toString(10), (expectedFeeGalt * 2).toString(10));
+
+      await this.spaceDex.withdrawFee({
+        from: coreTeam
+      });
+      const coreTeamBalance = await this.galtToken.balanceOf(coreTeam);
+      assert.equal(coreTeamBalance.toString(10), (expectedFeeGalt * 2).toString(10));
     });
   });
 });
