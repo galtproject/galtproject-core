@@ -7,6 +7,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
 import "./SpaceToken.sol";
 import "./PlotValuation.sol";
+import "./PlotCustodianManager.sol";
 
 contract SpaceDex is Initializable, Ownable {
   using SafeMath for uint256;
@@ -19,6 +20,7 @@ contract SpaceDex is Initializable, Ownable {
   GaltToken galtToken;
   SpaceToken spaceToken;
   PlotValuation plotValuation;
+  PlotCustodianManager plotCustodian;
 
   uint256 public spaceToGaltSum;
   uint256 public galtToSpaceSum;
@@ -26,6 +28,7 @@ contract SpaceDex is Initializable, Ownable {
   uint256 public spacePriceOnSaleSum;
   
   bytes32[] public operationsArray;
+  mapping(uint256 => bytes32[]) public operationsByTokenArray;
   mapping(uint256 => bytes32) public lastOperationByTokenId;
   mapping(bytes32 => OperationDetails) public operationsDetails;
 
@@ -33,6 +36,7 @@ contract SpaceDex is Initializable, Ownable {
     uint256 spaceTokenId;
     uint256 galtAmount;
     address user;
+    address custodian;
     bytes32 previousOperation;
     uint256 timestamp;
     OperationDirection direction;
@@ -43,7 +47,8 @@ contract SpaceDex is Initializable, Ownable {
   function initialize(
     GaltToken _galtToken,
     SpaceToken _spaceToken,
-    PlotValuation _plotValuation
+    PlotValuation _plotValuation,
+    PlotCustodianManager _plotCustodian
   )
     public
     isInitializer
@@ -52,6 +57,7 @@ contract SpaceDex is Initializable, Ownable {
     galtToken = _galtToken;
     spaceToken = _spaceToken;
     plotValuation = _plotValuation;
+    plotCustodian = _plotCustodian;
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
@@ -74,7 +80,7 @@ contract SpaceDex is Initializable, Ownable {
       "Not allowed space for sale"
     );
 
-    require(availableForSale(_spaceTokenId), "Not available for sale");
+    require(availableForSell(_spaceTokenId), "Not available for sale");
     
     bytes32 _operationId = keccak256(
       abi.encodePacked(
@@ -84,13 +90,14 @@ contract SpaceDex is Initializable, Ownable {
       )
     );
     
-    uint256 _galtToSend = getSpaceTokenPrice(_spaceTokenId);
+    uint256 _galtToSend = getSpaceTokenPriceForSell(_spaceTokenId);
     bytes32 _previousOperation = lastOperationByTokenId[_spaceTokenId];
 
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _galtToSend,
       user: msg.sender,
+      custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
       direction: OperationDirection.SPACE_TO_GALT,
       timestamp: now
@@ -101,6 +108,7 @@ contract SpaceDex is Initializable, Ownable {
 
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
+    operationsByTokenArray[_spaceTokenId].push(_operationId);
     operationsArray.push(_operationId);
 
     spaceToGaltSum += 1;
@@ -108,10 +116,10 @@ contract SpaceDex is Initializable, Ownable {
   }
 
   function exchangeGaltToSpace(uint256 _spaceTokenId) public {
-    uint256 _galtToSend = getSpaceTokenPrice(_spaceTokenId);
+    uint256 _galtToSend = getSpaceTokenPriceForBuy(_spaceTokenId);
     require(galtToken.allowance(msg.sender, address(this)) >= _galtToSend, "Not enough galt allowance");
 
-    require(availableForSale(_spaceTokenId), "Not available for sale");
+    require(availableForBuy(_spaceTokenId), "Not available for sale");
 
     bytes32 _operationId = keccak256(
       abi.encodePacked(
@@ -122,13 +130,12 @@ contract SpaceDex is Initializable, Ownable {
     );
     
     bytes32 _previousOperation = lastOperationByTokenId[_spaceTokenId];
-    
-    OperationDetails memory _previousOperationDetails = operationsDetails[_previousOperation];
 
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _galtToSend,
       user: msg.sender,
+      custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
       direction: OperationDirection.GALT_TO_SPACE,
       timestamp: now
@@ -140,22 +147,48 @@ contract SpaceDex is Initializable, Ownable {
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
     operationsArray.push(_operationId);
+    operationsByTokenArray[_spaceTokenId].push(_operationId);
 
     galtToSpaceSum += _galtToSend;
-    spacePriceOnSaleSum -= _previousOperationDetails.galtAmount;
+    spacePriceOnSaleSum -= _galtToSend;
   }
 
   function getSpaceTokensOnSale() public view returns (uint256[]) {
     return spaceToken.tokensOfOwner(address(this));
   }
   
-  function getSpaceTokenPrice(uint256 tokenId) public view returns (uint256) {
+  function getSpaceTokenActualPrice(uint256 tokenId) public view returns (uint256) {
+    if (spaceToken.ownerOf(tokenId) == address(this)) {
+      return getSpaceTokenPriceForBuy(tokenId);
+    } else {
+      return getSpaceTokenPriceForSell(tokenId);
+    }
+  }
+  
+  function getSpaceTokenPriceForSell(uint256 tokenId) public view returns (uint256) {
     require(tokenId > 0, "tokenId cant be null");
     return plotValuation.plotValuations(tokenId);
   }
 
-  function availableForSale(uint256 tokenId) public view returns (bool) {
+  function getSpaceTokenPriceForBuy(uint256 tokenId) public view returns (uint256) {
     require(tokenId > 0, "tokenId cant be null");
-    return plotValuation.plotValuations(tokenId) > 0;
+    bytes32 lastOperation = lastOperationByTokenId[tokenId];
+    OperationDetails memory lastOperationDetails = operationsDetails[lastOperation];
+    return lastOperationDetails.galtAmount;
+  }
+
+  function getSpaceTokenCustodian(uint256 tokenId) public view returns (address) {
+    require(tokenId > 0, "tokenId cant be null");
+    return plotCustodian.assignedCustodians(tokenId);
+  }
+
+  function availableForSell(uint256 tokenId) public view returns (bool) {
+    require(tokenId > 0, "tokenId cant be null");
+    return getSpaceTokenPriceForSell(tokenId) > 0 && getSpaceTokenCustodian(tokenId) != address(0);
+  }
+
+  function availableForBuy(uint256 tokenId) public view returns (bool) {
+    require(tokenId > 0, "tokenId cant be null");
+    return spaceToken.ownerOf(tokenId) == address(this);
   }
 }

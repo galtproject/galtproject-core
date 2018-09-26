@@ -3,6 +3,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
+const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const galt = require('@galtproject/utils');
@@ -36,8 +37,20 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     this.validators = await Validators.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
+    this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
     await this.plotValuation.initialize(
+      this.spaceToken.address,
+      this.splitMerge.address,
+      this.validators.address,
+      this.galtToken.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
+    await this.plotCustodian.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
       this.validators.address,
@@ -67,23 +80,47 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       { from: coreTeam }
     );
 
-    await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE], { from: coreTeam });
-    await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE], { from: coreTeam });
-    await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], { from: coreTeam });
+    const PC_CUSTODIAN_ROLE = await this.plotCustodian.PC_CUSTODIAN_ROLE.call();
+    const PC_AUDITOR_ROLE = await this.plotCustodian.PC_AUDITOR_ROLE.call();
+
+    await this.validators.setApplicationTypeRoles(
+      await this.plotCustodian.APPLICATION_TYPE(),
+      [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+      [60, 40],
+      ['', ''],
+      { from: coreTeam }
+    );
+
+    await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE], {
+      from: coreTeam
+    });
+    await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, PC_AUDITOR_ROLE], {
+      from: coreTeam
+    });
+    await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], {
+      from: coreTeam
+    });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
       from: coreTeam
     });
 
-    this.spaceDex.initialize(this.galtToken.address, this.spaceToken.address, this.plotValuation.address, {
-      from: coreTeam
-    });
+    this.spaceDex.initialize(
+      this.galtToken.address,
+      this.spaceToken.address,
+      this.plotValuation.address,
+      this.plotCustodian.address,
+      {
+        from: coreTeam
+      }
+    );
 
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
     await this.galtToken.mint(this.galtDex.address, ether(100));
     await this.galtToken.mint(this.spaceDex.address, ether(1000000));
 
+    // TODO: move to helper
     this.valuatePlot = async (tokenId, price) => {
       const res = await this.plotValuation.submitApplication(tokenId, [''], 0, {
         from: alice,
@@ -98,6 +135,32 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       await this.plotValuation.lockApplication(aId, PV_AUDITOR_ROLE, { from: eve });
       await this.plotValuation.approveValuation(aId, { from: eve });
     };
+
+    // TODO: move to helper
+    this.setCustodianForPlot = async (tokenId, custodian) => {
+      const auditor = dan;
+      const tokenOwner = alice;
+
+      const Action = {
+        ATTACH: 0,
+        DETACH: 1
+      };
+      const res = await this.plotCustodian.submitApplication(tokenId, Action.ATTACH, custodian, 0, {
+        from: tokenOwner,
+        value: ether(1)
+      });
+      const aId = res.logs[0].args.id;
+      await this.plotCustodian.lockApplication(aId, { from: auditor });
+      await this.plotCustodian.acceptApplication(aId, { from: custodian });
+      await this.spaceToken.approve(this.plotCustodian.address, tokenId, { from: tokenOwner });
+      await this.plotCustodian.attachToken(aId, {
+        from: alice
+      });
+      await this.plotCustodian.approveApplication(aId, { from: auditor });
+      await this.plotCustodian.approveApplication(aId, { from: tokenOwner });
+      await this.plotCustodian.approveApplication(aId, { from: custodian });
+      await this.plotCustodian.withdrawToken(aId, { from: tokenOwner });
+    };
   });
 
   describe('#exchangeSpaceToGalt()', async () => {
@@ -110,12 +173,13 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
       await this.valuatePlot(geohashTokenId, ether(5));
+      await this.setCustodianForPlot(geohashTokenId, bob);
 
       await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPrice(geohashTokenId);
       await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
         from: alice
       });
@@ -135,12 +199,13 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       const geohashTokenId = galt.geohashToTokenId('sezu05');
 
       await this.valuatePlot(geohashTokenId, ether(5));
+      await this.setCustodianForPlot(geohashTokenId, bob);
 
       await this.spaceToken.transferFrom(alice, this.spaceDex.address, geohashTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenPrice(geohashTokenId);
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPrice(geohashTokenId);
 
       await this.galtToken.mint(alice, geohashPrice);
       await this.galtToken.approve(this.spaceDex.address, geohashPrice, { from: alice });
