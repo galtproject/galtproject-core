@@ -117,25 +117,25 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
     uint256 _feeAmount = getFeeForAmount(_spacePrice);
-    uint256 _galtToSend = _spacePrice - _feeAmount;
+    uint256 _galtToSend = _spacePrice.sub(_feeAmount);
     galtToken.transfer(msg.sender, _galtToSend);
 
-    feePayout += _feeAmount;
-    feeTotalPayout += _feeAmount;
+    feePayout = feePayout.add(_feeAmount);
+    feeTotalPayout = feeTotalPayout.add(_feeAmount);
 
     lastOperationByTokenId[_spaceTokenId] = _operationId;
 
     operationsByTokenArray[_spaceTokenId].push(_operationId);
     operationsArray.push(_operationId);
 
-    spaceToGaltSum += 1;
-    spacePriceOnSaleSum += _spacePrice;
+    spaceToGaltSum = spaceToGaltSum.add(1);
+    spacePriceOnSaleSum = spacePriceOnSaleSum.add(_spacePrice);
   }
 
   function exchangeGaltToSpace(uint256 _spaceTokenId) public {
     uint256 _spacePrice = getSpaceTokenPriceForBuy(_spaceTokenId);
     uint256 _feeAmount = getFeeForAmount(_spacePrice);
-    uint256 _galtToSend = _spacePrice + _feeAmount;
+    uint256 _galtToSend = _spacePrice.add(_feeAmount);
     
     require(galtToken.allowance(msg.sender, address(this)) >= _galtToSend, "Not enough galt allowance");
 
@@ -164,8 +164,8 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
     galtToken.transferFrom(msg.sender, address(this), _galtToSend);
 
-    feePayout += _feeAmount;
-    feeTotalPayout += _feeAmount;
+    feePayout = feePayout.add(_feeAmount);
+    feeTotalPayout = feeTotalPayout.add(_feeAmount);
     
     spaceToken.transferFrom(address(this), msg.sender, _spaceTokenId);
 
@@ -174,8 +174,8 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     operationsArray.push(_operationId);
     operationsByTokenArray[_spaceTokenId].push(_operationId);
 
-    galtToSpaceSum += _spacePrice;
-    spacePriceOnSaleSum -= _spacePrice;
+    galtToSpaceSum = galtToSpaceSum.add(_spacePrice);
+    spacePriceOnSaleSum = spacePriceOnSaleSum.sub(_spacePrice);
   }
 
   function getSpaceTokensOnSale() public view returns (uint256[]) {
@@ -195,9 +195,9 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     uint256 feeAmount = getFeeForAmount(geohashPrice);
     
     if (spaceToken.ownerOf(tokenId) == address(this)) {
-      return geohashPrice + feeAmount;
+      return geohashPrice.add(feeAmount);
     } else {
-      return geohashPrice - feeAmount;
+      return geohashPrice.sub(feeAmount);
     }
   }
   
