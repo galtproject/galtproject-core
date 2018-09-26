@@ -55,6 +55,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   struct OperationDetails {
     uint256 spaceTokenId;
     uint256 galtAmount;
+    uint256 feeAmount;
     address user;
     address custodian;
     bytes32 previousOperation;
@@ -118,9 +119,13 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     uint256 _spacePrice = getSpaceTokenPriceForSell(_spaceTokenId);
     bytes32 _previousOperation = lastOperationByTokenId[_spaceTokenId];
 
+    uint256 _feeAmount = getFeeForAmount(_spacePrice);
+    uint256 _galtToSend = _spacePrice.sub(_feeAmount);
+    
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _spacePrice,
+      feeAmount: _feeAmount,
       user: msg.sender,
       custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
@@ -129,8 +134,6 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     });
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
-    uint256 _feeAmount = getFeeForAmount(_spacePrice);
-    uint256 _galtToSend = _spacePrice.sub(_feeAmount);
     galtToken.transfer(msg.sender, _galtToSend);
 
     feePayout = feePayout.add(_feeAmount);
@@ -167,6 +170,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _spacePrice,
+      feeAmount: _feeAmount,
       user: msg.sender,
       custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
@@ -264,5 +268,45 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
+  }
+
+  function getOperationsCount() public view returns (uint256) {
+    return operationsArray.length;
+  }
+
+  function getAllOperations() public view returns (bytes32[]) {
+    return operationsArray;
+  }
+  
+  function getOperationById(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      uint256 spaceTokenId,
+      uint256 galtAmount,
+      uint256 feeAmount,
+      address user,
+      address custodian,
+      bytes32 previousOperation,
+      uint256 timestamp,
+      OperationDirection direction
+    )
+  {
+    require(operationsDetails[_id].timestamp == 0, "Operation doesn't exist");
+    
+    OperationDetails memory o = operationsDetails[_id];
+
+    return (
+      o.spaceTokenId,
+      o.galtAmount,
+      o.feeAmount,
+      o.user,
+      o.custodian,
+      o.previousOperation,
+      o.timestamp,
+      o.direction
+    );
   }
 }
