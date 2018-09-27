@@ -170,7 +170,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     };
   });
 
-  describe.only('#exchangeSpaceToGalt()', async () => {
+  describe('#exchangeSpaceToGalt()', async () => {
     it('should successfully sell spaceToken', async function() {
       const geohash5 = galt.geohashToGeohash5('sezu05');
       await this.spaceToken.mintGeohash(alice, geohash5, {
