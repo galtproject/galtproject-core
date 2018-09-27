@@ -119,7 +119,8 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
     await this.spaceDex.addRoleTo(coreTeam, 'fee_manager');
 
-    await this.spaceDex.setFee(szabo(feePercent));
+    await this.spaceDex.setFee(szabo(feePercent), '0');
+    await this.spaceDex.setFee(szabo(feePercent), '1');
 
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
