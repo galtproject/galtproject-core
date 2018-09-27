@@ -170,7 +170,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     };
   });
 
-  describe('#exchangeSpaceToGalt()', async () => {
+  describe.only('#exchangeSpaceToGalt()', async () => {
     it('should successfully sell spaceToken', async function() {
       const geohash5 = galt.geohashToGeohash5('sezu05');
       await this.spaceToken.mintGeohash(alice, geohash5, {
@@ -190,6 +190,10 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
         from: alice
       });
+
+      const oId = await this.spaceDex.operationsArray(0);
+      const operation = await this.spaceDex.getOperationById(oId);
+      assert.equal(operation[3], alice);
 
       const aliceGaltBalance = await this.galtToken.balanceOf(alice);
       assert.equal(aliceGaltBalance.toString(10), geohashPrice.toString(10));

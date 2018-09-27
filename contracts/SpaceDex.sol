@@ -300,7 +300,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
       OperationDirection direction
     )
   {
-    require(operationsDetails[_id].timestamp == 0, "Operation doesn't exist");
+    require(operationsDetails[_id].timestamp > 0, "Operation doesn't exist");
     
     OperationDetails memory o = operationsDetails[_id];
 
