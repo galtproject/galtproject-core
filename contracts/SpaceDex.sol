@@ -247,7 +247,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   
   function getFeeForAmount(uint256 amount, OperationDirection direction) public view returns(uint256) {
     if (direction == OperationDirection.SPACE_TO_GALT && sellFee > 0) {
-        return amount.div(100).mul(sellFee).div(feePrecision);
+      return amount.div(100).mul(sellFee).div(feePrecision);
     } else if (direction == OperationDirection.GALT_TO_SPACE && buyFee > 0) {
       return amount.div(100).mul(buyFee).div(feePrecision);
     } else {
@@ -256,7 +256,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   }
 
   function setFee(uint256 _fee, OperationDirection direction) public onlyFeeManager {
-    if(direction == OperationDirection.SPACE_TO_GALT) {
+    if (direction == OperationDirection.SPACE_TO_GALT) {
       sellFee = _fee;
     } else {
       buyFee = _fee;
