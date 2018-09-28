@@ -26,7 +26,7 @@ module.exports = async function(deployer, network, accounts) {
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
-    const spaceDex = await GaltDex.at(data.spaceDexAddress);
+    const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
