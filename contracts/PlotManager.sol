@@ -469,7 +469,7 @@ contract PlotManager is AbstractApplication {
 
     if (newTotalFee > alreadyPaid) {
       uint256 requiredPayment = newTotalFee.sub(alreadyPaid);
-      require(fee == requiredPayment, "Incorrect fee passed in");
+      require(fee >= requiredPayment, "Incorrect fee passed in");
     } else if (newTotalFee < alreadyPaid) {
       require(fee == 0, "Unexpected payment");
       uint256 requiredRefund = alreadyPaid.sub(newTotalFee);
