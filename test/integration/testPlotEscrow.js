@@ -157,7 +157,97 @@ contract.only('PlotEscrow', (accounts) => {
     this.plotEscrowWeb3 = new web3.eth.Contract(this.plotEscrow.abi, this.plotEscrow.address);
   });
 
-  it.only('should be initialized successfully', async function() {
+  it('should be initialized successfully', async function() {
     (await this.plotEscrow.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+  });
+
+  describe('contract config modifiers', () => {
+    describe('#setGaltSpaceRewardsAddress()', () => {
+      it('should allow an owner set rewards address', async function() {
+        await this.plotEscrow.setGaltSpaceRewardsAddress(bob, { from: coreTeam });
+      });
+
+      it('should deny non-owner set rewards address', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceRewardsAddress(bob, { from: alice }));
+      });
+    });
+
+    describe('#setPaymentMethod()', () => {
+      it('should allow an owner set a payment method', async function() {
+        await this.plotEscrow.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
+        const res = await this.plotEscrow.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_ONLY);
+      });
+
+      it('should deny non-owner set a payment method', async function() {
+        await assertRevert(this.plotEscrow.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
+        const res = await this.plotEscrow.paymentMethod();
+        assert.equal(res, PaymentMethods.ETH_AND_GALT);
+      });
+    });
+
+    describe('#setApplicationFeeInEth()', () => {
+      it('should allow an owner set a new minimum fee in ETH', async function() {
+        await this.plotEscrow.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
+        const res = await this.plotEscrow.minimalApplicationFeeInEth();
+        assert.equal(res, ether(0.05));
+      });
+
+      it('should deny any other than owner person set fee in ETH', async function() {
+        await assertRevert(this.plotEscrow.setMinimalApplicationFeeInEth(ether(0.05), { from: alice }));
+      });
+    });
+
+    describe('#setApplicationFeeInGalt()', () => {
+      it('should allow an owner set a new minimum fee in GALT', async function() {
+        await this.plotEscrow.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
+        const res = await this.plotEscrow.minimalApplicationFeeInGalt();
+        assert.equal(res, ether(0.15));
+      });
+
+      it('should deny any other than owner person set fee in GALT', async function() {
+        await assertRevert(this.plotEscrow.setMinimalApplicationFeeInGalt(ether(0.15), { from: alice }));
+      });
+    });
+
+    describe('#setGaltSpaceEthShare()', () => {
+      it('should allow an owner set galtSpace ETH share in percents', async function() {
+        await this.plotEscrow.setGaltSpaceEthShare('42', { from: feeManager });
+        const res = await this.plotEscrow.galtSpaceEthShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceEthShare('0.5', { from: feeManager }));
+      });
+
+      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceEthShare('101', { from: feeManager }));
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceEthShare('20', { from: alice }));
+      });
+    });
+
+    describe('#setGaltSpaceGaltShare()', () => {
+      it('should allow an owner set galtSpace Galt share in percents', async function() {
+        await this.plotEscrow.setGaltSpaceGaltShare('42', { from: feeManager });
+        const res = await this.plotEscrow.galtSpaceGaltShare();
+        assert.equal(res.toString(10), '42');
+      });
+
+      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('0.5', { from: feeManager }));
+      });
+
+      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('101', { from: feeManager }));
+      });
+
+      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
+        await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('20', { from: alice }));
+      });
+    });
   });
 });
