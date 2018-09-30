@@ -1,5 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
+const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const PlotEscrow = artifacts.require('./PlotEscrow.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
@@ -11,16 +12,17 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const { log, ether, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotEscrow.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
-const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
+const ESCROW_APPLICATION = '0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48';
+const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const PV_APPRAISER_ROLE = 'PV_APPRAISER_ROLE';
-const PV_APPRAISER2_ROLE = 'PV_APPRAISER2_ROLE';
-const PV_AUDITOR_ROLE = 'PV_AUDITOR_ROLE';
+const PE_AUDITOR_ROLE = 'PE_AUDITOR_ROLE';
+const PC_CUSTODIAN_ROLE = 'PC_CUSTODIAN_ROLE';
+const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -30,19 +32,33 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-const ApplicationStatus = {
+const SaleOrderStatus = {
   NOT_EXISTS: 0,
-  SUBMITTED: 1,
-  VALUATED: 2,
-  CONFIRMED: 3,
-  REVERTED: 4,
-  APPROVED: 5
+  OPEN: 1,
+  LOCKED: 2,
+  CLOSED: 3,
+  CANCELLED: 4
+};
+
+const SaleOfferStatus = {
+  NOT_EXISTS: 0,
+  OPEN: 1,
+  MATCH: 2,
+  ESCROW: 3,
+  AUDIT_REQUIRED: 4,
+  AUDIT: 5,
+  RESOLVED: 6,
+  CLOSED: 7,
+  CANCELLED: 8,
+  EMPTY: 9
 };
 
 const ValidationStatus = {
   NOT_EXISTS: 0,
   PENDING: 1,
-  LOCKED: 2
+  LOCKED: 2,
+  APPROVED: 3,
+  REJECTED: 4
 };
 
 const PaymentMethods = {
@@ -57,13 +73,24 @@ const Currency = {
   GALT: 1
 };
 
-Object.freeze(ApplicationStatus);
+const EscrowCurrency = {
+  ETH: 0,
+  ERC20: 1
+};
+
+const CustodianAction = {
+  ATTACH: 0,
+  DETACH: 1
+};
+
+Object.freeze(SaleOrderStatus);
+Object.freeze(SaleOfferStatus);
 Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only('PlotEscrow', (accounts) => {
+contract("PlotEscrow", (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -81,9 +108,9 @@ contract.only('PlotEscrow', (accounts) => {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
     this.attachedDocuments = [
-      'a80470dba00d5faf620fd6c51a1ca94668e13cd66fffaee3702f5497a8549053',
-      'e96a061ac2a6eeb4a87eecdba4624500b6eae61e18c64ff0672434d3ae137825',
-      '9850d829b57b233101525397603baedc32d20288a866514dd5441abe286f4d2e'
+      'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
+      'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
+      'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
 
     this.contour = this.initContour.map(galt.geohashToNumber);
@@ -102,6 +129,7 @@ contract.only('PlotEscrow', (accounts) => {
     this.plotEscrow = await PlotEscrow.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     await this.plotManager.initialize(
@@ -116,6 +144,16 @@ contract.only('PlotEscrow', (accounts) => {
     );
     await this.plotEscrow.initialize(
       this.spaceToken.address,
+      this.plotCustodianManager.address,
+      this.validators.address,
+      this.galtToken.address,
+      galtSpaceOrg,
+      {
+        from: coreTeam
+      }
+    );
+    await this.plotCustodianManager.initialize(
+      this.spaceToken.address,
       this.splitMerge.address,
       this.validators.address,
       this.galtToken.address,
@@ -129,6 +167,7 @@ contract.only('PlotEscrow', (accounts) => {
     });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotEscrow.setFeeManager(feeManager, true, { from: coreTeam });
+    await this.plotCustodianManager.setFeeManager(feeManager, true, { from: coreTeam });
 
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -144,17 +183,24 @@ contract.only('PlotEscrow', (accounts) => {
 
     await this.plotEscrow.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.plotEscrow.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotEscrow.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotEscrow.setGaltSpaceGaltShare(13, { from: feeManager });
+    await this.plotEscrow.setGaltSpaceEthShare(50, { from: feeManager });
+    await this.plotEscrow.setGaltSpaceGaltShare(40, { from: feeManager });
+
+    await this.plotCustodianManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
+    await this.plotCustodianManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
+    await this.plotCustodianManager.setGaltSpaceEthShare(33, { from: feeManager });
+    await this.plotCustodianManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotEscrowWeb3 = new web3.eth.Contract(this.plotEscrow.abi, this.plotEscrow.address);
+    this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -247,6 +293,928 @@ contract.only('PlotEscrow', (accounts) => {
 
       it('should deny any other than owner set Galt Space EHT share in percents', async function() {
         await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('20', { from: alice }));
+      });
+    });
+  });
+
+  describe('pipeline', () => {
+    beforeEach(async function() {
+      await this.validators.setApplicationTypeRoles(
+        NEW_APPLICATION,
+        ['foo', 'bar', 'buzz'],
+        [50, 25, 25],
+        ['', '', ''],
+        { from: applicationTypeManager }
+      );
+
+      await this.validators.setApplicationTypeRoles(
+        CUSTODIAN_APPLICATION,
+        [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+        [60, 40],
+        ['', ''],
+        { from: applicationTypeManager }
+      );
+
+      await this.validators.setApplicationTypeRoles(ESCROW_APPLICATION, [PE_AUDITOR_ROLE], [100], [''], {
+        from: applicationTypeManager
+      });
+
+      // Alice obtains a package token
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        galt.geohashToGeohash5('sezu06'),
+        this.credentials,
+        this.ledgerIdentifier,
+        web3.utils.asciiToHex('MN'),
+        7,
+        { from: alice }
+      );
+      this.aId = res.logs[0].args.id;
+
+      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.packageTokenId = res.packageTokenId;
+
+      // assign validators
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
+        from: validatorManager
+      });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+        from: validatorManager
+      });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ROLE], {
+        from: validatorManager
+      });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
+        from: validatorManager
+      });
+
+      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
+      await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      assert.equal(res, alice);
+    });
+
+    describe('sale order submission', () => {
+      describe('with fee paid in ETH', () => {
+        it('should create a new sale order with ETH payment method', async function() {
+          // TOOD: alice should already own a plot to escrow
+          let res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          this.rId = res.logs[0].args.orderId;
+
+          res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.id, this.rId);
+          assert.equal(res.status, SaleOrderStatus.OPEN);
+          assert.equal(res.ask, ether(50));
+          assert.equal(res.escrowCurrency, EscrowCurrency.ETH);
+          assert.equal(res.tokenContract, zeroAddress);
+          assert.equal(res.packageTokenId, this.packageTokenId);
+          assert.equal(res.seller.toLowerCase(), alice);
+
+          assert(parseInt(res.createdAt, 10) > 1538291634);
+        });
+
+        it('should create a new sale order with ERC20 payment method', async function() {
+          // TOOD: alice should already own a plot to escrow
+          let res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ERC20,
+            this.galtToken.address,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          this.rId = res.logs[0].args.orderId;
+
+          res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.id, this.rId);
+          assert.equal(res.ask, ether(50));
+          assert.equal(res.escrowCurrency, EscrowCurrency.ERC20);
+          assert.equal(res.tokenContract.toLowerCase(), this.galtToken.address);
+          assert.equal(res.packageTokenId, this.packageTokenId);
+          assert.equal(res.seller.toLowerCase(), alice);
+
+          assert(parseInt(res.createdAt, 10) > 1538291634);
+        });
+
+        it('should reject sale order if the token is not owned by an applicant', async function() {
+          await assertRevert(
+            this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              0,
+              { from: bob, value: ether(6) }
+            )
+          );
+        });
+
+        it('should reject sale orders if the token is already on sale', async function() {
+          await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          await assertRevert(
+            this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              0,
+              { from: alice, value: ether(6) }
+            )
+          );
+        });
+
+        describe('payable', () => {
+          it('should allow payments greater than required', async function() {
+            await this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              0,
+              { from: alice, value: ether(8) }
+            );
+          });
+
+          it('should reject order with insufficient payment', async function() {
+            await assertRevert(
+              this.plotEscrow.createSaleOrder(
+                this.packageTokenId,
+                ether(50),
+                this.attachedDocuments.map(galt.ipfsHashToBytes32),
+                EscrowCurrency.ETH,
+                0,
+                0,
+                { from: alice, value: ether(4) }
+              )
+            );
+          });
+
+          it('should reject order with payment both in eth and galt', async function() {
+            await assertRevert(
+              this.plotEscrow.createSaleOrder(
+                this.packageTokenId,
+                ether(50),
+                this.attachedDocuments.map(galt.ipfsHashToBytes32),
+                EscrowCurrency.ETH,
+                0,
+                ether(50),
+                { from: alice, value: ether(8) }
+              )
+            );
+          });
+
+          it('should calculate required payment', async function() {
+            let res = await this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              0,
+              { from: alice, value: ether(8) }
+            );
+            this.rId = res.logs[0].args.orderId;
+
+            res = await this.plotEscrowWeb3.methods.getSaleOrderFees(this.rId).call();
+
+            assert.equal(res.auditorRewardPaidOut, false);
+            assert.equal(res.galtSpaceRewardPaidOut, false);
+            assert.equal(res.auditorReward, ether(4));
+            assert.equal(res.galtSpaceReward, ether(4));
+            assert.equal(res.totalReward, ether(8));
+          });
+        });
+      });
+
+      describe('with fee paid in GALT', () => {
+        it('should reject if balance check failed', async function() {
+          // TOOD: alice should already own a plot to escrow
+          await assertRevert(
+            this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ERC20,
+              this.plotManager.address,
+              0,
+              { from: alice, value: ether(6) }
+            )
+          );
+        });
+        // TODO: payable pipeline
+      });
+    });
+
+    describe('sale order matching', () => {
+      describe('#createSaleOffer()', () => {
+        beforeEach(async function() {
+          const res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(7) }
+          );
+          this.rId = res.logs[0].args.orderId;
+        });
+
+        it('should create a new offer', async function() {
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.offerCount, 1);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.index, 0);
+          assert.equal(res.status, SaleOfferStatus.OPEN);
+          assert.equal(res.bid, ether(30));
+          assert.equal(res.lastAskAt, 0);
+          assert(res.lastBidAt > 0);
+          assert(res.createdAt > 0);
+        });
+
+        it('should increment offerCount', async function() {
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: charlie });
+          const res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.offerCount, 2);
+        });
+
+        it('should reject offers from seller', async function() {
+          await assertRevert(this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: alice }));
+        });
+
+        it.skip('should reject if order state is not OPEN', async function() {
+          // TODO:
+          await assertRevert(this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob }));
+        });
+
+        it('should reject second offer from the same buyer', async function() {
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+          await assertRevert(this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob }));
+          const res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.offerCount, 1);
+        });
+      });
+
+      describe('#changeOfferBid/Ask()', () => {
+        beforeEach(async function() {
+          // TOOD: alice should already own a plot to escrow
+          const res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          this.rId = res.logs[0].args.orderId;
+
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+        });
+
+        it('should allow bid/ask combinations', async function() {
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.ask, ether(50));
+          assert.equal(res.bid, ether(30));
+
+          await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(45), { from: alice });
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.ask, ether(45));
+          assert.equal(res.bid, ether(30));
+
+          await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.ask, ether(45));
+          assert.equal(res.bid, ether(35));
+        });
+
+        it('should deny another person changing ask price', async function() {
+          await assertRevert(this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(45), { from: bob }));
+        });
+
+        it('should deny changing bid price for non existing offers', async function() {
+          await assertRevert(this.plotEscrow.changeSaleOfferAsk(this.rId, charlie, ether(45), { from: alice }));
+        });
+      });
+
+      describe('#selectSaleOffer()', () => {
+        beforeEach(async function() {
+          // TOOD: alice should already own a plot to escrow
+          const res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          this.rId = res.logs[0].args.orderId;
+
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+        });
+
+        describe('for matching deals', () => {
+          beforeEach(async function() {
+            await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+            await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+          });
+
+          it('should allow bid/ask combinations', async function() {
+            let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.OPEN);
+            assert.equal(res.ask, ether(35));
+            assert.equal(res.bid, ether(35));
+
+            await this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice });
+
+            res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.MATCH);
+          });
+
+          it('should deny another person selecting order', async function() {
+            await assertRevert(this.plotEscrow.selectSaleOffer(this.rId, bob, { from: bob }));
+          });
+        });
+
+        it('should reject when ask/bid prices differs', async function() {
+          await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(45), { from: alice });
+          await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+
+          await assertRevert(this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice }));
+        });
+      });
+    });
+
+    describe('sale order with ETH payment method', () => {
+      beforeEach(async function() {
+        const res = await this.plotEscrow.createSaleOrder(
+          this.packageTokenId,
+          ether(50),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          EscrowCurrency.ETH,
+          0,
+          0,
+          { from: alice, value: ether(6) }
+        );
+        this.rId = res.logs[0].args.orderId;
+
+        await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+        await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+        await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+        await this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice });
+      });
+
+      describe('#attachSpaceToken()', () => {
+        it('should attach the token', async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.MATCH);
+
+          res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+          assert.equal(res.toLowerCase(), this.plotEscrow.address);
+        });
+
+        it('should reject if token not approved', async function() {
+          await assertRevert(this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice }));
+        });
+
+        it('should token transfer processing from non-applicant address', async function() {
+          await this.spaceToken.transferFrom(alice, charlie, this.packageTokenId, { from: alice });
+          await assertRevert(this.plotEscrow.attachSpaceToken(this.rId, bob, { from: charlie }));
+        });
+      });
+
+      describe('#attachPayment()', () => {
+        it('should accept payments in the sale order currency', async function() {
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+          const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.MATCH);
+          assert.equal(res.paymentAttached, true);
+        });
+
+        it('should reject if msg.value is not enought', async function() {
+          await assertRevert(this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(30) }));
+        });
+      });
+
+      describe('#closeOffer()', () => {
+        describe('with only payment attached', () => {
+          beforeEach(async function() {
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+          });
+
+          it('should allow seller cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should allow buyer cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+        });
+
+        describe('with only spaceToken attached', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+          });
+
+          it('should allow seller cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should allow buyer cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+        });
+
+        describe('with nor space token no payment attached', () => {
+          it('should allow seller cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should allow buyer cancel an offer', async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+        });
+
+        it('should reject another person closing this offer', async function() {
+          await assertRevert(this.plotEscrow.closeSaleOffer(this.rId, bob, { from: charlie }));
+        });
+      });
+
+      describe('#withdrawSpaceToken() and #withdrawPayment()', () => {
+        describe('with only payment attached', () => {
+          beforeEach(async function() {
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should trigger order status to EMPTY after payment withdrawal', async function() {
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should revert as no Space token was attached', async function() {
+            await assertRevert(this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice }));
+          });
+
+          it('should revert on non-buyer withdrawal attempt', async function() {
+            await assertRevert(this.plotEscrow.withdrawPayment(this.rId, bob, { from: alice }));
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with only spaceToken attached', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should trigger order status to EMPTY after space token withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should revert as no payment was attached', async function() {
+            await assertRevert(this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob }));
+          });
+
+          it('should revert on non-seller withdrawal attempt', async function() {
+            await assertRevert(this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: bob }));
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with both space token and payment attached (after audit)', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+            // audit request
+            await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+            await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+            await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
+          });
+
+          it('should not trigger order status  after payment withdrawal', async function() {
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should not trigger order status  after space token withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should trigger order status after both space token and payment withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with nor space token no payment attached', () => {
+          beforeEach(async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should allow anyone to transfer status to EMPTY', async function() {
+            await this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+        });
+      });
+
+      describe('#requestCancellationAudit()', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+        });
+
+        it('should allow seller request cancellation audit', async function() {
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.AUDIT_REQUIRED);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.PENDING);
+        });
+
+        it('should buyer seller request cancellation audit', async function() {
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: bob });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.AUDIT_REQUIRED);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.PENDING);
+        });
+
+        it('should reject if account unknown', async function() {
+          await assertRevert(this.plotEscrow.resolve(this.rId, bob, { from: charlie }));
+        });
+      });
+
+      describe('#lockForAudit()', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+          // audit request
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+        });
+
+        it('should allow auditor lock the application', async function() {
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.AUDIT);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.LOCKED);
+          assert.equal(res.addr.toLowerCase(), eve);
+        });
+
+        it('should allow auditor lock a rejected application', async function() {
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+          await this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: eve });
+
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: dan });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.AUDIT);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.LOCKED);
+          assert.equal(res.addr.toLowerCase(), dan);
+        });
+
+        it('should reject non-auditors', async function() {
+          await assertRevert(this.plotEscrow.resolve(this.rId, bob, { from: charlie }));
+        });
+
+        it('should reject locking already locked application', async function() {
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+          await assertRevert(this.plotEscrow.lockForAudit(this.rId, bob, { from: eve }));
+        });
+      });
+
+      describe('#cancellationAuditReject()', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+          // audit request
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+        });
+
+        it('should allow auditor reject a request', async function() {
+          await this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: eve });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.ESCROW);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.REJECTED);
+          assert.equal(res.addr.toLowerCase(), eve);
+        });
+
+        it('should deny non-auditors', async function() {
+          await assertRevert(this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: charlie }));
+        });
+
+        it('should deny rejecting already denied application', async function() {
+          await this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: eve });
+          await assertRevert(this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: eve }));
+        });
+      });
+
+      describe('#cancellationAuditApprove()', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+          // audit request
+          await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+          await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+        });
+
+        it('should allow auditor reject a request', async function() {
+          await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.CANCELLED);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
+          assert.equal(res.status, ValidationStatus.APPROVED);
+          assert.equal(res.addr.toLowerCase(), eve);
+        });
+
+        it('should deny non-auditors', async function() {
+          await assertRevert(this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: charlie }));
+        });
+
+        it('should deny rejecting already denied application', async function() {
+          await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
+          await assertRevert(this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve }));
+        });
+      });
+
+      describe('without attached custodian', () => {
+        describe('#resolve()', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+          });
+
+          it('should revert keep status ESCROW not attached custodian', async function() {
+            await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+            await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.ESCROW);
+            assert.equal(res.resolved, 3);
+          });
+        });
+      });
+
+      describe('with already attached custodian', () => {
+        beforeEach(async function() {
+          // assign custodian
+          const res = await this.plotCustodianManager.submitApplication(
+            this.packageTokenId,
+            CustodianAction.ATTACH,
+            bob,
+            0,
+            {
+              from: alice,
+              value: ether(6)
+            }
+          );
+          this.aId = res.logs[0].args.id;
+
+          await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+          await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+          await this.plotCustodianManager.attachToken(this.aId, {
+            from: alice
+          });
+          await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+          await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+          await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+          await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+        });
+
+        describe('#resolve()', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+          });
+
+          it('should accept seller decision', async function() {
+            await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.resolved, 2);
+            assert.equal(res.status, SaleOfferStatus.ESCROW);
+          });
+
+          it('should accept buyer decision', async function() {
+            await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.resolved, 1);
+            assert.equal(res.status, SaleOfferStatus.ESCROW);
+          });
+
+          it('should reject if account unknown', async function() {
+            await assertRevert(this.plotEscrow.resolve(this.rId, bob, { from: charlie }));
+          });
+
+          it('should change status to RESOLVED if both seller and buyer triggered it', async function() {
+            await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+            await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.RESOLVED);
+            assert.equal(res.resolved, 3);
+          });
+        });
+      });
+    });
+
+    describe('sale order with ERC20 payment method', () => {
+      beforeEach(async function() {
+        // Alice obtains a package token
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour,
+          galt.geohashToGeohash5('sezu07'),
+          this.credentials,
+          this.ledgerIdentifier,
+          web3.utils.asciiToHex('MN'),
+          7,
+          { from: alice }
+        );
+        this.aId = res.logs[0].args.id;
+
+        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        this.packageTokenId2 = res.packageTokenId;
+
+        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+        await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
+        await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+        res = await this.spaceToken.ownerOf(this.packageTokenId2);
+        assert.equal(res, alice);
+
+        // claim sale application
+        res = await this.plotEscrow.createSaleOrder(
+          this.packageTokenId2,
+          ether(50),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          EscrowCurrency.ERC20,
+          this.galtToken.address,
+          0,
+          { from: alice, value: ether(6) }
+        );
+        this.rId = res.logs[0].args.orderId;
+
+        await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+        await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+        await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+        await this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice });
+      });
+
+      describe('#attachPayment()', () => {
+        it('should accept payments', async function() {
+          await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
+          //
+          const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.MATCH);
+          assert.equal(res.paymentAttached, true);
+        });
+
+        it('should reject if token not approved', async function() {
+          await assertRevert(this.plotEscrow.attachPayment(this.rId, bob, { from: bob }));
+        });
+
+        it('should reject if the approval is not enough', async function() {
+          await this.galtToken.approve(this.plotEscrow.address, ether(30), { from: bob });
+          await assertRevert(this.plotEscrow.attachPayment(this.rId, bob, { from: bob }));
+        });
+
+        it('should change status to ESCROW if the token is already attached', async function() {
+          // space token
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId2, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          // payment
+          await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
+
+          const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.ESCROW);
+        });
       });
     });
   });

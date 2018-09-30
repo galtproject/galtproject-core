@@ -18,10 +18,20 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
-import "./SplitMerge.sol";
+import "./PlotCustodianManager.sol";
 import "./Validators.sol";
 
 
+/**
+ * Plot Escrow contract
+ *
+ * Vocabulary for this contract
+ * - Order - Sale order to sell SpaceToken using escrow contract
+ * - Offer - Offer for a specific order
+ *
+ * There is only `PV_AUDITOR_ROLE` validator role. It's reward is assigned only in
+ * a case when escrow cancellation audit process was instantiated.
+ */
 contract PlotEscrow is AbstractApplication {
   using SafeMath for uint256;
 
@@ -29,72 +39,82 @@ contract PlotEscrow is AbstractApplication {
   bytes32 public constant APPLICATION_TYPE = 0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48;
 
   // `PV_AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant PV_AUDITOR_ROLE = 0x50565f41554449544f525f524f4c450000000000000000000000000000000000;
+  bytes32 public constant PE_AUDITOR_ROLE = 0x50455f41554449544f525f524f4c450000000000000000000000000000000000;
 
   enum SaleOrderStatus {
     NOT_EXISTS,
     OPEN,
     LOCKED,
-    CLOSED
+    CLOSED,
+    CANCELLED
   }
 
   enum SaleOfferStatus {
     NOT_EXISTS,
+    OPEN,
     MATCH,
     ESCROW,
     AUDIT_REQUIRED,
     AUDIT,
     RESOLVED,
-    CLOSED
+    CLOSED,
+    CANCELLED,
+    EMPTY
   }
 
   enum ValidationStatus {
     NOT_EXISTS,
     PENDING,
-    LOCKED
+    LOCKED,
+    APPROVED,
+    REJECTED
   }
 
-  enum OrderCurrency {
+  enum EscrowCurrency {
     ETH,
     ERC20
   }
 
-  event LogSaleOrderStatusChanged(bytes32 applicationId, SaleOfferStatus status);
-  event LogSaleOfferStatusChanged(bytes32 applicationId, bytes32 offerId, SaleOrderStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event LogSaleOrderStatusChanged(bytes32 orderId, SaleOrderStatus status);
+  event LogSaleOfferStatusChanged(bytes32 orderId, address buyer, SaleOfferStatus status);
+  event LogAuditorStatusChanged(bytes32 applicationId, address buyer, bytes32 role, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct SaleOrder {
     bytes32 id;
-    address applicant;
+    address seller;
     uint256 packageTokenId;
     uint256 createdAt;
-    // Fee currency
-    Currency currency;
+    uint256 ask;
+
+    // Order currency
+    ERC20 tokenContract;
+
+    // Escrow order currency
+    EscrowCurrency escrowCurrency;
+
     SaleOrderDetails details;
     SaleOrderFees fees;
     SaleOrderStatus status;
 
     mapping(address => SaleOffer) offers;
-    bytes32[] attachedDocuments;
-    bytes32[] assignedRoles;
+    address[] offerList;
 
-    // TODO: combine into role struct
-    mapping(bytes32 => uint256) assignedRewards;
-    mapping(bytes32 => bool) roleRewardPaidOut;
-    mapping(bytes32 => string) roleMessages;
-    mapping(bytes32 => address) roleAddresses;
-    mapping(address => bytes32) addressRoles;
-    mapping(bytes32 => ValidationStatus) validationStatus;
+    bytes32[] attachedDocuments;
   }
 
   struct SaleOrderFees {
-    // Order currency
-    OrderCurrency currency;
-    ERC20 tokenContract;
-    uint256 ask;
-    uint256 validatorsReward;
+    Currency currency;
+
+    // Used in case when no audit process instantiated
+    uint256 totalReward;
+
+    // Used in case when audit process instantiated to share
+    // reward among galtSpace and auditor
+    uint256 auditorReward;
     uint256 galtSpaceReward;
+
+    bool auditorRewardPaidOut;
     bool galtSpaceRewardPaidOut;
   }
 
@@ -106,25 +126,35 @@ contract PlotEscrow is AbstractApplication {
   }
 
   struct SaleOffer {
+    SaleOfferStatus status;
+    SaleOfferAuditor auditor;
     address buyer;
-    bytes32 order;
+    uint256 index;
     uint256 ask;
     uint256 bid;
     uint256 lastAskAt;
     uint256 lastBidAt;
+    uint256 createdAt;
+    uint8 resolved;
+    bool paymentAttached;
+  }
+
+  struct SaleOfferAuditor {
+    ValidationStatus status;
+    address addr;
   }
 
   mapping(bytes32 => SaleOrder) public saleOrders;
-//  mapping(bytes32 => SaleOrder) public saleOffers;
+  mapping(uint256 => bool) public tokenOnSale;
 
   SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  PlotCustodianManager public plotCustodianManager;
 
   constructor () public {}
 
   function initialize(
     SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
+    PlotCustodianManager _plotCustodianManager,
     Validators _validators,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
@@ -135,7 +165,7 @@ contract PlotEscrow is AbstractApplication {
     owner = msg.sender;
 
     spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
+    plotCustodianManager = _plotCustodianManager;
     validators = _validators;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
@@ -149,86 +179,647 @@ contract PlotEscrow is AbstractApplication {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
-  // CalSpace share
+  function createSaleOrder(
+    uint256 _packageTokenId,
+    uint256 _ask,
+    bytes32[] _documents,
+    EscrowCurrency _currency,
+    ERC20 _erc20address,
+    uint256 _feeInGalt
+  )
+    external
+    payable
+  {
+    require(spaceToken.exists(_packageTokenId), "Token doesn't exist");
+    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Only owner of the token is allowed to apply");
+    require(tokenOnSale[_packageTokenId] == false, "Token is already on sale");
+    require(_ask > 0, "Negative ask price");
+    require(_documents.length > 0, "At least one attached document required");
+
+    if (_currency == EscrowCurrency.ERC20) {
+      require(ERC20(_erc20address).balanceOf(msg.sender) >= 0, "Failed ERC20 contract check");
+
+    }
+
+    bytes32 _id = keccak256(
+      abi.encode(
+        _packageTokenId,
+        _ask,
+        blockhash(block.number)
+      )
+    );
+
+    SaleOrder memory saleOrder;
+    uint256 fee;
+
+    // Payment in GALT
+    if (msg.value == 0) {
+      require(_feeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment in GALT");
+      saleOrder.fees.currency = Currency.GALT;
+      fee = _feeInGalt;
+    // Payment in ETH
+    } else {
+      require(_feeInGalt == 0, "Could not accept both ETH and GALT");
+      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment in ETH");
+      saleOrder.fees.currency = Currency.ETH;
+      fee = msg.value;
+    }
+
+    saleOrder.id = _id;
+    saleOrder.seller = msg.sender;
+    saleOrder.status = SaleOrderStatus.OPEN;
+    saleOrder.escrowCurrency = _currency;
+    saleOrder.tokenContract = _erc20address;
+    saleOrder.ask = _ask;
+    saleOrder.packageTokenId = _packageTokenId;
+    saleOrder.createdAt = block.timestamp;
+
+    calculateAndStoreFee(saleOrder, fee);
+
+    saleOrders[_id] = saleOrder;
+    tokenOnSale[_packageTokenId] = true;
+
+
+    // TODO: store rewards assign
+    changeSaleOrderStatus(saleOrders[_id], SaleOrderStatus.OPEN);
+  }
+
+  function createSaleOffer(
+    bytes32 _orderId,
+    uint256 _bid
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    require(saleOrder.seller != msg.sender, "Could not apply with the seller's address");
+    require(saleOrder.status == SaleOrderStatus.OPEN, "SaleOrderStatus should be OPEN");
+    require(saleOrder.offers[msg.sender].status == SaleOfferStatus.NOT_EXISTS, "Offer for this application already exists");
+    require(_bid > 0, "Negative ask price");
+
+    SaleOffer memory saleOffer;
+
+    saleOffer.status = SaleOfferStatus.OPEN;
+    saleOffer.buyer = msg.sender;
+    saleOffer.bid = _bid;
+    saleOffer.ask = saleOrder.ask;
+    saleOffer.lastBidAt = block.timestamp;
+    saleOffer.createdAt = block.timestamp;
+    saleOffer.index = saleOrder.offerList.length;
+
+    saleOrder.offers[msg.sender] = saleOffer;
+
+    saleOrder.offerList.push(msg.sender);
+
+    changeSaleOfferStatus(saleOrder, msg.sender, SaleOfferStatus.OPEN);
+  }
+
+  function changeSaleOfferAsk(
+    bytes32 _orderId,
+    address _buyer,
+    uint256 _ask
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.seller == msg.sender, "Only the seller is allowed to modify ask price");
+    require(saleOrder.status == SaleOrderStatus.OPEN, "Only the seller is allowed to modify ask price");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.OPEN, "Only the seller is allowed to modify ask price");
+
+    saleOffer.ask = _ask;
+  }
+
+  function changeSaleOfferBid(
+    bytes32 _orderId,
+    uint256 _bid
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.OPEN, "Only the seller is allowed to modify ask price");
+
+    SaleOffer storage saleOffer = saleOrder.offers[msg.sender];
+
+    require(saleOffer.status == SaleOfferStatus.OPEN, "Only the seller is allowed to modify ask price");
+
+    saleOffer.bid = _bid;
+  }
+
+  function selectSaleOffer(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.seller == msg.sender, "Only the seller is allowed to modify ask price");
+    require(saleOrder.status == SaleOrderStatus.OPEN, "Only the seller is allowed to modify ask price");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.OPEN, "Only the seller is allowed to modify ask price");
+    require(saleOffer.ask == saleOffer.bid, "Offer ask and bid prices should match");
+
+    changeSaleOrderStatus(saleOrder, SaleOrderStatus.LOCKED);
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.MATCH);
+  }
+
+  function closeSaleOffer(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.MATCH, "MATCH offer status required");
+
+    require(
+      msg.sender == saleOrder.seller || msg.sender == saleOffer.buyer,
+      "Either seller or buyer are allowed to perform this action");
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
+  }
+
+  function attachSpaceToken(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.seller == msg.sender, "Only the seller is allowed attaching space token");
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.MATCH, "Only the seller is allowed to modify ask price");
+    require(spaceToken.ownerOf(saleOrder.packageTokenId) == msg.sender, "Sender doesn't own Space Token with the given ID");
+
+    spaceToken.transferFrom(msg.sender, address(this), saleOrder.packageTokenId);
+
+    if (saleOffer.paymentAttached) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
+    }
+  }
+
+  function attachPayment(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+    payable
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.buyer == msg.sender, "Only the buyer is allowed attaching payment");
+    require(saleOffer.status == SaleOfferStatus.MATCH, "Only the seller is allowed to modify ask price");
+
+    require(saleOffer.paymentAttached == false, "Payment is already attached");
+
+    if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
+      require(msg.value == saleOffer.ask, "Incorrect payment");
+    } else {
+      require(msg.value == 0, "ERC20 token payment required");
+      saleOrder.tokenContract.transferFrom(msg.sender, address(this), saleOffer.ask);
+    }
+
+    saleOffer.paymentAttached = true;
+
+    if (spaceToken.ownerOf(saleOrder.packageTokenId) == address(this)) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
+    }
+  }
+
+  function requestCancellationAudit(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.ESCROW, "ESCROW offer status required");
+
+    require(
+      msg.sender == saleOrder.seller || msg.sender == saleOffer.buyer,
+      "Either seller or buyer are allowed to perform this action");
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.AUDIT_REQUIRED);
+    changeAuditorStatus(saleOrder, _buyer, ValidationStatus.PENDING);
+  }
+
+  function lockForAudit(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer status required");
+
+    validators.ensureValidatorActive(msg.sender);
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+
+    saleOffer.auditor.addr = msg.sender;
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.AUDIT);
+    changeAuditorStatus(saleOrder, _buyer, ValidationStatus.LOCKED);
+  }
+
+  function cancellationAuditReject(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
+
+    validators.ensureValidatorActive(msg.sender);
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+    require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
+    changeAuditorStatus(saleOrder, _buyer, ValidationStatus.REJECTED);
+  }
+
+  function cancellationAuditApprove(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
+
+    validators.ensureValidatorActive(msg.sender);
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+    require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
+    changeAuditorStatus(saleOrder, _buyer, ValidationStatus.APPROVED);
+  }
+
+
+  /**
+   * @dev Seller withdraws Space token from CANCELLED state.
+   */
+  function withdrawSpaceToken(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
+
+    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing Space token");
+
+    require(spaceToken.ownerOf(saleOrder.packageTokenId) == address(this), "Space token doesn't belong to this contract");
+
+    spaceToken.safeTransferFrom(address(this), msg.sender, saleOrder.packageTokenId);
+
+    if (saleOffer.paymentAttached == false) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.EMPTY);
+    }
+  }
+
+  /**
+   * @dev Buyer withdraws Payment.
+   */
+  function withdrawPayment(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
+
+    require(saleOffer.buyer == msg.sender, "Only buyer is allowed withdrawing payment");
+
+    if (spaceToken.ownerOf(saleOrder.packageTokenId) != address(this)) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.EMPTY);
+    }
+
+    saleOffer.paymentAttached = false;
+
+    if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
+      msg.sender.transfer(saleOffer.ask);
+    } else {
+      saleOrder.tokenContract.transfer(msg.sender, saleOffer.ask);
+    }
+  }
+
+  /**
+   * @dev Change CANCELED offer status to EMPTY.
+   * Anyone is allowed to perform this action.
+   */
+  function emptySaleOffer(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
+
+    require(
+      spaceToken.ownerOf(saleOrder.packageTokenId) != address(this) && saleOffer.paymentAttached == false,
+      "Both Space token and the payment should be withdrawn");
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.EMPTY);
+  }
+
+  /**
+   * @dev Resolve offer in ESCROW status.
+   * To change state to RESOLVED requires a custodian to be attached to this offer.
+   * Method doesn't change a decision if it has been made once.
+   */
+  function resolve(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.ESCROW, "ESCROW offer status required");
+
+    if (msg.sender == saleOffer.buyer) {
+      saleOffer.resolved = saleOffer.resolved | 1;
+    } else if (msg.sender == saleOrder.seller) {
+      saleOffer.resolved = saleOffer.resolved | 2;
+    } else {
+      revert("No permissions to resolve the order");
+    }
+
+    bool custodianAssigned = plotCustodianManager.assignedCustodians(saleOrder.packageTokenId) != address(0);
+
+    if (saleOffer.resolved == 3 && custodianAssigned) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.RESOLVED);
+    }
+  }
+
   function claimValidatorReward(
     bytes32 _aId
   )
     external
   {
-    SaleOrder storage order = saleOrders[_aId];
-    bytes32 senderRole = order.addressRoles[msg.sender];
-    uint256 reward = order.assignedRewards[senderRole];
-
-//    require(
-//      order.status == SaleOrderStatus.APPROVED || order.status == SaleOrderStatus.DISASSEMBLED_BY_VALIDATOR,
-//      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
-
-    require(reward > 0, "Reward is 0");
-    require(order.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
-
-    order.roleRewardPaidOut[senderRole] = true;
-
-    if (order.currency == Currency.ETH) {
-      msg.sender.transfer(reward);
-    } else if (order.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, reward);
-    } else {
-      revert("Unknown currency");
-    }
   }
 
   function claimGaltSpaceReward(
     bytes32 _aId
   )
     external
-    // TODO: only auditor
   {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-
-    SaleOrder storage order = saleOrders[_aId];
-
-
-//    require(
-//      order.status == SaleOrderStatus.CANCELLED || order.status == SaleOrderStatus.DISASSEMBLED_BY_VALIDATOR,
-//      "Application status should be ether APPROVED or DISASSEMBLED_BY_VALIDATOR");
-    require(order.fees.galtSpaceReward > 0, "Reward is 0");
-    require(order.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    order.fees.galtSpaceRewardPaidOut = true;
-
-    if (order.currency == Currency.ETH) {
-      msg.sender.transfer(order.fees.galtSpaceReward);
-    } else if (order.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, order.fees.galtSpaceReward);
-    } else {
-      revert("Unknown currency");
-    }
   }
 
-//  modifier onlyApplicant(bytes32 _aId) {
-//    Application storage a = applications[_aId];
-//
-//    require(
-//      a.applicant == msg.sender,
-//      "Invalid applicant");
-//
-//    _;
-//  }
-//
-//  modifier onlyValidatorOfApplication(bytes32 _aId) {
-//    Application storage a = applications[_aId];
-//
-//    require(a.addressRoles[msg.sender] != 0x0, "The validator is not assigned to any role");
-//    require(validators.isValidatorActive(msg.sender), "Not active validator");
-//
-//    _;
-//  }
+  function saleOrderExists(bytes32 _rId) external view returns (bool) {
+    return saleOrders[_rId].status != SaleOrderStatus.NOT_EXISTS;
+  }
 
-//  // TODO: move to abstract class
-//  modifier rolesReady() {
-//    require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
-//
-//    _;
-//  }
+  function saleOfferExists(
+    bytes32 _rId,
+    address _buyer
+  )
+    external
+    view
+    returns (bool)
+  {
+    return saleOrders[_rId].offers[_buyer].status != SaleOfferStatus.NOT_EXISTS;
+  }
 
+  /**
+   * @dev Get sale order details by it's ID
+   *
+   * @param _rId sale order ID
+   */
+  function getSaleOrder(bytes32 _rId)
+    external
+    view
+    returns (
+      bytes32 id,
+      SaleOrderStatus status,
+      EscrowCurrency escrowCurrency,
+      uint256 ask,
+      address tokenContract,
+      address seller,
+      uint256 offerCount,
+      uint256 packageTokenId,
+      uint256 createdAt
+    )
+  {
+    SaleOrder storage r = saleOrders[_rId];
+
+    return(
+      r.id,
+      r.status,
+      r.escrowCurrency,
+      r.ask,
+      r.tokenContract,
+      r.seller,
+      r.offerList.length,
+      r.packageTokenId,
+      r.createdAt
+    );
+  }
+
+  /**
+   * @dev Get sale order fee details by it's ID
+   *
+   * @param _rId sale order ID
+   */
+  function getSaleOrderFees(bytes32 _rId)
+    external
+    view
+    returns (
+      bool auditorRewardPaidOut,
+      bool galtSpaceRewardPaidOut,
+      uint256 auditorReward,
+      uint256 galtSpaceReward,
+      uint256 totalReward
+    )
+  {
+    SaleOrderFees storage f = saleOrders[_rId].fees;
+
+    return(
+    f.auditorRewardPaidOut,
+    f.galtSpaceRewardPaidOut,
+    f.auditorReward,
+    f.galtSpaceReward,
+    f.totalReward
+    );
+  }
+
+  /**
+   * @dev Get sale offer details by Order ID and buyer's address
+   *
+   * @param _rId sale order ID
+   * @param _buyer address
+   */
+  function getSaleOffer(bytes32 _rId, address _buyer)
+    external
+    view
+    returns (
+      uint256 index,
+      SaleOfferStatus status,
+      uint256 ask,
+      uint256 bid,
+      bool paymentAttached,
+      uint8 resolved,
+      uint256 lastBidAt,
+      uint256 lastAskAt,
+      uint256 createdAt
+    )
+  {
+    SaleOffer storage r = saleOrders[_rId].offers[_buyer];
+
+    return(
+      r.index,
+      r.status,
+      r.ask,
+      r.bid,
+      r.paymentAttached,
+      r.resolved,
+      r.lastBidAt,
+      r.lastAskAt,
+      r.createdAt
+    );
+  }
+
+  /**
+   * @dev Get sale offer audit details by Order ID and buyer's address
+   *
+   * @param _rId sale order ID
+   * @param _buyer address
+   */
+  function getSaleOfferAudit(bytes32 _rId, address _buyer)
+    external
+    view
+    returns (
+      ValidationStatus status,
+      address addr
+    )
+  {
+    SaleOfferAuditor storage a = saleOrders[_rId].offers[_buyer].auditor;
+
+    return(
+      a.status,
+      a.addr
+    );
+  }
+
+  function calculateAndStoreFee(
+    SaleOrder memory _r,
+    uint256 _fee
+  )
+    internal
+    view
+  {
+    uint256 share;
+
+    if (_r.fees.currency == Currency.ETH) {
+      share = galtSpaceEthShare;
+    } else {
+      share = galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 auditorReward = _fee.sub(galtSpaceReward);
+
+    assert(auditorReward.add(galtSpaceReward) == _fee);
+
+    _r.fees.totalReward = _fee;
+    _r.fees.auditorReward = auditorReward;
+    _r.fees.galtSpaceReward = galtSpaceReward;
+  }
+
+  function changeSaleOrderStatus(
+    SaleOrder storage _order,
+    SaleOrderStatus _status
+  )
+    internal
+  {
+    emit LogSaleOrderStatusChanged(_order.id, _status);
+
+    _order.status = _status;
+  }
+
+  function changeSaleOfferStatus(
+    SaleOrder storage _saleOrder,
+    address _buyer,
+    SaleOfferStatus _status
+  )
+    internal
+  {
+    emit LogSaleOfferStatusChanged(_saleOrder.id, _buyer, _status);
+
+    _saleOrder.offers[_buyer].status = _status;
+  }
+
+  function changeAuditorStatus(
+    SaleOrder storage _r,
+    address _buyer,
+    ValidationStatus _status
+  )
+    internal
+  {
+    emit LogAuditorStatusChanged(_r.id, _buyer, PE_AUDITOR_ROLE, _status);
+
+    _r.offers[_buyer].auditor.status = _status;
+  }
 }

@@ -27,6 +27,9 @@ module.exports = {
   roundToPrecision(number, precision = 4) {
     return Math.round(number / 10 ** precision) * 10 ** precision;
   },
+  log(...args) {
+    console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
+  },
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
