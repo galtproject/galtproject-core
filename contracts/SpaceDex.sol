@@ -42,7 +42,8 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   
   uint256 public spacePriceOnSaleSum;
   
-  uint256 public fee;
+  uint256 public sellFee;
+  uint256 public buyFee;
   uint256 public constant feePrecision = 1 szabo;
   uint256 public feePayout;
   uint256 public feeTotalPayout;
@@ -55,6 +56,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   struct OperationDetails {
     uint256 spaceTokenId;
     uint256 galtAmount;
+    uint256 feeAmount;
     address user;
     address custodian;
     bytes32 previousOperation;
@@ -118,9 +120,13 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     uint256 _spacePrice = getSpaceTokenPriceForSell(_spaceTokenId);
     bytes32 _previousOperation = lastOperationByTokenId[_spaceTokenId];
 
+    uint256 _feeAmount = getFeeForAmount(_spacePrice, OperationDirection.SPACE_TO_GALT);
+    uint256 _galtToSend = _spacePrice.sub(_feeAmount);
+    
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _spacePrice,
+      feeAmount: _feeAmount,
       user: msg.sender,
       custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
@@ -129,8 +135,6 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     });
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
-    uint256 _feeAmount = getFeeForAmount(_spacePrice);
-    uint256 _galtToSend = _spacePrice.sub(_feeAmount);
     galtToken.transfer(msg.sender, _galtToSend);
 
     feePayout = feePayout.add(_feeAmount);
@@ -147,7 +151,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
   function exchangeGaltToSpace(uint256 _spaceTokenId) public {
     uint256 _spacePrice = getSpaceTokenPriceForBuy(_spaceTokenId);
-    uint256 _feeAmount = getFeeForAmount(_spacePrice);
+    uint256 _feeAmount = getFeeForAmount(_spacePrice, OperationDirection.GALT_TO_SPACE);
     uint256 _galtToSend = _spacePrice.add(_feeAmount);
     
     require(galtToken.allowance(msg.sender, address(this)) >= _galtToSend, "Not enough galt allowance");
@@ -167,6 +171,7 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     operationsDetails[_operationId] = OperationDetails({
       spaceTokenId: _spaceTokenId,
       galtAmount: _spacePrice,
+      feeAmount: _feeAmount,
       user: msg.sender,
       custodian: getSpaceTokenCustodian(_spaceTokenId),
       previousOperation: _previousOperation,
@@ -205,12 +210,11 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
   function getSpaceTokenActualPriceWithFee(uint256 tokenId) public view returns (uint256) {
     uint256 geohashPrice = getSpaceTokenActualPrice(tokenId);
-    uint256 feeAmount = getFeeForAmount(geohashPrice);
     
     if (spaceToken.ownerOf(tokenId) == address(this)) {
-      return geohashPrice.add(feeAmount);
+      return geohashPrice.add(getFeeForAmount(geohashPrice, OperationDirection.GALT_TO_SPACE));
     } else {
-      return geohashPrice.sub(feeAmount);
+      return geohashPrice.sub(getFeeForAmount(geohashPrice, OperationDirection.SPACE_TO_GALT));
     }
   }
   
@@ -241,16 +245,22 @@ contract SpaceDex is Initializable, Ownable, RBAC {
     return spaceToken.ownerOf(tokenId) == address(this);
   }
   
-  function getFeeForAmount(uint256 amount) public view returns(uint256) {
-    if (fee > 0) {
-      return amount.div(100).mul(fee).div(feePrecision);
+  function getFeeForAmount(uint256 amount, OperationDirection direction) public view returns(uint256) {
+    if (direction == OperationDirection.SPACE_TO_GALT && sellFee > 0) {
+      return amount.div(100).mul(sellFee).div(feePrecision);
+    } else if (direction == OperationDirection.GALT_TO_SPACE && buyFee > 0) {
+      return amount.div(100).mul(buyFee).div(feePrecision);
     } else {
-      return amount;
+      return 0;
     }
   }
 
-  function setFee(uint256 _fee) public onlyFeeManager {
-    fee = _fee;
+  function setFee(uint256 _fee, OperationDirection direction) public onlyFeeManager {
+    if (direction == OperationDirection.SPACE_TO_GALT) {
+      sellFee = _fee;
+    } else {
+      buyFee = _fee;
+    }
   }
 
   function withdrawFee() public onlyFeeManager {
@@ -264,5 +274,45 @@ contract SpaceDex is Initializable, Ownable, RBAC {
 
   function removeRoleFrom(address _operator, string _role) public onlyOwner {
     super.removeRole(_operator, _role);
+  }
+
+  function getOperationsCount() public view returns (uint256) {
+    return operationsArray.length;
+  }
+
+  function getAllOperations() public view returns (bytes32[]) {
+    return operationsArray;
+  }
+  
+  function getOperationById(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      uint256 spaceTokenId,
+      uint256 galtAmount,
+      uint256 feeAmount,
+      address user,
+      address custodian,
+      bytes32 previousOperation,
+      uint256 timestamp,
+      OperationDirection direction
+    )
+  {
+    require(operationsDetails[_id].timestamp > 0, "Operation doesn't exist");
+    
+    OperationDetails memory o = operationsDetails[_id];
+
+    return (
+      o.spaceTokenId,
+      o.galtAmount,
+      o.feeAmount,
+      o.user,
+      o.custodian,
+      o.previousOperation,
+      o.timestamp,
+      o.direction
+    );
   }
 }

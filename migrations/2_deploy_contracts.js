@@ -64,6 +64,9 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Initialize contracts...');
     await spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
 
+    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
@@ -151,7 +154,22 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), { from: coreTeam });
+    await landUtils.initialize({ from: coreTeam });
+
+    await galtDex.initialize(
+      Web3.utils.toWei('100', 'szabo'),
+      Web3.utils.toWei('1', 'szabo'),
+      Web3.utils.toWei('1', 'szabo'),
+      galtToken.address,
+      { from: coreTeam }
+    );
+
+    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, plotCustodian.address, {
+      from: coreTeam
+    });
+
+    await spaceDex.setFee('0', '0', { from: coreTeam });
+    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
 
     console.log('Save addresses and abi to deployed folder...');
 
