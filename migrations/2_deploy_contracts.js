@@ -154,8 +154,6 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await landUtils.initialize({ from: coreTeam });
-
     await galtDex.initialize(
       Web3.utils.toWei('100', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
