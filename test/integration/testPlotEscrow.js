@@ -1152,7 +1152,7 @@ contract("PlotEscrow", (accounts) => {
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        this.packageTokenId2 = res.packageTokenId;
+        this.packageTokenId = res.packageTokenId;
 
         const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
         await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
@@ -1163,12 +1163,12 @@ contract("PlotEscrow", (accounts) => {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-        res = await this.spaceToken.ownerOf(this.packageTokenId2);
+        res = await this.spaceToken.ownerOf(this.packageTokenId);
         assert.equal(res, alice);
 
         // claim sale application
         res = await this.plotEscrow.createSaleOrder(
-          this.packageTokenId2,
+          this.packageTokenId,
           ether(50),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
           EscrowCurrency.ERC20,
@@ -1205,7 +1205,7 @@ contract("PlotEscrow", (accounts) => {
 
         it('should change status to ESCROW if the token is already attached', async function() {
           // space token
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId2, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           // payment
@@ -1214,6 +1214,115 @@ contract("PlotEscrow", (accounts) => {
 
           const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
           assert.equal(res.status, SaleOfferStatus.ESCROW);
+        });
+      });
+
+      describe('#withdrawSpaceToken() and #withdrawPayment()', () => {
+        describe('with only payment attached', () => {
+          beforeEach(async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should trigger order status to EMPTY after payment withdrawal', async function() {
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should revert as no Space token was attached', async function() {
+            await assertRevert(this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice }));
+          });
+
+          it('should revert on non-buyer withdrawal attempt', async function() {
+            await assertRevert(this.plotEscrow.withdrawPayment(this.rId, bob, { from: alice }));
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with only spaceToken attached', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should trigger order status to EMPTY after space token withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should revert as no payment was attached', async function() {
+            await assertRevert(this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob }));
+          });
+
+          it('should revert on non-seller withdrawal attempt', async function() {
+            await assertRevert(this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: bob }));
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with both space token and payment attached (after audit)', () => {
+          beforeEach(async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
+
+            // audit request
+            await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+            await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+            await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
+          });
+
+          it('should not trigger order status  after payment withdrawal', async function() {
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should not trigger order status  after space token withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CANCELLED);
+          });
+
+          it('should trigger order status after both space token and payment withdrawal', async function() {
+            await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
+          it('should deny performing empty action', async function() {
+            await assertRevert(this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie }));
+          });
+        });
+
+        describe('with nor space token no payment attached', () => {
+          beforeEach(async function() {
+            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          it('should allow anyone to transfer status to EMPTY', async function() {
+            await this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
         });
       });
     });
