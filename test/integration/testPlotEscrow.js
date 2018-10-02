@@ -1133,6 +1133,43 @@ contract("PlotEscrow", (accounts) => {
             assert.equal(res.resolved, 3);
           });
         });
+
+        describe('#claimSpaceToken() and #claimPayment()', () => {
+          beforeEach(async function() {
+            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+            await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+
+            await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+            await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+          });
+
+          it('should allow buyer claim space token he bought', async function() {
+            await this.plotEscrow.claimSpaceToken(this.rId, bob, { from: bob });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.RESOLVED);
+          });
+
+          it('should allow seller claim payment he earned', async function() {
+            await this.plotEscrow.claimPayment(this.rId, bob, { from: alice });
+
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.RESOLVED);
+          });
+
+          // eslint-disable-next-line
+          it('should change order&offer statuses to CLOSED after both space token and payment being withdrawn', async function() {
+            await this.plotEscrow.claimPayment(this.rId, bob, { from: alice });
+            await this.plotEscrow.claimSpaceToken(this.rId, bob, { from: bob });
+
+            let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.CLOSED);
+
+            res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+            assert.equal(res.status, SaleOrderStatus.CLOSED);
+          });
+        });
       });
     });
 

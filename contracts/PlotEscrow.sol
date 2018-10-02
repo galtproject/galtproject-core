@@ -496,7 +496,7 @@ contract PlotEscrow is AbstractApplication {
 
 
   /**
-   * @dev Seller withdraws Space token from CANCELLED state.
+   * @dev Seller withdraws Space token when status is CANCELLED.
    */
   function withdrawSpaceToken(
     bytes32 _orderId,
@@ -524,7 +524,7 @@ contract PlotEscrow is AbstractApplication {
   }
 
   /**
-   * @dev Buyer withdraws Payment.
+   * @dev Buyer withdraws Payment when status is CANCELLED
    */
   function withdrawPayment(
     bytes32 _orderId,
@@ -611,6 +611,68 @@ contract PlotEscrow is AbstractApplication {
 
     if (saleOffer.resolved == 3 && custodianAssigned) {
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.RESOLVED);
+    }
+  }
+
+  /**
+   * @dev Buyer withdraws Space token when status is RESOLVED.
+   */
+  function claimSpaceToken(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.RESOLVED, "RESOLVED offer status required");
+
+    require(saleOffer.buyer == msg.sender, "Only buyer is allowed withdrawing Space token");
+
+    require(spaceToken.ownerOf(saleOrder.packageTokenId) == address(this), "Space token doesn't belong to this contract");
+
+    spaceToken.safeTransferFrom(address(this), msg.sender, saleOrder.packageTokenId);
+
+    if (saleOffer.paymentAttached == false) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
+      changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
+    }
+  }
+
+  /**
+   * @dev Seller withdraws Payment when status is RESOLVED.
+   */
+  function claimPayment(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.RESOLVED, "RESOLVED offer status required");
+
+    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing payment");
+
+    if (spaceToken.ownerOf(saleOrder.packageTokenId) != address(this)) {
+      changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
+      changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
+    }
+
+    saleOffer.paymentAttached = false;
+
+    if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
+      msg.sender.transfer(saleOffer.ask);
+    } else {
+      saleOrder.tokenContract.transfer(msg.sender, saleOffer.ask);
     }
   }
 
