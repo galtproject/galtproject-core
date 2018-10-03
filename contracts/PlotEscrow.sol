@@ -150,6 +150,15 @@ contract PlotEscrow is AbstractApplication {
   SpaceToken public spaceToken;
   PlotCustodianManager public plotCustodianManager;
 
+  // Caching (items could be obsolete)
+  bytes32[] public saleOrderArray;
+  mapping(address => bytes32[]) public saleOrderArrayBySeller;
+  mapping(address => bytes32[]) public saleOrderArrayByBuyer;
+  mapping(uint256 => bytes32) public spaceTokenLastOrderId;
+  bytes32[] public openSaleOrderArray;
+  mapping(bytes32 => uint256) openSaleOrderIndex;
+
+
   constructor () public {}
 
   function initialize(
@@ -198,7 +207,6 @@ contract PlotEscrow is AbstractApplication {
 
     if (_currency == EscrowCurrency.ERC20) {
       require(ERC20(_erc20address).balanceOf(msg.sender) >= 0, "Failed ERC20 contract check");
-
     }
 
     bytes32 _id = keccak256(
@@ -237,8 +245,12 @@ contract PlotEscrow is AbstractApplication {
     calculateAndStoreFee(saleOrder, fee);
 
     saleOrders[_id] = saleOrder;
+    saleOrderArray.push(_id);
+    saleOrderArrayBySeller[msg.sender].push(_id);
     tokenOnSale[_packageTokenId] = true;
-
+    spaceTokenLastOrderId[_packageTokenId] = _id;
+    openSaleOrderIndex[_id] = openSaleOrderArray.length;
+    openSaleOrderArray.push(_id);
 
     // TODO: store rewards assign
     changeSaleOrderStatus(saleOrders[_id], SaleOrderStatus.OPEN);
@@ -269,6 +281,7 @@ contract PlotEscrow is AbstractApplication {
     saleOrder.offers[msg.sender] = saleOffer;
 
     saleOrder.offerList.push(msg.sender);
+    saleOrderArrayByBuyer[msg.sender].push(_orderId);
 
     changeSaleOfferStatus(saleOrder, msg.sender, SaleOfferStatus.OPEN);
   }
@@ -325,8 +338,29 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.OPEN, "Only the seller is allowed to modify ask price");
     require(saleOffer.ask == saleOffer.bid, "Offer ask and bid prices should match");
 
+//    removeSaleOrderFromOpenList(sleOrder.id);
+
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.LOCKED);
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.MATCH);
+  }
+
+  function removeSaleOrderFromOpenList(bytes32 _id) internal {
+//    uint256 lastIdIndex = openSaleOrderArray.length.sub(1);
+//    uint256 lastId = openSaleOrderIndex[lastIdIndex];
+//    uint256 currentIdIndex = openSaleOrderIndex[_id];
+
+    // move last => current
+//    openSaleOrderArray[currentIdIndex] = openSaleOrderArray[lastIdIndex];
+    // cleanup last element
+//    delete openSaleOrderArray[lastIdIndex];
+    // decrement length
+//    openSaleOrderArray.length = openSaleOrderArray.length.sub(1);
+
+    // delete current from map
+    // TODO: handle 0 pointer
+//    openSaleOrderIndex[_id] = 0;
+    // reassign current in map
+//    openSaleOrderIndex[lastId] = currentIdIndex;
   }
 
   function cancelSaleOffer(
@@ -703,10 +737,15 @@ contract PlotEscrow is AbstractApplication {
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+    bytes32 rId = saleOrder.id;
 
     require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
     require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
     require(saleOffer.status == SaleOfferStatus.EMPTY, "EMPTY offer status required");
+
+    tokenOnSale[saleOrder.packageTokenId] = true;
+    openSaleOrderIndex[rId] = openSaleOrderArray.length;
+    openSaleOrderArray.push(rId);
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.OPEN);
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.OPEN);
@@ -859,6 +898,22 @@ contract PlotEscrow is AbstractApplication {
       a.status,
       a.addr
     );
+  }
+
+  function getSaleOrdersLength() external view returns (uint256) {
+    return saleOrderArray.length;
+  }
+
+  function getSaleOrderArrayByBuyerLength(address _buyer) external view returns (uint256) {
+    return saleOrderArrayByBuyer[_buyer].length;
+  }
+
+  function getSaleOrderArrayBySellerLength(address _seller) external view returns (uint256) {
+    return saleOrderArrayBySeller[_seller].length;
+  }
+
+  function getOpenSaleOrdersLength() external view returns (uint256) {
+    return openSaleOrderArray.length;
   }
 
   function calculateAndStoreFee(
