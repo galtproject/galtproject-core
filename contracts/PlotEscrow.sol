@@ -693,7 +693,7 @@ contract PlotEscrow is AbstractApplication {
   }
 
   /**
-   * @dev Cancel LOCKED/CANCELLED order/offer by seller
+   * @dev Seller reopens LOCKED/EMPTY order/offer
    */
   function reopenSaleOrder(
     bytes32 _orderId,
