@@ -678,6 +678,32 @@ contract("PlotEscrow", (accounts) => {
           await assertRevert(this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice }));
         });
       });
+
+      describe('#cancelOpenSaleOrder()', () => {
+        it('should allow seller closing the order', async function() {
+          let res = await this.plotEscrow.createSaleOrder(
+            this.packageTokenId,
+            ether(50),
+            this.attachedDocuments.map(galt.ipfsHashToBytes32),
+            EscrowCurrency.ETH,
+            0,
+            0,
+            { from: alice, value: ether(6) }
+          );
+          this.rId = res.logs[0].args.orderId;
+
+          await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+          await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+          await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+          await this.plotEscrow.cancelOpenSaleOrder(this.rId, { from: alice });
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.OPEN);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.status, SaleOrderStatus.CANCELLED);
+        });
+      });
     });
 
     describe('sale order with ETH payment method', () => {
@@ -735,21 +761,21 @@ contract("PlotEscrow", (accounts) => {
         });
       });
 
-      describe('#closeOffer()', () => {
+      describe('#cancelSaleOffer()', () => {
         describe('with only payment attached', () => {
           beforeEach(async function() {
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
           });
 
           it('should allow seller cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
           });
 
           it('should allow buyer cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: bob });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
@@ -763,14 +789,14 @@ contract("PlotEscrow", (accounts) => {
           });
 
           it('should allow seller cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
           });
 
           it('should allow buyer cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: bob });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
@@ -779,14 +805,14 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with nor space token no payment attached', () => {
           it('should allow seller cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
           });
 
           it('should allow buyer cancel an offer', async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: bob });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: bob });
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.CANCELLED);
@@ -794,7 +820,7 @@ contract("PlotEscrow", (accounts) => {
         });
 
         it('should reject another person closing this offer', async function() {
-          await assertRevert(this.plotEscrow.closeSaleOffer(this.rId, bob, { from: charlie }));
+          await assertRevert(this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: charlie }));
         });
       });
 
@@ -802,7 +828,7 @@ contract("PlotEscrow", (accounts) => {
         describe('with only payment attached', () => {
           beforeEach(async function() {
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should trigger order status to EMPTY after payment withdrawal', async function() {
@@ -829,7 +855,7 @@ contract("PlotEscrow", (accounts) => {
           beforeEach(async function() {
             await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should trigger order status to EMPTY after space token withdrawal', async function() {
@@ -893,7 +919,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with nor space token no payment attached', () => {
           beforeEach(async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should allow anyone to transfer status to EMPTY', async function() {
@@ -1048,6 +1074,20 @@ contract("PlotEscrow", (accounts) => {
         it('should deny rejecting already denied application', async function() {
           await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
           await assertRevert(this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve }));
+        });
+      });
+
+      describe('#reopenSaleOrder()', () => {
+        it('should allow seller reopen the order', async function() {
+          await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
+          await this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie });
+          await this.plotEscrow.reopenSaleOrder(this.rId, bob, { from: alice });
+
+          let res = await this.plotEscrowWeb3.methods.getSaleOrder(this.rId).call();
+          assert.equal(res.status, SaleOrderStatus.OPEN);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.OPEN);
         });
       });
 
@@ -1259,7 +1299,7 @@ contract("PlotEscrow", (accounts) => {
           beforeEach(async function() {
             await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should trigger order status to EMPTY after payment withdrawal', async function() {
@@ -1286,7 +1326,7 @@ contract("PlotEscrow", (accounts) => {
           beforeEach(async function() {
             await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should trigger order status to EMPTY after space token withdrawal', async function() {
@@ -1351,7 +1391,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with nor space token no payment attached', () => {
           beforeEach(async function() {
-            await this.plotEscrow.closeSaleOffer(this.rId, bob, { from: alice });
+            await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
 
           it('should allow anyone to transfer status to EMPTY', async function() {

@@ -329,7 +329,7 @@ contract PlotEscrow is AbstractApplication {
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.MATCH);
   }
 
-  function closeSaleOffer(
+  function cancelSaleOffer(
     bytes32 _orderId,
     address _buyer
   )
@@ -674,6 +674,42 @@ contract PlotEscrow is AbstractApplication {
     } else {
       saleOrder.tokenContract.transfer(msg.sender, saleOffer.ask);
     }
+  }
+
+  /**
+   * @dev Cancel OPEN order by seller
+   */
+  function cancelOpenSaleOrder(
+    bytes32 _orderId
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.OPEN, "OPEN order status required");
+    require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
+
+    changeSaleOrderStatus(saleOrder, SaleOrderStatus.CANCELLED);
+  }
+
+  /**
+   * @dev Cancel LOCKED/CANCELLED order/offer by seller
+   */
+  function reopenSaleOrder(
+    bytes32 _orderId,
+    address _buyer
+  )
+    external
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+    require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
+    require(saleOffer.status == SaleOfferStatus.EMPTY, "EMPTY offer status required");
+
+    changeSaleOrderStatus(saleOrder, SaleOrderStatus.OPEN);
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.OPEN);
   }
 
   function claimValidatorReward(
