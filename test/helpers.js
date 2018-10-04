@@ -1,10 +1,13 @@
 const Web3 = require('web3');
 
 const { BN } = Web3.utils;
+const max = new BN('10000000000000000'); // <- 0.01 ether
+const min = new BN('0');
+const adjust = new BN('10000000000000000');
 
 let web3;
 
-module.exports = {
+const Helpers = {
   initHelperWeb3(_web3) {
     web3 = new Web3(_web3.currentProvider);
   },
@@ -46,8 +49,8 @@ module.exports = {
     assert.fail('Expected throw not received');
   },
   assertEqualBN(actual, expected) {
-    assert(actual instanceof BN);
-    assert(expected instanceof BN);
+    assert(actual instanceof BN, 'Actual value isn not a BN instance');
+    assert(expected instanceof BN, 'Expected value isn not a BN instance');
 
     assert(
       actual.toString(10) === expected.toString(10),
@@ -55,6 +58,67 @@ module.exports = {
         expected
       )} ether (expected)`
     );
+  },
+  /**
+   * Compare ETH balances
+   *
+   * @param balanceBefore string
+   * @param balanceAfter string
+   * @param balanceDiff string
+   */
+  assertEthBalanceChanged(balanceBefore, balanceAfter, balanceDiff) {
+    const diff = new BN(balanceAfter)
+      .sub(new BN(balanceDiff)) // <- the diff
+      .sub(new BN(balanceBefore))
+      .add(adjust); // <- 0.01 ether
+
+    assert(
+      diff.lt(max), // diff < 0.01 ether
+      `Expected ${web3.utils.fromWei(diff.toString(10))} (${diff.toString(10)} wei) to be less than 0.01 ether`
+    );
+
+    assert(
+      diff.gt(min), // diff > 0
+      `Expected ${web3.utils.fromWei(diff.toString(10))} (${diff.toString(10)} wei) to be greater than 0`
+    );
+  },
+  /**
+   * Compare GALT balances
+   *
+   * @param balanceBefore string | BN
+   * @param balanceAfter string | BN
+   * @param balanceDiff string | BN
+   */
+  assertGaltBalanceChanged(balanceBeforeArg, balanceAfterArg, balanceDiffArg) {
+    let balanceBefore;
+    let balanceAfter;
+    let balanceDiff;
+
+    if (typeof balanceBeforeArg == 'string') {
+      balanceBefore = new BN(balanceBeforeArg);
+    } else if (balanceBeforeArg instanceof BN) {
+      balanceBefore = balanceBeforeArg;
+    } else {
+      throw Error('#assertGaltBalanceChanged(): balanceBeforeArg is neither BN instance nor a string');
+    }
+
+    if (typeof balanceAfterArg == 'string') {
+      balanceAfter = new BN(balanceAfterArg);
+    } else if (balanceAfterArg instanceof BN) {
+      balanceAfter = balanceAfterArg;
+    } else {
+      throw Error('#assertGaltBalanceChanged(): balanceAfterArg is neither BN instance nor a string');
+    }
+
+    if (typeof balanceDiffArg == 'string') {
+      balanceDiff = new BN(balanceDiffArg);
+    } else if (balanceDiffArg instanceof BN) {
+      balanceDiff = balanceDiffArg;
+    } else {
+      throw Error('#assertGaltBalanceChanged(): balanceDiffArg is neither BN instance nor a string');
+    }
+
+    Helpers.assertEqualBN(balanceAfter, balanceBefore.add(balanceDiff));
   },
   async printStorage(address, slotsToPrint) {
     assert(typeof address !== 'undefined');
@@ -74,3 +138,6 @@ module.exports = {
     }
   }
 };
+
+module.exports = Helpers;
+

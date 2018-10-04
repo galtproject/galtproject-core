@@ -12,7 +12,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertRevert, zeroAddress } = require('../helpers');
+const { assertEthBalanceChanged, assertGaltBalanceChanged, ether, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotEscrow.web3.currentProvider);
 // const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -201,6 +201,7 @@ contract("PlotEscrow", (accounts) => {
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotEscrowWeb3 = new web3.eth.Contract(this.plotEscrow.abi, this.plotEscrow.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+    this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -574,8 +575,8 @@ contract("PlotEscrow", (accounts) => {
           await assertRevert(this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: alice }));
         });
 
-        it.skip('should reject if order state is not OPEN', async function() {
-          // TODO:
+        it('should reject if order state is not OPEN', async function() {
+          await this.plotEscrow.cancelOpenSaleOrder(this.rId, { from: alice });
           await assertRevert(this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob }));
         });
 
@@ -832,7 +833,11 @@ contract("PlotEscrow", (accounts) => {
           });
 
           it('should trigger order status to EMPTY after payment withdrawal', async function() {
+            const bobInitialBalance = await web3.eth.getBalance(bob);
             await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+            const bobFinalBalance = await web3.eth.getBalance(bob);
+
+            assertEthBalanceChanged(bobInitialBalance, bobFinalBalance, ether(35));
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.EMPTY);
@@ -1187,12 +1192,19 @@ contract("PlotEscrow", (accounts) => {
           it('should allow buyer claim space token he bought', async function() {
             await this.plotEscrow.claimSpaceToken(this.rId, bob, { from: bob });
 
-            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.RESOLVED);
+
+            res = await this.spaceToken.methods.ownerOf(this.packageTokenId).call();
+            assert.equal(res.toLowerCase(), bob);
           });
 
           it('should allow seller claim payment he earned', async function() {
+            const aliceInitialBalance = await web3.eth.getBalance(alice);
             await this.plotEscrow.claimPayment(this.rId, bob, { from: alice });
+            const aliceFinalBalance = await web3.eth.getBalance(alice);
+
+            assertEthBalanceChanged(aliceInitialBalance, aliceFinalBalance, ether(35));
 
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.RESOLVED);
@@ -1309,6 +1321,16 @@ contract("PlotEscrow", (accounts) => {
             assert.equal(res.status, SaleOfferStatus.EMPTY);
           });
 
+          it('should change ERC20 balance of a buyer', async function() {
+            const bobInitialBalance = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+            await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+            const bobFinalBalance = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+
+            assertGaltBalanceChanged(bobInitialBalance, bobFinalBalance, ether(35));
+            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            assert.equal(res.status, SaleOfferStatus.EMPTY);
+          });
+
           it('should revert as no Space token was attached', async function() {
             await assertRevert(this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice }));
           });
@@ -1332,7 +1354,10 @@ contract("PlotEscrow", (accounts) => {
           it('should trigger order status to EMPTY after space token withdrawal', async function() {
             await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
 
-            const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+            let res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+            assert.equal(res.toLowerCase(), alice);
+
+            res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.EMPTY);
           });
 
