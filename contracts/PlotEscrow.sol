@@ -226,6 +226,7 @@ contract PlotEscrow is AbstractApplication {
       require(_feeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment in GALT");
       saleOrder.fees.currency = Currency.GALT;
       fee = _feeInGalt;
+      galtToken.transferFrom(msg.sender, address(this), fee);
     // Payment in ETH
     } else {
       require(_feeInGalt == 0, "Could not accept both ETH and GALT");

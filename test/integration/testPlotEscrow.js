@@ -758,23 +758,9 @@ contract("PlotEscrow", (accounts) => {
       });
 
       describe('with fee paid in GALT', () => {
-        it('should reject if balance check failed', async function() {
-          // TOOD: alice should already own a plot to escrow
-          await assertRevert(
-            this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
-              ether(50),
-              this.attachedDocuments.map(galt.ipfsHashToBytes32),
-              EscrowCurrency.ERC20,
-              this.plotManager.address,
-              0,
-              { from: alice, value: ether(6) }
-            )
-          );
-        });
-
         describe('payable', () => {
           it('should allow payments greater than required', async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(55), { from: alice });
             await this.plotEscrow.createSaleOrder(
               this.packageTokenId,
               ether(50),
@@ -787,6 +773,7 @@ contract("PlotEscrow", (accounts) => {
           });
 
           it('should reject order with insufficient payment', async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             await assertRevert(
               this.plotEscrow.createSaleOrder(
                 this.packageTokenId,
@@ -801,6 +788,7 @@ contract("PlotEscrow", (accounts) => {
           });
 
           it('should reject order with payment both in eth and galt', async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             await assertRevert(
               this.plotEscrow.createSaleOrder(
                 this.packageTokenId,
@@ -815,6 +803,7 @@ contract("PlotEscrow", (accounts) => {
           });
 
           it('should calculate required payment', async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             let res = await this.plotEscrow.createSaleOrder(
               this.packageTokenId,
               ether(50),
@@ -833,6 +822,248 @@ contract("PlotEscrow", (accounts) => {
             assert.equal(res.auditorReward, ether(31.8));
             assert.equal(res.galtSpaceReward, ether(21.2));
             assert.equal(res.totalReward, ether(53));
+          });
+        });
+
+        describe('claim auditor/galtspace rewards', () => {
+          beforeEach(async function() {
+            await this.galtToken.approve(this.plotEscrow.address, ether(57), { from: alice });
+            const res = await this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              ether(57),
+              { from: alice }
+            );
+            this.rId = res.logs[0].args.orderId;
+
+            await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+            await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+            await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+            await this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice });
+          });
+
+          describe('for cancelled offer', () => {
+            describe('when auditor is bound', () => {
+              beforeEach(async function() {
+                // MATCH => ESCROW
+                await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+                // ESCROW => AUDIT_REQUIRED
+                await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+
+                // AUDIT_REQUIRED => AUDIT
+                await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+
+                // AUDIT => CANCELLED
+                await this.plotEscrow.cancellationAuditApprove(this.rId, bob, { from: eve });
+
+                // CANCELLED => EMPTY
+                await this.plotEscrow.withdrawPayment(this.rId, bob, { from: bob });
+                await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
+
+                const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+                assert.equal(res.status, SaleOfferStatus.EMPTY);
+
+                // EMPTY (offer) => OPEN(order)
+                await this.plotEscrow.reopenSaleOrder(this.rId, bob, { from: alice });
+
+                // OPEN(order) => CANCELLED(order)
+                await this.plotEscrow.cancelOpenSaleOrder(this.rId, { from: alice });
+              });
+
+              it('should allow claiming rewards', async function() {
+                // claim reward and check balance diff
+                const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+                await this.plotEscrow.claimValidatorReward(this.rId, { from: eve });
+                const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+                const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+                // reward = 57 ether * (100 - 40 = 60)% = 34.2 ether
+                assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(34.2));
+                // reward = 13 ether * 40% = 22.8 ether
+                assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(22.8));
+              });
+
+              it('should prevent double-claim', async function() {
+                await this.plotEscrow.claimValidatorReward(this.rId, { from: eve });
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: eve }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg }));
+              });
+
+              it('should deny others claiming rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: alice }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: feeManager }));
+              });
+            });
+
+            describe('when no auditor bound', () => {
+              beforeEach(async function() {
+                // MATCH => CANCELLED
+                await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
+
+                // CANCELLED => EMPTY
+                await this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie });
+
+                // EMPTY (offer) => OPEN(order)
+                await this.plotEscrow.reopenSaleOrder(this.rId, bob, { from: alice });
+
+                // OPEN(order) => CANCELLED(order)
+                await this.plotEscrow.cancelOpenSaleOrder(this.rId, { from: alice });
+              });
+
+              it('should allow galt space claiming reward', async function() {
+                const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+                assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(57));
+              });
+
+              it('should deny other person claiming validator rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: eve }));
+              });
+
+              it('should prevent double-claim', async function() {
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg }));
+              });
+
+              it('should deny others claiming rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: alice }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: feeManager }));
+              });
+            });
+          });
+
+          describe('for closed(successful) offers', () => {
+            beforeEach(async function() {
+              // assign custodian
+              const res = await this.plotCustodianManager.submitApplication(
+                this.packageTokenId,
+                CustodianAction.ATTACH,
+                bob,
+                0,
+                {
+                  from: alice,
+                  value: ether(6)
+                }
+              );
+              this.aId = res.logs[0].args.id;
+
+              await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
+              await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
+              await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+              await this.plotCustodianManager.attachToken(this.aId, {
+                from: alice
+              });
+              await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
+              await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
+              await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
+              await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+            });
+
+            describe('when auditor is bound', () => {
+              beforeEach(async function() {
+                // MATCH => ESCROW
+                await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+                // ESCROW => AUDIT_REQUIRED
+                await this.plotEscrow.requestCancellationAudit(this.rId, bob, { from: alice });
+
+                // AUDIT_REQUIRED => AUDIT
+                await this.plotEscrow.lockForAudit(this.rId, bob, { from: eve });
+
+                // AUDIT => ESCROW
+                await this.plotEscrow.cancellationAuditReject(this.rId, bob, { from: eve });
+
+                // ESCROW => RESOLVED
+                await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+                await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+
+                // RESOLVED => CLOSED (offer/order)
+                await this.plotEscrow.claimSpaceToken(this.rId, bob, { from: bob });
+                await this.plotEscrow.claimPayment(this.rId, bob, { from: alice });
+              });
+
+              it('should allow claiming rewards', async function() {
+                const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+                await this.plotEscrow.claimValidatorReward(this.rId, { from: eve });
+                const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+                const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+                // reward = 57 ether * (100 - 40 = 60)% = 34.2 ether
+                assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(34.2));
+                // reward = 13 ether * 40% = 22.8 ether
+                assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(22.8));
+              });
+
+              it('should prevent double-claim', async function() {
+                await this.plotEscrow.claimValidatorReward(this.rId, { from: eve });
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: eve }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg }));
+              });
+
+              it('should deny others claiming rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: alice }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: feeManager }));
+              });
+            });
+
+            describe('when no auditor bound', () => {
+              beforeEach(async function() {
+                // MATCH => ESCROW
+                await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+                // ESCROW => RESOLVED
+                await this.plotEscrow.resolve(this.rId, bob, { from: bob });
+                await this.plotEscrow.resolve(this.rId, bob, { from: alice });
+
+                // RESOLVED => CLOSED (offer/order)
+                await this.plotEscrow.claimSpaceToken(this.rId, bob, { from: bob });
+                await this.plotEscrow.claimPayment(this.rId, bob, { from: alice });
+              });
+
+              it('should allow galt space claiming reward', async function() {
+                const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+                assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(57));
+              });
+
+              it('should deny other person claiming validator rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: eve }));
+              });
+
+              it('should prevent double-claim', async function() {
+                await this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg });
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: galtSpaceOrg }));
+              });
+
+              it('should deny others claiming rewards', async function() {
+                await assertRevert(this.plotEscrow.claimValidatorReward(this.rId, { from: alice }));
+                await assertRevert(this.plotEscrow.claimGaltSpaceReward(this.rId, { from: feeManager }));
+              });
+            });
           });
         });
       });
