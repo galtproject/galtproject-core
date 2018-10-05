@@ -906,6 +906,7 @@ contract PlotManager is AbstractApplication {
     returns (
       address validator,
       uint256 reward,
+      bool rewardPaidOut,
       ValidationStatus status,
       string message
     )
@@ -913,6 +914,7 @@ contract PlotManager is AbstractApplication {
     return (
       applications[_aId].roleAddresses[_role],
       applications[_aId].assignedRewards[_role],
+      applications[_aId].roleRewardPaidOut[_role],
       applications[_aId].validationStatus[_role],
       applications[_aId].roleMessages[_role]
     );

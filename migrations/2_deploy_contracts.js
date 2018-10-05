@@ -64,9 +64,6 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Initialize contracts...');
     await spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
 
-    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
-    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
-
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
@@ -121,6 +118,9 @@ module.exports = async function(deployer, network, accounts) {
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
@@ -128,11 +128,11 @@ module.exports = async function(deployer, network, accounts) {
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
     await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
 
-    console.log('Set fees of contracts...');
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
 
+    console.log('Set fees of contracts...');
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
     await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
 
@@ -151,20 +151,6 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
     await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
-      from: coreTeam
-    });
-
-    await landUtils.initialize({ from: coreTeam });
-
-    await galtDex.initialize(
-      Web3.utils.toWei('100', 'szabo'),
-      Web3.utils.toWei('1', 'szabo'),
-      Web3.utils.toWei('1', 'szabo'),
-      galtToken.address,
-      { from: coreTeam }
-    );
-
-    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, plotCustodian.address, {
       from: coreTeam
     });
 
