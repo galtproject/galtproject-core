@@ -772,7 +772,69 @@ contract("PlotEscrow", (accounts) => {
             )
           );
         });
-        // TODO: payable pipeline
+
+        describe('payable', () => {
+          it('should allow payments greater than required', async function() {
+            await this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              ether(55),
+              { from: alice }
+            );
+          });
+
+          it('should reject order with insufficient payment', async function() {
+            await assertRevert(
+              this.plotEscrow.createSaleOrder(
+                this.packageTokenId,
+                ether(50),
+                this.attachedDocuments.map(galt.ipfsHashToBytes32),
+                EscrowCurrency.ETH,
+                0,
+                ether(44),
+                { from: alice }
+              )
+            );
+          });
+
+          it('should reject order with payment both in eth and galt', async function() {
+            await assertRevert(
+              this.plotEscrow.createSaleOrder(
+                this.packageTokenId,
+                ether(50),
+                this.attachedDocuments.map(galt.ipfsHashToBytes32),
+                EscrowCurrency.ETH,
+                0,
+                ether(45),
+                { from: alice, value: ether(1) }
+              )
+            );
+          });
+
+          it('should calculate required payment', async function() {
+            let res = await this.plotEscrow.createSaleOrder(
+              this.packageTokenId,
+              ether(50),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              EscrowCurrency.ETH,
+              0,
+              ether(53),
+              { from: alice }
+            );
+            this.rId = res.logs[0].args.orderId;
+
+            res = await this.plotEscrowWeb3.methods.getSaleOrderFees(this.rId).call();
+
+            assert.equal(res.auditorRewardPaidOut, false);
+            assert.equal(res.galtSpaceRewardPaidOut, false);
+            assert.equal(res.auditorReward, ether(31.8));
+            assert.equal(res.galtSpaceReward, ether(21.2));
+            assert.equal(res.totalReward, ether(53));
+          });
+        });
       });
     });
 
