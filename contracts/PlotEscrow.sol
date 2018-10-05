@@ -86,6 +86,7 @@ contract PlotEscrow is AbstractApplication {
     uint256 packageTokenId;
     uint256 createdAt;
     uint256 ask;
+    address lastBuyer;
 
     // Order currency
     ERC20 tokenContract;
@@ -338,6 +339,8 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.OPEN, "Only the seller is allowed to modify ask price");
     require(saleOffer.ask == saleOffer.bid, "Offer ask and bid prices should match");
 
+    saleOrder.lastBuyer = _buyer;
+
 //    removeSaleOrderFromOpenList(sleOrder.id);
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.LOCKED);
@@ -476,7 +479,7 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer status required");
 
     validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to lock");
 
     saleOffer.auditor.addr = msg.sender;
 
@@ -499,7 +502,7 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
     validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to reject");
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
@@ -521,7 +524,7 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
     validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE requied");
+    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to approve");
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
@@ -752,17 +755,66 @@ contract PlotEscrow is AbstractApplication {
   }
 
   function claimValidatorReward(
-    bytes32 _aId
+    bytes32 _rId
   )
     external
   {
+    SaleOrder storage saleOrder = saleOrders[_rId];
+    SaleOffer storage saleOffer = saleOrder.offers[saleOrder.lastBuyer];
+
+    require(
+      saleOrder.status == SaleOrderStatus.CLOSED ||
+      saleOrder.status == SaleOrderStatus.CANCELLED,
+      "CLOSED or CANCELLED order status required");
+
+    require(saleOffer.auditor.addr == msg.sender, "Only the last acted auditor is eligible claiming the reward");
+    require(saleOrder.fees.auditorRewardPaidOut == false, "Reward is already paid out");
+
+    saleOrder.fees.auditorRewardPaidOut = true;
+
+    if (saleOrder.fees.currency == Currency.ETH) {
+      msg.sender.transfer(saleOrder.fees.auditorReward);
+    } else if (saleOrder.fees.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, saleOrder.fees.auditorReward);
+    }
   }
 
   function claimGaltSpaceReward(
-    bytes32 _aId
+    bytes32 _rId
   )
     external
   {
+    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+
+    SaleOrder storage saleOrder = saleOrders[_rId];
+    SaleOffer storage saleOffer = saleOrder.offers[saleOrder.lastBuyer];
+
+    require(
+      saleOrder.status == SaleOrderStatus.CLOSED ||
+      saleOrder.status == SaleOrderStatus.CANCELLED,
+      "CLOSED or CANCELLED order status required");
+
+    SaleOfferAuditor storage auditor = saleOffer.auditor;
+
+    uint256 reward;
+
+    // Also applicable when saleOffer not set and|or buyer not chosen
+    if (auditor.status == ValidationStatus.NOT_EXISTS) {
+      // total reward goes galtSpace
+      reward = saleOrder.fees.totalReward;
+    } else {
+      reward = saleOrder.fees.galtSpaceReward;
+    }
+
+    require(saleOrder.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+
+    saleOrder.fees.galtSpaceRewardPaidOut = true;
+
+    if (saleOrder.fees.currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (saleOrder.fees.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, reward);
+    }
   }
 
   function saleOrderExists(bytes32 _rId) external view returns (bool) {
