@@ -203,6 +203,8 @@ module.exports = async function(deployer, network, accounts) {
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
             plotCustodianAbi: plotCustodian.abi,
+            plotEscrowAddress: plotEscrow.address,
+            plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,
