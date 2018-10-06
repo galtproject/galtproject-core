@@ -11,7 +11,7 @@ const chai = require('chai');
 const galt = require('@galtproject/utils');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether, szabo } = require('../helpers');
+const { zeroAddress, initHelperWeb3, ether, szabo } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
@@ -80,6 +80,7 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
       this.splitMerge.address,
       this.validators.address,
       this.galtToken.address,
+      zeroAddress,
       coreTeam,
       {
         from: coreTeam
