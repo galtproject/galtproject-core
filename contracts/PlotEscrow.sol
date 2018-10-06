@@ -836,6 +836,7 @@ contract PlotEscrow is AbstractApplication {
       uint256 offerCount,
       uint256 packageTokenId,
       uint256 createdAt,
+      address lastBuyer,
       address[] offersList
     )
   {
@@ -851,6 +852,7 @@ contract PlotEscrow is AbstractApplication {
       r.offerList.length,
       r.packageTokenId,
       r.createdAt,
+      r.lastBuyer,
       r.offerList
     );
   }
