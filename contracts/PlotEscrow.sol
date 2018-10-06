@@ -902,7 +902,8 @@ contract PlotEscrow is AbstractApplication {
       uint8 resolved,
       uint256 lastBidAt,
       uint256 lastAskAt,
-      uint256 createdAt
+      uint256 createdAt,
+      bytes32 custodianApplicationId
     )
   {
     SaleOffer storage r = saleOrders[_rId].offers[_buyer];
@@ -916,7 +917,8 @@ contract PlotEscrow is AbstractApplication {
       r.resolved,
       r.lastBidAt,
       r.lastAskAt,
-      r.createdAt
+      r.createdAt,
+      r.custodianApplicationId
     );
   }
 
