@@ -710,7 +710,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOrder.status == SaleOrderStatus.OPEN, "OPEN order status required");
     require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
-    tokenOnSale[saleOrder.packageTokenId] == false;
+    tokenOnSale[saleOrder.packageTokenId] = false;
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.CANCELLED);
   }
@@ -977,7 +977,7 @@ contract PlotEscrow is AbstractApplication {
   }
 
   function closeOrderHelper(SaleOrder storage saleOrder, address _buyer) internal {
-    tokenOnSale[saleOrder.packageTokenId] == false;
+    tokenOnSale[saleOrder.packageTokenId] = false;
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
   }
