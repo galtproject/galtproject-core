@@ -12,7 +12,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether, szabo } = require('../helpers');
+const { zeroAddress, initHelperWeb3, ether, szabo } = require('../helpers');
 
 const { BN } = Web3.utils;
 
@@ -57,6 +57,7 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       this.splitMerge.address,
       this.validators.address,
       this.galtToken.address,
+      zeroAddress,
       coreTeam,
       {
         from: coreTeam
