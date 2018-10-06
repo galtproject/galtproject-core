@@ -118,6 +118,9 @@ module.exports = async function(deployer, network, accounts) {
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
@@ -125,15 +128,15 @@ module.exports = async function(deployer, network, accounts) {
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
     await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
 
-    console.log('Set fees of contracts...');
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
 
+    console.log('Set fees of contracts...');
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
     await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
 
-    await plotManager.setSubmissionFeeRate(Web3.utils.toWei('10', 'lovelace'), Web3.utils.toWei('1', 'lovelace'), {
+    await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
       from: coreTeam
     });
 
@@ -151,7 +154,8 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), { from: coreTeam });
+    await spaceDex.setFee('0', '0', { from: coreTeam });
+    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
 
     console.log('Save addresses and abi to deployed folder...');
 
