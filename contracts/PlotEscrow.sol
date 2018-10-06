@@ -836,6 +836,7 @@ contract PlotEscrow is AbstractApplication {
       uint256 offerCount,
       uint256 packageTokenId,
       uint256 createdAt,
+      address lastBuyer,
       address[] offersList
     )
   {
@@ -851,6 +852,7 @@ contract PlotEscrow is AbstractApplication {
       r.offerList.length,
       r.packageTokenId,
       r.createdAt,
+      r.lastBuyer,
       r.offerList
     );
   }
@@ -900,7 +902,8 @@ contract PlotEscrow is AbstractApplication {
       uint8 resolved,
       uint256 lastBidAt,
       uint256 lastAskAt,
-      uint256 createdAt
+      uint256 createdAt,
+      bytes32 custodianApplicationId
     )
   {
     SaleOffer storage r = saleOrders[_rId].offers[_buyer];
@@ -914,7 +917,8 @@ contract PlotEscrow is AbstractApplication {
       r.resolved,
       r.lastBidAt,
       r.lastAskAt,
-      r.createdAt
+      r.createdAt,
+      r.custodianApplicationId
     );
   }
 
@@ -944,6 +948,10 @@ contract PlotEscrow is AbstractApplication {
     return saleOrderArray.length;
   }
 
+  function getSaleOrders() external view returns (bytes32[]) {
+    return saleOrderArray;
+  }
+
   function getSaleOrderArrayByBuyerLength(address _buyer) external view returns (uint256) {
     return saleOrderArrayByBuyer[_buyer].length;
   }
@@ -954,6 +962,10 @@ contract PlotEscrow is AbstractApplication {
 
   function getOpenSaleOrdersLength() external view returns (uint256) {
     return openSaleOrderArray.length;
+  }
+
+  function getOpenSaleOrders() external view returns (bytes32[]) {
+    return openSaleOrderArray;
   }
 
   function getSellerOrders(address _seller) external view returns (bytes32[]) {

@@ -120,7 +120,8 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
     await this.spaceDex.addRoleTo(coreTeam, 'fee_manager');
 
-    await this.spaceDex.setFee(szabo(feePercent));
+    await this.spaceDex.setFee(szabo(feePercent), '0');
+    await this.spaceDex.setFee(szabo(feePercent), '1');
 
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
@@ -190,6 +191,10 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
       await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
         from: alice
       });
+
+      const oId = await this.spaceDex.operationsArray(0);
+      const operation = await this.spaceDex.getOperationById(oId);
+      assert.equal(operation[3], alice);
 
       const aliceGaltBalance = await this.galtToken.balanceOf(alice);
       assert.equal(aliceGaltBalance.toString(10), geohashPrice.toString(10));

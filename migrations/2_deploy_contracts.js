@@ -3,6 +3,8 @@ const SpaceToken = artifacts.require('./SpaceToken');
 const LandUtils = artifacts.require('./LandUtils');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
+const PlotEscrowLib = artifacts.require('./PlotEscrowLib');
+const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const SplitMerge = artifacts.require('./SplitMerge');
@@ -45,6 +47,11 @@ module.exports = async function(deployer, network, accounts) {
     const plotManager = await PlotManager.new({ from: coreTeam });
     const plotValuation = await PlotValuation.new({ from: coreTeam });
     const plotCustodian = await PlotCustodian.new({ from: coreTeam });
+
+    const plotEscrowLib = await PlotEscrowLib.new({ from: coreTeam });
+    PlotEscrow.link('PlotEscrowLib', plotEscrowLib.address);
+
+    const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -93,6 +100,18 @@ module.exports = async function(deployer, network, accounts) {
       splitMerge.address,
       validators.address,
       galtToken.address,
+      plotEscrow.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
+    await plotEscrow.initialize(
+      spaceToken.address,
+      plotCustodian.address,
+      validators.address,
+      galtToken.address,
       coreTeam,
       {
         from: coreTeam
@@ -118,6 +137,9 @@ module.exports = async function(deployer, network, accounts) {
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
@@ -125,15 +147,15 @@ module.exports = async function(deployer, network, accounts) {
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
     await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
 
-    console.log('Set fees of contracts...');
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
 
+    console.log('Set fees of contracts...');
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
     await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
 
-    await plotManager.setSubmissionFeeRate(Web3.utils.toWei('10', 'lovelace'), Web3.utils.toWei('1', 'lovelace'), {
+    await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
       from: coreTeam
     });
 
@@ -151,7 +173,8 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), { from: coreTeam });
+    await spaceDex.setFee('0', '0', { from: coreTeam });
+    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
 
     console.log('Save addresses and abi to deployed folder...');
 
@@ -180,6 +203,8 @@ module.exports = async function(deployer, network, accounts) {
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
             plotCustodianAbi: plotCustodian.abi,
+            plotEscrowAddress: plotEscrow.address,
+            plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,

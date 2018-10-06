@@ -418,7 +418,7 @@ contract PlotManager is AbstractApplication {
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == expectedDepositInEth, "ETH value should be exactly equal expectedDeposit");
-      require(_submissionFeeInGalt == getSubmissionFee(a.id, Currency.GALT), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFee(a.id, Currency.GALT), "Incorrect fee passed in");
       galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
       fee = _submissionFeeInGalt;
       a.currency = Currency.GALT;
@@ -426,7 +426,7 @@ contract PlotManager is AbstractApplication {
     } else {
       fee = getSubmissionFee(a.id, Currency.ETH);
       require(
-        msg.value == expectedDepositInEth.add(fee),
+        msg.value >= expectedDepositInEth.add(fee),
         "Incorrect msg.value passed in");
     }
 
@@ -469,7 +469,8 @@ contract PlotManager is AbstractApplication {
 
     if (newTotalFee > alreadyPaid) {
       uint256 requiredPayment = newTotalFee.sub(alreadyPaid);
-      require(fee == requiredPayment, "Incorrect fee passed in");
+      require(fee >= requiredPayment, "Incorrect fee passed in");
+      newTotalFee = fee;
     } else if (newTotalFee < alreadyPaid) {
       require(fee == 0, "Unexpected payment");
       uint256 requiredRefund = alreadyPaid.sub(newTotalFee);
@@ -905,6 +906,7 @@ contract PlotManager is AbstractApplication {
     returns (
       address validator,
       uint256 reward,
+      bool rewardPaidOut,
       ValidationStatus status,
       string message
     )
@@ -912,6 +914,7 @@ contract PlotManager is AbstractApplication {
     return (
       applications[_aId].roleAddresses[_role],
       applications[_aId].assignedRewards[_role],
+      applications[_aId].roleRewardPaidOut[_role],
       applications[_aId].validationStatus[_role],
       applications[_aId].roleMessages[_role]
     );
