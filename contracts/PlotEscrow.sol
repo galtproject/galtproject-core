@@ -697,6 +697,7 @@ contract PlotEscrow is AbstractApplication {
     spaceToken.safeTransferFrom(address(this), msg.sender, saleOrder.packageTokenId);
 
     if (saleOffer.paymentAttached == false) {
+      tokenOnSale[saleOrder.packageTokenId] == false;
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
       changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
     }
@@ -722,6 +723,7 @@ contract PlotEscrow is AbstractApplication {
     require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing payment");
 
     if (spaceToken.ownerOf(saleOrder.packageTokenId) != address(this)) {
+      tokenOnSale[saleOrder.packageTokenId] == false;
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
       changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
     }
@@ -747,6 +749,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOrder.status == SaleOrderStatus.OPEN, "OPEN order status required");
     require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
+    tokenOnSale[saleOrder.packageTokenId] == false;
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.CANCELLED);
   }
