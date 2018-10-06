@@ -12,7 +12,8 @@ validate:
 test:
 	truffle compile
 	node scripts/checkContractSize.js
-	npm test
+	-npm test
+	tput bel
 
 check-size:
 	node scripts/checkContractSize.js

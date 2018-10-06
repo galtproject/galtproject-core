@@ -3,6 +3,8 @@ const SpaceToken = artifacts.require('./SpaceToken');
 const LandUtils = artifacts.require('./LandUtils');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
+const PlotEscrowLib = artifacts.require('./PlotEscrowLib');
+const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const SplitMerge = artifacts.require('./SplitMerge');
@@ -45,6 +47,11 @@ module.exports = async function(deployer, network, accounts) {
     const plotManager = await PlotManager.new({ from: coreTeam });
     const plotValuation = await PlotValuation.new({ from: coreTeam });
     const plotCustodian = await PlotCustodian.new({ from: coreTeam });
+
+    const plotEscrowLib = await PlotEscrowLib.new({ from: coreTeam });
+    PlotEscrow.link('PlotEscrowLib', plotEscrowLib.address);
+
+    const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -91,6 +98,18 @@ module.exports = async function(deployer, network, accounts) {
     await plotCustodian.initialize(
       spaceToken.address,
       splitMerge.address,
+      validators.address,
+      galtToken.address,
+      plotEscrow.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
+    await plotEscrow.initialize(
+      spaceToken.address,
+      plotCustodian.address,
       validators.address,
       galtToken.address,
       coreTeam,
@@ -184,6 +203,8 @@ module.exports = async function(deployer, network, accounts) {
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
             plotCustodianAbi: plotCustodian.abi,
+            plotEscrowAddress: plotEscrow.address,
+            plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,

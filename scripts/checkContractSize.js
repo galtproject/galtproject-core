@@ -7,6 +7,8 @@ checkSize('GaltDex');
 checkSize('LandUtils');
 checkSize('PlotClarificationManager');
 checkSize('PlotCustodianManager');
+checkSize('PlotEscrow');
+checkSize('PlotEscrowLib');
 checkSize('PlotManager');
 checkSize('PlotManagerLib');
 checkSize('PlotValutaion');

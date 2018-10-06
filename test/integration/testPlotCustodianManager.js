@@ -142,6 +142,8 @@ contract('PlotCustodianManager', (accounts) => {
       this.splitMerge.address,
       this.validators.address,
       this.galtToken.address,
+      // PlotEscrow integration doesn't required here
+      zeroAddress,
       galtSpaceOrg,
       {
         from: coreTeam

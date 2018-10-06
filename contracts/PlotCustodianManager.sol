@@ -20,6 +20,7 @@ import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 import "./Validators.sol";
+import "./PlotEscrow.sol";
 
 
 contract PlotCustodianManager is AbstractApplication {
@@ -69,6 +70,7 @@ contract PlotCustodianManager is AbstractApplication {
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     bool galtSpaceRewardPaidOut;
+    bool throughEscrow;
     uint8 approveConfirmations;
     Currency currency;
     ApplicationStatus status;
@@ -99,6 +101,7 @@ contract PlotCustodianManager is AbstractApplication {
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
+  PlotEscrow public plotEscrow;
 
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
@@ -133,6 +136,7 @@ contract PlotCustodianManager is AbstractApplication {
     SplitMerge _splitMerge,
     Validators _validators,
     ERC20 _galtToken,
+    PlotEscrow _plotEscrow,
     address _galtSpaceRewardsAddress
   )
     external
@@ -144,6 +148,7 @@ contract PlotCustodianManager is AbstractApplication {
     splitMerge = _splitMerge;
     validators = _validators;
     galtToken = _galtToken;
+    plotEscrow = _plotEscrow;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     // Default values for revenue shares and application fees
@@ -154,6 +159,35 @@ contract PlotCustodianManager is AbstractApplication {
     galtSpaceGaltShare = 33;
     gasPriceForDeposits = 4 wei;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
+  }
+
+  /**
+   * @dev Submit a new custodian management application from PlotEscrow contract
+   */
+  function submitApplicationFromEscrow(
+    uint256 _packageTokenId,
+    Action _action,
+    address _chosenCustodian,
+    address _applicant,
+    uint256 _applicationFeeInGalt
+  )
+    external
+    payable
+    returns (bytes32)
+  {
+    require(msg.sender == address(plotEscrow), "Only trusted PlotEscrow contract allowed overriding applicant address");
+    require(_applicant != address(0), "Should specify applicant");
+    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_packageTokenId) == address(plotEscrow), "PlotEscrow contract should own the token");
+
+    return submitApplicationHelper(
+      _packageTokenId,
+      _action,
+      _applicant,
+      _chosenCustodian,
+      true,
+      _applicationFeeInGalt
+    );
   }
 
   /**
@@ -176,6 +210,27 @@ contract PlotCustodianManager is AbstractApplication {
     require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
     require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
 
+    return submitApplicationHelper(
+      _packageTokenId,
+      _action,
+      msg.sender,
+      _chosenCustodian,
+      false,
+      _applicationFeeInGalt
+    );
+  }
+
+  function submitApplicationHelper(
+    uint256 _packageTokenId,
+    Action _action,
+    address _applicant,
+    address _chosenCustodian,
+    bool _throughEscrow,
+    uint256 _applicationFeeInGalt
+  )
+    internal
+    returns (bytes32)
+  {
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -189,7 +244,7 @@ contract PlotCustodianManager is AbstractApplication {
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
       require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      galtToken.transferFrom(_applicant, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
     }
@@ -211,7 +266,8 @@ contract PlotCustodianManager is AbstractApplication {
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
-    a.applicant = msg.sender;
+    a.throughEscrow = _throughEscrow;
+    a.applicant = _applicant;
     a.chosenCustodian = _chosenCustodian;
     a.currency = currency;
     a.packageTokenId = _packageTokenId;
@@ -222,9 +278,9 @@ contract PlotCustodianManager is AbstractApplication {
     applications[_id] = a;
 
     applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
+    applicationsByAddresses[_applicant].push(_id);
 
-    emit LogNewApplication(_id, msg.sender);
+    emit LogNewApplication(_id, _applicant);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
     assignRequiredValidatorRolesAndRewards(_id);
@@ -348,7 +404,7 @@ contract PlotCustodianManager is AbstractApplication {
 
     require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
 
-    spaceToken.transferFrom(msg.sender, address(this), a.packageTokenId);
+    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.packageTokenId);
 
     changeApplicationStatus(a, ApplicationStatus.REVIEW);
   }
@@ -419,10 +475,16 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Withdraw the attached SpaceToken back by the applicant
    * @param _aId application ID
    */
-  function withdrawToken(bytes32 _aId) external onlyApplicant(_aId) {
+  function withdrawToken(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
+
+    if (a.throughEscrow) {
+      require(msg.sender == address(plotEscrow), "Only plotEscrow allowed claiming token back");
+    } else {
+      require(msg.sender == a.applicant, "Invalid applicant");
+    }
 
     spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
 
