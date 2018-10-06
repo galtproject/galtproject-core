@@ -621,7 +621,9 @@ contract PlotEscrow is AbstractApplication {
   function withdrawTokenFromCustodianContract(
     bytes32 _orderId,
     address _buyer
-  ) external {
+  )
+    external
+  {
     SaleOrder storage saleOrder = saleOrders[_orderId];
     require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];

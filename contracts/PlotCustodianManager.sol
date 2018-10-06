@@ -475,7 +475,7 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Withdraw the attached SpaceToken back by the applicant
    * @param _aId application ID
    */
-  function withdrawToken(bytes32 _aId) external  {
+  function withdrawToken(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");

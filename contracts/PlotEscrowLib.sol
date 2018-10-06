@@ -54,7 +54,6 @@ library PlotEscrowLib {
     }
   }
 
-
   function createSaleOfferHelper(
     PlotEscrow.SaleOrder storage saleOrder,
     uint256 _bid,
