@@ -2,6 +2,7 @@ const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const PlotEscrow = artifacts.require('./PlotEscrow.sol');
+const PlotEscrowLib = artifacts.require('./PlotEscrowLib.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
@@ -45,12 +46,13 @@ const SaleOfferStatus = {
   OPEN: 1,
   MATCH: 2,
   ESCROW: 3,
-  AUDIT_REQUIRED: 4,
-  AUDIT: 5,
-  RESOLVED: 6,
-  CLOSED: 7,
-  CANCELLED: 8,
-  EMPTY: 9
+  CUSTODIAN_REVIEW: 4,
+  AUDIT_REQUIRED: 5,
+  AUDIT: 6,
+  RESOLVED: 7,
+  CLOSED: 8,
+  CANCELLED: 9,
+  EMPTY: 10
 };
 
 const ValidationStatus = {
@@ -123,6 +125,9 @@ contract("PlotEscrow", (accounts) => {
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
+    this.plotEscrowLib = await PlotEscrowLib.new({ from: coreTeam });
+    PlotEscrow.link('PlotEscrowLib', this.plotEscrowLib.address);
+
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
@@ -157,6 +162,7 @@ contract("PlotEscrow", (accounts) => {
       this.splitMerge.address,
       this.validators.address,
       this.galtToken.address,
+      this.plotEscrow.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -1468,6 +1474,42 @@ contract("PlotEscrow", (accounts) => {
             const res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.EMPTY);
           });
+        });
+      });
+
+      describe('#applyCustodianAssignment()', () => {
+        beforeEach(async function() {
+          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
+
+          await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
+        });
+
+        it('should allow seller apply for custodian assignment', async function() {
+          // apply for custodian assignment through PlotEscrow contract
+          let res = await this.plotEscrow.applyCustodianAssignment(this.rId, bob, charlie, 0, {
+            from: alice,
+            value: ether(8)
+          });
+          const cId = res.logs[0].args.id;
+
+          // continue custodian registration
+          await this.plotCustodianManager.lockApplication(cId, { from: eve });
+          await this.plotCustodianManager.acceptApplication(cId, { from: charlie });
+          await this.plotCustodianManager.attachToken(cId, {
+            from: alice
+          });
+          await this.plotCustodianManager.approveApplication(cId, { from: charlie });
+          await this.plotCustodianManager.approveApplication(cId, { from: alice });
+          await this.plotCustodianManager.approveApplication(cId, { from: eve });
+
+          await this.plotEscrow.withdrawTokenFromCustodianContract(this.rId, bob, { from: alice });
+
+          res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+          assert.equal(res.toLowerCase(), this.plotEscrow.address);
+
+          res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
+          assert.equal(res.status, SaleOfferStatus.ESCROW);
         });
       });
 

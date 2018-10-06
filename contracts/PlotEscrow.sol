@@ -17,8 +17,9 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./AbstractApplication.sol";
-import "./SpaceToken.sol";
 import "./PlotCustodianManager.sol";
+import "./PlotEscrowLib.sol";
+import "./SpaceToken.sol";
 import "./Validators.sol";
 
 
@@ -54,6 +55,7 @@ contract PlotEscrow is AbstractApplication {
     OPEN,
     MATCH,
     ESCROW,
+    CUSTODIAN_REVIEW,
     AUDIT_REQUIRED,
     AUDIT,
     RESOLVED,
@@ -136,6 +138,7 @@ contract PlotEscrow is AbstractApplication {
     uint256 lastAskAt;
     uint256 lastBidAt;
     uint256 createdAt;
+    bytes32 custodianApplicationId;
     uint8 resolved;
     bool paymentAttached;
   }
@@ -244,8 +247,6 @@ contract PlotEscrow is AbstractApplication {
     saleOrder.packageTokenId = _packageTokenId;
     saleOrder.createdAt = block.timestamp;
 
-    calculateAndStoreFee(saleOrder, fee);
-
     saleOrders[_id] = saleOrder;
     saleOrderArray.push(_id);
     saleOrderArrayBySeller[msg.sender].push(_id);
@@ -253,6 +254,8 @@ contract PlotEscrow is AbstractApplication {
     spaceTokenLastOrderId[_packageTokenId] = _id;
     openSaleOrderIndex[_id] = openSaleOrderArray.length;
     openSaleOrderArray.push(_id);
+
+    PlotEscrowLib.calculateAndStoreFee(galtSpaceEthShare, galtSpaceGaltShare, saleOrders[_id], fee);
 
     // TODO: store rewards assign
     changeSaleOrderStatus(saleOrders[_id], SaleOrderStatus.OPEN);
@@ -265,24 +268,8 @@ contract PlotEscrow is AbstractApplication {
     external
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
-    require(saleOrder.seller != msg.sender, "Could not apply with the seller's address");
-    require(saleOrder.status == SaleOrderStatus.OPEN, "SaleOrderStatus should be OPEN");
-    require(saleOrder.offers[msg.sender].status == SaleOfferStatus.NOT_EXISTS, "Offer for this application already exists");
-    require(_bid > 0, "Negative ask price");
+    PlotEscrowLib.createSaleOfferHelper(saleOrder, _bid, msg.sender);
 
-    SaleOffer memory saleOffer;
-
-    saleOffer.status = SaleOfferStatus.OPEN;
-    saleOffer.buyer = msg.sender;
-    saleOffer.bid = _bid;
-    saleOffer.ask = saleOrder.ask;
-    saleOffer.lastBidAt = block.timestamp;
-    saleOffer.createdAt = block.timestamp;
-    saleOffer.index = saleOrder.offerList.length;
-
-    saleOrder.offers[msg.sender] = saleOffer;
-
-    saleOrder.offerList.push(msg.sender);
     saleOrderArrayByBuyer[msg.sender].push(_orderId);
 
     changeSaleOfferStatus(saleOrder, msg.sender, SaleOfferStatus.OPEN);
@@ -426,7 +413,6 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.buyer == msg.sender, "Only the buyer is allowed attaching payment");
     require(saleOffer.status == SaleOfferStatus.MATCH, "Only the seller is allowed to modify ask price");
-
     require(saleOffer.paymentAttached == false, "Payment is already attached");
 
     if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
@@ -631,25 +617,60 @@ contract PlotEscrow is AbstractApplication {
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
 
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-
-    require(saleOffer.status == SaleOfferStatus.ESCROW, "ESCROW offer status required");
-
-    if (msg.sender == saleOffer.buyer) {
-      saleOffer.resolved = saleOffer.resolved | 1;
-    } else if (msg.sender == saleOrder.seller) {
-      saleOffer.resolved = saleOffer.resolved | 2;
-    } else {
-      revert("No permissions to resolve the order");
-    }
-
-    bool custodianAssigned = plotCustodianManager.assignedCustodians(saleOrder.packageTokenId) != address(0);
-
-    if (saleOffer.resolved == 3 && custodianAssigned) {
+    if (PlotEscrowLib.resolveHelper(saleOrder, plotCustodianManager, _buyer)) {
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.RESOLVED);
     }
+  }
+
+  /**
+   * @dev Transfer the token to PlotCustodianContract on behalf of owner
+   */
+  function applyCustodianAssignment(
+    bytes32 _orderId,
+    address _buyer,
+    address _chosenCustodian,
+    uint256 _applicationFeeInGalt
+  )
+    external
+    payable
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+    require(saleOffer.status == SaleOfferStatus.ESCROW, "ESCROW offer status required");
+
+    require(saleOrder.seller == msg.sender, "Only seller is allowed applying custodian assignment");
+
+    require(spaceToken.ownerOf(saleOrder.packageTokenId) == address(this), "Space token doesn't belong to this contract");
+
+    spaceToken.approve(address(plotCustodianManager), saleOrder.packageTokenId);
+    saleOffer.custodianApplicationId = plotCustodianManager.submitApplicationFromEscrow.value(msg.value)(
+      saleOrder.packageTokenId,
+      PlotCustodianManager.Action.ATTACH,
+      _chosenCustodian,
+      msg.sender,
+      _applicationFeeInGalt
+    );
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CUSTODIAN_REVIEW);
+  }
+
+  function withdrawTokenFromCustodianContract(
+    bytes32 _orderId,
+    address _buyer
+  ) external {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+    require(saleOffer.status == SaleOfferStatus.CUSTODIAN_REVIEW, "CUSTODIAN_REVIEW offer status required");
+
+    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing token back");
+
+    plotCustodianManager.withdrawToken(
+      saleOffer.custodianApplicationId
+    );
+
+    changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
   }
 
   /**
@@ -887,11 +908,11 @@ contract PlotEscrow is AbstractApplication {
     SaleOrderFees storage f = saleOrders[_rId].fees;
 
     return(
-    f.auditorRewardPaidOut,
-    f.galtSpaceRewardPaidOut,
-    f.auditorReward,
-    f.galtSpaceReward,
-    f.totalReward
+      f.auditorRewardPaidOut,
+      f.galtSpaceRewardPaidOut,
+      f.auditorReward,
+      f.galtSpaceReward,
+      f.totalReward
     );
   }
 
@@ -967,31 +988,6 @@ contract PlotEscrow is AbstractApplication {
 
   function getOpenSaleOrdersLength() external view returns (uint256) {
     return openSaleOrderArray.length;
-  }
-
-  function calculateAndStoreFee(
-    SaleOrder memory _r,
-    uint256 _fee
-  )
-    internal
-    view
-  {
-    uint256 share;
-
-    if (_r.fees.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
-    } else {
-      share = galtSpaceGaltShare;
-    }
-
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 auditorReward = _fee.sub(galtSpaceReward);
-
-    assert(auditorReward.add(galtSpaceReward) == _fee);
-
-    _r.fees.totalReward = _fee;
-    _r.fees.auditorReward = auditorReward;
-    _r.fees.galtSpaceReward = galtSpaceReward;
   }
 
   function changeSaleOrderStatus(
