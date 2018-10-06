@@ -944,6 +944,10 @@ contract PlotEscrow is AbstractApplication {
     return saleOrderArray.length;
   }
 
+  function getSaleOrders() external view returns (bytes32[]) {
+    return saleOrderArray;
+  }
+
   function getSaleOrderArrayByBuyerLength(address _buyer) external view returns (uint256) {
     return saleOrderArrayByBuyer[_buyer].length;
   }
@@ -954,6 +958,10 @@ contract PlotEscrow is AbstractApplication {
 
   function getOpenSaleOrdersLength() external view returns (uint256) {
     return openSaleOrderArray.length;
+  }
+
+  function getOpenSaleOrders() external view returns (bytes32[]) {
+    return openSaleOrderArray;
   }
 
   function getSellerOrders(address _seller) external view returns (bytes32[]) {
