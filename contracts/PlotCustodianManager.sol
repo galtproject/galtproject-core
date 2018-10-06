@@ -592,6 +592,7 @@ contract PlotCustodianManager is AbstractApplication {
       uint8 approveConfirmations,
       bytes32[] assignedValidatorRoles,
       bytes32[] custodianDocuments,
+      bool throughEscrow,
       ApplicationStatus status,
       Currency currency,
       Action action
@@ -608,6 +609,7 @@ contract PlotCustodianManager is AbstractApplication {
       m.approveConfirmations,
       m.assignedRoles,
       m.custodianDocuments,
+      m.throughEscrow,
       m.status,
       m.currency,
       m.action
