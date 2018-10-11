@@ -23,3 +23,12 @@ Currently we have all our contracts deployed at our private network named `testn
 * HTTP RPC server `http://206.189.27.214:8545/`
 * WS RPC server `ws://206.189.27.214:8546/`
 * Faucet http://faucet-dev.galtproject.io/
+
+### Roadmap
+
+* `v0.2` - Current version
+* `v0.3` - Cut off geohashes from PlotManager contract
+* `v0.4` - ClaimManager contract; ValidatorStakes contract
+* `v0.5` - Internal contracts review
+* `v0.6` - External peer review; Public testnet deployment
+* `v1.0` - External audit; Mainnet deployment
