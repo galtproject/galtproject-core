@@ -142,6 +142,7 @@ module.exports = async function(deployer, network, accounts) {
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
+    await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
     await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });

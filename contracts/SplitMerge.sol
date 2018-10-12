@@ -81,6 +81,34 @@ contract SplitMerge is Initializable, Ownable {
 
     packageToContour[_packageTokenId] = _geohashesContour;
   }
+  
+  function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
+    address tokenOwner = spaceToken.ownerOf(_sourcePackageTokenId);
+    setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
+    
+    uint256 geohashOfNewPackage = _newPackageContour[0];
+    uint256 geohashTokenIdOfNewPackage = spaceToken.geohashToTokenId(geohashOfNewPackage);
+    
+    // TODO: remove ugly hack
+    if(spaceToken.exists(geohashTokenIdOfNewPackage)) {
+      if(spaceToken.ownerOf(geohashTokenIdOfNewPackage) != tokenOwner) {
+        spaceToken.transferFrom(spaceToken.ownerOf(geohashTokenIdOfNewPackage), tokenOwner, geohashTokenIdOfNewPackage);
+      }
+    } else {
+      spaceToken.mintGeohash(tokenOwner, geohashOfNewPackage);
+    }
+
+    uint256 newPackageTokenId = initPackage(geohashTokenIdOfNewPackage);
+    setPackageContour(newPackageTokenId, _newPackageContour);
+
+    return newPackageTokenId;
+  }
+  
+  function mergePackage(uint256 _sourcePackageTokenId, uint256 _destinationPackageTokenId, uint256[] _destinationPackageContour) public {
+    setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
+
+    spaceToken.burn(_sourcePackageTokenId);
+  }
 
   function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
     return packageToContour[_packageTokenId];
