@@ -1,11 +1,3 @@
-## Galt Project Contracts [v0.2.1](https://github.com/galtspace/galtproject-contracts/tree/v0.2.1) (2018-10-12)
-
-The full list of included changes:
-
-* SplitMerge:
-  * Split packs(currently unsafe): set contour for old pack and create another new pack
-  * Merge packs(currently unsafe): set contour for destination pack and burn source pack
-
 ## Galt Project Contracts [v0.2.0](https://github.com/galtspace/galtproject-contracts/tree/v0.2.0) (2018-10-12)
 
 There was no release of v0.1.0, so here is a full list of the initial features:
