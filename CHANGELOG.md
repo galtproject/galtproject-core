@@ -1,4 +1,4 @@
-## Galt Project Contracts [v0.2.0](https://github.com/galtproject/galtproject-contracts/tree/v0.2.0) (2018-10-12)
+## Galt Project Contracts [v0.2.0](https://github.com/galtspace/galtproject-contracts/tree/v0.2.0) (2018-10-12)
 
 There was no release of v0.1.0, so here is a full list of the initial features:
 
