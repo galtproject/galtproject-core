@@ -83,44 +83,76 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
-    this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
-    this.plotManager = await PlotManager.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
-
-    await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
-    await this.plotManager.initialize(
-      this.spaceToken.address,
-      this.splitMerge.address,
-      this.validators.address,
-      this.galtToken.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
+    let promises = [];
+    promises.push(
+      GaltToken.new({ from: coreTeam }).then(galtToken => {
+        this.galtToken = galtToken;
+      })
     );
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
-    await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
+    promises.push(
+      Validators.new({ from: coreTeam }).then(validators => {
+        this.validators = validators;
+      })
+    );
+    promises.push(
+      PlotManager.new({ from: coreTeam }).then(plotManager => {
+        this.plotManager = plotManager;
+      })
+    );
+    promises.push(
+      SpaceToken.new('Space Token', 'SPACE', { from: coreTeam }).then(spaceToken => {
+        this.spaceToken = spaceToken;
+      })
+    );
+    promises.push(
+      SplitMerge.new({ from: coreTeam }).then(splitMerge => {
+        this.splitMerge = splitMerge;
+      })
+    );
 
-    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
-    await this.plotManager.setGasPriceForDeposits(gwei(4), { from: feeManager });
+    await Promise.all(promises);
 
-    await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+    promises = [];
 
-    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
-      from: coreTeam
-    });
+    promises.push(this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam }));
+    promises.push(
+      this.plotManager.initialize(
+        this.spaceToken.address,
+        this.splitMerge.address,
+        this.validators.address,
+        this.galtToken.address,
+        galtSpaceOrg,
+        {
+          from: coreTeam
+        }
+      )
+    );
+    promises.push(this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam }));
+    promises.push(this.plotManager.setFeeManager(feeManager, true, { from: coreTeam }));
 
-    await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
+    promises.push(this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager }));
+    promises.push(this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager }));
+    promises.push(this.plotManager.setGaltSpaceEthShare(33, { from: feeManager }));
+    promises.push(this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager }));
+    promises.push(this.plotManager.setGasPriceForDeposits(gwei(4), { from: feeManager }));
+
+    promises.push(this.spaceToken.addRoleTo(this.plotManager.address, 'minter'));
+    promises.push(this.spaceToken.addRoleTo(this.splitMerge.address, 'minter'));
+    promises.push(this.spaceToken.addRoleTo(this.splitMerge.address, 'operator'));
+
+    promises.push(
+      this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+        from: coreTeam
+      })
+    );
+    promises.push(
+      this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+        from: coreTeam
+      })
+    );
+
+    promises.push(this.galtToken.mint(alice, ether(10000000000), { from: coreTeam }));
+    await Promise.all(promises);
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
