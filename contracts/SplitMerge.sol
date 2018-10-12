@@ -82,6 +82,7 @@ contract SplitMerge is Initializable, Ownable {
     packageToContour[_packageTokenId] = _geohashesContour;
   }
   
+  // TODO: make it safer(math operations with polygons)
   function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
     address tokenOwner = spaceToken.ownerOf(_sourcePackageTokenId);
     setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
@@ -103,7 +104,8 @@ contract SplitMerge is Initializable, Ownable {
 
     return newPackageTokenId;
   }
-  
+
+  // TODO: make it safer(math operations with polygons)
   function mergePackage(uint256 _sourcePackageTokenId, uint256 _destinationPackageTokenId, uint256[] _destinationPackageContour) public {
     setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
 

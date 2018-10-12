@@ -46,9 +46,9 @@ contract('SplitMerge', ([coreTeam, alice, bob]) => {
     this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
 
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
-    this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
+    await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
+    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
@@ -140,12 +140,21 @@ contract('SplitMerge', ([coreTeam, alice, bob]) => {
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
+      res = await this.splitMerge.getPackageContour.call(packageId);
+      assert.deepEqual(res.map(item => item.toString(10)), contourToSplitForOldPackage);
+
       res = await this.spaceToken.ownerOf.call(newPackageId);
       assert.equal(res, alice);
+
+      res = await this.splitMerge.getPackageContour.call(newPackageId);
+      assert.deepEqual(res.map(item => item.toString(10)), contourToSplitForNewPackage);
 
       await this.splitMerge.mergePackage(newPackageId, newPackageId, this.contour, {
         from: alice
       });
+
+      res = await this.splitMerge.getPackageContour.call(newPackageId);
+      assert.deepEqual(res.map(item => item.toString(10)), this.contour);
 
       res = await this.spaceToken.exists.call(newPackageId);
       assert.equal(res, false);
