@@ -91,8 +91,8 @@ contract SplitMerge is Initializable, Ownable {
     uint256 geohashTokenIdOfNewPackage = spaceToken.geohashToTokenId(geohashOfNewPackage);
     
     // TODO: remove ugly hack
-    if(spaceToken.exists(geohashTokenIdOfNewPackage)) {
-      if(spaceToken.ownerOf(geohashTokenIdOfNewPackage) != tokenOwner) {
+    if (spaceToken.exists(geohashTokenIdOfNewPackage)) {
+      if (spaceToken.ownerOf(geohashTokenIdOfNewPackage) != tokenOwner) {
         spaceToken.transferFrom(spaceToken.ownerOf(geohashTokenIdOfNewPackage), tokenOwner, geohashTokenIdOfNewPackage);
       }
     } else {
