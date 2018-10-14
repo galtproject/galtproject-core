@@ -13,7 +13,7 @@
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
-pragma experimental "ABIEncoderV2";
+//pragma experimental "ABIEncoderV2";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -39,22 +39,24 @@ contract ClaimManager is AbstractApplication {
     REVERTED
   }
 
-  enum ValidationStatus {
-    NOT_EXISTS,
-    PENDING,
-    LOCKED
-  }
+//  enum ValidationStatus {
+//    NOT_EXISTS,
+//    PENDING,
+//    LOCKED
+//  }
 
-  event LogClaimStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogProposalStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
+//  event LogProposalStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
 
   struct Claim {
     bytes32 id;
     address applicant;
-    uint256 packageTokenId;
+    address beneficiary;
+    uint256 amount;
 
     ApplicationStatus status;
+    FeeDetails fees;
 
     bytes32[] attachedDocuments;
   }
@@ -66,7 +68,22 @@ contract ClaimManager is AbstractApplication {
   }
 
   mapping(bytes32 => Claim) public claims;
+
+  // validator count required to
+  uint256 public n;
+
+  // total validator count able to lock the claim
+  uint256 public m;
+
   constructor () public {}
+
+  function setNofM(uint256 _n, uint256 _m) external onlyOwner {
+    require(1 <= _n, "Should satisfy `1 <= n`");
+    require(_n <= _m, "Should satisfy `n <= m`");
+
+    n = _n;
+    m = _m;
+  }
 
   function initialize(
     Validators _validators,
@@ -91,23 +108,154 @@ contract ClaimManager is AbstractApplication {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
+  /**
+   * @dev Submit a new claim.
+   *
+   * @param _beneficiary for refund
+   * @param _amount of claim
+   * @param _documents with details
+   * @param _applicationFeeInGalt or 0 for ETH payment method
+   * @return new claim id
+   */
+  function submit(
+    address _beneficiary,
+    uint256 _amount,
+    bytes32[] _documents,
+    uint256 _applicationFeeInGalt
+  )
+    external
+    payable
+    returns (bytes32)
+  {
+    // Default is ETH
+    Currency currency;
+    uint256 fee;
+
+    // ETH
+    if (msg.value > 0) {
+      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
+      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
+      fee = msg.value;
+    // GALT
+    } else {
+      require(msg.value == 0, "Could not accept both ETH and GALT");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      fee = _applicationFeeInGalt;
+      currency = Currency.GALT;
+    }
+
+    Claim memory c;
+    bytes32 id = keccak256(
+      abi.encodePacked(
+        msg.sender,
+        _beneficiary,
+        _documents,
+        blockhash(block.number),
+        applicationsArray.length
+      )
+    );
+
+    require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Claim already exists");
+
+    c.status = ApplicationStatus.SUBMITTED;
+    c.id = id;
+    c.beneficiary = _beneficiary;
+    c.applicant = msg.sender;
+    c.attachedDocuments = _documents;
+    c.fees.currency = currency;
+
+    calculateAndStoreFee(c, fee);
+
+    claims[id] = c;
+
+    emit LogNewApplication(id, msg.sender);
+    emit LogApplicationStatusChanged(id, ApplicationStatus.SUBMITTED);
+
+    return id;
+  }
 
   function claimValidatorReward(bytes32 _aId) external {
 
   }
+
   function claimGaltSpaceReward(bytes32 _aId) external {
 
+  }
+
+  function claim(
+    bytes32 _cId
+  )
+    external
+    returns (
+      bytes32 id,
+      address applicant,
+      address beneficiary,
+      uint256 amount,
+      ApplicationStatus status
+  ) {
+    Claim storage c = claims[_cId];
+
+    return (
+      c.id,
+      c.applicant,
+      c.beneficiary,
+      c.amount,
+      c.status
+    );
+  }
+
+  function claimFees(
+    bytes32 _cId
+  )
+    external
+    returns (
+      Currency currency,
+      uint256 validatorsReward,
+      uint256 galtSpaceReward
+  ) {
+    FeeDetails storage f = claims[_cId].fees;
+
+    return (
+      f.currency,
+      f.validatorsReward,
+      f.galtSpaceReward
+    );
   }
 
   function getAllClaims() external view returns (bytes32[]) {
     return applicationsArray;
   }
 
-  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
+  function getClaimsByAddress(address _applicant) external view returns (bytes32[]) {
     return applicationsByAddresses[_applicant];
   }
 
-  function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
+  function getClaimsByValidator(address _applicant) external view returns (bytes32[]) {
     return applicationsByValidator[_applicant];
+  }
+
+
+  function calculateAndStoreFee(
+    Claim memory _c,
+    uint256 _fee
+  )
+    internal
+  {
+    uint256 share;
+
+    if (_c.fees.currency == Currency.ETH) {
+      share = galtSpaceEthShare;
+    } else {
+      share = galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _fee);
+
+    _c.fees.validatorsReward = validatorsReward;
+    _c.fees.galtSpaceReward = galtSpaceReward;
   }
 }
