@@ -1,12 +1,9 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const ExposedSpaceToken = artifacts.require('./mocks/ExposedSpaceToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert } = require('../helpers');
-
-const { BN } = Web3.utils;
 
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
@@ -25,153 +22,44 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
   });
 
-  describe('#generatePackTokenId()', () => {
-    it('should generate number with Package mask', async () => {
-      const spaceToken = await ExposedSpaceToken.new('Name', 'Symbol', { from: coreTeam });
-      spaceToken.initialize('Name', 'Symbol', { from: coreTeam });
-
-      const expectedId = new BN('0x0200000000000000000000000000000000000000000000000000000000000000');
-      for (let i = 0; i < 10; i++) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await spaceToken.exposedGeneratePackTokenId();
-        const { id } = res.logs[0].args;
-
-        id.should.be.a.bignumber.eq(expectedId);
-        expectedId.iadd(new BN('1'));
-      }
-    });
-  });
-
-  describe('#geohashStringToGeohash5()', () => {
-    it('convert one geohash string to its 5-bit per-value representation', async function() {
-      const val = web3.utils.asciiToHex('qwerqwerqwer');
-      const res = await this.spaceToken.geohashStringToGeohash5(val);
-      assert.equal(res.toString(10), '824642203853484471');
-    });
-
-    it('reverts when trying to convert 13-string', async function() {
-      const val = web3.utils.asciiToHex('qwerqwerqwerq');
-      const res = await this.spaceToken.geohashStringToGeohash5(val);
-      assert.equal(res.toString(10), '0');
-    });
-
-    it('reverts when trying a string with unsupported characters', async function() {
-      const val = web3.utils.asciiToHex('qwerawerqwer');
-      const res = await this.spaceToken.geohashStringToGeohash5(val);
-      assert.equal(res.toString(10), '0');
-    });
-  });
-
-  describe('#geohashStringToGeohash5()', () => {
-    it('convert one geohash string to its 5-bit per-value representation', async function() {
-      const res = await this.spaceToken.geohash5ToGeohashString('824642203853484471');
-      assert.equal(web3.utils.hexToUtf8(res), 'qwerqwerqwer');
-    });
-
-    it('convert one geohash string to its 5-bit per-value representation (0)', async function() {
-      const res = await this.spaceToken.geohash5ToGeohashString('0');
-      assert.equal(web3.utils.hexToUtf8(res), '');
-    });
-  });
-
-  describe('#isPack()', () => {
-    it('should return true for the numbers starting with 0x02', async function() {
-      assert(await this.spaceToken.isPack('0x0200000000000000000000000000000000000000000000000000000000000001'));
-    });
-
-    it('should return false for the numbers not starting with 0x02', async function() {
-      assert(!(await this.spaceToken.isPack('0x0100000000000000000000000000000000000000000000000000000000000001')));
-      assert(!(await this.spaceToken.isPack('0x0000000000000000000000000000000000000000000000000000000000000001')));
-    });
-  });
-
-  describe('#isGeohash()', () => {
-    it('should return true for the numbers starting with 0x01', async function() {
-      assert(await this.spaceToken.isGeohash('0x0100000000000000000000000000000000000000000000000000000000000001'));
-    });
-
-    it('should return false for the numbers not starting with 0x01', async function() {
-      assert(!(await this.spaceToken.isGeohash('0x0200000000000000000000000000000000000000000000000000000000000001')));
-      assert(!(await this.spaceToken.isGeohash('0x0000000000000000000000000000000000000000000000000000000000000001')));
-    });
-  });
-
-  describe('#geohashToTokenId()', () => {
-    it('should add 0x01 to the bytes32 representation of number', async function() {
-      const res = await this.spaceToken.geohashToTokenId(123);
-      assert.equal(res.toString(16), '10000000000000000000000000000000000000000000000000000000000007b');
-    });
-
-    it('should cut out 0x01 from the start of bytes32 representation', async function() {
-      const res = await this.spaceToken.tokenIdToGeohash(
-        '0x010000000000000000000000000000000000000000000000000000000000007b'
-      );
-      assert.equal(res, 123);
-    });
-  });
-
-  describe('#mintPack()', () => {
+  describe('#mint()', () => {
     it('should allow owner mint some tokens if called by owner', async function() {
-      let res = await this.spaceToken.mintPack(alice, { from: coreTeam });
-      res = await this.spaceToken.ownerOf('0x0200000000000000000000000000000000000000000000000000000000000000');
+      let res = await this.spaceToken.mint(alice, { from: coreTeam });
+      res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
     });
 
     it('should allow mint some tokens to the users in the minters role list', async function() {
       await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
-      await this.spaceToken.mintPack(alice, { from: bob });
-      const res = await this.spaceToken.ownerOf('0x0200000000000000000000000000000000000000000000000000000000000000');
+      await this.spaceToken.mint(alice, { from: bob });
+      const res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
     });
 
     it('should deny mint some tokens to users not in the minter role list', async function() {
       await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
-      await assertRevert(this.spaceToken.mintPack(alice, { from: bob }));
+      await assertRevert(this.spaceToken.mint(alice, { from: bob }));
     });
 
     it('should deny mint some tokens to users without any role', async function() {
-      await assertRevert(this.spaceToken.mintPack(alice, { from: bob }));
-    });
-  });
-
-  describe('#mintGeohash()', () => {
-    it('should allow owner mint some tokens if called by owner', async function() {
-      let res = await this.spaceToken.mintGeohash(alice, 123, { from: coreTeam });
-      res = await this.spaceToken.ownerOf('0x010000000000000000000000000000000000000000000000000000000000007b');
-      assert.equal(res, alice);
-    });
-
-    it('should allow mint some tokens to the users in the minters role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
-      await this.spaceToken.mintGeohash(alice, 123, { from: bob });
-      const res = await this.spaceToken.ownerOf('0x010000000000000000000000000000000000000000000000000000000000007b');
-      assert.equal(res, alice);
-    });
-
-    it('should deny mint some tokens to users not in the minter role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
-      await assertRevert(this.spaceToken.mintGeohash(alice, 123, { from: bob }));
-    });
-
-    it('should deny mint some tokens to users without any role', async function() {
-      await assertRevert(this.spaceToken.mintGeohash(alice, 123, { from: bob }));
+      await assertRevert(this.spaceToken.mint(alice, { from: bob }));
     });
   });
 
   describe('#burn()', () => {
     beforeEach(async function() {
-      await this.spaceToken.mintGeohash(alice, 123, { from: coreTeam });
-      let res = await this.spaceToken.ownerOf('0x010000000000000000000000000000000000000000000000000000000000007b');
+      await this.spaceToken.mint(alice, { from: coreTeam });
+      let res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 1);
     });
 
     it('should allow owner burn tokens', async function() {
-      await this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', {
+      await this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
         from: coreTeam
       });
-      let res = await this.spaceToken.exists('0x010000000000000000000000000000000000000000000000000000000000007b');
+      let res = await this.spaceToken.exists('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(false, res);
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 0);
@@ -179,15 +67,15 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
     it('should allow burn tokens to the users in the burners role list', async function() {
       await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
-      await this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', { from: bob });
-      const res = await this.spaceToken.exists('0x010000000000000000000000000000000000000000000000000000000000007b');
+      await this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', { from: bob });
+      const res = await this.spaceToken.exists('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(false, res);
     });
 
     it('should deny burn some tokens to users not in the burner role list', async function() {
       await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
       await assertRevert(
-        this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', {
+        this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
           from: bob
         })
       );
@@ -195,7 +83,7 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
     it('should deny burn a token to users without any role', async function() {
       await assertRevert(
-        this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', {
+        this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
           from: bob
         })
       );
@@ -203,7 +91,7 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
     it('should deny burn a token to an owner of the token', async function() {
       await assertRevert(
-        this.spaceToken.burn('0x010000000000000000000000000000000000000000000000000000000000007b', {
+        this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
           from: alice
         })
       );
@@ -212,8 +100,8 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
   describe('#setTokenURI()', () => {
     beforeEach(async function() {
-      this.tokenId = '0x010000000000000000000000000000000000000000000000000000000000007b';
-      await this.spaceToken.mintGeohash(alice, 123, {
+      this.tokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      await this.spaceToken.mint(alice, {
         from: coreTeam
       });
       let res = await this.spaceToken.ownerOf(this.tokenId);
@@ -239,8 +127,8 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
   describe('canTransfer modifier', () => {
     beforeEach(async function() {
-      this.tokenId = '0x010000000000000000000000000000000000000000000000000000000000007b';
-      await this.spaceToken.mintGeohash(alice, 123, { from: coreTeam });
+      this.tokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      await this.spaceToken.mint(alice, { from: coreTeam });
       let res = await this.spaceToken.ownerOf(this.tokenId);
       assert.equal(res, alice);
       res = await this.spaceToken.totalSupply();
