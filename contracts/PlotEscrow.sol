@@ -21,6 +21,7 @@ import "./PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
 import "./SpaceToken.sol";
 import "./Validators.sol";
+import "./collections/ArraySet.sol";
 
 
 /**
@@ -35,6 +36,7 @@ import "./Validators.sol";
  */
 contract PlotEscrow is AbstractApplication {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.Bytes32Set;
 
   // `PlotValuation` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48;
@@ -159,8 +161,7 @@ contract PlotEscrow is AbstractApplication {
   mapping(address => bytes32[]) public saleOrderArrayBySeller;
   mapping(address => bytes32[]) public saleOrderArrayByBuyer;
   mapping(uint256 => bytes32) public spaceTokenLastOrderId;
-  bytes32[] public openSaleOrderArray;
-  mapping(bytes32 => uint256) openSaleOrderIndex;
+  ArraySet.Bytes32Set openSaleOrders;
 
 
   constructor () public {}
@@ -252,8 +253,7 @@ contract PlotEscrow is AbstractApplication {
     saleOrderArrayBySeller[msg.sender].push(_id);
     tokenOnSale[_spaceTokenId] = true;
     spaceTokenLastOrderId[_spaceTokenId] = _id;
-    openSaleOrderIndex[_id] = openSaleOrderArray.length;
-    openSaleOrderArray.push(_id);
+    openSaleOrders.add(_id);
 
     PlotEscrowLib.calculateAndStoreFee(galtSpaceEthShare, galtSpaceGaltShare, saleOrders[_id], fee);
 
@@ -311,7 +311,7 @@ contract PlotEscrow is AbstractApplication {
 
     saleOrder.lastBuyer = _buyer;
 
-//    removeSaleOrderFromOpenList(sleOrder.id);
+    openSaleOrdersRemove(_orderId);
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.LOCKED);
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.MATCH);
@@ -323,13 +323,7 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    SaleOrder storage saleOrder = saleOrders[_orderId];
-
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-
-    require(saleOffer.status == SaleOfferStatus.MATCH, "MATCH offer status required");
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireMatchHelper(_orderId, _buyer);
 
     require(
       msg.sender == saleOrder.seller || msg.sender == saleOffer.buyer,
@@ -344,14 +338,9 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    SaleOrder storage saleOrder = saleOrders[_orderId];
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireMatchHelper(_orderId, _buyer);
 
     require(saleOrder.seller == msg.sender, "Only the seller is allowed attaching space token");
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-
-    require(saleOffer.status == SaleOfferStatus.MATCH, "Only the seller is allowed to modify ask price");
     require(spaceToken.ownerOf(saleOrder.spaceTokenId) == msg.sender, "Sender doesn't own Space Token with the given ID");
 
     spaceToken.transferFrom(msg.sender, address(this), saleOrder.spaceTokenId);
@@ -368,14 +357,9 @@ contract PlotEscrow is AbstractApplication {
     external
     payable
   {
-    SaleOrder storage saleOrder = saleOrders[_orderId];
-
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireMatchHelper(_orderId, _buyer);
 
     require(saleOffer.buyer == msg.sender, "Only the buyer is allowed attaching payment");
-    require(saleOffer.status == SaleOfferStatus.MATCH, "Only the seller is allowed to modify ask price");
     require(saleOffer.paymentAttached == false, "Payment is already attached");
 
     if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
@@ -711,6 +695,7 @@ contract PlotEscrow is AbstractApplication {
     require(saleOrder.status == SaleOrderStatus.OPEN, "OPEN order status required");
     require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
     tokenOnSale[saleOrder.spaceTokenId] = false;
+    openSaleOrdersRemove(_orderId);
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.CANCELLED);
   }
@@ -726,15 +711,13 @@ contract PlotEscrow is AbstractApplication {
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-    bytes32 rId = saleOrder.id;
 
     require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
     require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
     require(saleOffer.status == SaleOfferStatus.EMPTY, "EMPTY offer status required");
 
     tokenOnSale[saleOrder.spaceTokenId] = true;
-    openSaleOrderIndex[rId] = openSaleOrderArray.length;
-    openSaleOrderArray.push(rId);
+    openSaleOrders.add(_orderId);
 
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.OPEN);
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.OPEN);
@@ -745,13 +728,7 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    SaleOrder storage saleOrder = saleOrders[_rId];
-    SaleOffer storage saleOffer = saleOrder.offers[saleOrder.lastBuyer];
-
-    require(
-      saleOrder.status == SaleOrderStatus.CLOSED ||
-      saleOrder.status == SaleOrderStatus.CANCELLED,
-      "CLOSED or CANCELLED order status required");
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedOrCancelledHelper(_rId);
 
     require(saleOffer.auditor.addr == msg.sender, "Only the last acted auditor is eligible claiming the reward");
     require(saleOrder.fees.auditorRewardPaidOut == false, "Reward is already paid out");
@@ -772,13 +749,7 @@ contract PlotEscrow is AbstractApplication {
   {
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
-    SaleOrder storage saleOrder = saleOrders[_rId];
-    SaleOffer storage saleOffer = saleOrder.offers[saleOrder.lastBuyer];
-
-    require(
-      saleOrder.status == SaleOrderStatus.CLOSED ||
-      saleOrder.status == SaleOrderStatus.CANCELLED,
-      "CLOSED or CANCELLED order status required");
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedOrCancelledHelper(_rId);
 
     SaleOfferAuditor storage auditor = saleOffer.auditor;
 
@@ -961,11 +932,11 @@ contract PlotEscrow is AbstractApplication {
   }
 
   function getOpenSaleOrdersLength() external view returns (uint256) {
-    return openSaleOrderArray.length;
+    return openSaleOrders.size();
   }
 
   function getOpenSaleOrders() external view returns (bytes32[]) {
-    return openSaleOrderArray;
+    return openSaleOrders.elements();
   }
 
   function getSellerOrders(address _seller) external view returns (bytes32[]) {
@@ -978,6 +949,7 @@ contract PlotEscrow is AbstractApplication {
 
   function closeOrderHelper(SaleOrder storage saleOrder, address _buyer) internal {
     tokenOnSale[saleOrder.spaceTokenId] = false;
+
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CLOSED);
     changeSaleOrderStatus(saleOrder, SaleOrderStatus.CLOSED);
   }
@@ -998,6 +970,45 @@ contract PlotEscrow is AbstractApplication {
     require(saleOffer.status == SaleOfferStatus.OPEN, "OPEN sale offer status required");
 
     return (saleOrder, saleOffer);
+  }
+
+  function requireMatchHelper(
+    bytes32 _orderId,
+    address _buyer
+  )
+    internal
+    returns (SaleOrder storage, SaleOffer storage)
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED sale order status required");
+
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(saleOffer.status == SaleOfferStatus.MATCH, "MATCH sale offer status required");
+
+    return (saleOrder, saleOffer);
+  }
+
+  function requireClosedOrCancelledHelper(
+    bytes32 _orderId
+  )
+    internal
+    returns (SaleOrder storage, SaleOffer storage)
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    SaleOffer storage saleOffer = saleOrder.offers[saleOrder.lastBuyer];
+
+    require(
+      saleOrder.status == SaleOrderStatus.CLOSED ||
+      saleOrder.status == SaleOrderStatus.CANCELLED,
+      "CLOSED or CANCELLED sale order status required");
+
+    return (saleOrder, saleOffer);
+  }
+
+  function openSaleOrdersRemove(bytes32 _orderId) internal {
+    openSaleOrders.remove(_orderId);
   }
 
   function changeSaleOrderStatus(

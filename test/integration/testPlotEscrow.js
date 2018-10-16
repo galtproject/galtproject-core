@@ -3,6 +3,7 @@ const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const PlotEscrow = artifacts.require('./PlotEscrow.sol');
 const PlotEscrowLib = artifacts.require('./PlotEscrowLib.sol');
+const ArraySet = artifacts.require('./collections/ArraySet.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
@@ -124,6 +125,9 @@ contract("PlotEscrow", (accounts) => {
 
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
+
+    this.arraySet = await ArraySet.new({ from: coreTeam });
+    PlotEscrow.link('ArraySet', this.arraySet.address);
 
     this.plotEscrowLib = await PlotEscrowLib.new({ from: coreTeam });
     PlotEscrow.link('PlotEscrowLib', this.plotEscrowLib.address);
