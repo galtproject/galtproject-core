@@ -1996,4 +1996,139 @@ contract("PlotEscrow", (accounts) => {
       });
     });
   });
+
+  describe('open sale orders caching', () => {
+    describe('with no elements', () => {
+      it('should return 0 length', async function() {
+        const len = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(len, 0);
+      });
+    });
+
+    describe('with some elements', () => {
+      beforeEach(async function() {
+        await this.validators.setApplicationTypeRoles(
+          NEW_APPLICATION,
+          ['foo', 'bar', 'buzz'],
+          [50, 25, 25],
+          ['', '', ''],
+          { from: applicationTypeManager }
+        );
+
+        await this.validators.setApplicationTypeRoles(
+          CUSTODIAN_APPLICATION,
+          [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+          [60, 40],
+          ['', ''],
+          { from: applicationTypeManager }
+        );
+
+        await this.validators.setApplicationTypeRoles(ESCROW_APPLICATION, [PE_AUDITOR_ROLE], [100], [''], {
+          from: applicationTypeManager
+        });
+
+        // assign validators
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
+          from: validatorManager
+        });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+          from: validatorManager
+        });
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ROLE], {
+          from: validatorManager
+        });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
+          from: validatorManager
+        });
+      });
+
+      it('should return correct values', async function() {
+        let len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 0);
+
+        await this.spaceToken.mint(alice, { from: coreTeam });
+        await this.spaceToken.mint(alice, { from: coreTeam });
+
+        assert.equal(await this.spaceTokenWeb3.methods.totalSupply().call(), 2);
+
+        const spaceToken1 = '0';
+        const spaceToken2 = '1';
+
+        // create 1st order
+        let res = await this.plotEscrow.createSaleOrder(
+          spaceToken1,
+          ether(50),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          EscrowCurrency.ERC20,
+          this.galtToken.address,
+          0,
+          { from: alice, value: ether(6) }
+        );
+        this.rId = res.logs[0].args.orderId;
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 1);
+        let elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements[0], this.rId);
+
+        // lock 1st order
+        await this.plotEscrow.createSaleOffer(this.rId, ether(30), { from: bob });
+        await this.plotEscrow.changeSaleOfferAsk(this.rId, bob, ether(35), { from: alice });
+        await this.plotEscrow.changeSaleOfferBid(this.rId, ether(35), { from: bob });
+        await this.plotEscrow.selectSaleOffer(this.rId, bob, { from: alice });
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 0);
+        elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements.length, 0);
+
+        // create 2nd order
+        res = await this.plotEscrow.createSaleOrder(
+          spaceToken2,
+          ether(50),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          EscrowCurrency.ERC20,
+          this.galtToken.address,
+          0,
+          { from: alice, value: ether(6) }
+        );
+        this.rId2 = res.logs[0].args.orderId;
+        await this.plotEscrow.createSaleOffer(this.rId2, ether(30), { from: bob });
+        await this.plotEscrow.changeSaleOfferAsk(this.rId2, bob, ether(35), { from: alice });
+        await this.plotEscrow.changeSaleOfferBid(this.rId2, ether(35), { from: bob });
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 1);
+        elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements[0], this.rId2);
+
+        // reopen 1st order
+        await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: bob });
+        await this.plotEscrow.emptySaleOffer(this.rId, bob, { from: charlie });
+        await this.plotEscrow.reopenSaleOrder(this.rId, bob, { from: alice });
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 2);
+        elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements[0], this.rId2);
+        assert.equal(elements[1], this.rId);
+
+        // lock 2nd order
+        await this.plotEscrow.selectSaleOffer(this.rId2, bob, { from: alice });
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 1);
+        elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements[0], this.rId);
+
+        // cancel 1st order
+        await this.plotEscrow.cancelOpenSaleOrder(this.rId, { from: alice });
+
+        len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
+        assert.equal(len, 0);
+        elements = await this.plotEscrowWeb3.methods.getOpenSaleOrders().call();
+        assert.equal(elements.length, 0);
+      });
+    });
+  });
 });
