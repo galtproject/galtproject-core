@@ -109,8 +109,8 @@ library LandUtils {
 
         bytes32 fiveOn = bytes32(31);
 
-        int256[2] memory lat_interval = [int256(-90 ether), int256(90 ether)];
-        int256[2] memory lon_interval = [int256(-180 ether), int256(180 ether)];
+        int256[2] memory lat_interval = [int256(- 90 ether), int256(90 ether)];
+        int256[2] memory lon_interval = [int256(- 180 ether), int256(180 ether)];
         // int256 lat_err = 90 ether;
         // int256 lon_err = 180 ether;
 
