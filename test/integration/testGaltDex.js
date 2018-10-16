@@ -323,7 +323,7 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   });
 
   describe('spaceDex dependency', async () => {
-    it.only('should be correct exchangeRate after exchange on spaceDex', async function() {
+    it('should be correct exchangeRate after exchange on spaceDex', async function() {
       const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
 
       await this.galtToken.mint(this.spaceDex.address, ether(100));
