@@ -6,7 +6,6 @@ const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
-const galt = require('@galtproject/utils');
 
 const Web3 = require('web3');
 const chai = require('chai');

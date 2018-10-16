@@ -76,7 +76,7 @@ contract PlotManager is AbstractApplication {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
-  struct ApplicationFees{
+  struct ApplicationFees {
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 latestCommittedFee;
@@ -536,10 +536,9 @@ contract PlotManager is AbstractApplication {
     bytes32 senderRole = a.addressRoles[msg.sender];
     uint256 reward = a.assignedRewards[senderRole];
 
+    /* solium-disable-next-line */
     require(
-      a.status == ApplicationStatus.APPROVED ||
-      a.status == ApplicationStatus.REJECTED ||
-      a.status == ApplicationStatus.CLOSED,
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
       "Application status should be APPROVED, REJECTED or CLOSED");
 
     require(reward > 0, "Reward is 0");
@@ -565,10 +564,9 @@ contract PlotManager is AbstractApplication {
 
     Application storage a = applications[_aId];
 
+    /* solium-disable-next-line */
     require(
-      a.status == ApplicationStatus.APPROVED ||
-      a.status == ApplicationStatus.REJECTED ||
-      a.status == ApplicationStatus.CLOSED,
+      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
       "Application status should be APPROVED, REJECTED or CLOSED");
 
     require(a.fees.galtSpaceReward > 0, "Reward is 0");

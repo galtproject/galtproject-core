@@ -376,15 +376,9 @@ contract('PlotCustodianManager', (accounts) => {
 
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
-        let res = await this.plotCustodianManager.submitApplication(
-          this.spaceTokenId,
-          Action.ATTACH,
-          bob,
-          ether(45),
-          {
-            from: alice
-          }
-        );
+        let res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, ether(45), {
+          from: alice
+        });
         this.aId = res.logs[0].args.id;
         res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);

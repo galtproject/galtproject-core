@@ -8,7 +8,6 @@ const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
-const galt = require('@galtproject/utils');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { zeroAddress, initHelperWeb3, ether, szabo } = require('../helpers');

@@ -799,7 +799,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+          const res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
           assert.equal(res.reward.toString(), '8700000000000000000');
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
