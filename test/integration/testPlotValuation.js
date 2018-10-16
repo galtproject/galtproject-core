@@ -273,7 +273,6 @@ contract('PlotValuation', (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
@@ -282,9 +281,8 @@ contract('PlotValuation', (accounts) => {
       );
       this.aId = res.logs[0].args.id;
 
-      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.packageTokenId = res.packageTokenId;
+      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -304,7 +302,7 @@ contract('PlotValuation', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
 
@@ -313,7 +311,7 @@ contract('PlotValuation', (accounts) => {
 
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
-        let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(45), {
+        let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, ether(45), {
           from: alice
         });
         this.aId = res.logs[0].args.id;
@@ -327,7 +325,7 @@ contract('PlotValuation', (accounts) => {
         it('should reject applications without neither payment', async function() {
           await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+            this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
               from: alice
             })
           );
@@ -336,7 +334,7 @@ contract('PlotValuation', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(43), {
+            this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, ether(43), {
               from: alice
             })
           );
@@ -344,7 +342,7 @@ contract('PlotValuation', (accounts) => {
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
           await this.galtToken.approve(this.plotValuation.address, ether(47), { from: alice });
-          let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(47), {
+          let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, ether(47), {
             from: alice
           });
           this.aId = res.logs[0].args.id;
@@ -359,7 +357,7 @@ contract('PlotValuation', (accounts) => {
 
         it('should calculate validator rewards according to their roles share', async function() {
           await this.galtToken.approve(this.plotValuation.address, ether(47), { from: alice });
-          let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(47), {
+          let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, ether(47), {
             from: alice
           });
           this.aId = res.logs[0].args.id;
@@ -395,7 +393,7 @@ contract('PlotValuation', (accounts) => {
     describe('claim reward', () => {
       beforeEach(async function() {
         await this.galtToken.approve(this.plotValuation.address, ether(57), { from: alice });
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, ether(57), {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, ether(57), {
           from: alice
         });
         this.aId = res.logs[0].args.id;
@@ -503,7 +501,6 @@ contract('PlotValuation', (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
@@ -512,9 +509,8 @@ contract('PlotValuation', (accounts) => {
       );
       this.aId = res.logs[0].args.id;
 
-      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.packageTokenId = res.packageTokenId;
+      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -532,13 +528,13 @@ contract('PlotValuation', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
 
     describe('#submitApplication()', () => {
       it('should allow an applicant pay commission in ETH', async function() {
-        let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(6)
         });
@@ -552,7 +548,7 @@ contract('PlotValuation', (accounts) => {
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+            this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
               from: alice
             })
           );
@@ -560,7 +556,7 @@ contract('PlotValuation', (accounts) => {
 
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+            this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
               from: alice,
               value: 10
             })
@@ -568,14 +564,14 @@ contract('PlotValuation', (accounts) => {
         });
 
         it('should allow applications with payment greater than required', async function() {
-          await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+          await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
             from: alice,
             value: ether(23)
           });
         });
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
-          let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+          let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
             from: alice,
             value: ether(7)
           });
@@ -589,7 +585,7 @@ contract('PlotValuation', (accounts) => {
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
-          let res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+          let res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
             from: alice,
             value: ether(13)
           });
@@ -624,7 +620,7 @@ contract('PlotValuation', (accounts) => {
 
     describe('#lockApplication()', () => {
       beforeEach(async function() {
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(7)
         });
@@ -668,7 +664,7 @@ contract('PlotValuation', (accounts) => {
 
     describe('#valuatePlot()', () => {
       beforeEach(async function() {
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(7)
         });
@@ -711,7 +707,7 @@ contract('PlotValuation', (accounts) => {
 
     describe('#valuatePlot2() by a second appraiser', () => {
       beforeEach(async function() {
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(7)
         });
@@ -767,7 +763,7 @@ contract('PlotValuation', (accounts) => {
 
     describe('#approveValuation() by auditor', () => {
       beforeEach(async function() {
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(7)
         });
@@ -800,7 +796,7 @@ contract('PlotValuation', (accounts) => {
         await this.plotValuation.lockApplication(this.aId, PV_AUDITOR_ROLE, { from: eve });
         await this.plotValuation.approveValuation(this.aId, { from: eve });
 
-        const res = await this.plotValuationWeb3.methods.plotValuations(this.packageTokenId).call();
+        const res = await this.plotValuationWeb3.methods.plotValuations(this.spaceTokenId).call();
         assert.equal(res, ether(4500));
       });
 
@@ -818,7 +814,7 @@ contract('PlotValuation', (accounts) => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        const res = await this.plotValuation.submitApplication(this.packageTokenId, this.attachedDocuments, 0, {
+        const res = await this.plotValuation.submitApplication(this.spaceTokenId, this.attachedDocuments, 0, {
           from: alice,
           value: ether(6)
         });

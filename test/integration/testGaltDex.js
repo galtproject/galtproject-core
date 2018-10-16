@@ -323,17 +323,16 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   });
 
   describe('spaceDex dependency', async () => {
-    it('should be correct exchangeRate after exchange on spaceDex', async function() {
+    it.only('should be correct exchangeRate after exchange on spaceDex', async function() {
       const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
 
       await this.galtToken.mint(this.spaceDex.address, ether(100));
 
-      const geohash5 = galt.geohashToGeohash5('sezu05');
-      await this.spaceToken.mintGeohash(alice, geohash5, {
+      await this.spaceToken.mint(alice, {
         from: coreTeam
       });
 
-      const geohashTokenId = galt.geohashToTokenId('sezu05');
+      const geohashTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
       await this.valuatePlot(geohashTokenId, ether(5));
       await this.setCustodianForPlot(geohashTokenId, bob);

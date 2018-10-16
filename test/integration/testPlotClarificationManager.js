@@ -11,7 +11,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const { ether, assertEthBalanceChanged, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -60,7 +60,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only('PlotClarificationManager', (accounts) => {
+contract('PlotClarificationManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -316,6 +316,7 @@ contract.only('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newContour,
           ether(45),
           {
             from: alice
@@ -333,9 +334,15 @@ contract.only('PlotClarificationManager', (accounts) => {
         it('should reject applications with payment less than required', async function() {
           await this.galtToken.approve(this.plotClarificationManager.address, ether(42), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplication(this.spaceTokenId, this.ledgerIdentifier, ether(42), {
-              from: alice
-            })
+            this.plotClarificationManager.submitApplication(
+              this.spaceTokenId,
+              this.ledgerIdentifier,
+              this.newContour,
+              ether(42),
+              {
+                from: alice
+              }
+            )
           );
         });
 
@@ -344,6 +351,7 @@ contract.only('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newContour,
             ether(47),
             {
               from: alice
@@ -365,6 +373,7 @@ contract.only('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newContour,
             ether(47),
             {
               from: alice
@@ -396,6 +405,7 @@ contract.only('PlotClarificationManager', (accounts) => {
         const res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newContour,
           ether(57),
           {
             from: alice
@@ -652,8 +662,8 @@ contract.only('PlotClarificationManager', (accounts) => {
       await this.spaceToken.approve(this.plotClarificationManager.address, this.spaceTokenId, { from: alice });
     });
 
-    describe.only('#applyForPlotClarification()', () => {
-      it.only('should create a new application', async function() {
+    describe('#submitApplication()', () => {
+      it('should create a new application', async function() {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -666,183 +676,121 @@ contract.only('PlotClarificationManager', (accounts) => {
         );
         this.aId = res.logs[0].args.id;
 
-        // res = await this.spaceToken.ownerOf(this.spaceTokenId);
-        // assert.equal(res, this.plotClarificationManager.address);
-        //
-        // res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-        // const res2 = await this.plotClarificationManagerWeb3.methods.getApplicationPayloadById(this.aId).call();
-        // assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        // assert.equal(res.spaceTokenId, this.spaceTokenId);
-        // assert.equal(res.applicant.toLowerCase(), alice);
-        // assert.equal(res.currency, Currency.ETH);
-        // console.log('res2', res2);
-        // assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
-      });
-    });
-
-    describe('#submitApplicationForValudation()', () => {
-      it.only('should allow an applicant to submit application for valuation', async function() {
-        let res = await this.plotClarificationManager.submitApplication(this.spaceTokenId, this.ledgerIdentifier, 0, {
-          from: alice,
-          value: ether(6)
-        });
-        this.aId = res.logs[0].args.id;
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
+        assert.equal(res, this.plotClarificationManager.address);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        const res2 = await this.plotClarificationManagerWeb3.methods.getApplicationPayloadById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-      });
-
-      it('should deny other account to submit application for valuation', async function() {
-        await assertRevert(this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: coreTeam }));
-      });
-
-      it('should deny submition for already submitted applications ', async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await assertRevert(this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice }));
-      });
-    });
-
-    describe('#lockApplicationForValuation()', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-      });
-
-      it('should allow validator with role clarification pusher to lock an application', async function() {
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.VALUATION);
-      });
-
-      it('should deny other account lock an application', async function() {
-        await assertRevert(this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: alice }));
-      });
-
-      it('should deny locking for already locked applications ', async function() {
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await assertRevert(this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan }));
-      });
-    });
-
-    describe('#valuateGasDeposit()', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-      });
-
-      it('should allow validator with role clarification pusher to valuate an application', async function() {
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan });
-
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.PAYMENT_REQUIRED);
-        assert.equal(res.gasDeposit, ether(42));
-      });
-
-      it('should deny other account valuate an application', async function() {
-        await assertRevert(this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: alice }));
-      });
-
-      it('should deny valudation for already valued applications ', async function() {
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan });
-        await assertRevert(this.plotClarificationManager.valuateGasDeposit(this.aId, ether(42), { from: dan }));
-      });
-    });
-
-    describe('#submitApplicationForReview()', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-      });
-
-      it('should allow an applicant pay commission and gas deposit in ETH', async function() {
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
-
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(res.gasDeposit, ether(7));
+        assert.equal(res.spaceTokenId, this.spaceTokenId);
+        assert.equal(res.applicant.toLowerCase(), alice);
+        assert.equal(res.currency, Currency.ETH);
+        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
 
       describe('payable', () => {
-        it('should reject applications without payment', async function() {
+        it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-              from: alice
-            })
+            this.plotClarificationManager.submitApplication(
+              this.spaceTokenId,
+              this.ledgerIdentifier,
+              this.newContour,
+              0,
+              {
+                from: alice,
+                value: ether(1)
+              }
+            )
           );
         });
 
-        it('should reject applications with payment which less than required', async function() {
-          await assertRevert(
-            this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
+        it('should allow applications with payment greater than required', async function() {
+          await this.plotClarificationManager.submitApplication(
+            this.spaceTokenId,
+            this.ledgerIdentifier,
+            this.newContour,
+            0,
+            {
               from: alice,
-              value: 10
-            })
+              value: ether(23)
+            }
           );
-        });
-        it('should allow pplications with payment greater than required', async function() {
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-            from: alice,
-            value: ether(23)
-          });
         });
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-            from: alice,
-            value: ether(14)
-          });
+          let res = await this.plotClarificationManager.submitApplication(
+            this.spaceTokenId,
+            this.ledgerIdentifier,
+            this.newContour,
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
+          this.aId = res.logs[0].args.id;
           // validator share - 67%
           // galtspace share - 33%
 
-          const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.galtSpaceReward, '2310000000000000000');
           assert.equal(res.validatorsReward, '4690000000000000000');
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
-          const { aId } = this;
-          await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-            from: alice,
-            value: ether(13)
-          });
-          // validator share - 67%
-          // galtspace share - 33% (50%/25%/25%);
+          let res = await this.plotClarificationManager.submitApplication(
+            this.spaceTokenId,
+            this.ledgerIdentifier,
+            this.newContour,
+            0,
+            {
+              from: alice,
+              value: ether(13)
+            }
+          );
+          this.aId = res.logs[0].args.id;
+          // validator share - 67% (50%/25%/25%)
+          // galtspace share - 33%
 
-          let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['clarification pusher', 'dog', 'human']);
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.sameMembers(res.assignedValidatorRoles.map(hexToUtf8), ['cat', 'dog', 'human']);
 
           res = await this.plotClarificationManagerWeb3.methods
-            .getApplicationValidator(aId, utf8ToHex('clarification pusher'))
+            .getApplicationValidator(this.aId, utf8ToHex('cat'))
             .call();
-          assert.equal(res.reward.toString(), '1005000000000000000');
+          assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('dog')).call();
-          assert.equal(res.reward.toString(), '1005000000000000000');
+          res = await this.plotClarificationManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex('dog'))
+            .call();
+          assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotClarificationManagerWeb3.methods.getApplicationValidator(aId, utf8ToHex('human')).call();
-          assert.equal(res.reward.toString(), '2010000000000000000');
+          res = await this.plotClarificationManagerWeb3.methods
+            .getApplicationValidator(this.aId, utf8ToHex('human'))
+            .call();
+          assert.equal(res.reward.toString(), '4355000000000000000');
         });
       });
     });
 
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
+        const res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
       });
 
       it('should allow multiple validators of different roles to lock a submitted application', async function() {
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
 
         let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -854,7 +802,7 @@ contract.only('PlotClarificationManager', (accounts) => {
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotClarificationManagerWeb3.methods
-          .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+          .getApplicationValidator(this.aId, utf8ToHex('cat'))
           .call();
         assert.equal(res.validator.toLowerCase(), dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
@@ -883,18 +831,23 @@ contract.only('PlotClarificationManager', (accounts) => {
 
     describe('#approveApplication', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
+        let res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
 
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
       });
 
@@ -933,21 +886,25 @@ contract.only('PlotClarificationManager', (accounts) => {
 
     describe('#revertApplication', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
-
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        let res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
+        res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       describe('completely locked application', () => {
         beforeEach(async function() {
           await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+          await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
           await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
         });
 
@@ -963,7 +920,7 @@ contract.only('PlotClarificationManager', (accounts) => {
           assert.equal(res.status, ValidationStatus.REVERTED);
 
           res = await this.plotClarificationManagerWeb3.methods
-            .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+            .getApplicationValidator(this.aId, utf8ToHex('cat'))
             .call();
           assert.equal(res.status, ValidationStatus.LOCKED);
 
@@ -1001,18 +958,23 @@ contract.only('PlotClarificationManager', (accounts) => {
 
     describe('#resubmitApplication', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
+        let res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
         await this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: bob });
 
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
@@ -1028,7 +990,7 @@ contract.only('PlotClarificationManager', (accounts) => {
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotClarificationManagerWeb3.methods
-          .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+          .getApplicationValidator(this.aId, utf8ToHex('cat'))
           .call();
         assert.equal(res.status, ValidationStatus.LOCKED);
 
@@ -1046,186 +1008,52 @@ contract.only('PlotClarificationManager', (accounts) => {
       });
     });
 
-    describe('#addGeohashesToApplication()', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-        let geohashes = `gbsuv7ztt gbsuv7ztw gbsuv7ztx gbsuv7ztm gbsuv7ztq gbsuv7ztr gbsuv7ztj gbsuv7ztn`;
-        geohashes += ` gbsuv7zq gbsuv7zw gbsuv7zy gbsuv7zm gbsuv7zt gbsuv7zv gbsuv7zk gbsuv7zs gbsuv7zu`;
-        this.geohashes = geohashes.split(' ').map(galt.geohashToGeohash5);
-      });
-
-      it('should allow pusher role add geohashes to package', async function() {
-        let res = await this.plotClarificationManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], {
-          from: dan
-        });
-        res = await this.splitMerge.getPackageGeohashesCount(this.spaceTokenId);
-        assert.equal(res.toString(10), '18');
-      });
-
-      it('should deny non-pusher add geohashes to package', async function() {
-        await assertRevert(
-          this.plotClarificationManager.addGeohashesToApplication(this.aId, this.geohashes, [], [], {
-            from: eve
-          })
-        );
-      });
-    });
-
-    describe('#applicationPackingCompleted()', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-      });
-
-      it('should allow pusher notify the applicant that packing process completed', async function() {
-        await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
-
-        const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.PACKED);
-      });
-
-      it('should deny non pusher invoke this method', async function() {
-        await assertRevert(this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: eve }));
-      });
-
-      it('should deny locking for already locked applications ', async function() {
-        await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
-        await assertRevert(this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan }));
-      });
-    });
-
     describe('#withdrawPackageToken()', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
+        const res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+
         await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
         await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
         await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-        await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
       });
 
       it('should change status tokenWithdrawn flag to true', async function() {
         await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
 
         const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.PACKED);
+        assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.tokenWithdrawn, true);
-      });
-    });
-
-    describe('claim gas deposit', () => {
-      beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-      });
-
-      describe('for approved applications', () => {
-        beforeEach(async function() {
-          await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-          await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
-          await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
-        });
-
-        it('should be allowed to claim after token been withdrawn', async function() {
-          await this.plotClarificationManager.claimGasDepositAsValidator(this.aId, { from: dan });
-
-          const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.PACKED);
-          assert.equal(res.tokenWithdrawn, true);
-          assert.equal(res.gasDepositWithdrawn, true);
-        });
-
-        it('should revert on double claim', async function() {
-          await this.plotClarificationManager.claimGasDepositAsValidator(this.aId, { from: dan });
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsValidator(this.aId, { from: dan }));
-        });
-
-        it('should revert on non-validator claim', async function() {
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsValidator(this.aId, { from: alice }));
-        });
-
-        it('should revert on non-pusher claim attempt', async function() {
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsValidator(this.aId, { from: eve }));
-        });
-
-        it('should revert on applicant claim attempt', async function() {
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsApplicant(this.aId, { from: alice }));
-        });
-      });
-
-      describe('for reverted applications', () => {
-        beforeEach(async function() {
-          await this.plotClarificationManager.revertApplication(this.aId, 'some reason', { from: bob });
-          await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
-        });
-
-        it('should be allowed to claim after token been withdrawn', async function() {
-          await this.plotClarificationManager.claimGasDepositAsApplicant(this.aId, { from: alice });
-
-          const res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.REVERTED);
-          assert.equal(res.tokenWithdrawn, true);
-          assert.equal(res.gasDepositWithdrawn, true);
-        });
-
-        it('should deny double claim', async function() {
-          await this.plotClarificationManager.claimGasDepositAsApplicant(this.aId, { from: alice });
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsApplicant(this.aId, { from: alice }));
-        });
-
-        it('should deny non-applicant claim gas deposit', async function() {
-          await assertRevert(this.plotClarificationManager.claimGasDepositAsApplicant(this.aId, { from: bob }));
-        });
       });
     });
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        await this.plotClarificationManager.submitApplicationForValuation(this.aId, { from: alice });
-        await this.plotClarificationManager.lockApplicationForValuation(this.aId, { from: dan });
-        await this.plotClarificationManager.valuateGasDeposit(this.aId, ether(7), { from: dan });
-        await this.plotClarificationManager.submitApplicationForReview(this.aId, 0, {
-          from: alice,
-          value: ether(6 + 7)
-        });
+        const res = await this.plotClarificationManager.submitApplication(
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.newContour,
+          0,
+          {
+            from: alice,
+            value: ether(6)
+          }
+        );
+        this.aId = res.logs[0].args.id;
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotClarificationManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotClarificationManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
       });
 
@@ -1234,7 +1062,6 @@ contract.only('PlotClarificationManager', (accounts) => {
           await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
           await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
           await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-          await this.plotClarificationManager.applicationPackingCompleted(this.aId, { from: dan });
         });
 
         describe('after package token was withdrawn by user', () => {
@@ -1250,7 +1077,7 @@ contract.only('PlotClarificationManager', (accounts) => {
 
             let res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
 
-            assert.equal(res.status, ApplicationStatus.PACKED);
+            assert.equal(res.status, ApplicationStatus.APPROVED);
             assert.equal(res.tokenWithdrawn, true);
             assert.equal(res.galtSpaceRewardPaidOut, true);
 
@@ -1260,7 +1087,7 @@ contract.only('PlotClarificationManager', (accounts) => {
             assert.equal(res.rewardPaidOut, true);
 
             res = await this.plotClarificationManagerWeb3.methods
-              .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+              .getApplicationValidator(this.aId, utf8ToHex('cat'))
               .call();
             assert.equal(res.rewardPaidOut, true);
 
@@ -1292,72 +1119,11 @@ contract.only('PlotClarificationManager', (accounts) => {
             assert.equal(res.reward.toString(), '2010000000000000000');
 
             // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
-            // assume that the commission paid by bob isn't greater than 0.1 ether
 
-            const diffBob = bobsFinalBalance
-              .sub(new BN('2010000000000000000')) // <- the diff
-              .sub(bobsInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffDan = dansFinalBalance
-              .sub(new BN('1005000000000000000')) // <- the diff
-              .sub(dansInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffEve = evesFinalBalance
-              .sub(new BN('1005000000000000000')) // <- the diff
-              .sub(evesInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffOrg = orgsFinalBalance
-              .sub(new BN('1980000000000000000')) // <- the diff
-              .sub(orgsInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const max = new BN('10000000000000000'); // <- 0.01 ether
-            const min = new BN('0');
-
-            // lt
-            assert(
-              diffBob.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffDan.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffEve.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffOrg.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be less than 0.01 ether`
-            );
-
-            // gt
-            assert(
-              diffBob.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffDan.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffEve.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffOrg.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be greater than 0`
-            );
+            assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(2.01));
+            assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(1.005));
+            assertEthBalanceChanged(evesInitialBalance, evesFinalBalance, ether(1.005));
+            assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(1.98));
           });
 
           it('should revert on double claim', async function() {
@@ -1416,7 +1182,7 @@ contract.only('PlotClarificationManager', (accounts) => {
             assert.equal(res.rewardPaidOut, true);
 
             res = await this.plotClarificationManagerWeb3.methods
-              .getApplicationValidator(this.aId, utf8ToHex(PUSHER_ROLE))
+              .getApplicationValidator(this.aId, utf8ToHex('cat'))
               .call();
             assert.equal(res.rewardPaidOut, true);
 
@@ -1450,70 +1216,10 @@ contract.only('PlotClarificationManager', (accounts) => {
             // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
             // assume that the commission paid by bob isn't greater than 0.1 ether
 
-            const diffBob = bobsFinalBalance
-              .sub(new BN('2010000000000000000')) // <- the diff
-              .sub(bobsInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffDan = dansFinalBalance
-              .sub(new BN('1005000000000000000')) // <- the diff
-              .sub(dansInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffEve = evesFinalBalance
-              .sub(new BN('1005000000000000000')) // <- the diff
-              .sub(evesInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const diffOrg = orgsFinalBalance
-              .sub(new BN('1980000000000000000')) // <- the diff
-              .sub(orgsInitialBalance)
-              .add(new BN('10000000000000000')); // <- 0.01 ether
-
-            const max = new BN('10000000000000000'); // <- 0.01 ether
-            const min = new BN('0');
-
-            // lt
-            assert(
-              diffBob.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffDan.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffEve.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be less than 0.01 ether`
-            );
-
-            assert(
-              diffOrg.lt(max), // diff < 0.01 ether
-              `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be less than 0.01 ether`
-            );
-
-            // gt
-            assert(
-              diffBob.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffBob.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffDan.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffDan.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffEve.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffEve.toString(10))} to be greater than 0`
-            );
-
-            assert(
-              diffOrg.gt(min), // diff > 0
-              `Expected ${web3.utils.fromWei(diffOrg.toString(10))} to be greater than 0`
-            );
+            assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(2.01));
+            assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(1.005));
+            assertEthBalanceChanged(evesInitialBalance, evesFinalBalance, ether(1.005));
+            assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(1.98));
           });
 
           it('should revert on double claim', async function() {

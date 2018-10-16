@@ -329,7 +329,6 @@ contract("PlotEscrow", (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        galt.geohashToGeohash5('sezu06'),
         this.credentials,
         this.ledgerIdentifier,
         web3.utils.asciiToHex('MN'),
@@ -338,9 +337,8 @@ contract("PlotEscrow", (accounts) => {
       );
       this.aId = res.logs[0].args.id;
 
-      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.packageTokenId = res.packageTokenId;
+      this.spaceTokenId = res.spaceTokenId;
 
       // assign validators
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
@@ -365,7 +363,7 @@ contract("PlotEscrow", (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
 
@@ -374,7 +372,7 @@ contract("PlotEscrow", (accounts) => {
         it('should create a new sale order with ETH payment method', async function() {
           // TOOD: alice should already own a plot to escrow
           let res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -390,7 +388,7 @@ contract("PlotEscrow", (accounts) => {
           assert.equal(res.ask, ether(50));
           assert.equal(res.escrowCurrency, EscrowCurrency.ETH);
           assert.equal(res.tokenContract, zeroAddress);
-          assert.equal(res.packageTokenId, this.packageTokenId);
+          assert.equal(res.spaceTokenId, this.spaceTokenId);
           assert.equal(res.seller.toLowerCase(), alice);
 
           assert(parseInt(res.createdAt, 10) > 1538291634);
@@ -399,7 +397,7 @@ contract("PlotEscrow", (accounts) => {
         it('should create a new sale order with ERC20 payment method', async function() {
           // TOOD: alice should already own a plot to escrow
           let res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ERC20,
@@ -414,7 +412,7 @@ contract("PlotEscrow", (accounts) => {
           assert.equal(res.ask, ether(50));
           assert.equal(res.escrowCurrency, EscrowCurrency.ERC20);
           assert.equal(res.tokenContract.toLowerCase(), this.galtToken.address);
-          assert.equal(res.packageTokenId, this.packageTokenId);
+          assert.equal(res.spaceTokenId, this.spaceTokenId);
           assert.equal(res.seller.toLowerCase(), alice);
 
           assert(parseInt(res.createdAt, 10) > 1538291634);
@@ -423,7 +421,7 @@ contract("PlotEscrow", (accounts) => {
         it('should reject sale order if the token is not owned by an applicant', async function() {
           await assertRevert(
             this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -436,7 +434,7 @@ contract("PlotEscrow", (accounts) => {
 
         it('should reject sale orders if the token is already on sale', async function() {
           await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -446,7 +444,7 @@ contract("PlotEscrow", (accounts) => {
           );
           await assertRevert(
             this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -460,7 +458,7 @@ contract("PlotEscrow", (accounts) => {
         describe('payable', () => {
           it('should allow payments greater than required', async function() {
             await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -473,7 +471,7 @@ contract("PlotEscrow", (accounts) => {
           it('should reject order with insufficient payment', async function() {
             await assertRevert(
               this.plotEscrow.createSaleOrder(
-                this.packageTokenId,
+                this.spaceTokenId,
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
@@ -487,7 +485,7 @@ contract("PlotEscrow", (accounts) => {
           it('should reject order with payment both in eth and galt', async function() {
             await assertRevert(
               this.plotEscrow.createSaleOrder(
-                this.packageTokenId,
+                this.spaceTokenId,
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
@@ -500,7 +498,7 @@ contract("PlotEscrow", (accounts) => {
 
           it('should calculate required payment', async function() {
             let res = await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -523,7 +521,7 @@ contract("PlotEscrow", (accounts) => {
         describe('claim auditor/galtspace rewards', () => {
           beforeEach(async function() {
             const res = await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -544,7 +542,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => AUDIT_REQUIRED
@@ -643,7 +641,7 @@ contract("PlotEscrow", (accounts) => {
             beforeEach(async function() {
               // assign custodian
               const res = await this.plotCustodianManager.submitApplication(
-                this.packageTokenId,
+                this.spaceTokenId,
                 CustodianAction.ATTACH,
                 bob,
                 0,
@@ -656,7 +654,7 @@ contract("PlotEscrow", (accounts) => {
 
               await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
               await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-              await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+              await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
               await this.plotCustodianManager.attachToken(this.aId, {
                 from: alice
               });
@@ -670,7 +668,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => AUDIT_REQUIRED
@@ -725,7 +723,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => RESOLVED
@@ -768,7 +766,7 @@ contract("PlotEscrow", (accounts) => {
           it('should allow payments greater than required', async function() {
             await this.galtToken.approve(this.plotEscrow.address, ether(55), { from: alice });
             await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -782,7 +780,7 @@ contract("PlotEscrow", (accounts) => {
             await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             await assertRevert(
               this.plotEscrow.createSaleOrder(
-                this.packageTokenId,
+                this.spaceTokenId,
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
@@ -797,7 +795,7 @@ contract("PlotEscrow", (accounts) => {
             await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             await assertRevert(
               this.plotEscrow.createSaleOrder(
-                this.packageTokenId,
+                this.spaceTokenId,
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
@@ -811,7 +809,7 @@ contract("PlotEscrow", (accounts) => {
           it('should calculate required payment', async function() {
             await this.galtToken.approve(this.plotEscrow.address, ether(53), { from: alice });
             let res = await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -835,7 +833,7 @@ contract("PlotEscrow", (accounts) => {
           beforeEach(async function() {
             await this.galtToken.approve(this.plotEscrow.address, ether(57), { from: alice });
             const res = await this.plotEscrow.createSaleOrder(
-              this.packageTokenId,
+              this.spaceTokenId,
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
@@ -856,7 +854,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => AUDIT_REQUIRED
@@ -955,7 +953,7 @@ contract("PlotEscrow", (accounts) => {
             beforeEach(async function() {
               // assign custodian
               const res = await this.plotCustodianManager.submitApplication(
-                this.packageTokenId,
+                this.spaceTokenId,
                 CustodianAction.ATTACH,
                 bob,
                 0,
@@ -968,7 +966,7 @@ contract("PlotEscrow", (accounts) => {
 
               await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
               await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-              await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+              await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
               await this.plotCustodianManager.attachToken(this.aId, {
                 from: alice
               });
@@ -982,7 +980,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => AUDIT_REQUIRED
@@ -1036,7 +1034,7 @@ contract("PlotEscrow", (accounts) => {
               beforeEach(async function() {
                 // MATCH => ESCROW
                 await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
-                await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+                await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
                 await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
                 // ESCROW => RESOLVED
@@ -1079,7 +1077,7 @@ contract("PlotEscrow", (accounts) => {
       describe('#createSaleOffer()', () => {
         beforeEach(async function() {
           const res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -1133,7 +1131,7 @@ contract("PlotEscrow", (accounts) => {
         beforeEach(async function() {
           // TOOD: alice should already own a plot to escrow
           const res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -1177,7 +1175,7 @@ contract("PlotEscrow", (accounts) => {
         beforeEach(async function() {
           // TOOD: alice should already own a plot to escrow
           const res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -1224,7 +1222,7 @@ contract("PlotEscrow", (accounts) => {
       describe('#cancelOpenSaleOrder()', () => {
         it('should allow seller closing the order', async function() {
           let res = await this.plotEscrow.createSaleOrder(
-            this.packageTokenId,
+            this.spaceTokenId,
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
@@ -1251,7 +1249,7 @@ contract("PlotEscrow", (accounts) => {
     describe('sale order with ETH payment method', () => {
       beforeEach(async function() {
         const res = await this.plotEscrow.createSaleOrder(
-          this.packageTokenId,
+          this.spaceTokenId,
           ether(50),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
           EscrowCurrency.ETH,
@@ -1269,13 +1267,13 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#attachSpaceToken()', () => {
         it('should attach the token', async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
           assert.equal(res.status, SaleOfferStatus.MATCH);
 
-          res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+          res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
           assert.equal(res.toLowerCase(), this.plotEscrow.address);
         });
 
@@ -1284,7 +1282,7 @@ contract("PlotEscrow", (accounts) => {
         });
 
         it('should token transfer processing from non-applicant address', async function() {
-          await this.spaceToken.transferFrom(alice, charlie, this.packageTokenId, { from: alice });
+          await this.spaceToken.transferFrom(alice, charlie, this.spaceTokenId, { from: alice });
           await assertRevert(this.plotEscrow.attachSpaceToken(this.rId, bob, { from: charlie }));
         });
       });
@@ -1326,7 +1324,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with only spaceToken attached', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
           });
 
@@ -1399,7 +1397,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with only spaceToken attached', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
             await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
@@ -1426,7 +1424,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with both space token and payment attached (after audit)', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
 
@@ -1479,7 +1477,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#applyCustodianAssignment()', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1505,7 +1503,7 @@ contract("PlotEscrow", (accounts) => {
 
           await this.plotEscrow.withdrawTokenFromCustodianContract(this.rId, bob, { from: alice });
 
-          res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+          res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
           assert.equal(res.toLowerCase(), this.plotEscrow.address);
 
           res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
@@ -1515,7 +1513,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#requestCancellationAudit()', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1548,7 +1546,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#lockForAudit()', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1595,7 +1593,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#cancellationAuditReject()', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1628,7 +1626,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('#cancellationAuditApprove()', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1676,7 +1674,7 @@ contract("PlotEscrow", (accounts) => {
       describe('without attached custodian', () => {
         describe('#resolve()', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1697,7 +1695,7 @@ contract("PlotEscrow", (accounts) => {
         beforeEach(async function() {
           // assign custodian
           const res = await this.plotCustodianManager.submitApplication(
-            this.packageTokenId,
+            this.spaceTokenId,
             CustodianAction.ATTACH,
             bob,
             0,
@@ -1710,7 +1708,7 @@ contract("PlotEscrow", (accounts) => {
 
           await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
           await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-          await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
           await this.plotCustodianManager.attachToken(this.aId, {
             from: alice
           });
@@ -1722,7 +1720,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('#resolve()', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
@@ -1758,7 +1756,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('#claimSpaceToken() and #claimPayment()', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob, value: ether(35) });
 
@@ -1772,7 +1770,7 @@ contract("PlotEscrow", (accounts) => {
             let res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.RESOLVED);
 
-            res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+            res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
             assert.equal(res.toLowerCase(), bob);
           });
 
@@ -1807,7 +1805,6 @@ contract("PlotEscrow", (accounts) => {
         // Alice obtains a package token
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
-          galt.geohashToGeohash5('sezu07'),
           this.credentials,
           this.ledgerIdentifier,
           web3.utils.asciiToHex('MN'),
@@ -1816,9 +1813,8 @@ contract("PlotEscrow", (accounts) => {
         );
         this.aId = res.logs[0].args.id;
 
-        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        this.packageTokenId = res.packageTokenId;
+        this.spaceTokenId = res.spaceTokenId;
 
         const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
         await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
@@ -1829,12 +1825,12 @@ contract("PlotEscrow", (accounts) => {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
         assert.equal(res, alice);
 
         // claim sale application
         res = await this.plotEscrow.createSaleOrder(
-          this.packageTokenId,
+          this.spaceTokenId,
           ether(50),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
           EscrowCurrency.ERC20,
@@ -1871,7 +1867,7 @@ contract("PlotEscrow", (accounts) => {
 
         it('should change status to ESCROW if the token is already attached', async function() {
           // space token
-          await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
           await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
 
           // payment
@@ -1923,7 +1919,7 @@ contract("PlotEscrow", (accounts) => {
 
         describe('with only spaceToken attached', () => {
           beforeEach(async function() {
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
             await this.plotEscrow.cancelSaleOffer(this.rId, bob, { from: alice });
           });
@@ -1931,7 +1927,7 @@ contract("PlotEscrow", (accounts) => {
           it('should trigger order status to EMPTY after space token withdrawal', async function() {
             await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
 
-            let res = await this.spaceTokenWeb3.methods.ownerOf(this.packageTokenId).call();
+            let res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
             assert.equal(res.toLowerCase(), alice);
 
             res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
@@ -1954,7 +1950,7 @@ contract("PlotEscrow", (accounts) => {
         describe('with both space token and payment attached (after audit)', () => {
           beforeEach(async function() {
             await this.galtToken.approve(this.plotEscrow.address, ether(35), { from: bob });
-            await this.spaceToken.approve(this.plotEscrow.address, this.packageTokenId, { from: alice });
+            await this.spaceToken.approve(this.plotEscrow.address, this.spaceTokenId, { from: alice });
             await this.plotEscrow.attachSpaceToken(this.rId, bob, { from: alice });
             await this.plotEscrow.attachPayment(this.rId, bob, { from: bob });
 

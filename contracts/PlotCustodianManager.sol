@@ -65,7 +65,7 @@ contract PlotCustodianManager is AbstractApplication {
     bytes32 id;
     address applicant;
     address chosenCustodian;
-    uint256 packageTokenId;
+    uint256 spaceTokenId;
     Action action;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
@@ -165,7 +165,7 @@ contract PlotCustodianManager is AbstractApplication {
    * @dev Submit a new custodian management application from PlotEscrow contract
    */
   function submitApplicationFromEscrow(
-    uint256 _packageTokenId,
+    uint256 _spaceTokenId,
     Action _action,
     address _chosenCustodian,
     address _applicant,
@@ -177,11 +177,11 @@ contract PlotCustodianManager is AbstractApplication {
   {
     require(msg.sender == address(plotEscrow), "Only trusted PlotEscrow contract allowed overriding applicant address");
     require(_applicant != address(0), "Should specify applicant");
-    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_packageTokenId) == address(plotEscrow), "PlotEscrow contract should own the token");
+    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_spaceTokenId) == address(plotEscrow), "PlotEscrow contract should own the token");
 
     return submitApplicationHelper(
-      _packageTokenId,
+      _spaceTokenId,
       _action,
       _applicant,
       _chosenCustodian,
@@ -192,13 +192,13 @@ contract PlotCustodianManager is AbstractApplication {
 
   /**
    * @dev Submit a new custodian management application
-   * @param _packageTokenId package SpaceToken ID
+   * @param _spaceTokenId package SpaceToken ID
    * @param _action either ATTACH or DETACH custodian
    * @param _chosenCustodian which would consider working on this application
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
    */
   function submitApplication(
-    uint256 _packageTokenId,
+    uint256 _spaceTokenId,
     Action _action,
     address _chosenCustodian,
     uint256 _applicationFeeInGalt
@@ -207,11 +207,11 @@ contract PlotCustodianManager is AbstractApplication {
     payable
     returns (bytes32)
   {
-    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
+    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
 
     return submitApplicationHelper(
-      _packageTokenId,
+      _spaceTokenId,
       _action,
       msg.sender,
       _chosenCustodian,
@@ -221,7 +221,7 @@ contract PlotCustodianManager is AbstractApplication {
   }
 
   function submitApplicationHelper(
-    uint256 _packageTokenId,
+    uint256 _spaceTokenId,
     Action _action,
     address _applicant,
     address _chosenCustodian,
@@ -252,7 +252,7 @@ contract PlotCustodianManager is AbstractApplication {
     Application memory a;
     bytes32 _id = keccak256(
       abi.encodePacked(
-        _packageTokenId,
+        _spaceTokenId,
         blockhash(block.number),
         applicationsArray.length
       )
@@ -270,7 +270,7 @@ contract PlotCustodianManager is AbstractApplication {
     a.applicant = _applicant;
     a.chosenCustodian = _chosenCustodian;
     a.currency = currency;
-    a.packageTokenId = _packageTokenId;
+    a.spaceTokenId = _spaceTokenId;
     a.action = _action;
 
     calculateAndStoreFee(a, fee);
@@ -291,13 +291,13 @@ contract PlotCustodianManager is AbstractApplication {
   /**
    * @dev Resubmit an already reverted application
    * @param _aId application ID
-   * @param _packageTokenId package SpaceToken ID
+   * @param _spaceTokenId package SpaceToken ID
    * @param _action either ATTACH or DETACH custodian
    * @param _chosenCustodian which would consider working on this application
    */
   function resubmitApplication(
     bytes32 _aId,
-    uint256 _packageTokenId,
+    uint256 _spaceTokenId,
     Action _action,
     address _chosenCustodian
   )
@@ -308,14 +308,14 @@ contract PlotCustodianManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
-    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
+    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
     require(
       validators.hasRole(_chosenCustodian, PC_CUSTODIAN_ROLE),
       "Unable to assign the application to the chosen custodian");
     validators.ensureValidatorActive(_chosenCustodian);
 
-    a.packageTokenId = _packageTokenId;
+    a.spaceTokenId = _spaceTokenId;
     a.action = _action;
     a.chosenCustodian = _chosenCustodian;
 
@@ -404,7 +404,7 @@ contract PlotCustodianManager is AbstractApplication {
 
     require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
 
-    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.packageTokenId);
+    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
 
     changeApplicationStatus(a, ApplicationStatus.REVIEW);
   }
@@ -448,9 +448,9 @@ contract PlotCustodianManager is AbstractApplication {
 
     if (a.approveConfirmations == 7) {
       if (a.action == Action.DETACH) {
-        delete assignedCustodians[a.packageTokenId];
+        delete assignedCustodians[a.spaceTokenId];
       } else {
-        assignedCustodians[a.packageTokenId] = a.chosenCustodian;
+        assignedCustodians[a.spaceTokenId] = a.chosenCustodian;
       }
 
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
@@ -486,7 +486,7 @@ contract PlotCustodianManager is AbstractApplication {
       require(msg.sender == a.applicant, "Invalid applicant");
     }
 
-    spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+    spaceToken.transferFrom(address(this), msg.sender, a.spaceTokenId);
 
     changeApplicationStatus(a, ApplicationStatus.COMPLETED);
   }
@@ -504,7 +504,7 @@ contract PlotCustodianManager is AbstractApplication {
       "Application status should be either REJECTED or LOCKED");
 
     if (a.status == ApplicationStatus.REJECTED) {
-      spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+      spaceToken.transferFrom(address(this), msg.sender, a.spaceTokenId);
     }
 
     changeApplicationStatus(a, ApplicationStatus.CLOSED);
@@ -587,7 +587,7 @@ contract PlotCustodianManager is AbstractApplication {
     view
     returns (
       address applicant,
-      uint256 packageTokenId,
+      uint256 spaceTokenId,
       address chosenCustodian,
       uint8 approveConfirmations,
       bytes32[] assignedValidatorRoles,
@@ -604,7 +604,7 @@ contract PlotCustodianManager is AbstractApplication {
 
     return (
       m.applicant,
-      m.packageTokenId,
+      m.spaceTokenId,
       m.chosenCustodian,
       m.approveConfirmations,
       m.assignedRoles,
