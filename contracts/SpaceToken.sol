@@ -37,6 +37,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   string public constant ROLE_BURNER = "burner";
   string public constant ROLE_OPERATOR = "operator";
 
+  event NewSpaceToken(uint256 tokenId, address owner);
+
   uint256 packTokenIdCounter;
 
   modifier canTransfer(uint256 _tokenId) {
@@ -90,6 +92,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
   {
     uint256 _tokenId = generateTokenId();
     super._mint(_to, _tokenId);
+
+    emit NewSpaceToken(_tokenId, _to);
 
     return _tokenId;
   }
