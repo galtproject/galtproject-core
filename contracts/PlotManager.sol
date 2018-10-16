@@ -87,8 +87,6 @@ contract PlotManager is AbstractApplication {
   struct ApplicationDetails {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
-    uint8 precision;
-    bytes2 country;
   }
 
   // rate per one 12-symbol geohash in GALT
@@ -187,16 +185,13 @@ contract PlotManager is AbstractApplication {
   function applyForPlotOwnership(
     uint256[] _packageContour,
     bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
-    bytes2 _country,
-    uint8 _precision
+    bytes32 _ledgerIdentifier
   )
     external
     ready
     // TODO: should be payable
     returns (bytes32)
   {
-    require(_precision > 5, "Precision should be greater than 5");
     require(
       _packageContour.length >= 3 && _packageContour.length <= 50, 
       "Number of contour elements should be between 3 and 50"
@@ -230,9 +225,7 @@ contract PlotManager is AbstractApplication {
 
     applications[_id].details = ApplicationDetails({
       ledgerIdentifier: _ledgerIdentifier,
-      credentialsHash: _credentialsHash,
-      country: _country,
-      precision: _precision
+      credentialsHash: _credentialsHash
     });
 
     emit LogNewApplication(_id, msg.sender);
@@ -244,9 +237,7 @@ contract PlotManager is AbstractApplication {
   function changeApplicationDetails(
     bytes32 _aId,
     bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
-    uint8 _precision,
-    bytes2 _country
+    bytes32 _ledgerIdentifier
   )
     external
     onlyApplicant(_aId)
@@ -260,8 +251,6 @@ contract PlotManager is AbstractApplication {
 
     d.credentialsHash = _credentialsHash;
     d.ledgerIdentifier = _ledgerIdentifier;
-    d.precision = _precision;
-    d.country = _country;
   }
 
   function calculateAndStoreFee(
@@ -649,8 +638,6 @@ contract PlotManager is AbstractApplication {
       bytes32 credentialsHash,
       ApplicationStatus status,
       Currency currency,
-      uint8 precision,
-      bytes2 country,
       bytes32 ledgerIdentifier,
       bytes32[] assignedValidatorRoles
     )
@@ -665,8 +652,6 @@ contract PlotManager is AbstractApplication {
       m.details.credentialsHash,
       m.status,
       m.currency,
-      m.details.precision,
-      m.details.country,
       m.details.ledgerIdentifier,
       m.assignedRoles
     );
