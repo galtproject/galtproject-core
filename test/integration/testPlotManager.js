@@ -255,14 +255,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
 
-      const res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.credentials,
-        this.ledgerIdentifier,
-        web3.utils.asciiToHex('MN'),
-        7,
-        { from: alice }
-      );
+      const res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+        from: alice
+      });
 
       this.aId = res.logs[0].args.id;
 
@@ -272,10 +267,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     it('should allow change application fields to the owner when status is NEW', async function() {
       const hash = web3.utils.keccak256('AnotherPerson');
       const ledgedIdentifier = 'foo-123';
-      const country = 'SG';
-      const precision = 9;
 
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
         from: alice
       });
 
@@ -283,18 +276,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert.equal(res.credentialsHash, hash);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-      assert.equal(web3.utils.hexToAscii(res.country), 'SG');
-      assert.equal(res.precision, 9);
     });
 
     it('should allow change application fields to an assigned operator when status is NEW', async function() {
       const hash = web3.utils.keccak256('AnotherPerson');
       const ledgedIdentifier = 'foo-123';
-      const country = 'SG';
-      const precision = 9;
 
       await this.plotManager.approveOperator(this.aId, frank, { from: alice });
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
         from: frank
       });
 
@@ -302,8 +291,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert.equal(res.credentialsHash, hash);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-      assert.equal(web3.utils.hexToAscii(res.country), 'SG');
-      assert.equal(res.precision, 9);
     });
 
     it('should allow application details hash to the owner when status is REVERTED', async function() {
@@ -319,28 +306,22 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-      assert.equal(web3.utils.hexToAscii(res.country), 'MN');
-      assert.equal(res.precision, 7);
 
       const hash = web3.utils.keccak256('AnotherPerson');
       const ledgedIdentifier = 'foo-123';
-      const country = 'SG';
-      const precision = 9;
 
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, precision, country, {
+      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
         from: alice
       });
 
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, hash);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-      assert.equal(web3.utils.hexToAscii(res.country), 'SG');
-      assert.equal(res.precision, 9);
     });
 
     it('should deny hash change to another person', async function() {
       await assertRevert(
-        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', 9, 'SG', {
+        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', {
           from: coreTeam
         })
       );
@@ -348,14 +329,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-      assert.equal(web3.utils.hexToAscii(res.country), 'MN');
-      assert.equal(res.precision, 7);
     });
 
     it('should deny hash change if applicaiton is submitted', async function() {
       await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
       await assertRevert(
-        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', 9, 'SG', {
+        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', {
           from: alice
         })
       );
@@ -363,8 +342,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       assert.equal(res.credentialsHash, this.credentials);
       assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-      assert.equal(web3.utils.hexToAscii(res.country), 'MN');
-      assert.equal(res.precision, 7);
     });
 
     it('should assign 3rd party key to manage the application multiple times', async function() {
@@ -387,14 +364,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         ['', '', ''],
         { from: coreTeam }
       );
-      const res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.credentials,
-        this.ledgerIdentifier,
-        web3.utils.asciiToHex('MN'),
-        7,
-        { from: alice }
-      );
+      const res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+        from: alice
+      });
 
       this.aId = res.logs[0].args.id;
     });
@@ -412,9 +384,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         }
 
         assert.equal(res2.status, 1);
-        assert.equal(res2.precision, 7);
         assert.equal(res2.applicant.toLowerCase(), alice);
-        assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
     });
@@ -461,8 +431,6 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
             this.contour2,
             this.credentials,
             this.ledgerIdentifier,
-            web3.utils.asciiToHex('MN'),
-            7,
             { from: alice }
           );
           const aId = res.logs[0].args.id;
@@ -685,14 +653,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           { from: coreTeam }
         );
 
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice }
-        );
+        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
+          from: alice
+        });
 
         this.aId = res.logs[0].args.id;
 
@@ -821,14 +784,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         { from: coreTeam }
       );
 
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.credentials,
-        this.ledgerIdentifier,
-        web3.utils.asciiToHex('MN'),
-        7,
-        { from: alice }
-      );
+      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+        from: alice
+      });
 
       this.aId = res.logs[0].args.id;
 
@@ -856,9 +814,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         }
 
         assert.equal(res2.status, 1);
-        assert.equal(res2.precision, 7);
         assert.equal(res2.applicant.toLowerCase(), alice);
-        assert.equal(web3.utils.hexToAscii(res2.country), 'MN');
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
 
@@ -1192,14 +1148,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       it('should push an application id to the validators list for caching', async function() {
         // submit first
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: charlie }
-        );
+        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
+          from: charlie
+        });
         const a1Id = res.logs[0].args.id;
         let payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a1Id, Currency.ETH).call();
         await this.plotManager.submitApplication(a1Id, 0, { from: charlie, value: payment });
@@ -1208,14 +1159,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
 
         // submit second
-        res = await this.plotManager.applyForPlotOwnership(
-          this.contour3,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice }
-        );
+        res = await this.plotManager.applyForPlotOwnership(this.contour3, this.credentials, this.ledgerIdentifier, {
+          from: alice
+        });
         const a2Id = res.logs[0].args.id;
         payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a2Id, Currency.ETH).call();
 
@@ -1231,14 +1177,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator to lock an application which is new', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice }
-        );
+        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
+          from: alice
+        });
         const a2Id = res.logs[0].args.id;
         await assertRevert(this.plotManager.lockApplicationForReview(a2Id, 'human', { from: charlie }));
         res = await this.plotManagerWeb3.methods.getApplicationById(a2Id).call();
@@ -1360,14 +1301,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       // eslint-disable-next-line
       it('should deny validator approve application with other than consideration or partially locked status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice }
-        );
+        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
+          from: alice
+        });
 
         const aId = res.logs[0].args.id;
         await assertRevert(this.plotManager.approveApplication(aId, this.credentials, { from: bob }));
@@ -1431,14 +1367,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.credentials,
-          this.ledgerIdentifier,
-          web3.utils.asciiToHex('MN'),
-          7,
-          { from: alice }
-        );
+        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
+          from: alice
+        });
         const aId = res.logs[0].args.id;
         const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 
