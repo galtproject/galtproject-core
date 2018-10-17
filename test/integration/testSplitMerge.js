@@ -1,5 +1,6 @@
-const PolygonUtils = artifacts.require('./PolygonUtils.sol');
-const LandUtils = artifacts.require('./LandUtils.sol');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const Web3 = require('web3');
@@ -26,9 +27,12 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
   beforeEach(async function() {
     this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
+    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
+
     this.landUtils = await LandUtils.new({ from: coreTeam });
     PolygonUtils.link('LandUtils', this.landUtils.address);
     SplitMerge.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
 
     this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
     SplitMerge.link('PolygonUtils', this.polygonUtils.address);

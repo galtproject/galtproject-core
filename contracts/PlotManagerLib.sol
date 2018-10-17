@@ -17,7 +17,7 @@ pragma experimental "v0.5.0";
 import "./PlotManager.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
-import "./LandUtils.sol";
+import "./utils/LandUtils.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 

@@ -1,6 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const LandUtils = artifacts.require('./LandUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');

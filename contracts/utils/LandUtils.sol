@@ -14,7 +14,6 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-
 library LandUtils {
     uint256 constant C1_GEOHASH = 31;
     uint256 constant C2_GEOHASH = 1023;

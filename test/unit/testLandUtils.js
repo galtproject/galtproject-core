@@ -1,4 +1,4 @@
-const LandUtils = artifacts.require('./LandUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const Web3 = require('web3');
 const { assertRevert } = require('../helpers');
 

@@ -18,8 +18,9 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
-import "./PolygonUtils.sol";
-import "./LandUtils.sol";
+import "./utils/PolygonUtils.sol";
+import "./utils/LandUtils.sol";
+import "./utils/ArrayUtils.sol";
 
 contract SplitMerge is Initializable, Ownable {
     using SafeMath for uint256;
@@ -137,18 +138,9 @@ contract SplitMerge is Initializable, Ownable {
             }
 
             if (el != 0) {
-                require(someInUintArray(sourceContour, el), "Unique element not exists in source contour");
+                require(ArrayUtils.uintSome(sourceContour, el), "Unique element not exists in source contour");
             }
         }
-    }
-
-    function someInUintArray(uint[] arr, uint el) public view returns (bool){
-        for (uint j = 0; j < arr.length; j++) {
-            if (el == arr[j]) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // TODO: make it safer(math operations with polygons)
