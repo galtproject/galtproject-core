@@ -10,7 +10,7 @@ const { assertEthBalanceChanged, assertGaltBalanceChanged, ether, assertRevert, 
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 
-const NEW_APPLICATION = '0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef';
+const CLAIM_VALIDATORS = '0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef';
 
 const CM_JUROR = 'CM_JUROR';
 
@@ -67,7 +67,9 @@ contract.only("ClaimManager", (accounts) => {
     bob,
     charlie,
     dan,
-    eve
+    eve,
+    frank,
+    george
   ] = accounts;
 
   beforeEach(async function() {
@@ -230,8 +232,8 @@ contract.only("ClaimManager", (accounts) => {
     });
   });
 
-  describe('pipeline', () => {
-    describe('application pipeline for GALT', () => {
+  describe('#claim()', () => {
+    describe('with GALT payments', () => {
       it('should create a new application with SUBMITTED status', async function() {
         await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
         let res = await this.claimManager.submit(
@@ -301,7 +303,7 @@ contract.only("ClaimManager", (accounts) => {
       });
     });
 
-    describe('application pipeline for ETH', () => {
+    describe('with ETH payments', () => {
       it('should create a new application with SUBMITTED status', async function() {
         let res = await this.claimManager.submit(
           alice,
@@ -355,6 +357,54 @@ contract.only("ClaimManager", (accounts) => {
           assert.equal(res.validatorsReward, ether('8.71'));
           assert.equal(res.galtSpaceReward, ether('4.29'));
         });
+      });
+    });
+  });
+
+  describe('pipeline', () => {
+    beforeEach(async function() {
+      await this.claimManager.setNofM(3, 5, { from: coreTeam });
+      await this.validators.setApplicationTypeRoles(CLAIM_VALIDATORS, [CM_JUROR], [100], [''], {
+        from: applicationTypeManager
+      });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [CM_JUROR], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [CM_JUROR], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [CM_JUROR], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [CM_JUROR], { from: validatorManager });
+      await this.validators.addValidator(frank, 'Frank', 'MN', [], [CM_JUROR], { from: validatorManager });
+
+      const res = await this.claimManager.submit(
+        alice,
+        ether(35),
+        this.attachedDocuments.map(galt.ipfsHashToBytes32),
+        0,
+        { from: alice, value: ether(7) }
+      );
+
+      this.cId = res.logs[0].args.id;
+    });
+
+    describe('#lock()', () => {
+      it('should allow any super-validator lock <=m slots', async function() {
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 0);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await assertRevert(this.claimManager.lock(this.cId, { from: bob }));
+        await this.claimManager.lock(this.cId, { from: charlie });
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+        await this.claimManager.lock(this.cId, { from: frank });
+        await assertRevert(this.claimManager.lock(this.cId, { from: george }));
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 5);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
       });
     });
   });

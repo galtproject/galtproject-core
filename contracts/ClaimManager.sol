@@ -13,7 +13,6 @@
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
-//pragma experimental "ABIEncoderV2";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -39,26 +38,26 @@ contract ClaimManager is AbstractApplication {
     REVERTED
   }
 
-//  enum ValidationStatus {
-//    NOT_EXISTS,
-//    PENDING,
-//    LOCKED
-//  }
-
-  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogNewApplication(bytes32 id, address applicant);
-//  event LogProposalStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event ClaimStatusChanged(bytes32 applicationId, ApplicationStatus status);
+  event NewClaim(bytes32 id, address applicant);
+  event ValidatorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
 
   struct Claim {
     bytes32 id;
     address applicant;
     address beneficiary;
     uint256 amount;
+    uint256 m;
+    uint256 n;
 
     ApplicationStatus status;
     FeeDetails fees;
 
     bytes32[] attachedDocuments;
+
+    // TODO: replace with Bytes32Set
+    address[] validators;
+    mapping(address => bool) validatorExists;
   }
 
   struct FeeDetails {
@@ -98,6 +97,9 @@ contract ClaimManager is AbstractApplication {
     validators = _validators;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+
+    n = 3;
+    m = 5;
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
@@ -164,22 +166,41 @@ contract ClaimManager is AbstractApplication {
     c.applicant = msg.sender;
     c.attachedDocuments = _documents;
     c.fees.currency = currency;
+    c.n = n;
+    c.m = m;
 
     calculateAndStoreFee(c, fee);
 
     claims[id] = c;
 
-    emit LogNewApplication(id, msg.sender);
-    emit LogApplicationStatusChanged(id, ApplicationStatus.SUBMITTED);
+    emit NewClaim(id, msg.sender);
+    emit ClaimStatusChanged(id, ApplicationStatus.SUBMITTED);
 
     return id;
   }
 
-  function claimValidatorReward(bytes32 _aId) external {
+  /**
+   * @dev Super-Validator locks a claim to work on
+   * @param _cId Claim ID
+   */
+  function lock(bytes32 _cId) external {
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validatorExists[msg.sender] == false, "Validator has already locked the application");
+    require(c.validators.length < m, "All validator slots are locked");
+
+    c.validatorExists[msg.sender] = true;
+    c.validators.push(msg.sender);
+
+    emit ValidatorSlotTaken(_cId, c.validators.length, m);
+  }
+
+  function claimValidatorReward(bytes32 _cId) external {
 
   }
 
-  function claimGaltSpaceReward(bytes32 _aId) external {
+  function claimGaltSpaceReward(bytes32 _cId) external {
 
   }
 
@@ -192,6 +213,9 @@ contract ClaimManager is AbstractApplication {
       address applicant,
       address beneficiary,
       uint256 amount,
+      uint256 slotsTaken,
+      uint256 slotsThreshold,
+      uint256 totalSlots,
       ApplicationStatus status
   ) {
     Claim storage c = claims[_cId];
@@ -201,6 +225,9 @@ contract ClaimManager is AbstractApplication {
       c.applicant,
       c.beneficiary,
       c.amount,
+      c.validators.length,
+      c.n,
+      m,
       c.status
     );
   }
