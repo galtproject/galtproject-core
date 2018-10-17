@@ -47,7 +47,7 @@ library PlotEscrowLib {
       revert("No permissions to resolve the order");
     }
 
-    bool custodianAssigned = _plotCustodianManager.assignedCustodians(saleOrder.packageTokenId) != address(0);
+    bool custodianAssigned = _plotCustodianManager.assignedCustodians(saleOrder.spaceTokenId) != address(0);
 
     if (saleOffer.resolved == 3 && custodianAssigned) {
       changeStatus = true;

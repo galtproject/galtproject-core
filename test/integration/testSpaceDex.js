@@ -6,7 +6,6 @@ const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
-const galt = require('@galtproject/utils');
 
 const Web3 = require('web3');
 const chai = require('chai');
@@ -173,22 +172,21 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
   describe('#exchangeSpaceToGalt()', async () => {
     it('should successfully sell spaceToken', async function() {
-      const geohash5 = galt.geohashToGeohash5('sezu05');
-      await this.spaceToken.mintGeohash(alice, geohash5, {
+      await this.spaceToken.mint(alice, {
         from: coreTeam
       });
 
-      const geohashTokenId = galt.geohashToTokenId('sezu05');
+      const spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-      await this.valuatePlot(geohashTokenId, ether(plotPriceGalt));
-      await this.setCustodianForPlot(geohashTokenId, bob);
+      await this.valuatePlot(spaceTokenId, ether(plotPriceGalt));
+      await this.setCustodianForPlot(spaceTokenId, bob);
 
-      await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
+      await this.spaceToken.approve(this.spaceDex.address, spaceTokenId, {
         from: alice
       });
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
-      await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(spaceTokenId);
+      await this.spaceDex.exchangeSpaceToGalt(spaceTokenId, {
         from: alice
       });
 
@@ -210,37 +208,36 @@ contract('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
 
   describe('#exchangeGaltToSpace()', async () => {
     it('should successfully buy spaceToken', async function() {
-      const geohash5 = galt.geohashToGeohash5('sezu05');
-      await this.spaceToken.mintGeohash(alice, geohash5, {
+      await this.spaceToken.mint(alice, {
         from: coreTeam
       });
 
-      const geohashTokenId = galt.geohashToTokenId('sezu05');
+      const spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-      await this.valuatePlot(geohashTokenId, ether(plotPriceGalt));
-      await this.setCustodianForPlot(geohashTokenId, bob);
+      await this.valuatePlot(spaceTokenId, ether(plotPriceGalt));
+      await this.setCustodianForPlot(spaceTokenId, bob);
 
-      await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
+      await this.spaceToken.approve(this.spaceDex.address, spaceTokenId, {
         from: alice
       });
 
-      await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+      await this.spaceDex.exchangeSpaceToGalt(spaceTokenId, {
         from: alice
       });
 
       const expectedFeeGalt = ether((plotPriceGalt * feePercent) / 100);
 
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
+      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(spaceTokenId);
       assert.equal(geohashPrice.toString(10), new BN(expectedFeeGalt).add(new BN(ether(plotPriceGalt))).toString(10));
 
       await this.galtToken.mint(alice, geohashPrice);
       await this.galtToken.approve(this.spaceDex.address, geohashPrice, { from: alice });
 
-      await this.spaceDex.exchangeGaltToSpace(geohashTokenId, {
+      await this.spaceDex.exchangeGaltToSpace(spaceTokenId, {
         from: alice
       });
 
-      const ownerOfGeohashToken = await this.spaceToken.ownerOf(geohashTokenId);
+      const ownerOfGeohashToken = await this.spaceToken.ownerOf(spaceTokenId);
       assert.equal(ownerOfGeohashToken, alice);
 
       const feePayout = await this.spaceDex.feePayout();

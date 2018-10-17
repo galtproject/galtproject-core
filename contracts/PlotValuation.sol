@@ -57,7 +57,7 @@ contract PlotValuation is AbstractApplication {
   struct Application {
     bytes32 id;
     address applicant;
-    uint256 packageTokenId;
+    uint256 spaceTokenId;
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 firstValuation;
@@ -89,7 +89,7 @@ contract PlotValuation is AbstractApplication {
   uint256 public gasPriceForDeposits;
 
   mapping(bytes32 => Application) public applications;
-  // packageTokenId => valuationInWei
+  // spaceTokenId => valuationInWei
   mapping(uint256 => uint256) public plotValuations;
 
   SpaceToken public spaceToken;
@@ -157,12 +157,12 @@ contract PlotValuation is AbstractApplication {
 
   /**
    * @dev Submit a new plot valuation application
-   * @param _packageTokenId application id
+   * @param _spaceTokenId application id
    * @param _attachedDocuments IPFS hashes
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
    */
   function submitApplication(
-    uint256 _packageTokenId,
+    uint256 _spaceTokenId,
     bytes32[] _attachedDocuments,
     uint256 _applicationFeeInGalt
   )
@@ -172,8 +172,8 @@ contract PlotValuation is AbstractApplication {
     returns (bytes32)
   {
     require(_attachedDocuments.length > 0, "At least one document should be attached");
-    require(spaceToken.exists(_packageTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the token");
+    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
+    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
 
     // Default is ETH
     Currency currency;
@@ -207,7 +207,7 @@ contract PlotValuation is AbstractApplication {
     a.id = _id;
     a.applicant = msg.sender;
     a.currency = currency;
-    a.packageTokenId = _packageTokenId;
+    a.spaceTokenId = _spaceTokenId;
     a.attachedDocuments = _attachedDocuments;
 
     calculateAndStoreFee(a, fee);
@@ -351,7 +351,7 @@ contract PlotValuation is AbstractApplication {
     require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
 
-    plotValuations[a.packageTokenId] = a.firstValuation;
+    plotValuations[a.spaceTokenId] = a.firstValuation;
     changeApplicationStatus(a, ApplicationStatus.APPROVED);
   }
   
@@ -445,7 +445,7 @@ contract PlotValuation is AbstractApplication {
     view
     returns (
       address applicant,
-      uint256 packageTokenId,
+      uint256 spaceTokenId,
       ApplicationStatus status,
       Currency currency,
       uint256 firstValuation,
@@ -463,7 +463,7 @@ contract PlotValuation is AbstractApplication {
 
     return (
       m.applicant,
-      m.packageTokenId,
+      m.spaceTokenId,
       m.status,
       m.currency,
       m.firstValuation,

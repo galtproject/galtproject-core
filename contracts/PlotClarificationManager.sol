@@ -28,19 +28,11 @@ contract PlotClarificationManager is AbstractApplication {
   // 'PlotClarificationManager' hash
   bytes32 public constant APPLICATION_TYPE = 0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7;
 
-  // 'clarification pusher' bytes32 representation
-  bytes32 public constant PUSHER_ROLE = 0x636c6172696669636174696f6e20707573686572000000000000000000000000;
-
   enum ApplicationStatus {
     NOT_EXISTS,
-    NEW,
-    VALUATION_REQUIRED,
-    VALUATION,
-    PAYMENT_REQUIRED,
     SUBMITTED,
     APPROVED,
-    REVERTED,
-    PACKED
+    REVERTED
   }
 
   enum ValidationStatus {
@@ -53,16 +45,15 @@ contract PlotClarificationManager is AbstractApplication {
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
-  event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 packageTokenId);
-  event LogGasDepositWithdrawnByApplicant(bytes32 applicationId);
-  event LogGasDepositWithdrawnByValidator(bytes32 applicationId);
+  event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 spaceTokenId);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
     address applicant;
     bytes32 ledgerIdentifier;
-    uint256 packageTokenId;
+    uint256 spaceTokenId;
+
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 gasDeposit;
@@ -70,10 +61,10 @@ contract PlotClarificationManager is AbstractApplication {
     bool tokenWithdrawn;
     bool gasDepositWithdrawn;
 
-    uint8 precision;
     Currency currency;
     ApplicationStatus status;
 
+    uint256[] newContour;
     bytes32[] assignedRoles;
 
     mapping(bytes32 => uint256) assignedRewards;
@@ -101,13 +92,6 @@ contract PlotClarificationManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    validators.ensureValidatorActive(msg.sender);
-
-    _;
-  }
-
-  modifier onlyPusherRole() {
-    require(validators.hasRole(msg.sender, PUSHER_ROLE), "Validator doesn't qualify for this action");
     validators.ensureValidatorActive(msg.sender);
 
     _;
@@ -148,92 +132,21 @@ contract PlotClarificationManager is AbstractApplication {
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
-
-  function applyForPlotClarification(
-    uint256 _packageTokenId,
+  function submitApplication(
+    uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
-    uint8 _precision
-  )
-    external
-    validatorsReady
-    returns (bytes32)
-  {
-    require(_precision > 5, "Precision should be greater than 5");
-    require(spaceToken.ownerOf(_packageTokenId) == msg.sender, "Sender should own the provided token");
-
-    spaceToken.transferFrom(msg.sender, address(this), _packageTokenId);
-
-    Application memory a;
-    bytes32 _id = keccak256(
-      abi.encodePacked(
-        _packageTokenId,
-        blockhash(block.number)
-      )
-    );
-
-    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-
-    a.status = ApplicationStatus.NEW;
-    a.id = _id;
-    a.applicant = msg.sender;
-
-    a.packageTokenId = _packageTokenId;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.precision = _precision;
-
-    applications[_id] = a;
-    applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
-
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.NEW);
-
-    return _id;
-  }
-
-  function submitApplicationForValuation(bytes32 _aId) external onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.NEW, "ApplicationStatus should be NEW");
-
-    changeApplicationStatus(a, ApplicationStatus.VALUATION_REQUIRED);
-
-  }
-
-  function lockApplicationForValuation(bytes32 _aId) external onlyPusherRole {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.VALUATION_REQUIRED, "ApplicationStatus should be VALUATION_REQUIRED");
-
-    changeValidationStatus(a, PUSHER_ROLE, ValidationStatus.LOCKED);
-    a.roleAddresses[PUSHER_ROLE] = msg.sender;
-    a.addressRoles[msg.sender] = PUSHER_ROLE;
-
-    changeApplicationStatus(a, ApplicationStatus.VALUATION);
-  }
-
-  function valuateGasDeposit(bytes32 _aId, uint256 _gasDeposit) external onlyPusherRole {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.VALUATION, "ApplicationStatus should be VALUATION");
-
-    a.gasDeposit = _gasDeposit;
-    changeApplicationStatus(a, ApplicationStatus.PAYMENT_REQUIRED);
-  }
-
-  function submitApplicationForReview(
-    bytes32 _aId,
+    uint256[] _newContour,
     uint256 _applicationFeeInGalt
   )
     external
-    payable
     validatorsReady
-    onlyApplicant(_aId)
+    payable
+    returns (bytes32)
   {
-    Application storage a = applications[_aId];
-    uint256 deposit = a.gasDeposit;
+    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
+    require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
 
-    require(a.status == ApplicationStatus.PAYMENT_REQUIRED, "ApplicationStatus should be PAYMENT_REQUIRED");
+    spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
 
     // Default is ETH
     Currency currency;
@@ -241,22 +154,48 @@ contract PlotClarificationManager is AbstractApplication {
 
     // GALT
     if (_applicationFeeInGalt > 0) {
-      require(msg.value == deposit, "Provided gas deposit should exactly match valuation");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
+      require(msg.value == 0, "Could not accept both GALT and ETH");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment");
       galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
-      a.currency = Currency.GALT;
-    // ETH
+      currency = Currency.GALT;
+      // ETH
     } else {
-      require(msg.value >= (minimalApplicationFeeInEth + deposit), "Provided payment insufficient");
+      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment");
 
-      fee = msg.value.sub(deposit);
+      fee = msg.value;
     }
 
-    calculateAndStoreFee(a, fee);
-    assignRequiredValidatorRolesAndRewards(_aId);
+    Application memory a;
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        _spaceTokenId,
+        blockhash(block.number)
+      )
+    );
 
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    a.status = ApplicationStatus.SUBMITTED;
+    a.id = _id;
+    a.applicant = msg.sender;
+    a.newContour = _newContour;
+    a.currency = currency;
+
+    a.spaceTokenId = _spaceTokenId;
+    a.ledgerIdentifier = _ledgerIdentifier;
+
+    applications[_id] = a;
+    applicationsArray.push(_id);
+    applicationsByAddresses[msg.sender].push(_id);
+
+    emit LogNewApplication(_id, msg.sender);
+    emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+
+    calculateAndStoreFee(applications[_id], fee);
+    assignRequiredValidatorRolesAndRewards(_id);
+
+    return _id;
   }
 
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
@@ -358,67 +297,22 @@ contract PlotClarificationManager is AbstractApplication {
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
-  function applicationPackingCompleted(bytes32 _aId) external onlyPusherRole {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
-
-    a.status = ApplicationStatus.PACKED;
-  }
-
   function withdrawPackageToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
     ApplicationStatus status = a.status;
 
     /* solium-disable-next-line */
-    require(status == ApplicationStatus.NEW ||
-      status == ApplicationStatus.PAYMENT_REQUIRED ||
+    require(
       status == ApplicationStatus.REVERTED ||
-      status == ApplicationStatus.PACKED,
-      "ApplicationStatus should one of NEW, PAYMENT_REQUIRED, REVERTED or PACKED");
+      status == ApplicationStatus.APPROVED,
+      "ApplicationStatus should one of REVERTED or APPROVED");
 
     require(a.tokenWithdrawn == false, "Token is already withdrawn");
 
-    spaceToken.transferFrom(address(this), msg.sender, a.packageTokenId);
+    spaceToken.transferFrom(address(this), msg.sender, a.spaceTokenId);
 
     a.tokenWithdrawn = true;
-    emit LogPackageTokenWithdrawn(a.id, a.packageTokenId);
-  }
-
-  function claimGasDepositAsApplicant(bytes32 _aId) external onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-
-    require(
-      a.status == ApplicationStatus.REVERTED,
-      "ApplicationStatus should be REVERTED");
-    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
-    require(a.gasDepositWithdrawn == false, "Gas deposit is already withdrawn");
-
-    a.gasDepositWithdrawn = true;
-    msg.sender.transfer(a.gasDeposit);
-
-    emit LogGasDepositWithdrawnByApplicant(_aId);
-  }
-
-  function claimGasDepositAsValidator(
-    bytes32 _aId
-  )
-    external
-    onlyValidatorOfApplication(_aId)
-    onlyPusherRole
-  {
-    Application storage a = applications[_aId];
-
-    require(
-      a.status == ApplicationStatus.PACKED,
-      "ApplicationStatus should be PACKED");
-    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
-    require(a.gasDepositWithdrawn == false, "Gas deposit is already withdrawn");
-
-    a.gasDepositWithdrawn = true;
-    msg.sender.transfer(a.gasDeposit);
-
-    emit LogGasDepositWithdrawnByValidator(_aId);
+    emit LogPackageTokenWithdrawn(a.id, a.spaceTokenId);
   }
 
   function claimValidatorReward(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
@@ -426,8 +320,8 @@ contract PlotClarificationManager is AbstractApplication {
 
     require(
       a.status == ApplicationStatus.REVERTED ||
-      a.status == ApplicationStatus.PACKED,
-      "ApplicationStatus should one of REVERTED or PACKED");
+      a.status == ApplicationStatus.APPROVED,
+      "ApplicationStatus should one of REVERTED or APPROVED");
 
     bytes32 role = a.addressRoles[msg.sender];
 
@@ -451,8 +345,8 @@ contract PlotClarificationManager is AbstractApplication {
 
     require(
       a.status == ApplicationStatus.REVERTED ||
-      a.status == ApplicationStatus.PACKED,
-      "ApplicationStatus should one of REVERTED or PACKED");
+      a.status == ApplicationStatus.APPROVED,
+      "ApplicationStatus should one of REVERTED or APPROVED");
     require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
 
     require(a.tokenWithdrawn == true, "Token should be withdrawn first");
@@ -479,7 +373,7 @@ contract PlotClarificationManager is AbstractApplication {
       ApplicationStatus status,
       Currency currency,
       address applicant,
-      uint256 packageTokenId,
+      uint256 spaceTokenId,
       bool tokenWithdrawn,
       bool gasDepositWithdrawn,
       bool galtSpaceRewardPaidOut,
@@ -497,7 +391,7 @@ contract PlotClarificationManager is AbstractApplication {
       m.status,
       m.currency,
       m.applicant,
-      m.packageTokenId,
+      m.spaceTokenId,
       m.tokenWithdrawn,
       m.gasDepositWithdrawn,
       m.galtSpaceRewardPaidOut,
@@ -514,7 +408,7 @@ contract PlotClarificationManager is AbstractApplication {
     external
     view
     returns(
-      uint8 precision,
+      uint256[] newContour,
       bytes32 ledgerIdentifier
     )
   {
@@ -522,7 +416,7 @@ contract PlotClarificationManager is AbstractApplication {
 
     Application storage m = applications[_id];
 
-    return (m.precision, m.ledgerIdentifier);
+    return (m.newContour, m.ledgerIdentifier);
   }
 
   function getApplicationValidator(
@@ -548,36 +442,6 @@ contract PlotClarificationManager is AbstractApplication {
       m.validationStatus[_role],
       m.roleMessages[_role]
     );
-  }
-
-  function addGeohashesToApplication(
-    bytes32 _aId,
-    uint256[] _geohashes,
-    uint256[] _neighborsGeohashTokens,
-    bytes2[] _directions
-  )
-    public
-    onlyPusherRole
-  {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.APPROVED, "ApplicationStatus should be APPROVED");
-
-    for (uint8 i = 0; i < _geohashes.length; i++) {
-      uint256 geohashTokenId = spaceToken.geohashToTokenId(_geohashes[i]);
-      if (spaceToken.exists(geohashTokenId)) {
-        require(
-          spaceToken.ownerOf(geohashTokenId) == address(this),
-          "Existing geohash token should belongs to PlotClarificationManager contract"
-        );
-      } else {
-        spaceToken.mintGeohash(address(this), _geohashes[i]);
-      }
-
-      _geohashes[i] = geohashTokenId;
-    }
-
-    splitMerge.addGeohashesToPackage(a.packageTokenId, _geohashes, _neighborsGeohashTokens, _directions);
   }
 
   function changeValidationStatus(
@@ -643,9 +507,7 @@ contract PlotClarificationManager is AbstractApplication {
         .div(100);
 
       a.assignedRewards[role] = rewardShare;
-      if (role != PUSHER_ROLE) {
-        changeValidationStatus(a, role, ValidationStatus.PENDING);
-      }
+      changeValidationStatus(a, role, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 

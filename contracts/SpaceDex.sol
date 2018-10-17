@@ -219,29 +219,24 @@ contract SpaceDex is Initializable, Ownable, RBAC {
   }
   
   function getSpaceTokenPriceForSell(uint256 tokenId) public view returns (uint256) {
-    require(tokenId > 0, "tokenId cant be null");
     return plotValuation.plotValuations(tokenId);
   }
 
   function getSpaceTokenPriceForBuy(uint256 tokenId) public view returns (uint256) {
-    require(tokenId > 0, "tokenId cant be null");
     bytes32 lastOperation = lastOperationByTokenId[tokenId];
     OperationDetails memory lastOperationDetails = operationsDetails[lastOperation];
     return lastOperationDetails.galtAmount;
   }
 
   function getSpaceTokenCustodian(uint256 tokenId) public view returns (address) {
-    require(tokenId > 0, "tokenId cant be null");
     return plotCustodian.assignedCustodians(tokenId);
   }
 
   function availableForSell(uint256 tokenId) public view returns (bool) {
-    require(tokenId > 0, "tokenId cant be null");
     return getSpaceTokenPriceForSell(tokenId) > 0 && getSpaceTokenCustodian(tokenId) != address(0);
   }
 
   function availableForBuy(uint256 tokenId) public view returns (bool) {
-    require(tokenId > 0, "tokenId cant be null");
     return spaceToken.ownerOf(tokenId) == address(this);
   }
   

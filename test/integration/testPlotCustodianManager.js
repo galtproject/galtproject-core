@@ -313,20 +313,13 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
       // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        galt.geohashToGeohash5('sezu06'),
-        this.credentials,
-        this.ledgerIdentifier,
-        web3.utils.asciiToHex('MN'),
-        7,
-        { from: alice }
-      );
+      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+        from: alice
+      });
       this.aId = res.logs[0].args.id;
 
-      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.packageTokenId = res.packageTokenId;
+      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
@@ -352,11 +345,11 @@ contract('PlotCustodianManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
       await this.galtToken.approve(this.plotValuation.address, ether(45), { from: alice });
       res = await this.plotValuation.submitApplication(
-        this.packageTokenId,
+        this.spaceTokenId,
         this.attachedDocuments.map(galt.ipfsHashToBytes32),
         ether(45),
         {
@@ -378,15 +371,9 @@ contract('PlotCustodianManager', (accounts) => {
 
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
-        let res = await this.plotCustodianManager.submitApplication(
-          this.packageTokenId,
-          Action.ATTACH,
-          bob,
-          ether(45),
-          {
-            from: alice
-          }
-        );
+        let res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, ether(45), {
+          from: alice
+        });
         this.aId = res.logs[0].args.id;
         res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -396,7 +383,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should reject applications without payment', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+            this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
               from: alice
             })
           );
@@ -405,7 +392,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, ether(43), {
+            this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, ether(43), {
               from: alice
             })
           );
@@ -414,7 +401,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should calculate corresponding validator and galtspace rewards', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
           let res = await this.plotCustodianManager.submitApplication(
-            this.packageTokenId,
+            this.spaceTokenId,
             Action.ATTACH,
             bob,
             ether(47),
@@ -435,7 +422,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should calculate validator rewards according to their roles share', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
           let res = await this.plotCustodianManager.submitApplication(
-            this.packageTokenId,
+            this.spaceTokenId,
             Action.DETACH,
             bob,
             ether(47),
@@ -465,7 +452,7 @@ contract('PlotCustodianManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
         const res = await this.plotCustodianManager.submitApplication(
-          this.packageTokenId,
+          this.spaceTokenId,
           Action.ATTACH,
           bob,
           ether(47),
@@ -476,7 +463,7 @@ contract('PlotCustodianManager', (accounts) => {
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -655,20 +642,13 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
       // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        galt.geohashToGeohash5('sezu06'),
-        this.credentials,
-        this.ledgerIdentifier,
-        web3.utils.asciiToHex('MN'),
-        7,
-        { from: alice }
-      );
+      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+        from: alice
+      });
       this.aId = res.logs[0].args.id;
 
-      await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.packageTokenId = res.packageTokenId;
+      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
@@ -692,13 +672,13 @@ contract('PlotCustodianManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      res = await this.spaceToken.ownerOf(this.packageTokenId);
+      res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
 
     describe('#submitApplication() by an applicant', () => {
       it('should allow an applicant pay commission in ETH', async function() {
-        let res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        let res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -709,7 +689,7 @@ contract('PlotCustodianManager', (accounts) => {
 
       it('should reject applications if chosen custodian is invalid', async function() {
         await assertRevert(
-          this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, dan, 0, {
+          this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, dan, 0, {
             from: alice,
             value: ether(20)
           })
@@ -719,7 +699,7 @@ contract('PlotCustodianManager', (accounts) => {
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, 0, bob, {
+            this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, 0, bob, {
               from: alice
             })
           );
@@ -727,7 +707,7 @@ contract('PlotCustodianManager', (accounts) => {
 
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+            this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, 0, {
               from: alice,
               value: 10
             })
@@ -735,14 +715,14 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should allow applications with payment greater than required', async function() {
-          await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+          await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, 0, {
             from: alice,
             value: ether(23)
           });
         });
 
         it('should calculate corresponding validator and galtspace rewards', async function() {
-          let res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+          let res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, 0, {
             from: alice,
             value: ether(7)
           });
@@ -756,7 +736,7 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
-          let res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+          let res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, 0, {
             from: alice,
             value: ether(13)
           });
@@ -779,7 +759,7 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#acceptApplication() by a custodian', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -825,7 +805,7 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#lockApplication() by an auditor', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -873,7 +853,7 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#revertApplication() by a custodian', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -911,7 +891,7 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#resubmitApplication() by an applicant', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -920,7 +900,7 @@ contract('PlotCustodianManager', (accounts) => {
       });
 
       it('should allow an applicant to resubmit an application with the same payload', async function() {
-        await this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.ATTACH, bob, {
+        await this.plotCustodianManager.resubmitApplication(this.aId, this.spaceTokenId, Action.ATTACH, bob, {
           from: alice
         });
 
@@ -929,7 +909,7 @@ contract('PlotCustodianManager', (accounts) => {
       });
 
       it('should allow an applicant to resubmit an application with different payload', async function() {
-        await this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.DETACH, charlie, {
+        await this.plotCustodianManager.resubmitApplication(this.aId, this.spaceTokenId, Action.DETACH, charlie, {
           from: alice
         });
 
@@ -941,7 +921,7 @@ contract('PlotCustodianManager', (accounts) => {
 
       it('should deny a non-applicant resubmitting an  application', async function() {
         await assertRevert(
-          this.plotCustodianManager.resubmitApplication(this.aId, this.packageTokenId, Action.DETACH, charlie, {
+          this.plotCustodianManager.resubmitApplication(this.aId, this.spaceTokenId, Action.DETACH, charlie, {
             from: charlie
           })
         );
@@ -950,7 +930,7 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#attachToken() by an applicant', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -960,7 +940,7 @@ contract('PlotCustodianManager', (accounts) => {
       });
 
       it('should allow an applicant attaching package token to the application', async function() {
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -968,7 +948,7 @@ contract('PlotCustodianManager', (accounts) => {
         let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVIEW);
 
-        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
         assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
       });
 
@@ -979,14 +959,14 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#attachDocuments() by a custodian', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -1013,14 +993,14 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#approveApplication() by 3 of 3 (applicant, custodian and auditor)', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -1035,7 +1015,7 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.approveConfirmations, 7);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.spaceTokenId).call();
         assert.equal(res.toLowerCase(), bob);
       });
 
@@ -1048,19 +1028,19 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.approveConfirmations, 7);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.spaceTokenId).call();
         assert.equal(res.toLowerCase(), bob);
         await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
 
         // Detaching
-        res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.DETACH, bob, 0, {
+        res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.DETACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -1068,7 +1048,7 @@ contract('PlotCustodianManager', (accounts) => {
         await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
         await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
 
-        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.packageTokenId).call();
+        res = await this.plotCustodianManagerWeb3.methods.assignedCustodians(this.spaceTokenId).call();
         assert.equal(res, zeroAddress);
       });
 
@@ -1084,14 +1064,14 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#rejectApplication() by custodian', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -1116,14 +1096,14 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('#withdrawToken() by an applicant', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });
@@ -1138,7 +1118,7 @@ contract('PlotCustodianManager', (accounts) => {
         let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.COMPLETED);
 
-        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
         assert.equal(res.toLowerCase(), alice);
       });
 
@@ -1148,14 +1128,14 @@ contract('PlotCustodianManager', (accounts) => {
         let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.spaceToken.ownerOf(this.packageTokenId);
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
         assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
       });
     });
 
     describe('#closeApplication() by an applicant', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
@@ -1179,7 +1159,7 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('when application status is REJECTED', () => {
         beforeEach(async function() {
-          await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
           await this.plotCustodianManager.attachToken(this.aId, {
             from: alice
           });
@@ -1194,7 +1174,7 @@ contract('PlotCustodianManager', (accounts) => {
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.CLOSED);
 
-          res = await this.spaceToken.ownerOf(this.packageTokenId);
+          res = await this.spaceToken.ownerOf(this.spaceTokenId);
           assert.equal(res.toLowerCase(), alice);
         });
 
@@ -1206,14 +1186,14 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        const res = await this.plotCustodianManager.submitApplication(this.packageTokenId, Action.ATTACH, bob, 0, {
+        const res = await this.plotCustodianManager.submitApplication(this.spaceTokenId, Action.ATTACH, bob, 0, {
           from: alice,
           value: ether(7)
         });
         this.aId = res.logs[0].args.id;
         await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
         await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-        await this.spaceToken.approve(this.plotCustodianManager.address, this.packageTokenId, { from: alice });
+        await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
         await this.plotCustodianManager.attachToken(this.aId, {
           from: alice
         });

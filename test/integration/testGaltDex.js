@@ -8,7 +8,6 @@ const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
-const galt = require('@galtproject/utils');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { zeroAddress, initHelperWeb3, ether, szabo } = require('../helpers');
@@ -328,12 +327,11 @@ contract('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
 
       await this.galtToken.mint(this.spaceDex.address, ether(100));
 
-      const geohash5 = galt.geohashToGeohash5('sezu05');
-      await this.spaceToken.mintGeohash(alice, geohash5, {
+      await this.spaceToken.mint(alice, {
         from: coreTeam
       });
 
-      const geohashTokenId = galt.geohashToTokenId('sezu05');
+      const geohashTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
       await this.valuatePlot(geohashTokenId, ether(5));
       await this.setCustodianForPlot(geohashTokenId, bob);
