@@ -29,8 +29,10 @@ const config = {
       network_id: '*'
     },
     test: {
+      // https://github.com/trufflesuite/ganache-core#usage
       provider: Ganache.provider({
         unlocked_accounts: [0, 1, 2, 3, 4, 5],
+        total_accounts: 12,
         vmErrorsOnRPCResponse: true,
         default_balance_ether: 5000000,
         // 7 800 000
