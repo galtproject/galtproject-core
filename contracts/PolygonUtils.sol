@@ -13,6 +13,7 @@
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
+import "./LandUtils.sol";
 
 library PolygonUtils {
     struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
@@ -31,7 +32,7 @@ library PolygonUtils {
         return (self.latLonByGeohash[_geohash5][0], self.latLonByGeohash[_geohash5][1]);
     }
 
-    function isInside(LatLonData storage self, uint _geohash5, uint56[3] _polygon) public returns (bool) {
+    function isInside(LatLonData storage self, uint _geohash5, uint256[] _polygon) public returns (bool) {
         (int256 x, int256 y) = geohash5ToLatLon(self, _geohash5);
 
         bool inside = false;

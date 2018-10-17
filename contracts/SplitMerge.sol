@@ -18,181 +18,147 @@ import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
-
+import "./PolygonUtils.sol";
+import "./LandUtils.sol";
 
 contract SplitMerge is Initializable, Ownable {
-  using SafeMath for uint256;
+    using SafeMath for uint256;
+    
+    uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 10;
 
-  SpaceToken spaceToken;
-  address plotManager;
+    event LogFirstStage(uint256[] arr1, uint256[] arr2);
+    event LogSecondStage(uint256[] arr1, uint256[] arr2);
 
-  event PackageInit(bytes32 id, address owner);
+    SpaceToken spaceToken;
+    address plotManager;
 
-  mapping(uint256 => uint256) public geohashToPackage;
-  mapping(uint256 => uint256[]) public packageToContour;
+    event PackageInit(bytes32 id, address owner);
 
-  mapping(uint256 => uint256[]) public packageToGeohashes;
-  mapping(uint256 => uint256) internal packageToGeohashesIndex;
-  mapping(uint256 => bool) brokenPackages;
+    mapping(uint256 => uint256[]) public packageToContour;
 
-  uint256[] allPackages;
+    uint256[] allPackages;
 
-  function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
-    owner = msg.sender;
-    spaceToken = _spaceToken;
-    plotManager = _plotManager;
-  }
+    PolygonUtils.LatLonData latLonData;
 
-  modifier ownerOrPlotManager() {
-    require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
-    _;
-  }
-
-  modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
-    address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
-
-    require(
-      /* solium-disable-next-line */
-      ownerOfToken == msg.sender || 
-      spaceToken.isApprovedForAll(ownerOfToken, msg.sender) || 
-      spaceToken.getApproved(_spaceTokenId) == msg.sender,
-      "This action not permitted for msg.sender");
-    _;
-  }
-
-  function initPackage() public returns (uint256) {
-    uint256 _packageTokenId = spaceToken.mint(msg.sender);
-    allPackages.push(_packageTokenId);
-
-    emit PackageInit(bytes32(_packageTokenId), msg.sender);
-
-    return _packageTokenId;
-  }
-
-  function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public onlySpaceTokenOwner(_packageTokenId) {
-    require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(_geohashesContour.length <= 50, "Number of contour elements should be equal or less than 50");
-
-    for (uint8 i = 0; i < _geohashesContour.length; i++) {
-      require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
+    function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
+        owner = msg.sender;
+        spaceToken = _spaceToken;
+        plotManager = _plotManager;
     }
 
-    packageToContour[_packageTokenId] = _geohashesContour;
-  }
-
-  // TODO: make it safer(math operations with polygons)
-  function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
-    setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
-
-    uint256 newPackageTokenId = initPackage();
-    setPackageContour(newPackageTokenId, _newPackageContour);
-
-    return newPackageTokenId;
-  }
-
-  // TODO: make it safer(math operations with polygons)
-  function mergePackage(uint256 _sourcePackageTokenId, uint256 _destinationPackageTokenId, uint256[] _destinationPackageContour) public {
-    setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
-
-    spaceToken.burn(_sourcePackageTokenId);
-  }
-
-  function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
-    return packageToContour[_packageTokenId];
-  }
-
-  function addGeohashToPackageUnsafe(
-    uint256 _packageToken,
-    uint256 _geohashToken
-  )
-    private
-    onlySpaceTokenOwner(_geohashToken)
-  {
-    require(_geohashToken != 0, "Geohash is 0");
-
-    spaceToken.transferFrom(spaceToken.ownerOf(_packageToken), address(this), _geohashToken);
-
-    uint256 length = packageToGeohashes[_packageToken].length;
-    packageToGeohashes[_packageToken].push(_geohashToken);
-    packageToGeohashesIndex[_geohashToken] = length;
-
-    geohashToPackage[_geohashToken] = _packageToken;
-  }
-
-  function addGeohashesToPackage(
-    uint256 _packageToken,
-    uint256[] _geohashTokens,
-    uint256[] _neighborsGeohashTokens,
-    bytes2[] _directions
-  )
-    public
-    onlySpaceTokenOwner(_packageToken)
-  {
-    require(_packageToken != 0, "Missing package token");
-    require(spaceToken != address(0), "SpaceToken address not set");
-
-    for (uint256 i = 0; i < _geohashTokens.length; i++) {
-      //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
-      addGeohashToPackageUnsafe(_packageToken, _geohashTokens[i]);
-    }
-  }
-
-  function removeGeohashFromPackageUnsafe(
-    uint256 _packageToken,
-    uint256 _geohashToken
-  )
-    private
-  {
-    require(_geohashToken != 0, "Geohash is 0");
-    require(spaceToken.ownerOf(_geohashToken) == address(this), "Geohash owner is not SplitMerge");
-    require(geohashToPackage[_geohashToken] == _packageToken, "Geohash dont belongs to package");
-
-    spaceToken.transferFrom(address(this), spaceToken.ownerOf(_packageToken), _geohashToken);
-    geohashToPackage[_geohashToken] = 0;
-
-    uint256 tokenIndex = packageToGeohashesIndex[_geohashToken];
-    uint256 lastTokenIndex = packageToGeohashes[_packageToken].length.sub(1);
-    uint256 lastToken = packageToGeohashes[_packageToken][lastTokenIndex];
-
-    packageToGeohashes[_packageToken][tokenIndex] = lastToken;
-    packageToGeohashes[_packageToken][lastTokenIndex] = 0;
-    // Note that this will handle single-element arrays. In that case, both tokenIndex and lastTokenIndex are going to
-    // be zero. Then we can make sure that we will remove _tokenId from the ownedTokens list since we are first swapping
-    // the lastToken to the first position, and then dropping the element placed in the last position of the list
-
-    packageToGeohashes[_packageToken].length--;
-    packageToGeohashesIndex[_geohashToken] = 0;
-    packageToGeohashesIndex[lastToken] = tokenIndex;
-  }
-
-  function removeGeohashesFromPackage(
-    uint256 _packageToken,
-    uint256[] _geohashTokens,
-    bytes2[] _directions1,
-    bytes2[] _directions2
-  )
-    public
-    onlySpaceTokenOwner(_packageToken)
-  {
-    require(_packageToken != 0, "Missing package token");
-    require(spaceToken != address(0), "SpaceToken address not set");
-
-    for (uint256 i = 0; i < _geohashTokens.length; i++) {
-      //TODO: add check for neighbor beside the geohash and the Neighbor belongs to package
-      removeGeohashFromPackageUnsafe(_packageToken, _geohashTokens[i]);
+    modifier ownerOrPlotManager() {
+        require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
+        _;
     }
 
-    if (getPackageGeohashesCount(_packageToken) == 0) {
-      spaceToken.transferFrom(spaceToken.ownerOf(_packageToken), address(this), _packageToken);
-//      setPackageContour(_packageToken, uint256[]);
+    modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
+        address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
+
+        require(
+        /* solium-disable-next-line */
+            ownerOfToken == msg.sender ||
+            spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
+            spaceToken.getApproved(_spaceTokenId) == msg.sender,
+            "This action not permitted for msg.sender");
+        _;
     }
-  }
 
-  function getPackageGeohashes(uint256 _packageToken) public view returns (uint256[]) {
-    return packageToGeohashes[_packageToken];
-  }
+    function initPackage() public returns (uint256) {
+        uint256 _packageTokenId = spaceToken.mint(msg.sender);
+        allPackages.push(_packageTokenId);
 
-  function getPackageGeohashesCount(uint256 _packageToken) public view returns (uint256) {
-    return packageToGeohashes[_packageToken].length;
-  }
+        emit PackageInit(bytes32(_packageTokenId), msg.sender);
+
+        return _packageTokenId;
+    }
+
+    function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public onlySpaceTokenOwner(_packageTokenId) {
+        require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
+        require(_geohashesContour.length <= 50, "Number of contour elements should be equal or less than 50");
+
+        for (uint8 i = 0; i < _geohashesContour.length; i++) {
+            require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
+            require(LandUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION, "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision");
+        }
+
+        packageToContour[_packageTokenId] = _geohashesContour;
+    }
+
+    function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
+
+        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
+        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
+
+        setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
+
+        uint256 newPackageTokenId = initPackage();
+        setPackageContour(newPackageTokenId, _newPackageContour);
+
+        return newPackageTokenId;
+    }
+
+    function checkSplitContours(uint256[] memory sourceContour, uint256[] memory splitContour1, uint256[] memory splitContour2) public {
+        uint256[] memory checkContour1 = new uint256[](splitContour1.length);
+        uint256[] memory checkContour2 = new uint256[](splitContour2.length);
+
+        for (uint i = 0; i < splitContour1.length; i++) {
+            for (uint j = 0; j < splitContour2.length; j++) {
+                if (j == 0) {
+                    require(LandUtils.geohash5Precision(splitContour1[i]) >= MIN_CONTOUR_GEOHASH_PRECISION, "Geohashes of contour should have at least MIN_CONTOUR_GEOHASH_PRECISION capacity");
+                }
+                if (i == 0) {
+                    require(LandUtils.geohash5Precision(splitContour2[j]) >= MIN_CONTOUR_GEOHASH_PRECISION, "Geohashes of contour should have at least MIN_CONTOUR_GEOHASH_PRECISION capacity");
+                }
+                
+                if (splitContour1[i] == splitContour2[j] && splitContour2[j] != 0) {
+                    require(PolygonUtils.isInside(latLonData, splitContour1[i], sourceContour), "Duplicate element not inside source contour");
+
+                    checkContour1[i] = 0;
+                    checkContour2[j] = 0;
+                } else {
+                    if (j == 0) {
+                        checkContour1[i] = splitContour1[i];
+                    }
+                    if (i == 0) {
+                        checkContour2[j] = splitContour2[j];
+                    }
+                }
+            }
+        }
+
+        for (uint i = 0; i < checkContour1.length + checkContour2.length; i++) {
+            uint256 el = 0;
+            if (i < checkContour1.length) {
+                if (checkContour1[i] != 0) {
+                    el = checkContour1[i];
+                }
+            } else if (checkContour2[i - checkContour1.length] != 0) {
+                el = checkContour2[i - checkContour1.length];
+            }
+
+            if (el != 0) {
+                require(someInUintArray(sourceContour, el), "Unique element not exists in source contour");
+            }
+        }
+    }
+
+    function someInUintArray(uint[] arr, uint el) public view returns (bool){
+        for (uint j = 0; j < arr.length; j++) {
+            if (el == arr[j]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // TODO: make it safer(math operations with polygons)
+    function mergePackage(uint256 _sourcePackageTokenId, uint256 _destinationPackageTokenId, uint256[] _destinationPackageContour) public {
+        setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
+
+        spaceToken.burn(_sourcePackageTokenId);
+    }
+
+    function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
+        return packageToContour[_packageTokenId];
+    }
 }

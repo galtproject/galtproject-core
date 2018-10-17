@@ -32,7 +32,7 @@ library PlotManagerLib {
   }
 
   function geohash5Weight(uint256 _geohash5) public pure returns (uint256) {
-    return geohashCapacityToWeight(LandUtils.geohash5Capacity(_geohash5));
+    return geohashCapacityToWeight(LandUtils.geohash5Precision(_geohash5));
   }
 
   function rejectApplicationHelper(

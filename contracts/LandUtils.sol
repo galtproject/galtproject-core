@@ -32,7 +32,7 @@ library LandUtils {
     // bytes32("0123456789bcdefghjkmnpqrstuvwxyz")
     bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
 
-    function geohash5Capacity(uint256 _geohash5) public pure returns (uint256) {
+    function geohash5Precision(uint256 _geohash5) public pure returns (uint256) {
         if (_geohash5 == 0) {
             revert("Invalid geohash5");
         } else if (_geohash5 <= C1_GEOHASH) {
@@ -118,7 +118,7 @@ library LandUtils {
 
         bool is_even = true;
 
-        uint256 capacity = geohash5Capacity(_geohash5);
+        uint256 capacity = geohash5Precision(_geohash5);
 
         while (capacity > 0) {
             capacity--;
