@@ -1,6 +1,8 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const LandUtils = artifacts.require('./LandUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -80,6 +82,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
+    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
+
     this.landUtils = await LandUtils.new({ from: coreTeam });
     PlotManagerLib.link('LandUtils', this.landUtils.address);
 
@@ -90,6 +94,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.validators = await Validators.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+
+    PolygonUtils.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
+
+    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
+
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
