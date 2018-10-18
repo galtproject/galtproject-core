@@ -23,170 +23,210 @@ import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
 
 contract SplitMerge is Initializable, Ownable {
-    using SafeMath for uint256;
+  using SafeMath for uint256;
 
-    uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 10;
-    uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
+  uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 10;
+  uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
-    event LogFirstStage(uint256[] arr1, uint256[] arr2);
-    event LogSecondStage(uint256[] arr1, uint256[] arr2);
+  event LogFirstStage(uint256[] arr1, uint256[] arr2);
+  event LogSecondStage(uint256[] arr1, uint256[] arr2);
 
-    event CheckMergeContoursSecondStart(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
-    event CheckMergeContoursSecondFinish(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
+//  event CheckMergeContoursSecondStart(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
+//  event CheckMergeContoursSecondFinish(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
 
-    SpaceToken spaceToken;
-    address plotManager;
+  SpaceToken spaceToken;
+  address plotManager;
 
-    event PackageInit(bytes32 id, address owner);
+  event PackageInit(bytes32 id, address owner);
 
-    mapping(uint256 => uint256[]) public packageToContour;
+  mapping(uint256 => uint256[]) public packageToContour;
 
-    uint256[] allPackages;
+  uint256[] allPackages;
 
-    PolygonUtils.LatLonData latLonData;
+  PolygonUtils.LatLonData latLonData;
 
-    function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
-        owner = msg.sender;
-        spaceToken = _spaceToken;
-        plotManager = _plotManager;
+  function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
+    owner = msg.sender;
+    spaceToken = _spaceToken;
+    plotManager = _plotManager;
+  }
+
+  modifier ownerOrPlotManager() {
+    require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
+    _;
+  }
+
+  modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
+    address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
+
+    require(
+    /* solium-disable-next-line */
+      ownerOfToken == msg.sender ||
+      spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
+      spaceToken.getApproved(_spaceTokenId) == msg.sender,
+      "This action not permitted for msg.sender");
+    _;
+  }
+
+  function initPackage() public returns (uint256) {
+    uint256 _packageTokenId = spaceToken.mint(msg.sender);
+    allPackages.push(_packageTokenId);
+
+    emit PackageInit(bytes32(_packageTokenId), msg.sender);
+
+    return _packageTokenId;
+  }
+
+  function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) 
+    public onlySpaceTokenOwner(_packageTokenId) 
+  {
+    require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
+    require(
+      _geohashesContour.length <= MAX_CONTOUR_GEOHASH_COUNT, 
+      "Number of contour elements should be equal or less than MAX_CONTOUR_GEOHASH_COUNT"
+    );
+
+    for (uint8 i = 0; i < _geohashesContour.length; i++) {
+      require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
+      require(
+        LandUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION, 
+        "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision"
+      );
     }
 
-    modifier ownerOrPlotManager() {
-        require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
-        _;
-    }
+    packageToContour[_packageTokenId] = _geohashesContour;
+  }
 
-    modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
-        address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
+  function splitPackage(
+    uint256 _sourcePackageTokenId, 
+    uint256[] _sourcePackageContour, 
+    uint256[] _newPackageContour
+  ) 
+    public 
+    returns (uint256) 
+  {
 
-        require(
-        /* solium-disable-next-line */
-            ownerOfToken == msg.sender ||
-            spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
-            spaceToken.getApproved(_spaceTokenId) == msg.sender,
-            "This action not permitted for msg.sender");
-        _;
-    }
+    //        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
+    //        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
 
-    function initPackage() public returns (uint256) {
-        uint256 _packageTokenId = spaceToken.mint(msg.sender);
-        allPackages.push(_packageTokenId);
+    setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
 
-        emit PackageInit(bytes32(_packageTokenId), msg.sender);
+    uint256 newPackageTokenId = initPackage();
+    setPackageContour(newPackageTokenId, _newPackageContour);
 
-        return _packageTokenId;
-    }
+    return newPackageTokenId;
+  }
 
-    function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) public onlySpaceTokenOwner(_packageTokenId) {
-        require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
-        require(_geohashesContour.length <= MAX_CONTOUR_GEOHASH_COUNT, "Number of contour elements should be equal or less than MAX_CONTOUR_GEOHASH_COUNT");
+  // TODO: Rework, deprecated due to unsafe logic
+  function checkSplitContours(
+    uint256[] memory sourceContour, 
+    uint256[] memory splitContour1, 
+    uint256[] memory splitContour2
+  ) 
+    public
+  {
+    uint256[] memory checkContour1 = new uint256[](splitContour1.length);
+    uint256[] memory checkContour2 = new uint256[](splitContour2.length);
 
-        for (uint8 i = 0; i < _geohashesContour.length; i++) {
-            require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
-            require(LandUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION, "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision");
+    for (uint i = 0; i < splitContour1.length; i++) {
+      for (uint j = 0; j < splitContour2.length; j++) {
+        if (splitContour1[i] == splitContour2[j] && splitContour2[j] != 0) {
+          require(
+            PolygonUtils.isInside(latLonData, splitContour1[i], sourceContour), 
+            "Duplicate element not inside source contour"
+          );
+
+          checkContour1[i] = 0;
+          checkContour2[j] = 0;
+        } else {
+          if (j == 0) {
+            checkContour1[i] = splitContour1[i];
+          }
+          if (i == 0) {
+            checkContour2[j] = splitContour2[j];
+          }
         }
-
-        packageToContour[_packageTokenId] = _geohashesContour;
+      }
     }
 
-    function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
-
-//        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
-        //        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
-
-        setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
-
-        uint256 newPackageTokenId = initPackage();
-        setPackageContour(newPackageTokenId, _newPackageContour);
-
-        return newPackageTokenId;
-    }
-
-    // TODO: Rework, deprecated due to unsafe logic
-    function checkSplitContours(uint256[] memory sourceContour, uint256[] memory splitContour1, uint256[] memory splitContour2) public {
-        uint256[] memory checkContour1 = new uint256[](splitContour1.length);
-        uint256[] memory checkContour2 = new uint256[](splitContour2.length);
-
-        for (uint i = 0; i < splitContour1.length; i++) {
-            for (uint j = 0; j < splitContour2.length; j++) {
-                if (splitContour1[i] == splitContour2[j] && splitContour2[j] != 0) {
-                    require(PolygonUtils.isInside(latLonData, splitContour1[i], sourceContour), "Duplicate element not inside source contour");
-
-                    checkContour1[i] = 0;
-                    checkContour2[j] = 0;
-                } else {
-                    if (j == 0) {
-                        checkContour1[i] = splitContour1[i];
-                    }
-                    if (i == 0) {
-                        checkContour2[j] = splitContour2[j];
-                    }
-                }
-            }
+    for (uint i = 0; i < checkContour1.length + checkContour2.length; i++) {
+      uint256 el = 0;
+      if (i < checkContour1.length) {
+        if (checkContour1[i] != 0) {
+          el = checkContour1[i];
         }
+      } else if (checkContour2[i - checkContour1.length] != 0) {
+        el = checkContour2[i - checkContour1.length];
+      }
 
-        for (uint i = 0; i < checkContour1.length + checkContour2.length; i++) {
-            uint256 el = 0;
-            if (i < checkContour1.length) {
-                if (checkContour1[i] != 0) {
-                    el = checkContour1[i];
-                }
-            } else if (checkContour2[i - checkContour1.length] != 0) {
-                el = checkContour2[i - checkContour1.length];
-            }
+      if (el != 0) {
+        int index = ArrayUtils.uintFind(sourceContour, el);
+        require(index != - 1, "Unique element not exists in source contour");
+        sourceContour[uint(index)] = 0;
+      }
+    }
+  }
 
-            if (el != 0) {
-                int index = ArrayUtils.uintFind(sourceContour, el);
-                require(index != - 1, "Unique element not exists in source contour");
-                sourceContour[uint(index)] = 0;
-            }
+  function mergePackage(
+    uint256 _sourcePackageTokenId, 
+    uint256 _destinationPackageTokenId, 
+    uint256[] _destinationPackageContour
+  ) 
+    public 
+  {
+    checkMergeContours(
+      getPackageContour(_sourcePackageTokenId), 
+      getPackageContour(_destinationPackageTokenId), 
+      _destinationPackageContour
+    );
+    setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
+
+    spaceToken.burn(_sourcePackageTokenId);
+  }
+
+  function checkMergeContours(
+    uint256[] memory sourceContour, 
+    uint256[] memory mergeContour, 
+    uint256[] memory resultContour
+  ) 
+    public 
+  {
+    for (uint i = 0; i < sourceContour.length; i++) {
+      for (uint j = 0; j < mergeContour.length; j++) {
+        if (sourceContour[i] == mergeContour[j] && sourceContour[i] != 0) {
+          sourceContour[i] = 0;
+          mergeContour[j] = 0;
         }
+      }
     }
 
-    function mergePackage(uint256 _sourcePackageTokenId, uint256 _destinationPackageTokenId, uint256[] _destinationPackageContour) public {
-        checkMergeContours(getPackageContour(_sourcePackageTokenId), getPackageContour(_destinationPackageTokenId), _destinationPackageContour);
-        setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
-
-        spaceToken.burn(_sourcePackageTokenId);
+    uint256[] memory checkResultContour = new uint256[](resultContour.length);
+    for (uint i = 0; i < resultContour.length; i++) {
+      checkResultContour[i] = resultContour[i];
     }
 
-    function checkMergeContours(uint256[] memory sourceContour, uint256[] memory mergeContour, uint256[] memory resultContour) public {
-        for (uint i = 0; i < sourceContour.length; i++) {
-            for (uint j = 0; j < mergeContour.length; j++) {
-                if (sourceContour[i] == mergeContour[j] && sourceContour[i] != 0) {
-                    sourceContour[i] = 0;
-                    mergeContour[j] = 0;
-                }
-            }
+//    emit CheckMergeContoursSecondStart(sourceContour, mergeContour, resultContour);
+
+    for (uint i = 0; i < sourceContour.length + mergeContour.length; i++) {
+      uint256 el = 0;
+      if (i < sourceContour.length) {
+        if (sourceContour[i] != 0) {
+          el = sourceContour[i];
         }
+      } else if (mergeContour[i - sourceContour.length] != 0) {
+        el = mergeContour[i - sourceContour.length];
+      }
 
-        uint256[] memory checkResultContour = new uint256[](resultContour.length);
-        for (uint i = 0; i < resultContour.length; i++) {
-            checkResultContour[i] = resultContour[i];
-        }
-
-        emit CheckMergeContoursSecondStart(sourceContour, mergeContour, resultContour);
-
-        for (uint i = 0; i < sourceContour.length + mergeContour.length; i++) {
-            uint256 el = 0;
-            if (i < sourceContour.length) {
-                if (sourceContour[i] != 0) {
-                    el = sourceContour[i];
-                }
-            } else if (mergeContour[i - sourceContour.length] != 0) {
-                el = mergeContour[i - sourceContour.length];
-            }
-
-            if (el != 0) {
-                int index = ArrayUtils.uintFind(checkResultContour, el);
-                require(index != - 1, "Unique element not exists in result contour");
-                checkResultContour[uint(index)] = 0;
-            }
-        }
-        emit CheckMergeContoursSecondFinish(sourceContour, mergeContour, checkResultContour);
+      if (el != 0) {
+        int index = ArrayUtils.uintFind(checkResultContour, el);
+        require(index != - 1, "Unique element not exists in result contour");
+        checkResultContour[uint(index)] = 0;
+      }
     }
+//    emit CheckMergeContoursSecondFinish(sourceContour, mergeContour, checkResultContour);
+  }
 
-    function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
-        return packageToContour[_packageTokenId];
-    }
+  function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
+    return packageToContour[_packageTokenId];
+  }
 }

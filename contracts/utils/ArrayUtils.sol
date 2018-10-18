@@ -15,21 +15,21 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library ArrayUtils {
-    function uintSome(uint[] arr, uint el) public view returns (bool) {
-        for (uint j = 0; j < arr.length; j++) {
-            if (el == arr[j]) {
-                return true;
-            }
-        }
-        return false;
+  function uintSome(uint[] arr, uint el) public view returns (bool) {
+    for (uint j = 0; j < arr.length; j++) {
+      if (el == arr[j]) {
+        return true;
+      }
     }
+    return false;
+  }
 
-    function uintFind(uint[] arr, uint el) public view returns (int) {
-        for (uint j = 0; j < arr.length; j++) {
-            if (el == arr[j]) {
-                return int(j);
-            }
-        }
-        return - 1;
+  function uintFind(uint[] arr, uint el) public view returns (int) {
+    for (uint j = 0; j < arr.length; j++) {
+      if (el == arr[j]) {
+        return int(j);
+      }
     }
+    return - 1;
+  }
 }

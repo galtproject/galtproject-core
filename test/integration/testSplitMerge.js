@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.only('SplitMerge', ([coreTeam, alice]) => {
   beforeEach(async function() {
     this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
@@ -162,7 +162,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       await assertRevert(this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.baseContour));
     });
 
-    describe('should handle 4, 6, 4 contours correctly', function() {
+    describe('should handle 4, 6, 4 contours correctly', () => {
       const firstContour = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
 
       const secondContour = [

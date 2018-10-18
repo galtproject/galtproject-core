@@ -13,42 +13,43 @@
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
+
 import "./LandUtils.sol";
 
 library PolygonUtils {
-    struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
+  struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
 
-    function geohash5ToLatLonArr(LatLonData storage self, uint256 _geohash5) public returns (int256[2]) {
-        (int256 lat, int256 lon) = geohash5ToLatLon(self, _geohash5);
-        return [lat, lon];
+  function geohash5ToLatLonArr(LatLonData storage self, uint256 _geohash5) public returns (int256[2]) {
+    (int256 lat, int256 lon) = geohash5ToLatLon(self, _geohash5);
+    return [lat, lon];
+  }
+
+  function geohash5ToLatLon(LatLonData storage self, uint256 _geohash5) public returns (int256 lat, int256 lon) {
+    if (self.latLonByGeohash[_geohash5][0] == 0) {
+      (int256 lat, int256 lon) = LandUtils.geohash5ToLatLon(_geohash5);
+      self.latLonByGeohash[_geohash5] = [lat, lon];
     }
 
-    function geohash5ToLatLon(LatLonData storage self, uint256 _geohash5) public returns (int256 lat, int256 lon) {
-        if (self.latLonByGeohash[_geohash5][0] == 0) {
-            (int256 lat, int256 lon) = LandUtils.geohash5ToLatLon(_geohash5);
-            self.latLonByGeohash[_geohash5] = [lat, lon];
-        }
+    return (self.latLonByGeohash[_geohash5][0], self.latLonByGeohash[_geohash5][1]);
+  }
 
-        return (self.latLonByGeohash[_geohash5][0], self.latLonByGeohash[_geohash5][1]);
+  function isInside(LatLonData storage self, uint _geohash5, uint256[] _polygon) public returns (bool) {
+    (int256 x, int256 y) = geohash5ToLatLon(self, _geohash5);
+
+    bool inside = false;
+    uint256 j = _polygon.length - 1;
+
+    for (uint256 i = 0; i < _polygon.length; i++) {
+      (int256 xi, int256 yi) = geohash5ToLatLon(self, _polygon[i]);
+      (int256 xj, int256 yj) = geohash5ToLatLon(self, _polygon[j]);
+
+      bool intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) {
+        inside = !inside;
+      }
+      j = i;
     }
 
-    function isInside(LatLonData storage self, uint _geohash5, uint256[] _polygon) public returns (bool) {
-        (int256 x, int256 y) = geohash5ToLatLon(self, _geohash5);
-
-        bool inside = false;
-        uint256 j = _polygon.length - 1;
-
-        for (uint256 i = 0; i < _polygon.length; i++) {
-            (int256 xi, int256 yi) = geohash5ToLatLon(self, _polygon[i]);
-            (int256 xj, int256 yj) = geohash5ToLatLon(self, _polygon[j]);
-
-            bool intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) {
-                inside = !inside;
-            }
-            j = i;
-        }
-
-        return inside;
-    }
+    return inside;
+  }
 }
