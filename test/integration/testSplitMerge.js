@@ -186,18 +186,18 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     it('should split and then merge correctly', async function() {
-      const baseContourAfterSplit = ['w24qe028bvd', 'w24qe0hrwgq', 'w24qe1h88c8', 'w24qe10bfwh'];
+      const baseContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
+
       const newContourAfterSplit = [
-        'w24qe028bvd',
-        'w24qe0hrwgq',
-        'w24q7js38f2',
-        'w24q6t0ks42',
-        'w24qd91d8cx',
-        'w24qe10bfwh'
+        'w24mjr9xcudz',
+        'w24mjm2gzc84',
+        'w24mhugn2gzd',
+        'w24mkgbt2fzs',
+        'w24mmedp2fzt',
+        'w24mjxbh2rw7'
       ];
 
-      // ["w24q7js38f2", "w24q6t0ks42", "w24qd91d8cx", "w24qe1h88c8"]
-      let baseContour = galt.geohash.contour.mergeContours(baseContourAfterSplit, newContourAfterSplit);
+      let baseContour = galt.geohash.contour.mergeContours(baseContourAfterSplit, newContourAfterSplit, false);
 
       baseContour = baseContour.map(galt.geohashToGeohash5);
       const contourToSplitForOldPackage = baseContourAfterSplit.map(galt.geohashToGeohash5);

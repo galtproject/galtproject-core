@@ -107,8 +107,8 @@ contract SplitMerge is Initializable, Ownable {
     returns (uint256) 
   {
 
-    //        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
-    //        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
+    uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
+    checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
 
     setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
 
