@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SplitMerge', ([coreTeam, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   beforeEach(async function() {
     this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
