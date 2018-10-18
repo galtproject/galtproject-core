@@ -224,6 +224,11 @@ contract Validators is Ownable, RBAC {
     require(validators[_validator].active == true, "Validator is not active");
   }
 
+  function ensureActiveWithRole(address _validator, bytes32 _role) external view {
+    require(validators[_validator].active == true, "Validator is not active");
+    require(validators[_validator].roles[_role] == true, "Validator role invalid");
+  }
+
   function isValidatorActive(address _validator) external view returns (bool) {
     return validators[_validator].active == true;
   }

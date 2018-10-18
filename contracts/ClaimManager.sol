@@ -19,10 +19,12 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./Validators.sol";
+import "./collections/ArraySet.sol";
 
 
 contract ClaimManager is AbstractApplication {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.AddressSet;
 
   // `ClaimManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
@@ -38,9 +40,15 @@ contract ClaimManager is AbstractApplication {
     REVERTED
   }
 
+  enum Action {
+    APPROVE,
+    REJECT
+  }
+
   event ClaimStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event NewClaim(bytes32 id, address applicant);
   event ValidatorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
+  event NewProposal(bytes32 claimId, bytes32 proposalId, Action action, address proposer);
 
   struct Claim {
     bytes32 id;
@@ -53,11 +61,11 @@ contract ClaimManager is AbstractApplication {
     ApplicationStatus status;
     FeeDetails fees;
 
+    mapping(bytes32 => Proposal) proposalDetails;
     bytes32[] attachedDocuments;
 
-    // TODO: replace with Bytes32Set
-    address[] validators;
-    mapping(address => bool) validatorExists;
+    bytes32[] proposals;
+    ArraySet.AddressSet validators;
   }
 
   struct FeeDetails {
@@ -66,13 +74,29 @@ contract ClaimManager is AbstractApplication {
     uint256 galtSpaceReward;
   }
 
-  mapping(bytes32 => Claim) public claims;
+  struct Proposal {
+    Action action;
+    ArraySet.AddressSet votesFor;
+    address from;
+    string message;
+    address[] accusedValidators;
+    bytes32[] roles;
+    uint256[] fines;
+  }
+
+  mapping(bytes32 => Claim) claims;
 
   // validator count required to
   uint256 public n;
 
   // total validator count able to lock the claim
   uint256 public m;
+
+  modifier onlyValidSuperValidator() {
+    validators.ensureActiveWithRole(msg.sender, CM_JUROR);
+
+    _;
+  }
 
   constructor () public {}
 
@@ -183,17 +207,76 @@ contract ClaimManager is AbstractApplication {
    * @dev Super-Validator locks a claim to work on
    * @param _cId Claim ID
    */
-  function lock(bytes32 _cId) external {
+  function lock(bytes32 _cId) external onlyValidSuperValidator {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(c.validatorExists[msg.sender] == false, "Validator has already locked the application");
-    require(c.validators.length < m, "All validator slots are locked");
+    require(!c.validators.has(msg.sender), "Validator has already locked the application");
+    require(c.validators.size() < m, "All validator slots are locked");
 
-    c.validatorExists[msg.sender] = true;
-    c.validators.push(msg.sender);
+    c.validators.add(msg.sender);
 
-    emit ValidatorSlotTaken(_cId, c.validators.length, m);
+    emit ValidatorSlotTaken(_cId, c.validators.size(), m);
+  }
+
+  /**
+   * @dev Super-Validator makes approve proposal
+   * @param _cId Claim ID
+   */
+  function proposeApproval(bytes32 _cId, string _msg, address[] _a, bytes32[] _r, uint256[] _f) external {
+    require(_a.length == _r.length, "Address/Role arrays should be equal");
+    require(_r.length == _f.length, "Role/Fine arrays should be equal");
+
+    require(_a.length > 0, "Accused validators array should contain at leas one element");
+
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+
+    Proposal memory p;
+
+    bytes32 id = keccak256(abi.encode(_cId, _msg, _a, msg.sender));
+    require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    p.from = msg.sender;
+    p.action = Action.APPROVE;
+    p.message = _msg;
+    p.accusedValidators = _a;
+    p.roles = _r;
+    p.fines = _f;
+
+    c.proposalDetails[id] = p;
+    c.proposals.push(id);
+
+    // TODO: validator votes for proposal
+    emit NewProposal(_cId, id, Action.APPROVE, msg.sender);
+  }
+
+  /**
+   * @dev Super-Validator makes reject proposal
+   * @param _cId Claim ID
+   */
+  function proposeReject(bytes32 _cId, string _msg) external {
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+
+    Proposal memory p;
+
+    bytes32 id = keccak256(abi.encode(_cId, _msg, block.number, msg.sender));
+    require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    p.from = msg.sender;
+    p.message = _msg;
+    p.action = Action.REJECT;
+
+    c.proposalDetails[id] = p;
+    c.proposals.push(id);
+
+    // TODO: validator votes for proposal
+    emit NewProposal(_cId, id, Action.REJECT, msg.sender);
   }
 
   function claimValidatorReward(bytes32 _cId) external {
@@ -225,7 +308,7 @@ contract ClaimManager is AbstractApplication {
       c.applicant,
       c.beneficiary,
       c.amount,
-      c.validators.length,
+      c.validators.size(),
       c.n,
       m,
       c.status
@@ -262,6 +345,38 @@ contract ClaimManager is AbstractApplication {
     return applicationsByValidator[_applicant];
   }
 
+  function getProposals(bytes32 _cId) external view returns (bytes32[]) {
+    return claims[_cId].proposals;
+  }
+
+  function getProposal(
+    bytes32 _cId,
+    bytes32 _pId
+  )
+    external
+    view
+    returns (
+      Action action,
+      bytes32 id,
+      address from,
+      string message,
+      address[] accusedValidators,
+      bytes32[] roles,
+      uint256[] fines
+    )
+  {
+    Proposal storage p = claims[_cId].proposalDetails[_pId];
+
+    return (
+      p.action,
+      _pId,
+      p.from,
+      p.message,
+      p.accusedValidators,
+      p.roles,
+      p.fines
+    );
+  }
 
   function calculateAndStoreFee(
     Claim memory _c,

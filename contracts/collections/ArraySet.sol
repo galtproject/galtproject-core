@@ -28,6 +28,7 @@ library ArraySet {
     mapping(bytes32 => bool) exists;
   }
 
+  // AddressSet
   function add(AddressSet storage _set, address _v) internal {
     require(_set.exists[_v] == false, "Element already exists");
 
@@ -53,6 +54,10 @@ library ArraySet {
     _set.map[lastElement] = currentElementIndex;
   }
 
+  function has(AddressSet storage _set, address _v) internal view returns (bool) {
+    return _set.exists[_v];
+  }
+
   function elements(AddressSet storage _set) internal view returns (address[]) {
     return _set.array;
   }
@@ -61,10 +66,11 @@ library ArraySet {
     return _set.array.length;
   }
 
-  function isEmpty(AddressSet storage _set) internal view returns (uint256) {
-    return _set.array.length;
+  function isEmpty(AddressSet storage _set) internal view returns (bool) {
+    return _set.array.length == 0;
   }
 
+  // Bytes32Set
   function add(Bytes32Set storage _set, bytes32 _v) internal {
     require(_set.exists[_v] == false, "Element already exists");
 
@@ -90,6 +96,10 @@ library ArraySet {
     _set.map[lastElement] = currentElementIndex;
   }
 
+  function has(Bytes32Set storage _set, bytes32 _v) internal view returns (bool) {
+    return _set.exists[_v];
+  }
+
   function elements(Bytes32Set storage _set) internal view returns (bytes32[]) {
     return _set.array;
   }
@@ -98,7 +108,7 @@ library ArraySet {
     return _set.array.length;
   }
 
-  function isEmpty(Bytes32Set storage _set) internal view returns (uint256) {
-    return _set.array.length;
+  function isEmpty(Bytes32Set storage _set) internal view returns (bool) {
+    return _set.array.length == 0;
   }
 }

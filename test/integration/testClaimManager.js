@@ -30,12 +30,9 @@ const ApplicationStatus = {
   REVERTED: 4
 };
 
-const ValidationStatus = {
-  NOT_EXISTS: 0,
-  PENDING: 1,
-  LOCKED: 2,
-  APPROVED: 3,
-  REJECTED: 4
+const Action = {
+  APPROVE: 0,
+  REJECT: 1
 };
 
 const PaymentMethods = {
@@ -51,7 +48,7 @@ const Currency = {
 };
 
 Object.freeze(ApplicationStatus);
-Object.freeze(ValidationStatus);
+Object.freeze(Action);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
@@ -406,6 +403,139 @@ contract.only("ClaimManager", (accounts) => {
         assert.equal(res.slotsThreshold, 3);
         assert.equal(res.totalSlots, 5);
       });
+
+      it('should deny non-validator locking a claim', async function() {
+        await assertRevert(this.claimManager.lock(this.cId, { from: coreTeam }));
+      });
+
+      it('should deny proposal when claim is executed');
+    });
+
+    describe('#proposeApproval()', () => {
+      beforeEach(async function() {
+        const res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 0);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+      });
+
+      it('should allow new proposals from members who has already locked the application', async function() {
+        let res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          [dan],
+          ['non-existing'],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
+        const pId1 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'looks good',
+          [bob, eve],
+          ['non-existing', CM_JUROR],
+          [ether(10), ether(20)],
+          { from: dan }
+        );
+        const pId2 = res.logs[0].args.proposalId;
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.slotsTaken, 2);
+
+        res = await this.claimManagerWeb3.methods.getProposals(this.cId).call();
+        assert.sameMembers(res.map(a => a.toLowerCase()), [pId1, pId2]);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.message, 'good enough');
+        assert.equal(res.action, Action.APPROVE);
+        assert.sameMembers(res.accusedValidators.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.roles.map(web3.utils.hexToString), ['non-existing']);
+        assert.sameMembers(res.fines, [ether(20)]);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
+        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.message, 'looks good');
+        assert.equal(res.action, Action.APPROVE);
+        assert.sameMembers(res.accusedValidators.map(a => a.toLowerCase()), [bob, eve]);
+        assert.sameMembers(res.roles.map(web3.utils.hexToString), ['non-existing', CM_JUROR]);
+        assert.sameMembers(res.fines, [ether(10), ether(20)]);
+      });
+
+      it('should deny non-validator proposing a proposal', async function() {
+        await assertRevert(this.claimManager.proposeApproval(this.cId, 'looks good', [], [], [], { from: coreTeam }));
+      });
+
+      it('should deny validator proposing when claim is not locked', async function() {
+        await assertRevert(this.claimManager.proposeApproval(this.cId, 'looks good', [], [], [], { from: eve }));
+      });
+
+      it('should allow multiple proposals from the same validator', async function() {
+        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(20)], {
+          from: bob
+        });
+        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(30)], {
+          from: bob
+        });
+        await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
+      });
+
+      it('should deny proposal when claim is executed');
+      it('should validator votes for proposal');
+    });
+
+    describe('#proposeReject()', () => {
+      beforeEach(async function() {
+        const res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 0);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+      });
+
+      it('should allow new proposals from members who has already locked the application', async function() {
+        let res = await this.claimManager.proposeReject(this.cId, 'NOT good enough', { from: bob });
+        const pId1 = res.logs[0].args.proposalId;
+        res = await this.claimManager.proposeReject(this.cId, 'odd', { from: dan });
+        const pId2 = res.logs[0].args.proposalId;
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.slotsTaken, 2);
+
+        res = await this.claimManagerWeb3.methods.getProposals(this.cId).call();
+        assert.sameMembers(res, [pId1, pId2]);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.message, 'NOT good enough');
+        assert.equal(res.action, Action.REJECT);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
+        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.message, 'odd');
+        assert.equal(res.action, Action.REJECT);
+      });
+
+      it('should deny non-validator proposing a proposal', async function() {
+        await assertRevert(this.claimManager.proposeReject(this.cId, 'looks bad', { from: coreTeam }));
+      });
+
+      it('should deny validator proposing when claim is not locked', async function() {
+        await assertRevert(this.claimManager.proposeReject(this.cId, 'looks bad', { from: eve }));
+      });
+
+      it('should deny proposal when claim is executed');
+      it('validator votes for proposal');
     });
   });
 });
