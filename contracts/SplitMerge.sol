@@ -24,13 +24,13 @@ import "./utils/ArrayUtils.sol";
 
 contract SplitMerge is Initializable, Ownable {
     using SafeMath for uint256;
-    
+
     uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 10;
     uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
     event LogFirstStage(uint256[] arr1, uint256[] arr2);
     event LogSecondStage(uint256[] arr1, uint256[] arr2);
-    
+
     event CheckMergeContoursSecondStart(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
     event CheckMergeContoursSecondFinish(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
 
@@ -91,8 +91,8 @@ contract SplitMerge is Initializable, Ownable {
 
     function splitPackage(uint256 _sourcePackageTokenId, uint256[] _sourcePackageContour, uint256[] _newPackageContour) public returns (uint256) {
 
-        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
-//        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
+//        uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
+        //        checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
 
         setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
 
@@ -137,7 +137,7 @@ contract SplitMerge is Initializable, Ownable {
 
             if (el != 0) {
                 int index = ArrayUtils.uintFind(sourceContour, el);
-                require(index != -1, "Unique element not exists in source contour");
+                require(index != - 1, "Unique element not exists in source contour");
                 sourceContour[uint(index)] = 0;
             }
         }
@@ -164,7 +164,7 @@ contract SplitMerge is Initializable, Ownable {
         for (uint i = 0; i < resultContour.length; i++) {
             checkResultContour[i] = resultContour[i];
         }
-        
+
         emit CheckMergeContoursSecondStart(sourceContour, mergeContour, resultContour);
 
         for (uint i = 0; i < sourceContour.length + mergeContour.length; i++) {
@@ -179,7 +179,7 @@ contract SplitMerge is Initializable, Ownable {
 
             if (el != 0) {
                 int index = ArrayUtils.uintFind(checkResultContour, el);
-                require(index != -1, "Unique element not exists in result contour");
+                require(index != - 1, "Unique element not exists in result contour");
                 checkResultContour[uint(index)] = 0;
             }
         }
