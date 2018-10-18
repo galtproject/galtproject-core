@@ -55,6 +55,7 @@ contract ClaimManager is AbstractApplication {
     address applicant;
     address beneficiary;
     uint256 amount;
+    bytes32 chosenProposal;
     uint256 m;
     uint256 n;
 
@@ -62,6 +63,7 @@ contract ClaimManager is AbstractApplication {
     FeeDetails fees;
 
     mapping(bytes32 => Proposal) proposalDetails;
+    mapping(address => bytes32) votes;
     bytes32[] attachedDocuments;
 
     bytes32[] proposals;
@@ -279,6 +281,49 @@ contract ClaimManager is AbstractApplication {
     emit NewProposal(_cId, id, Action.REJECT, msg.sender);
   }
 
+  /**
+   * @dev Super-Validator votes for a proposal
+   * @param _cId Claim ID
+   * @param _pId Proposal ID
+   */
+  function vote(bytes32 _cId, bytes32 _pId) external {
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+
+    Proposal storage p = c.proposalDetails[_pId];
+
+    require(p.from != address(0), "Proposal doesn't exists");
+
+    if (c.votes[msg.sender] != 0x0) {
+      c.proposalDetails[c.votes[msg.sender]].votesFor.remove(msg.sender);
+    }
+
+    c.votes[msg.sender] = _pId;
+    p.votesFor.add(msg.sender);
+
+    if (p.votesFor.size() == c.n) {
+      c.chosenProposal = _pId;
+
+      if (p.action == Action.APPROVE) {
+        changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
+        handleApprove(p);
+      } else {
+        changeSaleOrderStatus(c, ApplicationStatus.REJECTED);
+        handleReject(p);
+      }
+    }
+  }
+
+  function handleApprove(Proposal storage p) internal {
+
+  }
+
+  function handleReject(Proposal storage p) internal {
+
+  }
+
   function claimValidatorReward(bytes32 _cId) external {
 
   }
@@ -349,6 +394,15 @@ contract ClaimManager is AbstractApplication {
     return claims[_cId].proposals;
   }
 
+  /*
+   * @dev Get Proposal ID the validator voted for
+   * @param _cId Claim ID
+   * @param _v validator address
+   */
+  function getVotedFor(bytes32 _cId, address _v) external view returns (bytes32) {
+    return claims[_cId].votes[_v];
+  }
+
   function getProposal(
     bytes32 _cId,
     bytes32 _pId
@@ -360,6 +414,7 @@ contract ClaimManager is AbstractApplication {
       bytes32 id,
       address from,
       string message,
+      address[] votesFor,
       address[] accusedValidators,
       bytes32[] roles,
       uint256[] fines
@@ -372,6 +427,7 @@ contract ClaimManager is AbstractApplication {
       _pId,
       p.from,
       p.message,
+      p.votesFor.elements(),
       p.accusedValidators,
       p.roles,
       p.fines
@@ -399,5 +455,16 @@ contract ClaimManager is AbstractApplication {
 
     _c.fees.validatorsReward = validatorsReward;
     _c.fees.galtSpaceReward = galtSpaceReward;
+  }
+
+  function changeSaleOrderStatus(
+    Claim storage _claim,
+    ApplicationStatus _status
+  )
+    internal
+  {
+    emit ClaimStatusChanged(_claim.id, _status);
+
+    _claim.status = _status;
   }
 }

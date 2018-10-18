@@ -537,5 +537,105 @@ contract.only("ClaimManager", (accounts) => {
       it('should deny proposal when claim is executed');
       it('validator votes for proposal');
     });
+
+    describe('#vote()', () => {
+      beforeEach(async function() {
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 0);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+
+        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(20)], {
+          from: bob
+        });
+        this.pId1 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'looks good',
+          [bob, eve],
+          ['non-existing', CM_JUROR],
+          [ether(10), ether(20)],
+          { from: dan }
+        );
+        this.pId2 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeReject(this.cId, 'NOT good enough', { from: bob });
+        this.pId3 = res.logs[0].args.proposalId;
+      });
+
+      it('should allow validator with locked slots voting', async function() {
+        await this.claimManager.vote(this.cId, this.pId1, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId1, { from: dan });
+
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.sameMembers(res.votesFor, []);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        assert.sameMembers(res.votesFor, []);
+      });
+
+      it('should deny validators with non-locked slots voting', async function() {
+        await assertRevert(this.claimManager.vote(this.cId, this.pId1, { from: eve }));
+      });
+
+      it('should allow re-voting if validator has changed is mind', async function() {
+        await this.claimManager.vote(this.cId, this.pId1, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId1, { from: dan });
+
+        let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+        res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
+        assert.equal(res, this.pId1);
+        res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
+        assert.equal(res, this.pId1);
+
+        await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+        res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
+        assert.equal(res, this.pId2);
+        res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
+        assert.equal(res, this.pId1);
+      });
+
+      it('should deny voting if status is not SUBMITTED', async function() {
+        await this.claimManager.vote(this.cId, this.pId1, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId1, { from: dan });
+
+        await this.claimManager.lock(this.cId, { from: charlie });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        await this.claimManager.vote(this.cId, this.pId1, { from: charlie });
+
+        await assertRevert(this.claimManager.vote(this.cId, this.pId1, { from: eve }));
+
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+        assert.equal(res.slotsTaken, 4);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.action, Action.APPROVE);
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan, bob, charlie]);
+      });
+    });
   });
 });
