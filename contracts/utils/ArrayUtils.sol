@@ -23,4 +23,12 @@ library ArrayUtils {
         }
         return false;
     }
+    function uintFind(uint[] arr, uint el) public view returns (int){
+        for (uint j = 0; j < arr.length; j++) {
+            if (el == arr[j]) {
+                return int(j);
+            }
+        }
+        return -1;
+    }
 }
