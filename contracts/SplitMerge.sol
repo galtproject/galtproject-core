@@ -25,7 +25,8 @@ import "./utils/ArrayUtils.sol";
 contract SplitMerge is Initializable, Ownable {
   using SafeMath for uint256;
 
-  uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 10;
+  // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
+  uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
   uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
   event LogFirstStage(uint256[] arr1, uint256[] arr2);
