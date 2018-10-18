@@ -1,7 +1,7 @@
 # Galt Project Contracts
 
 [![Build Status](https://travis-ci.org/galtspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-contracts)
-[![Contracts Version](https://img.shields.io/badge/version-0.2-orange.svg)](https://github.com/galtspace/galtproject-contracts)
+[![Contracts Version](https://img.shields.io/badge/version-0.3.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
 [![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
 
@@ -26,9 +26,9 @@ Currently we have all our contracts deployed at our private network named `testn
 
 ### Roadmap
 
-* `v0.2` - Current version
-* `v0.3` - Cut off geohashes from PlotManager contract
-* `v0.4` - ClaimManager contract; ValidatorStakes contract
-* `v0.5` - Internal contracts review
-* `v0.6` - External peer review; Public testnet deployment
-* `v1.0` - External audit; Mainnet deployment
+* `v0.3.0` - Current version
+* `v0.4.0` - ClaimManager contract; ValidatorStakes contract
+* `v0.4.1` - ClaimManager Gnosis multisig integration
+* `v0.5.0` - Internal contracts review
+* `v0.6.0` - External peer review; Public testnet deployment
+* `v1.0.0` - External audit; Mainnet deployment
