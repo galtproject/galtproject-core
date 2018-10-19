@@ -269,7 +269,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -385,7 +385,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       );
       const res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -455,7 +455,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
           let res = await this.plotManager.applyForPlotOwnership(
             this.contour2,
-            [],
+            this.contour2,
             0,
             this.credentials,
             this.ledgerIdentifier,
@@ -683,7 +683,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour2,
-          [],
+          this.contour2,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -821,7 +821,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -1192,7 +1192,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         // submit first
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour2,
-          [],
+          this.contour2,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -1210,7 +1210,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         // submit second
         res = await this.plotManager.applyForPlotOwnership(
           this.contour3,
-          [],
+          this.contour3,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -1235,7 +1235,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       it('should deny validator to lock an application which is new', async function() {
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour2,
-          [],
+          this.contour2,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -1366,7 +1366,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       it("should deny validator approve application with other than consideration or partially locked status", async function() {
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour2,
-          [],
+          this.contour2,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -1439,7 +1439,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       it('should deny validator revert an application with non-consideration status', async function() {
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour2,
-          [],
+          this.contour2,
           0,
           this.credentials,
           this.ledgerIdentifier,

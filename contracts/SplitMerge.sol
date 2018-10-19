@@ -41,6 +41,8 @@ contract SplitMerge is Initializable, Ownable {
   event PackageInit(bytes32 id, address owner);
 
   mapping(uint256 => uint256[]) public packageToContour;
+  mapping(uint256 => int256[]) public packageToHeights;
+  mapping(uint256 => int256) public packageToLevel;
 
   uint256[] allPackages;
 
@@ -96,6 +98,20 @@ contract SplitMerge is Initializable, Ownable {
     }
 
     packageToContour[_packageTokenId] = _geohashesContour;
+  }
+
+  function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
+    public onlySpaceTokenOwner(_packageTokenId)
+  {
+    require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
+
+    packageToHeights[_packageTokenId] = _heightsList;
+  }
+
+  function setPackageLevel(uint256 _packageTokenId, int256 _level)
+    public onlySpaceTokenOwner(_packageTokenId)
+  {
+    packageToLevel[_packageTokenId] = _level;
   }
 
   function splitPackage(
@@ -229,5 +245,26 @@ contract SplitMerge is Initializable, Ownable {
 
   function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
     return packageToContour[_packageTokenId];
+  }
+
+  function getPackageHeights(uint256 _packageTokenId) public view returns (int256[]) {
+    return packageToHeights[_packageTokenId];
+  }
+
+  function getPackageLevel(uint256 _packageTokenId) public view returns (int256) {
+    return packageToLevel[_packageTokenId];
+  }
+
+  function getPackageGeoData(uint256 _packageTokenId) public view returns (
+    uint256[] contour,
+    int256[] heights,
+    int256 level
+  ) 
+  {
+    return (
+      getPackageContour(_packageTokenId),
+      getPackageHeights(_packageTokenId),
+      getPackageLevel(_packageTokenId)
+    );
   }
 }

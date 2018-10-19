@@ -287,7 +287,7 @@ contract('PlotClarificationManager', (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -644,7 +644,7 @@ contract('PlotClarificationManager', (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
