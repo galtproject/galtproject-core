@@ -343,9 +343,16 @@ contract("PlotEscrow", (accounts) => {
       });
 
       // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
-        from: alice
-      });
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        [],
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        {
+          from: alice
+        }
+      );
       this.aId = res.logs[0].args.id;
 
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1814,9 +1821,16 @@ contract("PlotEscrow", (accounts) => {
     describe('sale order with ERC20 payment method', () => {
       beforeEach(async function() {
         // Alice obtains a package token
-        let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour,
+          [],
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
         this.aId = res.logs[0].args.id;
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();

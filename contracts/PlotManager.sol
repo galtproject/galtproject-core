@@ -184,6 +184,8 @@ contract PlotManager is AbstractApplication {
 
   function applyForPlotOwnership(
     uint256[] _packageContour,
+    int256[] _heights,
+    int256 _level,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier
   )
