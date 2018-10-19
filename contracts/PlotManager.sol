@@ -219,6 +219,8 @@ contract PlotManager is AbstractApplication {
     a.spaceTokenId = splitMerge.initPackage();
 
     splitMerge.setPackageContour(a.spaceTokenId, _packageContour);
+    splitMerge.setPackageHeights(a.spaceTokenId, _heights);
+    splitMerge.setPackageLevel(a.spaceTokenId, _level);
 
     applications[_id] = a;
 

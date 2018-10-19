@@ -345,7 +345,7 @@ contract("PlotEscrow", (accounts) => {
       // Alice obtains a package token
       let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
-        [],
+        this.contour,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -1823,7 +1823,7 @@ contract("PlotEscrow", (accounts) => {
         // Alice obtains a package token
         let res = await this.plotManager.applyForPlotOwnership(
           this.contour,
-          [],
+          this.contour,
           0,
           this.credentials,
           this.ledgerIdentifier,
