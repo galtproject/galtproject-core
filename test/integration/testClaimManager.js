@@ -53,7 +53,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only("ClaimManager", (accounts) => {
+contract("ClaimManager", (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
