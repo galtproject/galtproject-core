@@ -281,7 +281,7 @@ contract('PlotValuation', (accounts) => {
         { from: applicationTypeManager }
       );
       // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+      let res = await this.plotManager.applyForPlotOwnership(this.contour, [], 0, this.credentials, this.ledgerIdentifier, {
         from: alice
       });
       this.aId = res.logs[0].args.id;
@@ -504,7 +504,7 @@ contract('PlotValuation', (accounts) => {
         { from: applicationTypeManager }
       );
       // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
+      let res = await this.plotManager.applyForPlotOwnership(this.contour, [], 0, this.credentials, this.ledgerIdentifier, {
         from: alice
       });
       this.aId = res.logs[0].args.id;
