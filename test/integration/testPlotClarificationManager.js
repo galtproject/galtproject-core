@@ -285,7 +285,7 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
       // Alice obtains a package token
-    let res = await this.plotManager.applyForPlotOwnership(
+      let res = await this.plotManager.applyForPlotOwnership(
         this.contour,
         this.contour,
         0,
