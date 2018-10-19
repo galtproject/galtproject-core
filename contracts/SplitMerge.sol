@@ -259,7 +259,8 @@ contract SplitMerge is Initializable, Ownable {
     uint256[] contour,
     int256[] heights,
     int256 level
-  ) {
+  ) 
+  {
     return (
       getPackageContour(_packageTokenId),
       getPackageHeights(_packageTokenId),
