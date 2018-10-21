@@ -29,7 +29,7 @@ contract SplitMerge is Initializable, Ownable {
   uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
   uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
-  event LogFirstStage(uint256[] arr1, uint256[] arr2);
+  event LogFirstStage(uint256[] arr1, int256[] arr2);
   event LogSecondStage(uint256[] arr1, uint256[] arr2);
 
 //  event CheckMergeContoursSecondStart(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
@@ -122,14 +122,36 @@ contract SplitMerge is Initializable, Ownable {
     public 
     returns (uint256) 
   {
-
     uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
     checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
 
     setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
+    
+    int256 minHeight = packageToHeights[_sourcePackageTokenId][0];
+    
+    int256[] memory sourcePackageHeights = new int256[](_sourcePackageContour.length);
+    for (uint i = 0; i < _sourcePackageContour.length; i++) {
+      if (i + 1 > packageToHeights[_sourcePackageTokenId].length) {
+        sourcePackageHeights[i] = minHeight;
+      } else {
+        if (packageToHeights[_sourcePackageTokenId][i] < minHeight) {
+          minHeight = packageToHeights[_sourcePackageTokenId][i];
+        }
+        sourcePackageHeights[i] = packageToHeights[_sourcePackageTokenId][i];
+      } 
+    }
+
+    setPackageHeights(_sourcePackageTokenId, sourcePackageHeights);
 
     uint256 newPackageTokenId = initPackage();
     setPackageContour(newPackageTokenId, _newPackageContour);
+
+    int256[] memory newPackageHeights = new int256[](_newPackageContour.length);
+    for (uint i = 0; i < _newPackageContour.length; i++) {
+      newPackageHeights[i] = minHeight;
+    }
+    
+    setPackageHeights(newPackageTokenId, newPackageHeights);
 
     return newPackageTokenId;
   }
@@ -197,6 +219,18 @@ contract SplitMerge is Initializable, Ownable {
       _destinationPackageContour
     );
     setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
+
+    int256[] memory sourcePackageHeights = getPackageHeights(_sourcePackageTokenId);
+    
+    int256[] memory packageHeights = new int256[](_destinationPackageContour.length);
+    for (uint i = 0; i < _destinationPackageContour.length; i++) {
+      if (i + 1 > sourcePackageHeights.length) {
+        packageHeights[i] = packageToHeights[_destinationPackageTokenId][i - sourcePackageHeights.length];
+      } else {
+        packageHeights[i] = sourcePackageHeights[i];
+      }
+    }
+    setPackageHeights(_destinationPackageTokenId, packageHeights);
 
     spaceToken.burn(_sourcePackageTokenId);
   }
