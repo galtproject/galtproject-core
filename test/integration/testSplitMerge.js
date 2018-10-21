@@ -205,9 +205,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const thirdContour = galt.geohash.contour.mergeContours(firstContour, secondContour, false);
 
-      it('should split 4 => 6, 4', async function() {
-        await this.splitPackage(firstContour, secondContour, thirdContour);
-      });
+      // it('should split 4 => 6, 4', async function() {
+      //   await this.splitPackage(firstContour, secondContour, thirdContour);
+      // });
 
       it('should merge 4, 6 => 4', async function() {
         await this.mergePackage(firstContour, secondContour, thirdContour);
