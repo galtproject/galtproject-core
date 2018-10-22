@@ -20,6 +20,7 @@ import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./Validators.sol";
 import "./collections/ArraySet.sol";
+import "./ValidatorStakes.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -30,7 +31,7 @@ contract ClaimManager is AbstractApplication {
   bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
 
   // `CM_JUROR` bytes32 representation hash
-  bytes32 public constant CM_JUROR = 0x434d5f4a55524f52000000000000000000000000000000000000000000000000;
+  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -77,11 +78,12 @@ contract ClaimManager is AbstractApplication {
   }
 
   struct Proposal {
+    bytes32 id;
     Action action;
     ArraySet.AddressSet votesFor;
     address from;
     string message;
-    address[] accusedValidators;
+    address[] validators;
     bytes32[] roles;
     uint256[] fines;
   }
@@ -94,8 +96,10 @@ contract ClaimManager is AbstractApplication {
   // total validator count able to lock the claim
   uint256 public m;
 
+  ValidatorStakes validatorStakes;
+
   modifier onlyValidSuperValidator() {
-    validators.ensureActiveWithRole(msg.sender, CM_JUROR);
+    validators.ensureActiveWithRole(msg.sender, CM_AUDITOR);
 
     _;
   }
@@ -103,7 +107,7 @@ contract ClaimManager is AbstractApplication {
   constructor () public {}
 
   function setNofM(uint256 _n, uint256 _m) external onlyOwner {
-    require(1 <= _n, "Should satisfy `1 <= n`");
+    require(2 <= _n, "Should satisfy `2 <= n`");
     require(_n <= _m, "Should satisfy `n <= m`");
 
     n = _n;
@@ -113,6 +117,7 @@ contract ClaimManager is AbstractApplication {
   function initialize(
     Validators _validators,
     ERC20 _galtToken,
+    ValidatorStakes _validatorStakes,
     address _galtSpaceRewardsAddress
   )
     public
@@ -122,6 +127,7 @@ contract ClaimManager is AbstractApplication {
 
     validators = _validators;
     galtToken = _galtToken;
+    validatorStakes = _validatorStakes;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     n = 3;
@@ -236,22 +242,28 @@ contract ClaimManager is AbstractApplication {
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.validators.has(msg.sender) == true, "Validator not in locked list");
 
+    require(validators.hasRoles(_a, _r), "Some roles are invalid");
+
+    bytes32 id = keccak256(abi.encode(_cId, _msg, _a, _r, _f, msg.sender));
+    require(c.proposalDetails[id].from == address(0), "Proposal already exists");
+
     Proposal memory p;
 
-    bytes32 id = keccak256(abi.encode(_cId, _msg, _a, msg.sender));
-    require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-
+    p.id = id;
     p.from = msg.sender;
     p.action = Action.APPROVE;
     p.message = _msg;
-    p.accusedValidators = _a;
+    p.validators = _a;
     p.roles = _r;
     p.fines = _f;
 
     c.proposalDetails[id] = p;
     c.proposals.push(id);
 
-    // TODO: validator votes for proposal
+    // validator immediately votes for the proposal
+    _voteFor(c, id);
+    // as we have minimum n equal 2, a brand new proposal could not be executed in this step
+
     emit NewProposal(_cId, id, Action.APPROVE, msg.sender);
   }
 
@@ -265,19 +277,23 @@ contract ClaimManager is AbstractApplication {
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.validators.has(msg.sender) == true, "Validator not in locked list");
 
-    Proposal memory p;
+    bytes32 id = keccak256(abi.encode(_cId, _msg, msg.sender));
+    require(c.proposalDetails[id].from == address(0), "Proposal already exists");
 
-    bytes32 id = keccak256(abi.encode(_cId, _msg, block.number, msg.sender));
-    require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+    Proposal memory p;
 
     p.from = msg.sender;
     p.message = _msg;
     p.action = Action.REJECT;
+    p.id = id;
 
     c.proposalDetails[id] = p;
     c.proposals.push(id);
 
-    // TODO: validator votes for proposal
+    // validator immediately votes for the proposal
+    _voteFor(c, id);
+    // as we have minimum n equal 2, a brand new proposal could not be executed in this step
+
     emit NewProposal(_cId, id, Action.REJECT, msg.sender);
   }
 
@@ -296,32 +312,29 @@ contract ClaimManager is AbstractApplication {
 
     require(p.from != address(0), "Proposal doesn't exists");
 
-    if (c.votes[msg.sender] != 0x0) {
-      c.proposalDetails[c.votes[msg.sender]].votesFor.remove(msg.sender);
-    }
-
-    c.votes[msg.sender] = _pId;
-    p.votesFor.add(msg.sender);
+    _voteFor(c, _pId);
 
     if (p.votesFor.size() == c.n) {
       c.chosenProposal = _pId;
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        handleApprove(p);
+        validatorStakes.slash(p.validators, p.roles, p.fines);
       } else {
         changeSaleOrderStatus(c, ApplicationStatus.REJECTED);
-        handleReject(p);
       }
     }
   }
 
-  function handleApprove(Proposal storage p) internal {
+  function _voteFor(Claim storage _c, bytes32 _pId) internal {
+    Proposal storage _p = _c.proposalDetails[_pId];
 
-  }
+    if (_c.votes[msg.sender] != 0x0) {
+      _c.proposalDetails[_c.votes[msg.sender]].votesFor.remove(msg.sender);
+    }
 
-  function handleReject(Proposal storage p) internal {
-
+    _c.votes[msg.sender] = _p.id;
+    _p.votesFor.add(msg.sender);
   }
 
   function claimValidatorReward(bytes32 _cId) external {
@@ -415,7 +428,8 @@ contract ClaimManager is AbstractApplication {
       address from,
       string message,
       address[] votesFor,
-      address[] accusedValidators,
+      uint256 votesSize,
+      address[] validators,
       bytes32[] roles,
       uint256[] fines
     )
@@ -428,7 +442,8 @@ contract ClaimManager is AbstractApplication {
       p.from,
       p.message,
       p.votesFor.elements(),
-      p.accusedValidators,
+      p.votesFor.size(),
+      p.validators,
       p.roles,
       p.fines
     );

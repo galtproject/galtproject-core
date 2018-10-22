@@ -1,6 +1,8 @@
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
+const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
+
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -8,11 +10,17 @@ const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const { assertEthBalanceChanged, assertGaltBalanceChanged, ether, assertRevert, zeroAddress } = require('../helpers');
 
+const { stringToHex } = Web3.utils;
+
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 
 const CLAIM_VALIDATORS = '0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef';
+const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
 
-const CM_JUROR = 'CM_JUROR';
+const CM_AUDITOR = 'CM_AUDITOR';
+const PV_APPRAISER_ROLE = 'PV_APPRAISER_ROLE';
+const PC_CUSTODIAN_ROLE = 'PC_CUSTODIAN_ROLE';
+const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -53,13 +61,14 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract("ClaimManager", (accounts) => {
+contract.only("ClaimManager", (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
     feeManager,
     applicationTypeManager,
     validatorManager,
+    multiSigWallet,
     alice,
     bob,
     charlie,
@@ -85,16 +94,29 @@ contract("ClaimManager", (accounts) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
     this.claimManager = await ClaimManager.new({ from: coreTeam });
+    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
 
-    await this.claimManager.initialize(this.validators.address, this.galtToken.address, galtSpaceOrg, {
-      from: coreTeam
-    });
+    await this.claimManager.initialize(
+      this.validators.address,
+      this.galtToken.address,
+      this.validatorStakes.address,
+      galtSpaceOrg,
+      {
+        from: coreTeam
+      }
+    );
     await this.claimManager.setFeeManager(feeManager, true, { from: coreTeam });
 
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validatorStakes.addRoleTo(this.claimManager.address, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
       from: coreTeam
     });
 
@@ -108,6 +130,7 @@ contract("ClaimManager", (accounts) => {
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
 
     this.claimManagerWeb3 = new web3.eth.Contract(this.claimManager.abi, this.claimManager.address);
+    this.validatorStakesWeb3 = new web3.eth.Contract(this.validatorStakes.abi, this.validatorStakes.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
@@ -361,14 +384,23 @@ contract("ClaimManager", (accounts) => {
   describe('pipeline', () => {
     beforeEach(async function() {
       await this.claimManager.setNofM(3, 5, { from: coreTeam });
-      await this.validators.setApplicationTypeRoles(CLAIM_VALIDATORS, [CM_JUROR], [100], [''], {
+      await this.validators.setApplicationTypeRoles(CLAIM_VALIDATORS, [CM_AUDITOR], [100], [''], {
         from: applicationTypeManager
       });
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [CM_JUROR], { from: validatorManager });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [CM_JUROR], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [CM_JUROR], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [CM_JUROR], { from: validatorManager });
-      await this.validators.addValidator(frank, 'Frank', 'MN', [], [CM_JUROR], { from: validatorManager });
+      await this.validators.setApplicationTypeRoles(
+        MY_APPLICATION,
+        [PC_AUDITOR_ROLE, PC_CUSTODIAN_ROLE],
+        [50, 50],
+        ['', ''],
+        {
+          from: applicationTypeManager
+        }
+      );
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+      await this.validators.addValidator(frank, 'Frank', 'MN', [], [CM_AUDITOR], { from: validatorManager });
 
       const res = await this.claimManager.submit(
         alice,
@@ -424,23 +456,16 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should allow new proposals from members who has already locked the application', async function() {
-        let res = await this.claimManager.proposeApproval(
-          this.cId,
-          'good enough',
-          [dan],
-          ['non-existing'],
-          [ether(20)],
-          {
-            from: bob
-          }
-        );
+        let res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
+          from: bob
+        });
         const pId1 = res.logs[0].args.proposalId;
 
         res = await this.claimManager.proposeApproval(
           this.cId,
           'looks good',
           [bob, eve],
-          ['non-existing', CM_JUROR],
+          [CM_AUDITOR, CM_AUDITOR],
           [ether(10), ether(20)],
           { from: dan }
         );
@@ -456,16 +481,16 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.from.toLowerCase(), bob);
         assert.equal(res.message, 'good enough');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.accusedValidators.map(a => a.toLowerCase()), [dan]);
-        assert.sameMembers(res.roles.map(web3.utils.hexToString), ['non-existing']);
+        assert.sameMembers(res.validators.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.roles.map(web3.utils.hexToString), [CM_AUDITOR]);
         assert.sameMembers(res.fines, [ether(20)]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
         assert.equal(res.from.toLowerCase(), dan);
         assert.equal(res.message, 'looks good');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.accusedValidators.map(a => a.toLowerCase()), [bob, eve]);
-        assert.sameMembers(res.roles.map(web3.utils.hexToString), ['non-existing', CM_JUROR]);
+        assert.sameMembers(res.validators.map(a => a.toLowerCase()), [bob, eve]);
+        assert.sameMembers(res.roles.map(web3.utils.hexToString), [CM_AUDITOR, CM_AUDITOR]);
         assert.sameMembers(res.fines, [ether(10), ether(20)]);
       });
 
@@ -478,10 +503,10 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should allow multiple proposals from the same validator', async function() {
-        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(20)], {
+        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
           from: bob
         });
-        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(30)], {
+        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(30)], {
           from: bob
         });
         await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
@@ -549,7 +574,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
 
-        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], ['non-existing'], [ether(20)], {
+        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
           from: bob
         });
         this.pId1 = res.logs[0].args.proposalId;
@@ -558,7 +583,7 @@ contract("ClaimManager", (accounts) => {
           this.cId,
           'looks good',
           [bob, eve],
-          ['non-existing', CM_JUROR],
+          [CM_AUDITOR, CM_AUDITOR],
           [ether(10), ether(20)],
           { from: dan }
         );
@@ -568,7 +593,19 @@ contract("ClaimManager", (accounts) => {
         this.pId3 = res.logs[0].args.proposalId;
       });
 
-      it('should allow validator with locked slots voting', async function() {
+      it('should automatically count proposer voice', async function() {
+        // empty array since the vote reassigned to pId3
+        let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        //
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+      });
+
+      it('should reassign slots according a last vote', async function() {
         await this.claimManager.vote(this.cId, this.pId1, { from: bob });
         await this.claimManager.vote(this.cId, this.pId1, { from: dan });
 
@@ -635,6 +672,97 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.from.toLowerCase(), bob);
         assert.equal(res.action, Action.APPROVE);
         assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan, bob, charlie]);
+      });
+
+      it('should new porposals voting if status is not SUBMITTED', async function() {
+        await this.claimManager.vote(this.cId, this.pId1, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId1, { from: dan });
+
+        await this.claimManager.lock(this.cId, { from: charlie });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        await this.claimManager.vote(this.cId, this.pId1, { from: charlie });
+
+        await assertRevert(
+          this.claimManager.proposeApproval(
+            this.cId,
+            'looks good',
+            [bob, eve],
+            [CM_AUDITOR, CM_AUDITOR],
+            [ether(15), ether(20)],
+            { from: dan }
+          )
+        );
+      });
+    });
+
+    describe('on threshold reach', () => {
+      beforeEach(async function() {
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.slotsTaken, 0);
+        assert.equal(res.slotsThreshold, 3);
+        assert.equal(res.totalSlots, 5);
+
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE], { from: validatorManager });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(1000), { from: alice });
+        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(35), { from: alice });
+        await this.validatorStakes.stake(dan, PC_AUDITOR_ROLE, ether(35), { from: alice });
+        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [PC_AUDITOR_ROLE], [ether(20)], {
+          from: bob
+        });
+        this.pId1 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'looks good',
+          [bob, eve],
+          [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+          [ether(10), ether(20)],
+          { from: dan }
+        );
+        this.pId2 = res.logs[0].args.proposalId;
+      });
+
+      it('should apply proposed slashes', async function() {
+        // TODO: check active
+        let res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ROLE)).call();
+        assert.equal(res, ether(35));
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.equal(res.votesFor.length, 1);
+
+        await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+
+        res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ROLE)).call();
+        assert.equal(res, ether(25));
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        assert.equal(res.votesFor.length, 3);
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+        // TODO: check active
+      });
+
+      it('should reject when REJECT propose reached threshold', async function() {
+        let res = await this.claimManager.proposeReject(this.cId, 'blah', { from: dan });
+        this.pId3 = res.logs[0].args.proposalId;
+        await this.claimManager.vote(this.cId, this.pId3, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId3, { from: eve });
+
+        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        assert.equal(res.votesFor.length, 3);
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
   });

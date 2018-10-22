@@ -27,9 +27,9 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  bytes32 public constant SLASH_MANAGER = 0xfdecbbc9e01d6d45ae3e9272840413865ab6a2a32f8010b272db4c73d146f9bb;
+  string public constant ROLE_SLASH_MANAGER = 'slash_manager';
 
-  address claimManager;
+  address slashManager;
   address multiSigWallet;
   ERC20 galtToken;
   Validators validators;
@@ -40,8 +40,8 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
     mapping(bytes32 => int256) roleStakes;
   }
 
-  modifier onlyClaimManager {
-    require(msg.sender == claimManager, "Invalid sender");
+  modifier onlySlashManager {
+    require(hasRole(msg.sender, ROLE_SLASH_MANAGER), "Invalid sender");
 
     _;
   }
@@ -49,7 +49,6 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   function initialize(
     Validators _validators,
     ERC20 _galtToken,
-    address _claimManager,
     address _multiSigWallet
   )
     public
@@ -57,19 +56,30 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   {
     owner = msg.sender;
 
-    claimManager = _claimManager;
     multiSigWallet = _multiSigWallet;
     validators = _validators;
     galtToken = _galtToken;
   }
 
-  function slash(address _validator, bytes32 _role, uint256 _amount) external onlyClaimManager {
+  function slash(address _validator, bytes32 _role, uint256 _amount) external onlySlashManager {
+    _slash(_validator, _role, _amount);
+  }
+
+  function slash(address[] _validators, bytes32[] _roles, uint256[] _amounts) external onlySlashManager {
+    assert(_validators.length == _roles.length);
+    assert(_roles.length == _amounts.length);
+
+    for (uint256 i = 0; i < _validators.length; i++) {
+      _slash(_validators[i], _roles[i], _amounts[i]);
+    }
+  }
+
+  function _slash(address _validator, bytes32 _role, uint256 _amount) internal {
     validators.requireHasRole(_validator, _role);
 
     int256 initialBalance = validatorRoles[_validator].roleStakes[_role];
     int256 finalBalance = validatorRoles[_validator].roleStakes[_role] - int256(_amount);
 
-    // TODO: check validator/role exists
     validatorRoles[_validator].roleStakes[_role] = finalBalance;
 
     assert(finalBalance < initialBalance);

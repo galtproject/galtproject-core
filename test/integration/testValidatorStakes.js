@@ -30,10 +30,9 @@ const PC_CUSTODIAN_ROLE = 'PC_CUSTODIAN_ROLE';
 const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('ValidatorStakes', accounts => {
+contract('ValidatorStakes', accounts => {
   const [
     coreTeam,
-    galtSpaceOrg,
     slashManager,
     applicationTypeManager,
     validatorManager,

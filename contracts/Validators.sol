@@ -244,6 +244,20 @@ contract Validators is Ownable, RBAC {
     return validators[_validator].roles[_role] == true;
   }
 
+  /**
+   * @dev Multiple validator roles check
+   * @return true if all given validator-role pairs are exist
+   */
+  function hasRoles(address[] _validators, bytes32[] _roles) external view returns (bool) {
+    for (uint256 i = 0; i < _validators.length; i++) {
+      if (validators[_validators[i]].roles[_roles[i]] == false) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   function getValidator(
     address validator
   )
