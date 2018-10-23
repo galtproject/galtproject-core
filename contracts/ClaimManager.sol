@@ -415,10 +415,6 @@ contract ClaimManager is AbstractApplication {
     return claims[_cId].proposals;
   }
 
-  function getValidators(bytes32 _cId) external view returns (bytes32[]) {
-    return claims[_cId].validators;
-  }
-
   /*
    * @dev Get Proposal ID the validator voted for
    * @param _cId Claim ID
