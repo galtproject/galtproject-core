@@ -14,7 +14,13 @@ const web3 = new Web3(PlotManager.web3.currentProvider);
 
 const fs = require('fs');
 const _ = require('lodash');
-const { ether } = require('../test/helpers');
+
+function ether(value) {
+  return Web3.utils.toWei(value.toString(10), 'ether');
+}
+function weiToEther(value) {
+  return Web3.utils.fromWei(value, 'ether');
+}
 
 module.exports = async function(deployer, network, accounts) {
   if (network === 'test' || network === 'local_test' || network === 'development') {
@@ -157,7 +163,7 @@ module.exports = async function(deployer, network, accounts) {
     minDepositGalt[CM_AUDITOR_ROLE] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
-    _.forEach(validatorsSpecificRoles, (validatorRoles) => {
+    _.forEach(validatorsSpecificRoles, validatorRoles => {
       validatorRoles.forEach(role => {
         needGaltForDeposits += minDepositGalt[role];
       });
@@ -177,15 +183,19 @@ module.exports = async function(deployer, network, accounts) {
     await Promise.all(rolesPromises);
 
     const promises = [];
-    _.forEach(users, (address, name) => {
+    _.forEach(users, async (address, name) => {
       if (validatorsSpecificRoles[name]) {
         promises.push(
-          validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
-        );
+          new Promise(async resolve => {
+            await validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam });
 
-        validatorsSpecificRoles[name].forEach(roleName => {
-          promises.push(validatorStakes.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam }));
-        });
+            const validatorPromises = validatorsSpecificRoles[name].map(roleName =>
+              validatorStakes.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
+            );
+
+            Promise.all(validatorPromises).then(resolve);
+          })
+        );
       }
 
       if (_.includes(adminsList, name)) {
