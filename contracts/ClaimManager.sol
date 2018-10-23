@@ -359,6 +359,7 @@ contract ClaimManager is AbstractApplication {
       address beneficiary,
       uint256 amount,
       bytes32[] attachedDocuments,
+      address[] validators,
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
@@ -372,6 +373,7 @@ contract ClaimManager is AbstractApplication {
       c.beneficiary,
       c.amount,
       c.attachedDocuments,
+      c.validators.elements(),
       c.validators.size(),
       c.n,
       m,
@@ -411,6 +413,10 @@ contract ClaimManager is AbstractApplication {
 
   function getProposals(bytes32 _cId) external view returns (bytes32[]) {
     return claims[_cId].proposals;
+  }
+
+  function getValidators(bytes32 _cId) external view returns (bytes32[]) {
+    return claims[_cId].validators;
   }
 
   /*
