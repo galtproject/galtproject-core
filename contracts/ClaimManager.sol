@@ -205,6 +205,9 @@ contract ClaimManager is AbstractApplication {
 
     claims[id] = c;
 
+    applicationsArray.push(id);
+    applicationsByAddresses[msg.sender].push(id);
+
     emit NewClaim(id, msg.sender);
     emit ClaimStatusChanged(id, ApplicationStatus.SUBMITTED);
 
