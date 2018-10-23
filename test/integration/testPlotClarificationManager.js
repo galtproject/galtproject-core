@@ -6,6 +6,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
+const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -65,6 +66,7 @@ contract('PlotClarificationManager', (accounts) => {
     coreTeam,
     galtSpaceOrg,
     feeManager,
+    multiSigWallet,
     applicationTypeManager,
     validatorManager,
     alice,
@@ -92,6 +94,7 @@ contract('PlotClarificationManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
+    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -121,6 +124,9 @@ contract('PlotClarificationManager', (accounts) => {
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+      from: coreTeam
+    });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotClarificationManager.setFeeManager(feeManager, true, { from: coreTeam });
 
@@ -128,6 +134,9 @@ contract('PlotClarificationManager', (accounts) => {
       from: coreTeam
     });
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
 
@@ -148,6 +157,13 @@ contract('PlotClarificationManager', (accounts) => {
 
     await this.validators.addRoleTo(coreTeam, 'validator_manager');
     await this.validators.addRoleTo(coreTeam, 'application_type_manager');
+
+    await this.validators.setRoleMinimalDeposit('foo', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('bar', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('buzz', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('human', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('dog', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('cat', ether(30), { from: applicationTypeManager });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -286,6 +302,15 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: validatorManager });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: validatorManager });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+      await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
       const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
       const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
@@ -636,6 +661,14 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: validatorManager });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: validatorManager });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+      await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
       const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
       await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });

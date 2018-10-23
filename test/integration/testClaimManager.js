@@ -8,7 +8,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { assertEthBalanceChanged, assertGaltBalanceChanged, ether, assertRevert, zeroAddress } = require('../helpers');
+const { ether, assertRevert } = require('../helpers');
 
 const { stringToHex } = Web3.utils;
 
@@ -18,7 +18,6 @@ const CLAIM_VALIDATORS = '0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d
 const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
 
 const CM_AUDITOR = 'CM_AUDITOR';
-const PV_APPRAISER_ROLE = 'PV_APPRAISER_ROLE';
 const PC_CUSTODIAN_ROLE = 'PC_CUSTODIAN_ROLE';
 const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 
@@ -61,7 +60,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only("ClaimManager", (accounts) => {
+contract("ClaimManager", (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -105,6 +104,10 @@ contract.only("ClaimManager", (accounts) => {
         from: coreTeam
       }
     );
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+      from: coreTeam
+    });
+
     await this.claimManager.setFeeManager(feeManager, true, { from: coreTeam });
 
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -113,10 +116,10 @@ contract.only("ClaimManager", (accounts) => {
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validatorStakes.addRoleTo(this.claimManager.address, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
+    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+    await this.validatorStakes.addRoleTo(this.claimManager.address, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 
@@ -396,11 +399,23 @@ contract.only("ClaimManager", (accounts) => {
           from: applicationTypeManager
         }
       );
+
+      await this.validators.setRoleMinimalDeposit(CM_AUDITOR, ether(300), { from: applicationTypeManager });
+      await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(200), { from: applicationTypeManager });
+      await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(200), { from: applicationTypeManager });
+
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [CM_AUDITOR], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [CM_AUDITOR], { from: validatorManager });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], [CM_AUDITOR], { from: validatorManager });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], [CM_AUDITOR], { from: validatorManager });
       await this.validators.addValidator(frank, 'Frank', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+      await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+      await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+      await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+      await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+      await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
 
       const res = await this.claimManager.submit(
         alice,
@@ -708,10 +723,11 @@ contract.only("ClaimManager", (accounts) => {
         await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
         await this.validators.addValidator(dan, 'Dan', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(1000), { from: alice });
-        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(35), { from: alice });
-        await this.validatorStakes.stake(dan, PC_AUDITOR_ROLE, ether(35), { from: alice });
-        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
+        await this.galtToken.approve(this.validatorStakes.address, ether(600), { from: alice });
+
+        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(200), { from: alice });
+        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(200), { from: alice });
+        await this.validatorStakes.stake(dan, PC_AUDITOR_ROLE, ether(200), { from: alice });
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -734,9 +750,14 @@ contract.only("ClaimManager", (accounts) => {
       });
 
       it('should apply proposed slashes', async function() {
-        // TODO: check active
         let res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ROLE)).call();
-        assert.equal(res, ether(35));
+        assert.equal(res, ether(200));
+        res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
+        assert.equal(res, ether(200));
+        res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
         assert.equal(res.votesFor.length, 1);
@@ -745,12 +766,19 @@ contract.only("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
         res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ROLE)).call();
-        assert.equal(res, ether(25));
+        assert.equal(res, ether(190));
+        res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
+        assert.equal(res, ether(180));
+        res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, false);
+        res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, false);
+
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
         assert.equal(res.votesFor.length, 3);
+
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
-        // TODO: check active
       });
 
       it('should reject when REJECT propose reached threshold', async function() {

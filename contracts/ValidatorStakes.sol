@@ -83,6 +83,8 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
     validatorRoles[_validator].roleStakes[_role] = finalBalance;
 
     assert(finalBalance < initialBalance);
+
+    validators.onStakeChanged(_validator, _role, finalBalance);
   }
 
   function stake(address _validator, bytes32 _role, uint256 _amount) external {
@@ -91,8 +93,11 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
 
     require(_amount > 0, "Expect positive amount");
     int256 initialValue = validatorRoles[_validator].roleStakes[_role];
-    validatorRoles[_validator].roleStakes[_role] = initialValue + int256(_amount);
+    int256 finalValue = initialValue + int256(_amount);
+    validatorRoles[_validator].roleStakes[_role] = finalValue;
     assert(validatorRoles[_validator].roleStakes[_role] > initialValue);
+
+    validators.onStakeChanged(_validator, _role, finalValue);
   }
 
   function stakeOf(address _validator, bytes32 _role) external view returns (int256) {
