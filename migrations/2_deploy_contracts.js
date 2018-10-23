@@ -7,6 +7,8 @@ const PlotEscrowLib = artifacts.require('./PlotEscrowLib');
 const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
+const ClaimManager = artifacts.require('./ClaimManager');
+const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
@@ -52,6 +54,9 @@ module.exports = async function(deployer, network, accounts) {
     PlotEscrow.link('PlotEscrowLib', plotEscrowLib.address);
 
     const plotEscrow = await PlotEscrow.new({ from: coreTeam });
+
+    const claimManager = await ClaimManager.new({ from: coreTeam });
+    const validatorStakes = await ValidatorStakes.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -119,7 +124,7 @@ module.exports = async function(deployer, network, accounts) {
     );
 
     await galtDex.initialize(
-      Web3.utils.toWei('100', 'szabo'),
+      Web3.utils.toWei('10', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
       galtToken.address,
@@ -132,9 +137,16 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
+    await claimManager.initialize(validators.address, galtToken.address, validatorStakes.address, coreTeam, {
+      from: coreTeam
+    });
+    await validatorStakes.initialize(validators.address, galtToken.address, coreTeam, {
+      from: coreTeam
+    });
+
     console.log('Mint GALT to dex contracts..');
-    await galtToken.mint(galtDex.address, Web3.utils.toWei('1000000', 'ether'));
-    await galtToken.mint(spaceDex.address, Web3.utils.toWei('1000000', 'ether'));
+    await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
+    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000000', 'ether'));
 
     console.log('Set roles of contracts...');
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
@@ -145,12 +157,17 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
-    await validators.addRoleTo(coreTeam, 'validator_manager', { from: coreTeam });
-    await validators.addRoleTo(coreTeam, 'application_type_manager', { from: coreTeam });
+    await validators.addRoleTo(coreTeam, await validators.ROLE_VALIDATOR_MANAGER(), { from: coreTeam });
+    await validators.addRoleTo(coreTeam, await validators.ROLE_APPLICATION_TYPE_MANAGER(), { from: coreTeam });
+    await validators.addRoleTo(validatorStakes.address, await validators.ROLE_VALIDATOR_STAKES(), { from: coreTeam });
+    await validatorStakes.addRoleTo(claimManager.address, await validatorStakes.ROLE_SLASH_MANAGER(), {
+      from: coreTeam
+    });
 
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
+    await claimManager.setFeeManager(coreTeam, true, { from: coreTeam });
 
     console.log('Set fees of contracts...');
     await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
@@ -176,6 +193,12 @@ module.exports = async function(deployer, network, accounts) {
 
     await spaceDex.setFee('0', '0', { from: coreTeam });
     await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
+
+    await claimManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('6', 'ether'), { from: coreTeam });
+    await claimManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('45', 'ether'), { from: coreTeam });
+    await claimManager.setGaltSpaceEthShare(33, { from: coreTeam });
+    await claimManager.setGaltSpaceGaltShare(13, { from: coreTeam });
+    await claimManager.setNofM(2, 3, { from: coreTeam });
 
     console.log('Save addresses and abi to deployed folder...');
 
@@ -212,8 +235,12 @@ module.exports = async function(deployer, network, accounts) {
             galtDexAbi: galtDex.abi,
             spaceDexAddress: spaceDex.address,
             spaceDexAbi: spaceDex.abi,
+            claimManagerAddress: claimManager.address,
+            claimManagerAbi: claimManager.address,
             validatorsAddress: validators.address,
-            validatorsAbi: validators.abi
+            validatorsAbi: validators.abi,
+            validatorStakesAddress: validatorStakes.address,
+            validatorStakesAbi: validatorStakes.abi
           },
           null,
           2

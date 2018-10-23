@@ -1,9 +1,12 @@
 const PlotManager = artifacts.require('./PlotManager');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
+const GaltToken = artifacts.require('./GaltToken');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
+const ValidatorStakes = artifacts.require('./ValidatorStakes');
+const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
@@ -11,6 +14,7 @@ const web3 = new Web3(PlotManager.web3.currentProvider);
 
 const fs = require('fs');
 const _ = require('lodash');
+const { ether } = require('../test/helpers');
 
 module.exports = async function(deployer, network, accounts) {
   if (network === 'test' || network === 'local_test' || network === 'development') {
@@ -25,9 +29,12 @@ module.exports = async function(deployer, network, accounts) {
     const plotManager = await PlotManager.at(data.plotManagerAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
+    const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
+    const validatorStakes = await ValidatorStakes.at(data.validatorStakesAddress);
+    const claimManager = await ClaimManager.at(data.claimManagerAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -83,6 +90,12 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
+    const CLAIM_MANAGER_APPLICATION_TYPE = await claimManager.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
+      from: coreTeam
+    });
+
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
       Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
@@ -110,7 +123,8 @@ module.exports = async function(deployer, network, accounts) {
       PV_APPRAISER2_ROLE,
       PV_AUDITOR_ROLE,
       PC_CUSTODIAN_ROLE,
-      PC_AUDITOR_ROLE
+      PC_AUDITOR_ROLE,
+      CM_AUDITOR_ROLE
     ];
 
     const validatorsSpecificRoles = {
@@ -129,12 +143,49 @@ module.exports = async function(deployer, network, accounts) {
       Nik5: [PV_AUDITOR_ROLE]
     };
 
+    const minDepositForValidator = 500; // 10k $
+    const minDepositForAuditor = 2500; // 50k $
+
+    const minDepositGalt = {};
+    minDepositGalt[PM_CADASTRAL_ROLE] = minDepositForValidator;
+    minDepositGalt[PM_AUDITOR_ROLE] = minDepositForValidator;
+    minDepositGalt[PV_APPRAISER_ROLE] = minDepositForValidator;
+    minDepositGalt[PV_APPRAISER2_ROLE] = minDepositForValidator;
+    minDepositGalt[PV_AUDITOR_ROLE] = minDepositForAuditor;
+    minDepositGalt[PC_CUSTODIAN_ROLE] = minDepositForAuditor;
+    minDepositGalt[PC_AUDITOR_ROLE] = minDepositForAuditor;
+    minDepositGalt[CM_AUDITOR_ROLE] = minDepositForAuditor;
+
+    let needGaltForDeposits = 0;
+    _.forEach(validatorsSpecificRoles, (validatorRoles) => {
+      validatorRoles.forEach(role => {
+        needGaltForDeposits += minDepositGalt[role];
+      });
+    });
+
+    console.log('needGaltForDeposits', needGaltForDeposits);
+
+    await galtDex.exchangeEthToGalt({ from: coreTeam, value: ether(needGaltForDeposits) });
+
+    await galtToken.approve(validatorStakes.address, ether(needGaltForDeposits), { from: coreTeam });
+
+    const rolesPromises = [];
+    _.forEach(allRoles, roleName => {
+      const minDeposit = ether(minDepositGalt[roleName]);
+      rolesPromises.push(validators.setRoleMinimalDeposit(roleName, minDeposit, { from: coreTeam }));
+    });
+    await Promise.all(rolesPromises);
+
     const promises = [];
     _.forEach(users, (address, name) => {
       if (validatorsSpecificRoles[name]) {
         promises.push(
           validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
         );
+
+        validatorsSpecificRoles[name].forEach(roleName => {
+          promises.push(validatorStakes.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam }));
+        });
       }
 
       if (_.includes(adminsList, name)) {
