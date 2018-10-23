@@ -243,7 +243,7 @@ module.exports = async function(deployer, network, accounts) {
             spaceDexAddress: spaceDex.address,
             spaceDexAbi: spaceDex.abi,
             claimManagerAddress: claimManager.address,
-            claimManagerAbi: claimManager.address,
+            claimManagerAbi: claimManager.abi,
             validatorsAddress: validators.address,
             validatorsAbi: validators.abi,
             validatorStakesAddress: validatorStakes.address,
