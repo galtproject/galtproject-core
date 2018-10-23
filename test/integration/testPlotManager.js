@@ -1,6 +1,8 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const LandUtils = artifacts.require('./LandUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -80,6 +82,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
+    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
+
     this.landUtils = await LandUtils.new({ from: coreTeam });
     PlotManagerLib.link('LandUtils', this.landUtils.address);
 
@@ -90,6 +94,14 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     this.validators = await Validators.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+
+    PolygonUtils.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
+
+    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
+
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
@@ -255,9 +267,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
 
-      const res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
-        from: alice
-      });
+      const res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        this.contour,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        {
+          from: alice
+        }
+      );
 
       this.aId = res.logs[0].args.id;
 
@@ -364,9 +383,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         ['', '', ''],
         { from: coreTeam }
       );
-      const res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
-        from: alice
-      });
+      const res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        this.contour,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        {
+          from: alice
+        }
+      );
 
       this.aId = res.logs[0].args.id;
     });
@@ -429,6 +455,8 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
           let res = await this.plotManager.applyForPlotOwnership(
             this.contour2,
+            this.contour2,
+            0,
             this.credentials,
             this.ledgerIdentifier,
             { from: alice }
@@ -653,9 +681,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           { from: coreTeam }
         );
 
-        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour2,
+          this.contour2,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
 
         this.aId = res.logs[0].args.id;
 
@@ -784,9 +819,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         { from: coreTeam }
       );
 
-      let res = await this.plotManager.applyForPlotOwnership(this.contour, this.credentials, this.ledgerIdentifier, {
-        from: alice
-      });
+      let res = await this.plotManager.applyForPlotOwnership(
+        this.contour,
+        this.contour,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        {
+          from: alice
+        }
+      );
 
       this.aId = res.logs[0].args.id;
 
@@ -819,7 +861,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       // eslint-disable-next-line
-      it('should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address', async function() {
+      it("should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address", async function() {
         let res = await this.spaceToken.totalSupply();
         assert.equal(res.toString(), 1);
         res = await this.spaceToken.balanceOf(this.plotManager.address);
@@ -1141,16 +1183,23 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       // eslint-disable-next-line
-      it('should deny a validator with the same role to lock an application which is already on consideration', async function() {
+      it("should deny a validator with the same role to lock an application which is already on consideration", async function() {
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
       });
 
       it('should push an application id to the validators list for caching', async function() {
         // submit first
-        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
-          from: charlie
-        });
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour2,
+          this.contour2,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: charlie
+          }
+        );
         const a1Id = res.logs[0].args.id;
         let payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a1Id, Currency.ETH).call();
         await this.plotManager.submitApplication(a1Id, 0, { from: charlie, value: payment });
@@ -1159,9 +1208,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
 
         // submit second
-        res = await this.plotManager.applyForPlotOwnership(this.contour3, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+        res = await this.plotManager.applyForPlotOwnership(
+          this.contour3,
+          this.contour3,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
         const a2Id = res.logs[0].args.id;
         payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a2Id, Currency.ETH).call();
 
@@ -1177,9 +1233,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator to lock an application which is new', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour2,
+          this.contour2,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
         const a2Id = res.logs[0].args.id;
         await assertRevert(this.plotManager.lockApplicationForReview(a2Id, 'human', { from: charlie }));
         res = await this.plotManagerWeb3.methods.getApplicationById(a2Id).call();
@@ -1286,7 +1349,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       // eslint-disable-next-line
-      it('should deny validator whose role doesnt present in application type to approve application', async function() {
+      it("should deny validator whose role doesnt present in application type to approve application", async function() {
         await this.validators.setApplicationTypeRoles(
           ANOTHER_APPLICATION,
           ['foo', 'bar', 'buzz'],
@@ -1300,10 +1363,17 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       // eslint-disable-next-line
-      it('should deny validator approve application with other than consideration or partially locked status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+      it("should deny validator approve application with other than consideration or partially locked status", async function() {
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour2,
+          this.contour2,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
 
         const aId = res.logs[0].args.id;
         await assertRevert(this.plotManager.approveApplication(aId, this.credentials, { from: bob }));
@@ -1333,7 +1403,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       // eslint-disable-next-line
-      it('should deny another assigned validator revert application after it was already reverted', async function() {
+      it("should deny another assigned validator revert application after it was already reverted", async function() {
         await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
         await assertRevert(this.plotManager.revertApplication(this.aId, 'blah', { from: dan }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -1367,9 +1437,16 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(this.contour2, this.credentials, this.ledgerIdentifier, {
-          from: alice
-        });
+        let res = await this.plotManager.applyForPlotOwnership(
+          this.contour2,
+          this.contour2,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          {
+            from: alice
+          }
+        );
         const aId = res.logs[0].args.id;
         const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
 

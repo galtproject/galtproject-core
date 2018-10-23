@@ -1,6 +1,8 @@
 const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
-const LandUtils = artifacts.require('./LandUtils');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
 const PlotEscrowLib = artifacts.require('./PlotEscrowLib');
@@ -33,6 +35,15 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Create contract instances...');
     const galtToken = await GaltToken.new({ from: coreTeam });
     const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+
+    const landUtils = await LandUtils.new({ from: coreTeam });
+    const arrayUtils = await ArrayUtils.new({ from: coreTeam });
+    PolygonUtils.link('LandUtils', landUtils.address);
+    SplitMerge.link('LandUtils', landUtils.address);
+    SplitMerge.link('ArrayUtils', arrayUtils.address);
+
+    const polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    SplitMerge.link('PolygonUtils', polygonUtils.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
@@ -40,7 +51,6 @@ module.exports = async function(deployer, network, accounts) {
 
     const validators = await Validators.new({ from: coreTeam });
 
-    const landUtils = await LandUtils.new({ from: coreTeam });
     PlotManagerLib.link('LandUtils', landUtils.address);
 
     const plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
@@ -170,9 +180,6 @@ module.exports = async function(deployer, network, accounts) {
     await claimManager.setFeeManager(coreTeam, true, { from: coreTeam });
 
     console.log('Set fees of contracts...');
-    await plotManager.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
-    await plotValuation.setGasPriceForDeposits(Web3.utils.toWei('4', 'gwei'), { from: coreTeam });
-
     await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
       from: coreTeam
     });
