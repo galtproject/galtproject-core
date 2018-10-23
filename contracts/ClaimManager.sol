@@ -194,6 +194,7 @@ contract ClaimManager is AbstractApplication {
 
     c.status = ApplicationStatus.SUBMITTED;
     c.id = id;
+    c.amount = _amount;
     c.beneficiary = _beneficiary;
     c.applicant = msg.sender;
     c.attachedDocuments = _documents;
