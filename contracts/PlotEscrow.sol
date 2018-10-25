@@ -412,8 +412,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer status required");
 
-    validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to lock");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
 
     saleOffer.auditor.addr = msg.sender;
 
@@ -435,8 +434,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to reject");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
@@ -457,8 +455,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.ensureValidatorActive(msg.sender);
-    require(validators.hasRole(msg.sender, PE_AUDITOR_ROLE), "PE_AUDITOR_ROLE required to approve");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);

@@ -1,7 +1,9 @@
 .PHONY: test
 
-compile:
+cleanup:
 	rm -rf ./build
+
+compile: cleanup
 	truffle compile
 	node scripts/checkContractSize.js
 
@@ -14,6 +16,8 @@ test:
 	node scripts/checkContractSize.js
 	-npm test
 	tput bel
+
+retest: cleanup test
 
 check-size:
 	node scripts/checkContractSize.js

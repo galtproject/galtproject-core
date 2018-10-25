@@ -5,6 +5,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
+const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -67,7 +68,9 @@ Object.freeze(Currency);
  * Alice is an applicant
  * Bob is a validator
  */
-contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charlie, dan, eve, frank]) => {
+contract('PlotManager', accounts => {
+  const [coreTeam, galtSpaceOrg, feeManager, multiSigWallet, alice, bob, charlie, dan, eve, frank] = accounts;
+
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initContour2 = ['dddd', 'bbbb', 'cccc'];
@@ -88,6 +91,7 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
+    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
@@ -103,6 +107,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         from: coreTeam
       }
     );
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+      from: coreTeam
+    });
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
 
@@ -121,6 +128,19 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
     await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
+    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+      from: coreTeam
+    });
+
+    await this.validators.setRoleMinimalDeposit('foo', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('bar', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('buzz', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('human', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('dog', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('cat', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('🦋', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('🦆', ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit('🦄', ether(30), { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
@@ -298,6 +318,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
       await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+      await this.validatorStakes.stake(bob, '🦄', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, '🦆', ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, '🦋', ether(30), { from: alice });
+
       await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
       await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
@@ -468,6 +494,11 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
           await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
           await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
 
+          await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+          await this.validatorStakes.stake(charlie, '🦄', ether(30), { from: alice });
+          await this.validatorStakes.stake(dan, '🦆', ether(30), { from: alice });
+          await this.validatorStakes.stake(eve, '🦋', ether(30), { from: alice });
+
           const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
           await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
@@ -497,6 +528,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
         await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, 'cat', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.NEW);
@@ -589,6 +626,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
         await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
+        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, 'cat', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
+
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
         await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
@@ -667,6 +710,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
         await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
         await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
         const fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
         const deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
@@ -799,6 +848,12 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
 
       await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
       await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+      await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
     });
 
     describe('#applyForPlotOwnership() ETH', () => {
@@ -1296,6 +1351,9 @@ contract('PlotManager', ([coreTeam, galtSpaceOrg, feeManager, alice, bob, charli
         );
 
         await this.validators.addValidator(frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
+        await this.validatorStakes.stake(frank, 'foo', ether(30), { from: alice });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
       });
 

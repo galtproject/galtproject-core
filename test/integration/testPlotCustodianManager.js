@@ -352,9 +352,12 @@ contract('PlotCustodianManager', (accounts) => {
       await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
       await this.validatorStakes.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
       await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
       await this.validatorStakes.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
       await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
 
@@ -387,7 +390,6 @@ contract('PlotCustodianManager', (accounts) => {
       await this.plotValuation.valuatePlot(this.aId, ether(4500), { from: bob });
       await this.plotValuation.valuatePlot2(this.aId, ether(4500), { from: dan });
       await this.plotValuation.approveValuation(this.aId, { from: eve });
-      // TODO: valuate application
     });
 
     describe('#submitApplication()', () => {
@@ -689,6 +691,7 @@ contract('PlotCustodianManager', (accounts) => {
       await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
       await this.validatorStakes.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
       await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
       await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });

@@ -92,7 +92,7 @@ contract PlotClarificationManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, a.addressRoles[msg.sender]);
 
     _;
   }
@@ -201,7 +201,7 @@ contract PlotClarificationManager is AbstractApplication {
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
 
-    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, _role);
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");

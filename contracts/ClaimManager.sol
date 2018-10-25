@@ -99,7 +99,7 @@ contract ClaimManager is AbstractApplication {
   ValidatorStakes validatorStakes;
 
   modifier onlyValidSuperValidator() {
-    validators.ensureActiveWithRole(msg.sender, CM_AUDITOR);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, CM_AUDITOR);
 
     _;
   }
@@ -242,7 +242,7 @@ contract ClaimManager is AbstractApplication {
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.validators.has(msg.sender) == true, "Validator not in locked list");
 
-    require(validators.hasRoles(_a, _r), "Some roles are invalid");
+    require(validators.validatorsHaveRolesAssigned(_a, _r), "Some roles are invalid");
 
     bytes32 id = keccak256(abi.encode(_cId, _msg, _a, _r, _f, msg.sender));
     require(c.proposalDetails[id].from == address(0), "Proposal already exists");

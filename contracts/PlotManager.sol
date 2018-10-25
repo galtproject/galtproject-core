@@ -396,8 +396,7 @@ contract PlotManager is AbstractApplication {
   // Application can be locked by a role only once.
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) external {
     Application storage a = applications[_aId];
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
-    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, _role);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,

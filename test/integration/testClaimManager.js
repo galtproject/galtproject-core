@@ -754,9 +754,19 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res, ether(200));
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(200));
+
         res = await this.validators.isValidatorActive(bob);
         assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+
         res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -769,9 +779,19 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res, ether(190));
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(180));
+
         res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, false);
+
         res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, false);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -779,6 +799,25 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        // staking back
+        await this.galtToken.approve(this.validatorStakes.address, ether(30), { from: alice });
+        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(10), { from: alice });
+        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(20), { from: alice });
+
+        res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+
+        res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
       });
 
       it('should reject when REJECT propose reached threshold', async function() {
