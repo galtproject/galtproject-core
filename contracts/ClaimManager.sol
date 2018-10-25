@@ -364,7 +364,8 @@ contract ClaimManager is AbstractApplication {
       uint256 slotsThreshold,
       uint256 totalSlots,
       ApplicationStatus status
-  ) {
+    )
+  {
     Claim storage c = claims[_cId];
 
     return (
@@ -389,7 +390,8 @@ contract ClaimManager is AbstractApplication {
       Currency currency,
       uint256 validatorsReward,
       uint256 galtSpaceReward
-  ) {
+    )
+  {
     FeeDetails storage f = claims[_cId].fees;
 
     return (

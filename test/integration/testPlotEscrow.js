@@ -2105,7 +2105,6 @@ contract("PlotEscrow", (accounts) => {
         await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
         await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
         await this.validatorStakes.stake(eve, PE_AUDITOR_ROLE, ether(30), { from: alice });
-
       });
 
       it('should return correct values', async function() {

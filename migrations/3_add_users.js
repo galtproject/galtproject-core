@@ -18,9 +18,6 @@ const _ = require('lodash');
 function ether(value) {
   return Web3.utils.toWei(value.toString(10), 'ether');
 }
-function weiToEther(value) {
-  return Web3.utils.fromWei(value, 'ether');
-}
 
 module.exports = async function(deployer, network, accounts) {
   if (network === 'test' || network === 'local_test' || network === 'development') {

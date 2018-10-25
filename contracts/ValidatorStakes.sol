@@ -27,7 +27,7 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant ROLE_SLASH_MANAGER = 'slash_manager';
+  string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
   address slashManager;
   address multiSigWallet;
