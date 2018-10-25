@@ -29,7 +29,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.skip('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
+contract.only('SpaceDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
   const feePercent = 5;
   const plotPriceGalt = 150;
 
@@ -81,6 +81,9 @@ contract.skip('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
+    await this.validators.addRoleTo(stakeManager, await this.validators.ROLE_VALIDATOR_STAKES(), {
+      from: coreTeam
+    });
 
     const PV_APPRAISER_ROLE = await this.plotValuation.PV_APPRAISER_ROLE.call();
     const PV_APPRAISER2_ROLE = await this.plotValuation.PV_APPRAISER2_ROLE.call();
@@ -114,6 +117,18 @@ contract.skip('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], {
       from: coreTeam
     });
+
+    await this.validators.setRoleMinimalDeposit(PV_APPRAISER_ROLE, ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit(PV_APPRAISER2_ROLE, ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit(PV_AUDITOR_ROLE, ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(30), { from: coreTeam });
+    await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(30), { from: coreTeam });
+
+    await this.validators.onStakeChanged(bob, PV_APPRAISER_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(bob, PC_CUSTODIAN_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(dan, PV_APPRAISER2_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(dan, PC_AUDITOR_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(eve, PV_AUDITOR_ROLE, ether(30), { from: stakeManager });
 
     await this.galtDex.initialize(szabo(1), szabo(5), szabo(5), this.galtToken.address, {
       from: coreTeam

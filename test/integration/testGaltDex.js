@@ -9,7 +9,6 @@ const SplitMerge = artifacts.require('./SplitMerge.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
-const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -28,7 +27,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) => {
+contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
@@ -49,7 +48,6 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
-    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
@@ -77,7 +75,6 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
     await this.galtDex.setSpaceDex(this.spaceDex.address);
 
     await this.galtToken.mint(this.galtDex.address, ether(100));
-    await this.galtToken.mint(frank, ether(100000));
 
     await this.plotValuation.initialize(
       this.spaceToken.address,
@@ -101,9 +98,6 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
         from: coreTeam
       }
     );
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
-      from: coreTeam
-    });
 
     await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -111,7 +105,7 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
     await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.validators.addRoleTo(stakeManager, await this.validators.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
     const PV_APPRAISER_ROLE = await this.plotValuation.PV_APPRAISER_ROLE.call();
@@ -153,12 +147,12 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
       from: coreTeam
     });
 
-    await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: frank });
-    await this.validatorStakes.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: frank });
-    await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: frank });
-    await this.validatorStakes.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: frank });
-    await this.validatorStakes.stake(dan, PC_AUDITOR_ROLE, ether(30), { from: frank });
-    await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: frank });
+    await this.validators.onStakeChanged(bob, PV_APPRAISER_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(bob, PC_CUSTODIAN_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(dan, PV_APPRAISER2_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(dan, PC_AUDITOR_ROLE, ether(30), { from: stakeManager });
+    await this.validators.onStakeChanged(eve, PV_AUDITOR_ROLE, ether(30), { from: stakeManager });
+
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
 
     // TODO: move to helper
@@ -253,7 +247,7 @@ contract('GaltDex', ([coreTeam, multiSigWallet, alice, bob, dan, eve, frank]) =>
     (await this.galtDex.ethFee()).toString(10).should.be.eq(szabo(fee).toString(10));
   });
 
-  describe.skip('#buyGalt()', async () => {
+  describe('#buyGalt()', async () => {
     const ethToSend = parseInt(ether(10), 10);
     const shouldEthFee = (ethToSend / 100) * fee;
     const galtByFirstExchange = ethToSend * baseExchangeRate;
