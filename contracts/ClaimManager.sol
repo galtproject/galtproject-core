@@ -194,6 +194,7 @@ contract ClaimManager is AbstractApplication {
 
     c.status = ApplicationStatus.SUBMITTED;
     c.id = id;
+    c.amount = _amount;
     c.beneficiary = _beneficiary;
     c.applicant = msg.sender;
     c.attachedDocuments = _documents;
@@ -204,6 +205,9 @@ contract ClaimManager is AbstractApplication {
     calculateAndStoreFee(c, fee);
 
     claims[id] = c;
+
+    applicationsArray.push(id);
+    applicationsByAddresses[msg.sender].push(id);
 
     emit NewClaim(id, msg.sender);
     emit ClaimStatusChanged(id, ApplicationStatus.SUBMITTED);
@@ -354,6 +358,8 @@ contract ClaimManager is AbstractApplication {
       address applicant,
       address beneficiary,
       uint256 amount,
+      bytes32[] attachedDocuments,
+      address[] validators,
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
@@ -366,6 +372,8 @@ contract ClaimManager is AbstractApplication {
       c.applicant,
       c.beneficiary,
       c.amount,
+      c.attachedDocuments,
+      c.validators.elements(),
       c.validators.size(),
       c.n,
       m,

@@ -4,6 +4,9 @@ const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
+const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const Validators = artifacts.require('./Validators.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 
@@ -34,6 +37,15 @@ contract.skip('SpaceDex', ([coreTeam, alice, bob, dan, eve]) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
+
+    this.landUtils = await LandUtils.new({ from: coreTeam });
+    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
+    PolygonUtils.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('LandUtils', this.landUtils.address);
+    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
+
+    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
