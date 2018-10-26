@@ -151,6 +151,10 @@ contract Validators is Ownable, RBAC {
     roles[_role].minimalDeposit = _newMinimalDeposit;
   }
 
+  function getRoleMinimalDeposit(bytes32 _role) external view returns (uint256) {
+    return roles[_role].minimalDeposit;
+  }
+
   function deleteApplicationType(
     bytes32 _applicationType
   )
