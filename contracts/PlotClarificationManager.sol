@@ -65,6 +65,8 @@ contract PlotClarificationManager is AbstractApplication {
     ApplicationStatus status;
 
     uint256[] newContour;
+    int256[] newHeights;
+    int256 newLevel;
     bytes32[] assignedRoles;
 
     mapping(bytes32 => uint256) assignedRewards;
@@ -136,6 +138,8 @@ contract PlotClarificationManager is AbstractApplication {
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
     uint256[] _newContour,
+    int256[] _newHeights,
+    int256 _newLevel,
     uint256 _applicationFeeInGalt
   )
     external
@@ -145,6 +149,7 @@ contract PlotClarificationManager is AbstractApplication {
   {
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
+    require(_newContour.length != _newHeights.length, "Contour length should be equal heights length");
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
 
@@ -180,6 +185,8 @@ contract PlotClarificationManager is AbstractApplication {
     a.id = _id;
     a.applicant = msg.sender;
     a.newContour = _newContour;
+    a.newHeights = _newHeights;
+    a.newLevel = _newLevel;
     a.currency = currency;
 
     a.spaceTokenId = _spaceTokenId;
@@ -240,6 +247,9 @@ contract PlotClarificationManager is AbstractApplication {
     }
 
     if (allApproved) {
+      splitMerge.setPackageContour(a.spaceTokenId, a.newContour);
+      splitMerge.setPackageHeights(a.spaceTokenId, a.newHeights);
+      splitMerge.setPackageLevel(a.spaceTokenId, a.newLevel);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
@@ -409,6 +419,8 @@ contract PlotClarificationManager is AbstractApplication {
     view
     returns(
       uint256[] newContour,
+      int256[] newHeights,
+      int256 newLevel,
       bytes32 ledgerIdentifier
     )
   {
@@ -416,7 +428,7 @@ contract PlotClarificationManager is AbstractApplication {
 
     Application storage m = applications[_id];
 
-    return (m.newContour, m.ledgerIdentifier);
+    return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier);
   }
 
   function getApplicationValidator(
