@@ -62,7 +62,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only('PlotClarificationManager', (accounts) => {
+contract('PlotClarificationManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,

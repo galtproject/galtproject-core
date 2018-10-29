@@ -53,6 +53,8 @@ contract PlotClarificationManager is AbstractApplication {
     address applicant;
     bytes32 ledgerIdentifier;
     uint256 spaceTokenId;
+    
+    uint256 fee;
 
     uint256 validatorsReward;
     uint256 galtSpaceReward;
@@ -61,6 +63,7 @@ contract PlotClarificationManager is AbstractApplication {
     bool tokenWithdrawn;
     bool gasDepositWithdrawn;
 
+    // Default is ETH
     Currency currency;
     ApplicationStatus status;
 
@@ -149,28 +152,10 @@ contract PlotClarificationManager is AbstractApplication {
   {
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
-    require(_newContour.length != _newHeights.length, "Contour length should be equal heights length");
+    require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
-
-    // Default is ETH
-    Currency currency;
-    uint256 fee;
-
-    // GALT
-    if (_applicationFeeInGalt > 0) {
-      require(msg.value == 0, "Could not accept both GALT and ETH");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
-      fee = _applicationFeeInGalt;
-      currency = Currency.GALT;
-      // ETH
-    } else {
-      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment");
-
-      fee = msg.value;
-    }
-
+    
     Application memory a;
     bytes32 _id = keccak256(
       abi.encodePacked(
@@ -178,6 +163,20 @@ contract PlotClarificationManager is AbstractApplication {
         blockhash(block.number)
       )
     );
+
+    // GALT
+    if (_applicationFeeInGalt > 0) {
+      require(msg.value == 0, "Could not accept both GALT and ETH");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      a.fee = _applicationFeeInGalt;
+      a.currency = Currency.GALT;
+      // ETH
+    } else {
+      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment");
+
+      a.fee = msg.value;
+    }
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
@@ -187,7 +186,6 @@ contract PlotClarificationManager is AbstractApplication {
     a.newContour = _newContour;
     a.newHeights = _newHeights;
     a.newLevel = _newLevel;
-    a.currency = currency;
 
     a.spaceTokenId = _spaceTokenId;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -199,7 +197,7 @@ contract PlotClarificationManager is AbstractApplication {
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
-    calculateAndStoreFee(applications[_id], fee);
+    calculateAndStoreFee(applications[_id], a.fee);
     assignRequiredValidatorRolesAndRewards(_id);
 
     return _id;
