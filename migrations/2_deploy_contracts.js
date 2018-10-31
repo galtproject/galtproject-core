@@ -175,6 +175,8 @@ module.exports = async function(deployer, network, accounts) {
     await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotClarificationManager.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotEscrow.setFeeManager(coreTeam, true, { from: coreTeam });
 
     console.log('Set fees of contracts...');
     await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
