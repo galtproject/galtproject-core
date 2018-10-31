@@ -5,6 +5,7 @@ const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
+const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
 const PlotEscrowLib = artifacts.require('./PlotEscrowLib');
 const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
@@ -63,6 +64,8 @@ module.exports = async function(deployer, network, accounts) {
 
     const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
+    const plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
+
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
     // https://github.com/zeppelinos/zos-lib/issues/226
@@ -84,6 +87,17 @@ module.exports = async function(deployer, network, accounts) {
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
+      spaceToken.address,
+      splitMerge.address,
+      validators.address,
+      galtToken.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+
+    await plotClarificationManager.initialize(
       spaceToken.address,
       splitMerge.address,
       validators.address,
@@ -167,19 +181,18 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await plotValuation.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
-      from: coreTeam
-    });
-    await plotCustodian.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), {
-      from: coreTeam
-    });
+    await plotClarificationManager.setGaltSpaceEthShare(33, { from: coreTeam });
+    await plotClarificationManager.setGaltSpaceGaltShare(13, { from: coreTeam });
 
-    await plotValuation.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
-      from: coreTeam
-    });
-    await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('1', 'ether'), {
-      from: coreTeam
-    });
+    await plotValuation.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
+    await plotCustodian.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
+    await plotClarificationManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
+    await plotEscrow.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.01', 'ether'), { from: coreTeam });
+
+    await plotValuation.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
+    await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
+    await plotClarificationManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
+    await plotEscrow.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.05', 'ether'), { from: coreTeam });
 
     await spaceDex.setFee('0', '0', { from: coreTeam });
     await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
@@ -207,6 +220,8 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeAbi: splitMerge.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
+            plotClarificationManagerAddress: plotClarificationManager.address,
+            plotClarificationManagerAbi: plotClarificationManager.abi,
             plotValuationAddress: plotValuation.address,
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
