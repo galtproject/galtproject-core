@@ -259,10 +259,7 @@ contract PlotCustodianManager is AbstractApplication {
     );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-    require(
-      validators.hasRole(_chosenCustodian, PC_CUSTODIAN_ROLE),
-      "Unable to assign the application to the chosen custodian");
-    validators.ensureValidatorActive(_chosenCustodian);
+    validators.requireValidatorActiveWithAssignedActiveRole(_chosenCustodian, PC_CUSTODIAN_ROLE);
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
@@ -310,10 +307,7 @@ contract PlotCustodianManager is AbstractApplication {
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
     require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
-    require(
-      validators.hasRole(_chosenCustodian, PC_CUSTODIAN_ROLE),
-      "Unable to assign the application to the chosen custodian");
-    validators.ensureValidatorActive(_chosenCustodian);
+    validators.requireValidatorActiveWithAssignedActiveRole(_chosenCustodian, PC_CUSTODIAN_ROLE);
 
     a.spaceTokenId = _spaceTokenId;
     a.action = _action;
@@ -328,8 +322,7 @@ contract PlotCustodianManager is AbstractApplication {
    */
   function revertApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    require(validators.hasRole(msg.sender, PC_CUSTODIAN_ROLE), "Unable to lock with given roles");
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PC_CUSTODIAN_ROLE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
@@ -347,8 +340,7 @@ contract PlotCustodianManager is AbstractApplication {
    */
   function acceptApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    require(validators.hasRole(msg.sender, PC_CUSTODIAN_ROLE), "Unable to lock with given roles");
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PC_CUSTODIAN_ROLE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
@@ -374,8 +366,7 @@ contract PlotCustodianManager is AbstractApplication {
    */
   function lockApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    require(validators.hasRole(msg.sender, PC_AUDITOR_ROLE), "Unable to lock with given roles");
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PC_AUDITOR_ROLE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED ||
@@ -418,7 +409,7 @@ contract PlotCustodianManager is AbstractApplication {
    */
   function attachDocuments(bytes32 _aId, bytes32[] _documents) external {
     Application storage a = applications[_aId];
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PC_CUSTODIAN_ROLE);
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
     require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");

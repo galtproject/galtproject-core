@@ -22,13 +22,17 @@ const NEW_APPLICATION = '0x41e691fcbdc41a0c9c62caec68dbbdb99b245cbb72f06df6f40fa
 const NON_EXISTING_APPLICATION = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, alice, bob]) => {
+contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, validatorStakes, alice, bob]) => {
   beforeEach(async function() {
-    this.validators = await Validators.new({ from: coreTeam, gas: 6700000 });
+    this.validators = await Validators.new({ from: coreTeam });
+
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(validatorStakes, await this.validators.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
   });
@@ -154,7 +158,7 @@ contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, ali
     });
 
     describe('#isValidatorActive()', () => {
-      it('return true if validator is active', async function() {
+      it('return true if validator is active and has deposited his stake', async function() {
         assert(!(await this.validators.isValidatorActive(alice)));
         await this.validators.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: validatorManager });
         assert(await this.validators.isValidatorActive(alice));

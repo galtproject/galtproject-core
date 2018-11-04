@@ -2,8 +2,9 @@ const fs = require('fs');
 
 console.log('\nSize limit is about', 24577, '\n');
 checkSize('AbstractApplication');
-checkSize('GaltToken');
+checkSize('ClaimManager');
 checkSize('GaltDex');
+checkSize('GaltToken');
 checkSize('LandUtils');
 checkSize('PlotClarificationManager');
 checkSize('PlotCustodianManager');
@@ -16,6 +17,7 @@ checkSize('SpaceDex');
 checkSize('SpaceToken');
 checkSize('SplitMerge');
 checkSize('Validators');
+checkSize('collections/ArraySet');
 console.log('\n');
 
 function checkSize(contract) {

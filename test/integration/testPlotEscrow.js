@@ -11,6 +11,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
+const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -100,6 +101,7 @@ contract("PlotEscrow", (accounts) => {
     coreTeam,
     galtSpaceOrg,
     feeManager,
+    multiSigWallet,
     applicationTypeManager,
     validatorManager,
     alice,
@@ -138,6 +140,7 @@ contract("PlotEscrow", (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.validators = await Validators.new({ from: coreTeam });
+    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotEscrow = await PlotEscrow.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -187,6 +190,9 @@ contract("PlotEscrow", (accounts) => {
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+      from: coreTeam
+    });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotEscrow.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotCustodianManager.setFeeManager(feeManager, true, { from: coreTeam });
@@ -195,6 +201,9 @@ contract("PlotEscrow", (accounts) => {
       from: coreTeam
     });
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
 
@@ -216,6 +225,16 @@ contract("PlotEscrow", (accounts) => {
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+
+    await this.validators.setRoleMinimalDeposit('foo', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('bar', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('buzz', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('human', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('dog', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit('cat', ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit(PE_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
+    await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(30), { from: applicationTypeManager });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
@@ -371,6 +390,16 @@ contract("PlotEscrow", (accounts) => {
       await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
         from: validatorManager
       });
+
+      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
+      await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, PE_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.validatorStakes.stake(eve, PE_AUDITOR_ROLE, ether(30), { from: alice });
 
       const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
       await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
@@ -2066,6 +2095,16 @@ contract("PlotEscrow", (accounts) => {
         await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
           from: validatorManager
         });
+        await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+        await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
+        await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
+        await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+        await this.validatorStakes.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, PE_AUDITOR_ROLE, ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
+        await this.validatorStakes.stake(eve, PE_AUDITOR_ROLE, ether(30), { from: alice });
       });
 
       it('should return correct values', async function() {
