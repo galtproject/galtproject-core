@@ -436,8 +436,8 @@ contract ClaimManager is AbstractApplication {
 
   // NOTICE: in case 100 ether / 3, each validator will receive 33.33... ether and 1 wei will remain on contract
   function calculateAndStoreAuditorRewards (Claim storage c) internal {
-    uint256 l = c.validators.size();
-    uint256 rewardSize = c.fees.validatorsReward.div(l);
+    uint256 len = c.validators.size();
+    uint256 rewardSize = c.fees.validatorsReward.div(len);
 
     c.fees.validatorReward = rewardSize;
   }

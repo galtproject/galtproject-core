@@ -473,7 +473,7 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should deny messaging in non-submitted state', async function() {
-        await this.claimManager.lock(this.cId, { from: bob});
+        await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
         await this.claimManager.lock(this.cId, { from: eve });
 
