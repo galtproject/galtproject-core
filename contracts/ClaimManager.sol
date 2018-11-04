@@ -50,6 +50,7 @@ contract ClaimManager is AbstractApplication {
   event NewClaim(bytes32 id, address applicant);
   event ValidatorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
   event NewProposal(bytes32 claimId, bytes32 proposalId, Action action, address proposer);
+  event NewMessage(bytes32 claimId, uint256 messageId);
 
   struct Claim {
     bytes32 id;
@@ -57,6 +58,7 @@ contract ClaimManager is AbstractApplication {
     address beneficiary;
     uint256 amount;
     bytes32 chosenProposal;
+    uint256 messageCount;
     uint256 m;
     uint256 n;
 
@@ -64,6 +66,7 @@ contract ClaimManager is AbstractApplication {
     FeeDetails fees;
 
     mapping(bytes32 => Proposal) proposalDetails;
+    mapping(uint256 => Message) messages;
     mapping(address => bytes32) votes;
     bytes32[] attachedDocuments;
 
@@ -74,7 +77,10 @@ contract ClaimManager is AbstractApplication {
   struct FeeDetails {
     Currency currency;
     uint256 validatorsReward;
+    uint256 validatorReward;
     uint256 galtSpaceReward;
+    bool galtSpaceRewardPaidOut;
+    mapping(address => bool) validatorRewardPaidOut;
   }
 
   struct Proposal {
@@ -86,6 +92,13 @@ contract ClaimManager is AbstractApplication {
     address[] validators;
     bytes32[] roles;
     uint256[] fines;
+  }
+
+  struct Message {
+    uint256 id;
+    uint256 timestamp;
+    address from;
+    string text;
   }
 
   mapping(bytes32 => Claim) claims;
@@ -320,6 +333,7 @@ contract ClaimManager is AbstractApplication {
 
     if (p.votesFor.size() == c.n) {
       c.chosenProposal = _pId;
+      calculateAndStoreAuditorRewards(c);
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
@@ -328,6 +342,62 @@ contract ClaimManager is AbstractApplication {
         changeSaleOrderStatus(c, ApplicationStatus.REJECTED);
       }
     }
+  }
+
+  function claimValidatorReward(bytes32 _cId) external {
+    Claim storage c = claims[_cId];
+
+    require(
+      c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
+      "Application status should be APPROVED or REJECTED");
+    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+    require(c.fees.validatorRewardPaidOut[msg.sender] == false);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, CM_AUDITOR);
+
+    c.fees.validatorRewardPaidOut[msg.sender] = true;
+
+    if (c.fees.currency == Currency.ETH) {
+      msg.sender.transfer(c.fees.validatorReward);
+    } else if (c.fees.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, c.fees.validatorReward);
+    }
+  }
+
+  function claimGaltSpaceReward(bytes32 _cId) external {
+    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+
+    Claim storage c = claims[_cId];
+
+    /* solium-disable-next-line */
+    require(
+      c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
+      "Application status should be APPROVED or REJECTED");
+
+    require(c.fees.galtSpaceReward > 0, "Reward is 0");
+    require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+
+    c.fees.galtSpaceRewardPaidOut = true;
+
+    if (c.fees.currency == Currency.ETH) {
+      msg.sender.transfer(c.fees.galtSpaceReward);
+    } else if (c.fees.currency == Currency.GALT) {
+      galtToken.transfer(msg.sender, c.fees.galtSpaceReward);
+    } else {
+      revert("Unknown currency");
+    }
+  }
+
+  function pushMessage(bytes32 _cId, string _text) external {
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validators.has(msg.sender) == true || c.applicant == msg.sender, "Allowed only to an applicant or a validator");
+
+    uint256 id = c.messageCount;
+    c.messages[id] = Message(id, block.timestamp, msg.sender, _text);
+    c.messageCount = id + 1;
+
+    emit NewMessage(_cId, id);
   }
 
   function _voteFor(Claim storage _c, bytes32 _pId) internal {
@@ -341,14 +411,49 @@ contract ClaimManager is AbstractApplication {
     _p.votesFor.add(msg.sender);
   }
 
-  function claimValidatorReward(bytes32 _cId) external {
+  function calculateAndStoreFee(
+    Claim memory _c,
+    uint256 _fee
+  )
+    internal
+  {
+    uint256 share;
 
+    if (_c.fees.currency == Currency.ETH) {
+      share = galtSpaceEthShare;
+    } else {
+      share = galtSpaceGaltShare;
+    }
+
+    uint256 galtSpaceReward = share.mul(_fee).div(100);
+    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+
+    assert(validatorsReward.add(galtSpaceReward) == _fee);
+
+    _c.fees.validatorsReward = validatorsReward;
+    _c.fees.galtSpaceReward = galtSpaceReward;
   }
 
-  function claimGaltSpaceReward(bytes32 _cId) external {
+  // NOTICE: in case 100 ether / 3, each validator will receive 33.33... ether and 1 wei will remain on contract
+  function calculateAndStoreAuditorRewards (Claim storage c) internal {
+    uint256 l = c.validators.size();
+    uint256 rewardSize = c.fees.validatorsReward.div(l);
 
+    c.fees.validatorReward = rewardSize;
   }
 
+  function changeSaleOrderStatus(
+    Claim storage _claim,
+    ApplicationStatus _status
+  )
+    internal
+  {
+    emit ClaimStatusChanged(_claim.id, _status);
+
+    _claim.status = _status;
+  }
+
+  /** GETTERS **/
   function claim(
     bytes32 _cId
   )
@@ -363,6 +468,7 @@ contract ClaimManager is AbstractApplication {
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
+      uint256 messageCount,
       ApplicationStatus status
     )
   {
@@ -378,18 +484,20 @@ contract ClaimManager is AbstractApplication {
       c.validators.size(),
       c.n,
       m,
+      c.messageCount,
       c.status
     );
   }
 
-  function claimFees(
+  function getClaimFees(
     bytes32 _cId
   )
     external
     returns (
       Currency currency,
       uint256 validatorsReward,
-      uint256 galtSpaceReward
+      uint256 galtSpaceReward,
+      uint256 validatorReward
     )
   {
     FeeDetails storage f = claims[_cId].fees;
@@ -397,7 +505,8 @@ contract ClaimManager is AbstractApplication {
     return (
       f.currency,
       f.validatorsReward,
-      f.galtSpaceReward
+      f.galtSpaceReward,
+      f.validatorReward
     );
   }
 
@@ -415,6 +524,27 @@ contract ClaimManager is AbstractApplication {
 
   function getProposals(bytes32 _cId) external view returns (bytes32[]) {
     return claims[_cId].proposals;
+  }
+
+  function getMessage(
+    bytes32 _cId,
+    uint256 _mId
+  )
+    external
+    view
+    returns (
+      uint256 timestamp,
+      address from,
+      string text
+    )
+  {
+    Message storage message = claims[_cId].messages[_mId];
+
+    return (
+      message.timestamp,
+      message.from,
+      message.text
+    );
   }
 
   /*
@@ -457,39 +587,5 @@ contract ClaimManager is AbstractApplication {
       p.roles,
       p.fines
     );
-  }
-
-  function calculateAndStoreFee(
-    Claim memory _c,
-    uint256 _fee
-  )
-    internal
-  {
-    uint256 share;
-
-    if (_c.fees.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
-    } else {
-      share = galtSpaceGaltShare;
-    }
-
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 validatorsReward = _fee.sub(galtSpaceReward);
-
-    assert(validatorsReward.add(galtSpaceReward) == _fee);
-
-    _c.fees.validatorsReward = validatorsReward;
-    _c.fees.galtSpaceReward = galtSpaceReward;
-  }
-
-  function changeSaleOrderStatus(
-    Claim storage _claim,
-    ApplicationStatus _status
-  )
-    internal
-  {
-    emit ClaimStatusChanged(_claim.id, _status);
-
-    _claim.status = _status;
   }
 }
