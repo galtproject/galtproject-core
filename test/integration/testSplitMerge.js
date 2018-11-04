@@ -3,6 +3,7 @@ const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
+const _ = require('lodash');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -64,6 +65,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       res = await this.splitMerge.initPackage({ from: alice });
       const basePackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
       await this.splitMerge.setPackageContour(basePackageId, basePackage, { from: alice });
+      await this.splitMerge.setPackageHeights(basePackageId, basePackage.map((geohash, index) => index + 10), {
+        from: alice
+      });
+
+      const intersectionGeohashes = _.intersection(firstContour, secondContour);
+      intersectionGeohashes.forEach(geohash => {
+        console.log(geohash, galt.geohash.contour.isGeohashInsideContour(geohash, baseContour, false));
+      });
 
       res = await this.splitMerge.splitPackage(basePackageId, secondPackage, firstPackage, {
         from: alice
@@ -81,10 +90,16 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       res = await this.splitMerge.initPackage({ from: alice });
       const firstPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
       await this.splitMerge.setPackageContour(firstPackageId, firstPackage, { from: alice });
+      await this.splitMerge.setPackageHeights(firstPackageId, firstPackage.map((geohash, index) => index + 10), {
+        from: alice
+      });
 
       res = await this.splitMerge.initPackage({ from: alice });
       const secondPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
       await this.splitMerge.setPackageContour(secondPackageId, secondPackage, { from: alice });
+      await this.splitMerge.setPackageHeights(secondPackageId, secondPackage.map((geohash, index) => index + 10), {
+        from: alice
+      });
 
       res = await this.splitMerge.mergePackage(firstPackageId, secondPackageId, resultPackage, {
         from: alice
@@ -118,6 +133,20 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       );
       const splitContour2 = ['w9cx63zs88', 'w9cx71gk90', 'w9cx6wbuuy'].map(galt.geohashToGeohash5);
       await this.splitMerge.checkSplitContours(this.baseContour, splitContour1, splitContour2);
+    });
+
+    it.skip('should split correctly user real case 1', async function() {
+      const baseContour = ['w24qkf1kse53', 'w24qhz5d8ede', 'w24qhw80s58p', 'w24qk6n0sepd'];
+      const userContour = ['w24qkd8wx6vj', 'w24qkbhqee6j', 'w24qkfq5edfz'];
+      const splitResult = galt.geohash.contour.splitContours(baseContour, userContour);
+      await this.splitPackage(splitResult.base, splitResult.split, baseContour);
+    });
+
+    it.skip('should split correctly user real case 2', async function() {
+      const baseContour = ['w24qkf1kse53', 'w24qhz5d8ede', 'w24qhw80s58p', 'w24qk6n0sepd'];
+      const userContour = ['w24qkds3edgq', 'w24qkbshxeqf', 'w24qkfssxdzn'];
+      const splitResult = galt.geohash.contour.splitContours(baseContour, userContour);
+      await this.splitPackage(splitResult.base, splitResult.split, baseContour);
     });
 
     it('should reject incorrect split by duplicate geohash of source contour', async function() {
@@ -176,9 +205,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const thirdContour = galt.geohash.contour.mergeContours(firstContour, secondContour, false);
 
-      it('should split 4 => 6, 4', async function() {
-        await this.splitPackage(firstContour, secondContour, thirdContour);
-      });
+      // it('should split 4 => 6, 4', async function() {
+      //   await this.splitPackage(firstContour, secondContour, thirdContour);
+      // });
 
       it('should merge 4, 6 => 4', async function() {
         await this.mergePackage(firstContour, secondContour, thirdContour);
@@ -209,6 +238,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
       await this.splitMerge.setPackageContour(packageId, baseContour, { from: alice });
+      await this.splitMerge.setPackageHeights(packageId, baseContour.map((geohash, index) => index + 10), {
+        from: alice
+      });
 
       // CACHING
       // await this.splitMerge.checkSplitContours(baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
@@ -224,8 +256,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      res = await this.splitMerge.getPackageContour.call(packageId);
-      assert.deepEqual(res.map(item => item.toString(10)), contourToSplitForOldPackage);
+      const resContour = await this.splitMerge.getPackageContour.call(packageId);
+      assert.deepEqual(resContour.map(item => item.toString(10)), contourToSplitForOldPackage);
+
+      const resHeights = await this.splitMerge.getPackageHeights.call(packageId);
+      assert.equal(resHeights.some(item => item.toString(10) === '0'), false);
+      assert.equal(resHeights.length === resContour.length, true);
 
       res = await this.spaceToken.ownerOf.call(newPackageId);
       assert.equal(res, alice);
