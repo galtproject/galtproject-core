@@ -83,6 +83,8 @@ contract('PlotClarificationManager', (accounts) => {
 
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.newContour = this.newContourRaw.map(galt.geohashToNumber);
+    this.newHeights = this.newContour.map(() => ether(10));
+    this.newLevel = 1;
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
@@ -330,6 +332,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           ether(45),
           {
             from: alice
@@ -351,6 +355,8 @@ contract('PlotClarificationManager', (accounts) => {
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.newContour,
+              this.newHeights,
+              this.newLevel,
               ether(42),
               {
                 from: alice
@@ -365,6 +371,8 @@ contract('PlotClarificationManager', (accounts) => {
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.newContour,
+            this.newHeights,
+            this.newLevel,
             ether(47),
             {
               from: alice
@@ -387,6 +395,8 @@ contract('PlotClarificationManager', (accounts) => {
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.newContour,
+            this.newHeights,
+            this.newLevel,
             ether(47),
             {
               from: alice
@@ -419,6 +429,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           ether(57),
           {
             from: alice
@@ -683,6 +695,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -710,6 +724,8 @@ contract('PlotClarificationManager', (accounts) => {
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.newContour,
+              this.newHeights,
+              this.newLevel,
               0,
               {
                 from: alice,
@@ -724,6 +740,8 @@ contract('PlotClarificationManager', (accounts) => {
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.newContour,
+            this.newHeights,
+            this.newLevel,
             0,
             {
               from: alice,
@@ -737,6 +755,8 @@ contract('PlotClarificationManager', (accounts) => {
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.newContour,
+            this.newHeights,
+            this.newLevel,
             0,
             {
               from: alice,
@@ -757,6 +777,8 @@ contract('PlotClarificationManager', (accounts) => {
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.newContour,
+            this.newHeights,
+            this.newLevel,
             0,
             {
               from: alice,
@@ -794,6 +816,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -850,6 +874,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -905,6 +931,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -977,6 +1005,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -1029,6 +1059,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
@@ -1060,6 +1092,8 @@ contract('PlotClarificationManager', (accounts) => {
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.newContour,
+          this.newHeights,
+          this.newLevel,
           0,
           {
             from: alice,
