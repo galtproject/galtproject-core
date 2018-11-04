@@ -119,7 +119,8 @@ contract SplitMerge is Initializable, Ownable {
     uint256[] _sourcePackageContour, 
     uint256[] _newPackageContour
   ) 
-    public 
+    public
+    onlySpaceTokenOwner(_sourcePackageTokenId)
     returns (uint256) 
   {
     uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
@@ -152,6 +153,7 @@ contract SplitMerge is Initializable, Ownable {
     }
     
     setPackageHeights(newPackageTokenId, newPackageHeights);
+    setPackageLevel(newPackageTokenId, getPackageLevel(_sourcePackageTokenId));
 
     return newPackageTokenId;
   }
@@ -211,8 +213,14 @@ contract SplitMerge is Initializable, Ownable {
     uint256 _destinationPackageTokenId, 
     uint256[] _destinationPackageContour
   ) 
-    public 
+    public
+    onlySpaceTokenOwner(_sourcePackageTokenId)
+    onlySpaceTokenOwner(_destinationPackageTokenId)
   {
+    require(
+      getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId), 
+      "Space tokens levels should be equal"
+    );
     checkMergeContours(
       getPackageContour(_sourcePackageTokenId), 
       getPackageContour(_destinationPackageTokenId), 
