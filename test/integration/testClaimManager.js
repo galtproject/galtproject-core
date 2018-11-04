@@ -8,7 +8,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertGaltBalanceChanged, assertEthBalanceChanged, assertRevert } = require('../helpers');
+const { ether, zeroAddress, assertGaltBalanceChanged, assertEthBalanceChanged, assertRevert } = require('../helpers');
 
 const { stringToHex } = Web3.utils;
 
@@ -456,6 +456,75 @@ contract.only("ClaimManager", (accounts) => {
       });
 
       it('should deny proposal when claim is executed');
+    });
+
+    describe('#pushMessage()', () => {
+      it('should allow any validator push a message into registry', async function() {
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hi!', { from: bob });
+      });
+
+      it('should allow a claimer pushing message into registry', async function() {
+        await this.claimManager.pushMessage(this.cId, 'hi!', { from: alice });
+      });
+
+      it('should deny a stranger pushing message into registry', async function() {
+        await assertRevert(this.claimManager.pushMessage(this.cId, 'hi!', { from: bob }));
+      });
+
+      it('should deny messaging in non-submitted state', async function() {
+        await this.claimManager.lock(this.cId, { from: bob});
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        const res = await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
+        const pId1 = res.logs[0].args.proposalId;
+
+        await this.claimManager.vote(this.cId, pId1, { from: eve });
+        await this.claimManager.vote(this.cId, pId1, { from: dan });
+      });
+
+      it('should provide with messages getter', async function() {
+        await this.claimManager.lock(this.cId, { from: charlie });
+        await this.claimManager.lock(this.cId, { from: bob });
+
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.messageCount, 0);
+
+        await this.claimManager.pushMessage(this.cId, 'hi', { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hey', { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hello', { from: alice });
+        await this.claimManager.pushMessage(this.cId, 'you', { from: charlie });
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.messageCount, 4);
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 0).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.text, 'hi');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 1).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.text, 'hey');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 2).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), alice);
+        assert.equal(res.text, 'hello');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 3).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), charlie);
+        assert.equal(res.text, 'you');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 4).call();
+        assert.equal(res.timestamp, 0);
+        assert.equal(res.from.toLowerCase(), zeroAddress);
+        assert.equal(res.text, '');
+      });
     });
 
     describe('#proposeApproval()', () => {

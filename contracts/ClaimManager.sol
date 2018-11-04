@@ -50,6 +50,7 @@ contract ClaimManager is AbstractApplication {
   event NewClaim(bytes32 id, address applicant);
   event ValidatorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
   event NewProposal(bytes32 claimId, bytes32 proposalId, Action action, address proposer);
+  event NewMessage(bytes32 claimId, uint256 messageId);
 
   struct Claim {
     bytes32 id;
@@ -57,6 +58,7 @@ contract ClaimManager is AbstractApplication {
     address beneficiary;
     uint256 amount;
     bytes32 chosenProposal;
+    uint256 messageCount;
     uint256 m;
     uint256 n;
 
@@ -64,6 +66,7 @@ contract ClaimManager is AbstractApplication {
     FeeDetails fees;
 
     mapping(bytes32 => Proposal) proposalDetails;
+    mapping(uint256 => Message) messages;
     mapping(address => bytes32) votes;
     bytes32[] attachedDocuments;
 
@@ -89,6 +92,13 @@ contract ClaimManager is AbstractApplication {
     address[] validators;
     bytes32[] roles;
     uint256[] fines;
+  }
+
+  struct Message {
+    uint256 id;
+    uint256 timestamp;
+    address from;
+    string text;
   }
 
   mapping(bytes32 => Claim) claims;
@@ -377,6 +387,19 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
+  function pushMessage(bytes32 _cId, string _text) external {
+    Claim storage c = claims[_cId];
+
+    require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(c.validators.has(msg.sender) == true || c.applicant == msg.sender, "Allowed only to an applicant or a validator");
+
+    uint256 id = c.messageCount;
+    c.messages[id] = Message(id, block.timestamp, msg.sender, _text);
+    c.messageCount = id + 1;
+
+    emit NewMessage(_cId, id);
+  }
+
   function _voteFor(Claim storage _c, bytes32 _pId) internal {
     Proposal storage _p = _c.proposalDetails[_pId];
 
@@ -445,6 +468,7 @@ contract ClaimManager is AbstractApplication {
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
+      uint256 messageCount,
       ApplicationStatus status
     )
   {
@@ -460,6 +484,7 @@ contract ClaimManager is AbstractApplication {
       c.validators.size(),
       c.n,
       m,
+      c.messageCount,
       c.status
     );
   }
@@ -499,6 +524,27 @@ contract ClaimManager is AbstractApplication {
 
   function getProposals(bytes32 _cId) external view returns (bytes32[]) {
     return claims[_cId].proposals;
+  }
+
+  function getMessage(
+    bytes32 _cId,
+    uint256 _mId
+  )
+    external
+    view
+    returns (
+      uint256 timestamp,
+      address from,
+      string text
+    )
+  {
+    Message storage message = claims[_cId].messages[_mId];
+
+    return (
+      message.timestamp,
+      message.from,
+      message.text
+    );
   }
 
   /*
