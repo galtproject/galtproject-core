@@ -68,7 +68,7 @@ module.exports = async function(deployer, network, accounts) {
 
     const claimManager = await ClaimManager.new({ from: coreTeam });
     const validatorStakes = await ValidatorStakes.new({ from: coreTeam });
-    const plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
+    const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -101,7 +101,7 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    await plotClarificationManager.initialize(
+    await plotClarification.initialize(
       spaceToken.address,
       splitMerge.address,
       validators.address,
@@ -191,7 +191,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
     await claimManager.setFeeManager(coreTeam, true, { from: coreTeam });
-    await plotClarificationManager.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotClarification.setFeeManager(coreTeam, true, { from: coreTeam });
     await plotEscrow.setFeeManager(coreTeam, true, { from: coreTeam });
 
     console.log('Set fees of contracts...');
@@ -199,17 +199,17 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await plotClarificationManager.setGaltSpaceEthShare(33, { from: coreTeam });
-    await plotClarificationManager.setGaltSpaceGaltShare(13, { from: coreTeam });
+    await plotClarification.setGaltSpaceEthShare(33, { from: coreTeam });
+    await plotClarification.setGaltSpaceGaltShare(13, { from: coreTeam });
 
     await plotValuation.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
     await plotCustodian.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
-    await plotClarificationManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
+    await plotClarification.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.1', 'ether'), { from: coreTeam });
     await plotEscrow.setMinimalApplicationFeeInEth(Web3.utils.toWei('0.01', 'ether'), { from: coreTeam });
 
     await plotValuation.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
-    await plotClarificationManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
+    await plotClarification.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotEscrow.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.05', 'ether'), { from: coreTeam });
 
     await spaceDex.setFee('0', '0', { from: coreTeam });
@@ -244,8 +244,8 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeAbi: splitMerge.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
-            plotClarificationManagerAddress: plotClarificationManager.address,
-            plotClarificationManagerAbi: plotClarificationManager.abi,
+            plotClarificationAddress: plotClarification.address,
+            plotClarificationAbi: plotClarification.abi,
             plotValuationAddress: plotValuation.address,
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
