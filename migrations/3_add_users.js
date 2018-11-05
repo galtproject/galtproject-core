@@ -1,4 +1,5 @@
 const PlotManager = artifacts.require('./PlotManager');
+const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const SpaceToken = artifacts.require('./SpaceToken');
@@ -33,6 +34,7 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${network}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
+    const plotClarification = await PlotClarificationManager.at(data.plotClarificationAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
@@ -62,6 +64,20 @@ module.exports = async function(deployer, network, accounts) {
     await validators.setApplicationTypeRoles(
       PLOT_MANAGER_APPLICATION_TYPE,
       [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE],
+      [75, 25],
+      ['', ''],
+      {
+        from: coreTeam
+      }
+    );
+
+    const PCL_CADASTRAL_ROLE = 'pcl_cadastral';
+    const PCL_AUDITOR_ROLE = 'pcl_auditor';
+
+    const PLOT_CLARIFICATION_APPLICATION_TYPE = await plotClarification.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(
+      PLOT_CLARIFICATION_APPLICATION_TYPE,
+      [PCL_CADASTRAL_ROLE, PCL_AUDITOR_ROLE],
       [75, 25],
       ['', ''],
       {
@@ -139,6 +155,8 @@ module.exports = async function(deployer, network, accounts) {
     const allRoles = [
       PM_CADASTRAL_ROLE,
       PM_AUDITOR_ROLE,
+      PCL_CADASTRAL_ROLE,
+      PCL_AUDITOR_ROLE,
       PV_APPRAISER_ROLE,
       PV_APPRAISER2_ROLE,
       PV_AUDITOR_ROLE,
