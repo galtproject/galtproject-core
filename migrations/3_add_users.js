@@ -248,6 +248,7 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotClarification.setFeeManager(address, true, { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
