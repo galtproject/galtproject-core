@@ -11,11 +11,17 @@ validate:
 	npm run solium
 	npm run eslint
 
-test:
+only-skip:
+	./scripts/only-skip.sh
+
+only-recover:
+	./scripts/only-recover.sh
+
+test: only-skip
 	truffle compile
-	node scripts/checkContractSize.js
 	-npm test
 	tput bel
+	$(MAKE) only-recover
 
 retest: cleanup test
 
