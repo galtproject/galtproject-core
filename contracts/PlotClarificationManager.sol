@@ -523,4 +523,16 @@ contract PlotClarificationManager is AbstractApplication {
 
     assert(totalReward == a.validatorsReward);
   }
+
+  function getAllApplications() external view returns (bytes32[]) {
+    return applicationsArray;
+  }
+
+  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
+    return applicationsByAddresses[_applicant];
+  }
+
+  function getApplicationsByValidator(address _validator) external view returns (bytes32[]) {
+    return applicationsByValidator[_validator];
+  }
 }
