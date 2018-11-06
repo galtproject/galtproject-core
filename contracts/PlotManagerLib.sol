@@ -25,21 +25,11 @@ library PlotManagerLib {
   using SafeMath for uint256;
   using LandUtils for uint256;
 
-  // weight = 32 ** (12 - geohashLength)
-  function geohashCapacityToWeight(uint256 _capacity) public pure returns (uint256) {
-    // requires sezu06 = sezu06a * 32
-    return (32 ** (12 - _capacity));
-  }
-
-  function geohash5Weight(uint256 _geohash5) public pure returns (uint256) {
-    return geohashCapacityToWeight(LandUtils.geohash5Precision(_geohash5));
-  }
-
   function rejectApplicationHelper(
     PlotManager.Application storage _a,
     string _message
   )
-    external
+    internal
   {
     require(
       _a.status == PlotManager.ApplicationStatus.SUBMITTED,

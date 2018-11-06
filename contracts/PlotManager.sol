@@ -261,6 +261,9 @@ contract PlotManager is AbstractApplication {
 
   /**
    * @dev Resubmit application after it was reverted
+   *
+   * TODO: handle payments correctly
+   *
    * @param _aId application id
    * @param _credentialsHash keccak256 of user credentials
    * @param _ledgerIdentifier of a plot
@@ -295,8 +298,12 @@ contract PlotManager is AbstractApplication {
     a.details.credentialsHash = _credentialsHash;
     a.details.ledgerIdentifier = _ledgerIdentifier;
 
-    splitMerge.setPackageContour(a.spaceTokenId, _newPackageContour);
-    splitMerge.setPackageHeights(a.spaceTokenId, _newHeights);
+    if (_newPackageContour.length != 0) {
+      splitMerge.setPackageContour(a.spaceTokenId, _newPackageContour);
+    }
+    if (_newHeights.length != 0) {
+      splitMerge.setPackageHeights(a.spaceTokenId, _newHeights);
+    }
     splitMerge.setPackageLevel(a.spaceTokenId, _newLevel);
 
     for (uint8 i = 0; i < len; i++) {
@@ -312,7 +319,9 @@ contract PlotManager is AbstractApplication {
     Application storage a,
     uint256 _resubmissionFeeInGalt,
     uint256[] _newPackageContour
-  ) internal {
+  )
+    internal
+  {
     Currency currency = a.currency;
     uint256 fee;
 
