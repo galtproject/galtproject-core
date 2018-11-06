@@ -17,7 +17,14 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { assertEthBalanceChanged, assertGaltBalanceChanged, ether, assertRevert, zeroAddress } = require('../helpers');
+const {
+  initHelperWeb3,
+  assertEthBalanceChanged,
+  assertGaltBalanceChanged,
+  ether,
+  assertRevert,
+  zeroAddress
+} = require('../helpers');
 
 const web3 = new Web3(PlotEscrow.web3.currentProvider);
 // const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -33,6 +40,7 @@ const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
+initHelperWeb3(web3);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
@@ -120,6 +128,7 @@ contract("PlotEscrow", (accounts) => {
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
 
+    this.heights = [1, 2, 3];
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -361,22 +370,6 @@ contract("PlotEscrow", (accounts) => {
         from: applicationTypeManager
       });
 
-      // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.spaceTokenId = res.spaceTokenId;
-
       // assign validators
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
@@ -401,8 +394,26 @@ contract("PlotEscrow", (accounts) => {
       await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
       await this.validatorStakes.stake(eve, PE_AUDITOR_ROLE, ether(30), { from: alice });
 
-      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+      const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
+      await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
+
+      // Alice obtains a package token
+      let res = await this.plotManager.submitApplication(
+        this.contour,
+        this.heights,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        galts,
+        {
+          from: alice
+        }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.spaceTokenId = res.spaceTokenId;
+
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
@@ -1849,24 +1860,25 @@ contract("PlotEscrow", (accounts) => {
 
     describe('sale order with ERC20 payment method', () => {
       beforeEach(async function() {
+        const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+
         // Alice obtains a package token
-        let res = await this.plotManager.applyForPlotOwnership(
+        let res = await this.plotManager.submitApplication(
           this.contour,
-          this.contour,
+          this.heights,
           0,
           this.credentials,
           this.ledgerIdentifier,
+          0,
           {
-            from: alice
+            from: alice,
+            value: eths
           }
         );
         this.aId = res.logs[0].args.id;
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         this.spaceTokenId = res.spaceTokenId;
-
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
         await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
         await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
