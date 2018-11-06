@@ -14,7 +14,14 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEthBalanceChanged, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const {
+  initHelperWeb3,
+  ether,
+  assertEthBalanceChanged,
+  assertEqualBN,
+  assertRevert,
+  zeroAddress
+} = require('../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -26,6 +33,7 @@ const CLARIFICATION_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1a
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
+initHelperWeb3(web3);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
@@ -86,6 +94,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.newContour = this.newContourRaw.map(galt.geohashToNumber);
     this.newHeights = this.newContour.map(() => ether(10));
+    this.heights = [1, 2, 3];
     this.newLevel = 1;
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -302,21 +311,6 @@ contract('PlotClarificationManager', (accounts) => {
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: validatorManager });
@@ -332,10 +326,25 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
       await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
-      const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
-      const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+      const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
-      await this.plotManager.submitApplication(this.aId, galts.toString(), { from: alice, value: eths });
+
+      // Alice obtains a package token
+      let res = await this.plotManager.submitApplication(
+        this.contour,
+        this.heights,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        galts,
+        {
+          from: alice
+        }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.spaceTokenId = res.spaceTokenId;
 
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
@@ -368,7 +377,6 @@ contract('PlotClarificationManager', (accounts) => {
         this.aId = res.logs[0].args.id;
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
-
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -678,21 +686,6 @@ contract('PlotClarificationManager', (accounts) => {
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -707,8 +700,26 @@ contract('PlotClarificationManager', (accounts) => {
       await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
       await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
-      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+      const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+
+      // Alice obtains a package token
+      let res = await this.plotManager.submitApplication(
+        this.contour,
+        this.heights,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        0,
+        {
+          from: alice,
+          value: eths
+        }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.spaceTokenId = res.spaceTokenId;
+
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });

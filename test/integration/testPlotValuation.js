@@ -14,7 +14,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertGaltBalanceChanged, assertRevert, zeroAddress } = require('../helpers');
+const { initHelperWeb3, ether, assertGaltBalanceChanged, assertRevert, zeroAddress } = require('../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -28,6 +28,8 @@ const PV_AUDITOR_ROLE = 'PV_AUDITOR_ROLE';
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+
+initHelperWeb3(web3);
 
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
@@ -90,6 +92,7 @@ contract('PlotValuation', (accounts) => {
       '9850d829b57b233101525397603baedc32d20288a866514dd5441abe286f4d2e'
     ];
 
+    this.heights = [1, 2, 3];
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -301,21 +304,6 @@ contract('PlotValuation', (accounts) => {
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -332,10 +320,26 @@ contract('PlotValuation', (accounts) => {
       await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
       await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
 
-      const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
-      const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
+      const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
-      await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
+
+      // Alice obtains a package token
+      let res = await this.plotManager.submitApplication(
+        this.contour,
+        this.heights,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        galts,
+        {
+          from: alice
+        }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.spaceTokenId = res.spaceTokenId;
+
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
@@ -539,21 +543,6 @@ contract('PlotValuation', (accounts) => {
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      // Alice obtains a package token
-      let res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      this.spaceTokenId = res.spaceTokenId;
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, 'foo'], { from: validatorManager });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar'], { from: validatorManager });
@@ -570,8 +559,26 @@ contract('PlotValuation', (accounts) => {
       await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
       await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
 
-      const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
+      const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+
+      // Alice obtains a package token
+      let res = await this.plotManager.submitApplication(
+        this.contour,
+        this.heights,
+        0,
+        this.credentials,
+        this.ledgerIdentifier,
+        0,
+        {
+          from: alice,
+          value: eths
+        }
+      );
+      this.aId = res.logs[0].args.id;
+
+      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+      this.spaceTokenId = res.spaceTokenId;
+
       await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
       await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
       await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
