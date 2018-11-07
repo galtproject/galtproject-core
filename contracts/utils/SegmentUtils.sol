@@ -22,16 +22,12 @@ library SegmentUtils {
     BEFORE,
     AFTER
   }
-  
+
   struct Sweepline {
     int256 x;
     Position position;
   }
 
-  event LogGetYInput (int[2][2] segment, int x);
-  event LogCompareSegmentsInput (int x, int[2][2] a, int[2][2] b);
-  event LogCompareSegmentsResult (int result1, int result2, int result3);
-  
   function segmentsIntersect(int[2][2] a, int[2][2] b) public pure returns (bool) {
     int256 d1 = VectorUtils.direction(b[0], b[1], a[0]);
     int256 d2 = VectorUtils.direction(b[0], b[1], a[1]);
@@ -52,47 +48,52 @@ library SegmentUtils {
     return false;
   }
 
-  function findSegmentsIntersection (int[2][2] a, int[2][2] b) public pure returns(int256[2]) {
+  function findSegmentsIntersection(int[2][2] a, int[2][2] b) public pure returns (int256[2]) {
+    //TODO: optimize?
     int xDivide = ((a[0][0] - a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] - b[1][0]));
-    if(xDivide == 0) {
-      return int256[2]([int256(-1), int256(-1)]);
+    if (xDivide == 0) {
+      return int256[2]([int256(- 1), int256(- 1)]);
     }
 
+    //TODO: optimize?
     int x = ((a[0][0] * a[1][1] - a[0][1] * a[1][0]) * (b[0][0] - b[1][0]) - (a[0][0] - a[1][0]) * (b[0][0] * b[1][1] - b[0][1] * b[1][0])) /
-        xDivide;
-    
+    xDivide;
+
+    //TODO: optimize?
     int yDivide = ((a[0][0] - a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] - b[1][0]));
-    if(yDivide == 0) {
-      return int256[2]([int256(-1), int256(-1)]);
+    if (yDivide == 0) {
+      return int256[2]([int256(- 1), int256(- 1)]);
     }
 
+    //TODO: optimize?
     int y = ((a[0][0] * a[1][1] - a[0][1] * a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] * b[1][1] - b[0][1] * b[1][0])) /
-        yDivide;
-    
+    yDivide;
+
     if (a[0][0] >= a[1][0]) {
-      if (!MathUtils.between(a[1][0], x, a[0][0])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(a[1][0], x, a[0][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
     } else {
-      if (!MathUtils.between(a[0][0], x, a[1][0])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(a[0][0], x, a[1][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
     }
     if (a[0][1] >= a[1][1]) {
-      if (!MathUtils.between(a[1][1], y, a[0][1])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(a[1][1], y, a[0][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
     } else {
-      if (!MathUtils.between(a[0][1], y, a[1][1])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(a[0][1], y, a[1][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
     }
     if (b[0][0] >= b[1][0]) {
-      if (!MathUtils.between(b[1][0], x, b[0][0])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(b[1][0], x, b[0][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
     } else {
-      if (!MathUtils.between(b[0][0], x, b[1][0])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(b[0][0], x, b[1][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
     }
     if (b[0][1] >= b[1][1]) {
-      if (!MathUtils.between(b[1][1], y, b[0][1])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(b[1][1], y, b[0][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
     } else {
-      if (!MathUtils.between(b[0][1], y, b[1][1])) {return int256[2]([int256(-1), int256(-1)]);}
+      if (!MathUtils.between(b[0][1], y, b[1][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
     }
     return [x, y];
   }
 
   function isEqual(int[2][2] a, int[2][2] b) public view returns (bool) {
+    //TODO: optimize?
     for (uint i = 0; i < a.length; i++) {
       if (b[i][0] != a[i][0] || b[i][1] != a[i][1]) {
         return false;
@@ -100,37 +101,35 @@ library SegmentUtils {
     }
     return true;
   }
-  
-  function compareSegments(Sweepline storage sweepline, int[2][2] a, int[2][2] b) public returns(int8) {
+
+  function compareSegments(Sweepline storage sweepline, int[2][2] a, int[2][2] b) public returns (int8) {
     if (isEqual(a, b)) {
       return int8(0);
     }
-    
-    emit LogCompareSegmentsInput(sweepline.x, a, b);
 
     int deltaY = getY(a, sweepline.x) - getY(b, sweepline.x);
-    
+
     if (MathUtils.abs(deltaY) > MathUtils.EPS()) {
-      return deltaY < 0 ? int8(-1) : int8(1);
+      return deltaY < 0 ? int8(- 1) : int8(1);
     } else {
       int aSlope = getSlope(a);
       int bSlope = getSlope(b);
 
       if (aSlope != bSlope) {
         if (sweepline.position == Position.BEFORE) {
-          return aSlope > bSlope ? int8(-1) : int8(1);
+          return aSlope > bSlope ? int8(- 1) : int8(1);
         } else {
-          return aSlope > bSlope ? int8(1) : int8(-1);
+          return aSlope > bSlope ? int8(1) : int8(- 1);
         }
       }
     }
 
     if (a[0][0] - b[0][0] != 0) {
-      return a[0][0] - b[0][0] < 0 ? int8(-1) : int8(1);
+      return a[0][0] - b[0][0] < 0 ? int8(- 1) : int8(1);
     }
 
     if (a[1][0] - b[1][0] != 0) {
-      return a[1][0] - b[1][0] < 0 ? int8(-1) : int8(1);
+      return a[1][0] - b[1][0] < 0 ? int8(- 1) : int8(1);
     }
 
     return int8(0);
@@ -145,17 +144,18 @@ library SegmentUtils {
   }
 
   function getY(int[2][2] segment, int x) public returns (int) {
-    emit LogGetYInput(segment, x);
     if (x <= segment[0][0]) {
       return segment[0][1];
     } else if (x >= segment[1][0]) {
       return segment[1][1];
     }
- 
+
     if ((x - segment[0][0]) > (segment[1][0] - x)) {
+      //TODO: optimize?
       int ifac = 1 ether * (x - segment[0][0]) / (segment[1][0] - segment[0][0]);
       return ((segment[0][1] * (1 ether - ifac)) / 1 ether) + ((segment[1][1] * ifac) / 1 ether);
     } else {
+      //TODO: optimize?
       int fac = 1 ether * (segment[1][0] - x) / (segment[1][0] - segment[0][0]);
       return ((segment[0][1] * fac) / 1 ether) + ((segment[1][1] * (1 ether - fac)) / 1 ether);
     }
