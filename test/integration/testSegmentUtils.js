@@ -8,7 +8,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3 } = require('../helpers');
+const { initHelperWeb3, ether } = require('../helpers');
 
 const web3 = new Web3(TestSegmentUtils.web3.currentProvider);
 
@@ -42,7 +42,7 @@ contract('SegmentUtils', ([coreTeam]) => {
   });
 
   describe('#segmentsIntersect()', () => {
-    it.only('should correctly detect segmentsIntersect', async function() {
+    it('should correctly detect segmentsIntersect', async function() {
       let res = await this.testSegmentUtils.segmentsIntersect([[2, 2], [2, -2]], [[-1, 1], [3, 1]], {
         from: coreTeam
       });
@@ -54,7 +54,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       assert.equal(res.logs[0].args.result, false);
     });
 
-    it.only('should correctly detect findSegmentsIntersection', async function() {
+    it('should correctly detect findSegmentsIntersection', async function() {
       let res = await this.testSegmentUtils.findSegmentsIntersection([[2, 2], [2, -2]], [[-1, 1], [3, 1]], {
         from: coreTeam
       });
@@ -64,6 +64,51 @@ contract('SegmentUtils', ([coreTeam]) => {
         from: coreTeam
       });
       assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), ['-1', '-1']);
+    });
+
+    it('should correctly detect compareSegments', async function() {
+      const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
+
+      const BEFORE = 0;
+      const AFTER = 1;
+
+      let number = 1;
+
+      this.compareSegments = async function(segment1, segment2, expectedResult) {
+        console.log('      compareSegments number', number);
+
+        const etherSegment1 = segment1.map(point => point.map(coor => ether(coor)));
+        const etherSegment2 = segment2.map(point => point.map(coor => ether(coor)));
+
+        const res = await this.testSegmentUtils.compareSegments(etherSegment1, etherSegment2, {
+          from: coreTeam
+        });
+        assert.equal(res.logs[0].args.result.toString(10), expectedResult.toString(10));
+
+        number += 1;
+      };
+
+      await this.testSegmentUtils.setSweeplinePosition(BEFORE);
+      await this.testSegmentUtils.setSweeplineX(ether(-1));
+
+      await this.compareSegments(segments[0], segments[1], 1);
+      await this.compareSegments(segments[1], segments[0], -1);
+
+      await this.testSegmentUtils.setSweeplineX(0);
+
+      await this.compareSegments(segments[0], segments[1], 1);
+      await this.compareSegments(segments[1], segments[0], -1);
+
+      await this.testSegmentUtils.setSweeplinePosition(AFTER);
+
+      await this.compareSegments(segments[0], segments[1], -1);
+      await this.compareSegments(segments[1], segments[0], 1);
+
+      await this.testSegmentUtils.setSweeplinePosition(BEFORE);
+      await this.testSegmentUtils.setSweeplineX(ether(1));
+
+      await this.compareSegments(segments[0], segments[1], -1);
+      await this.compareSegments(segments[1], segments[0], 1);
     });
   });
 });

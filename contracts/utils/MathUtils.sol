@@ -30,7 +30,8 @@ library MathUtils {
   }
   
   function EPS() public pure returns(int256) {
-    return 1000000000;
+//    return 1000000000;
+    return 0;
   }
   
   function abs(int number) public pure returns(int) {

@@ -6,6 +6,9 @@ import "../utils/SegmentUtils.sol";
 contract TestSegmentUtils {
   event BoolResult(bool result);
   event PointResult(int256[2] result);
+  event int8Result (int8 result);
+
+  SegmentUtils.Sweepline sweepline;
   
   constructor() public {
     
@@ -20,6 +23,20 @@ contract TestSegmentUtils {
   function findSegmentsIntersection(int256[2][2] segment1, int256[2][2] segment2) public returns(int256[2]) {
     int256[2] memory result = SegmentUtils.findSegmentsIntersection(segment1, segment2);
     emit PointResult(result);
+    return result;
+  }
+
+  function setSweeplineX(int256 x) public {
+    sweepline.x = x;
+  }
+  
+  function setSweeplinePosition(SegmentUtils.Position position) public {
+    sweepline.position = position;
+  }
+
+  function compareSegments(int256[2][2] segment1, int256[2][2] segment2) public returns(int8) {
+    int8 result = SegmentUtils.compareSegments(sweepline, segment1, segment2);
+    emit int8Result(result);
     return result;
   }
 }
