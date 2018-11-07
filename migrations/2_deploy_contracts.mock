@@ -1,0 +1,6 @@
+// eslint-disable-next-line
+const Web3 = require('web3');
+
+// eslint-disable-next-line
+module.exports = async function(deployer) {
+};

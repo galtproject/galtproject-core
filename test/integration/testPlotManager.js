@@ -13,7 +13,14 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertEthBalanceChanged, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const {
+  initHelperWeb3,
+  ether,
+  assertEthBalanceChanged,
+  assertEqualBN,
+  assertRevert,
+  zeroAddress
+} = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -24,20 +31,18 @@ const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
+initHelperWeb3(web3);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
-  NEW: 1,
-  SUBMITTED: 2,
-  APPROVED: 3,
-  REJECTED: 4,
-  REVERTED: 5,
-  DISASSEMBLED_BY_APPLICANT: 6,
-  DISASSEMBLED_BY_VALIDATOR: 7,
-  CLOSED: 8
+  SUBMITTED: 1,
+  APPROVED: 2,
+  REJECTED: 3,
+  REVERTED: 4,
+  CLOSED: 5
 };
 
 const ValidationStatus = {
@@ -82,6 +87,7 @@ contract('PlotManager', accounts => {
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.contour2 = this.initContour2.map(galt.geohashToNumber);
     this.contour3 = this.initContour3.map(galt.geohashToNumber);
+    this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
@@ -275,131 +281,6 @@ contract('PlotManager', accounts => {
     });
   });
 
-  describe('application modifiers', () => {
-    beforeEach(async function() {
-      this.resAddRoles = await this.validators.setApplicationTypeRoles(
-        NEW_APPLICATION,
-        ['🦄', '🦆', '🦋'],
-        [25, 30, 45],
-        ['', '', ''],
-        { from: coreTeam }
-      );
-
-      assert(await this.validators.isApplicationTypeReady(NEW_APPLICATION));
-
-      const res = await this.plotManager.applyForPlotOwnership(
-        this.contour,
-        this.contour,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        {
-          from: alice
-        }
-      );
-
-      this.aId = res.logs[0].args.id;
-
-      this.payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-    });
-
-    it('should allow change application fields to the owner when status is NEW', async function() {
-      const hash = web3.utils.keccak256('AnotherPerson');
-      const ledgedIdentifier = 'foo-123';
-
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
-        from: alice
-      });
-
-      const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-
-      assert.equal(res.credentialsHash, hash);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-    });
-
-    it('should allow change application fields to an assigned operator when status is NEW', async function() {
-      const hash = web3.utils.keccak256('AnotherPerson');
-      const ledgedIdentifier = 'foo-123';
-
-      await this.plotManager.approveOperator(this.aId, frank, { from: alice });
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
-        from: frank
-      });
-
-      const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-
-      assert.equal(res.credentialsHash, hash);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-    });
-
-    it('should allow application details hash to the owner when status is REVERTED', async function() {
-      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['🦄'], { from: coreTeam });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
-
-      await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-      await this.validatorStakes.stake(bob, '🦄', ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, '🦆', ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, '🦋', ether(30), { from: alice });
-
-      await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
-      await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
-      await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
-
-      let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      assert.equal(res.credentialsHash, this.credentials);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-
-      const hash = web3.utils.keccak256('AnotherPerson');
-      const ledgedIdentifier = 'foo-123';
-
-      await this.plotManager.changeApplicationDetails(this.aId, hash, ledgedIdentifier, {
-        from: alice
-      });
-
-      res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      assert.equal(res.credentialsHash, hash);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), ledgedIdentifier);
-    });
-
-    it('should deny hash change to another person', async function() {
-      await assertRevert(
-        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', {
-          from: coreTeam
-        })
-      );
-
-      const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      assert.equal(res.credentialsHash, this.credentials);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-    });
-
-    it('should deny hash change if applicaiton is submitted', async function() {
-      await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
-      await assertRevert(
-        this.plotManager.changeApplicationDetails(this.aId, web3.utils.keccak256('AnotherPerson'), 'foo-bar', {
-          from: alice
-        })
-      );
-
-      const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-      assert.equal(res.credentialsHash, this.credentials);
-      assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
-    });
-
-    it('should assign 3rd party key to manage the application multiple times', async function() {
-      await this.plotManager.approveOperator(this.aId, frank, { from: alice });
-      let operator = await this.plotManager.getApplicationOperator(this.aId);
-      assert.equal(operator, frank);
-
-      await this.plotManager.approveOperator(this.aId, dan, { from: alice });
-      operator = await this.plotManager.getApplicationOperator(this.aId);
-      assert.equal(operator, dan);
-    });
-  });
-
   describe('application pipeline for GALT payment method', () => {
     beforeEach(async function() {
       this.resAddRoles = await this.validators.setApplicationTypeRoles(
@@ -409,21 +290,25 @@ contract('PlotManager', accounts => {
         ['', '', ''],
         { from: coreTeam }
       );
-      const res = await this.plotManager.applyForPlotOwnership(
+      const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
+      await this.galtToken.approve(this.plotManager.address, expectedFee, { from: alice });
+      const res = await this.plotManager.submitApplication(
         this.contour,
-        this.contour,
+        this.heights,
         0,
         this.credentials,
         this.ledgerIdentifier,
+        expectedFee,
         {
           from: alice
         }
       );
 
       this.aId = res.logs[0].args.id;
+      assert.notEqual(this.aId, undefined);
     });
 
-    describe('#applyForPlotOwnership() Galt', () => {
+    describe('#submitApplication() Galt', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -443,29 +328,54 @@ contract('PlotManager', accounts => {
 
     describe('#submitApplication()', () => {
       beforeEach(async function() {
-        const expectedFee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
+        this.fee = ether(26);
+        assert(new BN(this.fee) > (await this.plotManager.getSubmissionFee(Currency.GALT, this.contour)));
 
-        this.fee = new BN(expectedFee).add(new BN(ether(6))).toString(10);
-        this.deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
       });
 
       it('should submit applications in galt', async function() {
-        await this.plotManager.submitApplication(this.aId, this.fee, { from: alice, value: this.deposit });
+        await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          this.fee,
+          { from: alice, value: this.deposit }
+        );
       });
 
       describe('payable', () => {
         it('should split fee between GaltSpace and Validator', async function() {
-          await this.plotManager.submitApplication(this.aId, this.fee, { from: alice });
+          const res = await this.plotManager.submitApplication(
+            this.contour,
+            this.heights,
+            0,
+            this.credentials,
+            this.ledgerIdentifier,
+            this.fee,
+            { from: alice }
+          );
+          this.aId = res.logs[0].args.id;
           const res4 = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
           assert.equal(res4.currency, Currency.GALT);
           assert.equal(res4.validatorsReward, '22620000000000000000');
           assert.equal(res4.galtSpaceReward, '3380000000000000000');
         });
 
-        it('should reject fees not equal returned from getter', async function() {
+        it('should reject fees less than returned from getter', async function() {
           await assertRevert(
-            this.plotManager.submitApplication(this.aId, '123123123123', { from: alice, value: this.deposit })
+            this.plotManager.submitApplication(
+              this.contour,
+              this.heights,
+              0,
+              this.credentials,
+              this.ledgerIdentifier,
+              // expect minimum is 20
+              ether(10),
+              { from: alice, value: this.deposit }
+            )
           );
         });
 
@@ -479,20 +389,19 @@ contract('PlotManager', accounts => {
             { from: coreTeam }
           );
 
-          let res = await this.plotManager.applyForPlotOwnership(
-            this.contour2,
-            this.contour2,
+          const expectedFee = ether(26);
+          await this.galtToken.approve(this.plotManager.address, expectedFee, { from: alice });
+          let res = await this.plotManager.submitApplication(
+            this.contour,
+            this.heights,
             0,
             this.credentials,
             this.ledgerIdentifier,
+            // expect minimum is 20
+            expectedFee,
             { from: alice }
           );
           const aId = res.logs[0].args.id;
-
-          const expectedFee = await this.plotManagerWeb3.methods.getSubmissionFee(aId, Currency.GALT).call();
-          const fee = new BN(expectedFee).add(new BN(ether(6))).toString(10);
-          await this.galtToken.approve(this.plotManager.address, fee, { from: alice });
-          await this.plotManager.submitApplication(aId, fee, { from: alice });
 
           res = await this.plotManagerWeb3.methods.getApplicationFees(aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -527,8 +436,6 @@ contract('PlotManager', accounts => {
           await this.validatorStakes.stake(dan, '🦆', ether(30), { from: alice });
           await this.validatorStakes.stake(eve, '🦋', ether(30), { from: alice });
 
-          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
           await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
           await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
@@ -541,7 +448,8 @@ contract('PlotManager', accounts => {
       });
     });
 
-    describe.skip('#resubmitApplication()', () => {
+    // TODO: fix resubmission fee values after area calculation logic be ready
+    describe('#resubmitApplication()', () => {
       beforeEach(async function() {
         await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
         this.resAddRoles = await this.validators.setApplicationTypeRoles(
@@ -553,24 +461,28 @@ contract('PlotManager', accounts => {
         );
         await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
         await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-
+        //
         await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
         await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
         await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
         await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(dan, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(eve, 'cat', ether(30), { from: alice });
+        await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
+        await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
         await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
 
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
-        const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
-
-        await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
-        await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
+        await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
+        const res = await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          // expect minimum is 20
+          ether(20),
+          { from: alice }
+        );
+        this.aId = res.logs[0].args.id;
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -579,19 +491,23 @@ contract('PlotManager', accounts => {
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
 
-      // TODO: replace with "when areaWeight increased" (require additional payment)
-      describe.skip('when new geohashes were added', () => {
+      // TODO: implement after area calculation logic be ready
+      describe.skip('contour changed', () => {
         beforeEach(async function() {
-          const geohashes = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
-          await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], {
-            from: alice
-          });
-          this.galts = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-          assert(this.galts > 0);
+          this.newContour = ['sezu112c', 'sezu113b1', 'sezu114'].map(galt.geohashToGeohash5);
+          this.galts = await this.plotManager.getResubmissionFee(this.aId, this.newContour);
         });
 
         it('should require another payment', async function() {
-          await this.plotManager.resubmitApplication(this.aId, this.galts, { from: alice });
+          await this.plotManager.resubmitApplication(
+            this.aId,
+            this.credentials,
+            this.ledgerIdentifier,
+            this.heights,
+            9,
+            this.galts,
+            { from: alice }
+          );
 
           const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -617,27 +533,25 @@ contract('PlotManager', accounts => {
         });
       });
 
-      // TODO: replace with "when areaWeight decreased" (allow withdraw redundant funds)
-      describe('when geohashes were removed', () => {
-        beforeEach(async function() {
-          const geohashes = ['sezu1110'].map(galt.geohashToGeohash5);
-          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
-            from: alice
-          });
-          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-          assert(this.fee < 0);
+      it('should change old details data with a new', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+
+        const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
+        const newLedgerIdentifier = 'foo-123';
+
+        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
+          from: alice
         });
 
-        it('should not require another payment', async function() {
-          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        });
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, newCredentiasHash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), newLedgerIdentifier);
       });
     });
 
-    // TODO: unskip when areaWeigth be implemented
+    // TODO: implement after area calculation logic be ready
     describe.skip('#withdrawSubmissionFee()', () => {
       beforeEach(async function() {
         await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
@@ -724,21 +638,23 @@ contract('PlotManager', accounts => {
           { from: coreTeam }
         );
 
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.contour2,
+        const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
+        await this.galtToken.approve(this.plotManager.address, expectedFee, { from: alice });
+        let res = await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
           0,
           this.credentials,
           this.ledgerIdentifier,
+          expectedFee,
           {
             from: alice
           }
         );
-
         this.aId = res.logs[0].args.id;
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
         await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
@@ -751,11 +667,6 @@ contract('PlotManager', accounts => {
         await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
         await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
         await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
-
-        const fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
-        const deposit = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
-        await this.galtToken.approve(this.plotManager.address, fee, { from: alice });
-        await this.plotManager.submitApplication(this.aId, fee, { from: alice, value: deposit });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -868,14 +779,17 @@ contract('PlotManager', accounts => {
         { from: coreTeam }
       );
 
-      let res = await this.plotManager.applyForPlotOwnership(
+      const expectedFee = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+      let res = await this.plotManager.submitApplication(
         this.contour,
-        this.contour,
+        this.heights,
         0,
         this.credentials,
         this.ledgerIdentifier,
+        0,
         {
-          from: alice
+          from: alice,
+          value: expectedFee
         }
       );
 
@@ -883,7 +797,7 @@ contract('PlotManager', accounts => {
 
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.packageTokenId = res.packageTokenId;
-      assert.equal(res.status, ApplicationStatus.NEW);
+      assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
       await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
       await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
@@ -898,7 +812,7 @@ contract('PlotManager', accounts => {
       await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
     });
 
-    describe('#applyForPlotOwnership() ETH', () => {
+    describe('#submitApplication()', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         const res3 = await this.splitMerge.getPackageContour(
@@ -926,104 +840,51 @@ contract('PlotManager', accounts => {
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert(res, 1);
       });
-    });
-
-    describe('#closeApplication()', () => {
-      describe('for applications paid by ETH', () => {
-        describe('with status REVERTED', () => {
-          it('should change status to CLOSED', async function() {
-            const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-            await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-            await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-            await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-            await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
-            await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
-
-            let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-            assert.equal(res.status, ApplicationStatus.REVERTED);
-
-            await this.plotManager.closeApplication(this.aId, { from: alice });
-
-            res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-            assert.equal(res.status, ApplicationStatus.CLOSED);
-          });
-        });
-      });
-    });
-
-    describe('#submitApplication()', () => {
-      it('should change status of an application from from new to submitted', async function() {
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-      });
-
-      it('should reject if status is not new or rejected', async function() {
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
-
-        await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, payment }));
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-      });
-
-      it('should reject if another person tries to submit the application', async function() {
-        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: bob, value: payment }));
-
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-      });
 
       describe('payable', () => {
         it('should reject applications without payment', async function() {
-          await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, value: 0 }));
+          await assertRevert(
+            this.plotManager.submitApplication(
+              this.contour,
+              this.heights,
+              0,
+              this.credentials,
+              this.ledgerIdentifier,
+              0,
+              {
+                from: alice,
+                value: 0
+              }
+            )
+          );
         });
 
         it('should reject applications with payment less than required', async function() {
-          const expectedPayment = await this.plotManager.getSubmissionPaymentInEth(this.aId, Currency.ETH);
-          const payment = expectedPayment.sub(new BN(ether(1)));
-
-          await assertRevert(this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment }));
+          await assertRevert(
+            this.plotManager.submitApplication(
+              this.contour,
+              this.heights,
+              0,
+              this.credentials,
+              this.ledgerIdentifier,
+              0,
+              {
+                from: alice,
+                value: ether(1)
+              }
+            )
+          );
         });
 
         it('should calculate corresponding validator and coreTeam rewards in Eth', async function() {
-          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
           const res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
           res.validatorsReward.should.be.a.bignumber.eq(new BN('1340000000000000000'));
           res.galtSpaceReward.should.be.a.bignumber.eq(new BN('660000000000000000'));
-
-          const fee = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.ETH).call();
-          fee.should.be.a.bignumber.eq(new BN('1340000000000000000').add(new BN('660000000000000000')));
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
-          const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-          await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
           let res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(res.currency, Currency.ETH);
@@ -1047,17 +908,33 @@ contract('PlotManager', accounts => {
       });
     });
 
-    // TODO: unskip when areaWeight implemented
-    describe.skip('#resubmitApplication()', () => {
+    describe('#closeApplication()', () => {
+      describe('for applications paid by ETH', () => {
+        describe('with status REVERTED', () => {
+          it('should change status to CLOSED', async function() {
+            await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+            await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+            await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+            await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
+
+            let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+            assert.equal(res.status, ApplicationStatus.REVERTED);
+
+            await this.plotManager.closeApplication(this.aId, { from: alice });
+
+            res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+            assert.equal(res.status, ApplicationStatus.CLOSED);
+          });
+        });
+      });
+    });
+
+    // TODO: finish after area calculation logic be ready
+    describe('#resubmitApplication()', () => {
       beforeEach(async function() {
-        const geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
-        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
         await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
@@ -1065,79 +942,52 @@ contract('PlotManager', accounts => {
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
 
-      describe('when new geohashes were not changed', () => {
-        it('should allow submit reverted application to the same validator who reverted it', async function() {
-          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
+      it('should change old details data with a new', async function() {
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
-          let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
+        const newLedgerIdentifier = 'foo-123';
 
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-          assert.equal(res.validator.toLowerCase(), bob);
-          assert.equal(res.status, ValidationStatus.LOCKED);
-
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
-          assert.equal(res.validator.toLowerCase(), dan);
-          assert.equal(res.status, ValidationStatus.LOCKED);
-
-          res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
-          assert.equal(res.validator.toLowerCase(), eve);
-          assert.equal(res.status, ValidationStatus.LOCKED);
+        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
+          from: alice
         });
+
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.credentialsHash, newCredentiasHash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), newLedgerIdentifier);
       });
 
-      describe('when new geohashes were added', () => {
-        beforeEach(async function() {
-          const geohashes = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
-          await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], {
-            from: alice
-          });
-          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-          assert(this.fee > 0);
+      it('should allow submit reverted application to the same validator who reverted it', async function() {
+        await this.plotManager.resubmitApplication(this.aId, this.credentials, this.ledgerIdentifier, [], [], 9, 0, {
+          from: alice
         });
 
-        it('should require another payment', async function() {
-          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice, value: this.fee });
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        });
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
+        assert.equal(res.validator.toLowerCase(), bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
-        it('should reject on unexpected fee in ETH', async function() {
-          await assertRevert(this.plotManager.resubmitApplication(this.aId, 0, { from: alice, value: 123 }));
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('cat')).call();
+        assert.equal(res.validator.toLowerCase(), dan);
+        assert.equal(res.status, ValidationStatus.LOCKED);
 
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.REVERTED);
-        });
-
-        it('should reject on payment both in ETH and GALT', async function() {
-          await assertRevert(this.plotManager.resubmitApplication(this.aId, 123, { from: alice, value: this.fee }));
-
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.REVERTED);
-        });
+        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('dog')).call();
+        assert.equal(res.validator.toLowerCase(), eve);
+        assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
-      describe('when geohashes were removed', () => {
+      describe('when countour changed', () => {
         beforeEach(async function() {
-          const geohashes = ['sezu1110'].map(galt.geohashToGeohash5);
-          await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
-            from: alice
-          });
-          this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-          assert(this.fee < 0);
-        });
-
-        it('should not require another payment', async function() {
-          await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-
-          const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.SUBMITTED);
+          this.newContour = ['sezu112c', 'sezu113b1', 'sezu114'].map(galt.geohashToGeohash5);
         });
       });
     });
 
-    // TODO: unskip when areaWeight implemented
+    // TODO: implement after area calculation logic be ready
     describe.skip('#withdrawSubmissionFee()', () => {
       beforeEach(async function() {
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
@@ -1208,15 +1058,6 @@ contract('PlotManager', accounts => {
     });
 
     describe('#lockApplicationForReview()', () => {
-      beforeEach(async function() {
-        this.payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: this.payment });
-
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-      });
-
       it('should allow multiple validators of different roles to lock a submitted application', async function() {
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -1244,39 +1085,37 @@ contract('PlotManager', accounts => {
       });
 
       it('should push an application id to the validators list for caching', async function() {
-        // submit first
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.contour2,
+        let res = await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
           0,
           this.credentials,
           this.ledgerIdentifier,
+          0,
           {
-            from: charlie
+            from: charlie,
+            value: ether(2)
           }
         );
         const a1Id = res.logs[0].args.id;
-        let payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a1Id, Currency.ETH).call();
-        await this.plotManager.submitApplication(a1Id, 0, { from: charlie, value: payment });
 
         // lock first
         await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
 
         // submit second
-        res = await this.plotManager.applyForPlotOwnership(
-          this.contour3,
-          this.contour3,
+        res = await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
           0,
           this.credentials,
           this.ledgerIdentifier,
+          0,
           {
-            from: alice
+            from: charlie,
+            value: ether(2)
           }
         );
         const a2Id = res.logs[0].args.id;
-        payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(a2Id, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(a2Id, 0, { from: alice, value: payment });
 
         // lock second
         await this.plotManager.lockApplicationForReview(a2Id, 'human', { from: bob });
@@ -1287,40 +1126,29 @@ contract('PlotManager', accounts => {
         assert.equal(res[1], a2Id);
       });
 
-      it('should deny validator to lock an application which is new', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.contour2,
-          0,
-          this.credentials,
-          this.ledgerIdentifier,
-          {
-            from: alice
-          }
-        );
-        const a2Id = res.logs[0].args.id;
-        await assertRevert(this.plotManager.lockApplicationForReview(a2Id, 'human', { from: charlie }));
-        res = await this.plotManagerWeb3.methods.getApplicationById(a2Id).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+      it('should deny validator to lock an application which is already approved', async function() {
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
 
-        res = await this.plotManagerWeb3.methods.getApplicationValidator(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.validator.toLowerCase(), zeroAddress);
-        assert.equal(res.status, ValidationStatus.PENDING);
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
       it('should deny non-validator to lock an application', async function() {
         await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: coreTeam }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, 2);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
     });
 
     describe('#resetApplicationRole()', () => {
       beforeEach(async function() {
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
@@ -1350,12 +1178,8 @@ contract('PlotManager', accounts => {
       });
     });
 
-    describe('#approveApplication', () => {
+    describe('#approveApplication()', () => {
       beforeEach(async function() {
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
@@ -1422,30 +1246,19 @@ contract('PlotManager', accounts => {
 
       // eslint-disable-next-line
       it("should deny validator approve application with other than consideration or partially locked status", async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.contour2,
-          0,
-          this.credentials,
-          this.ledgerIdentifier,
-          {
-            from: alice
-          }
-        );
+        await this.plotManager.rejectApplication(this.aId, 'suspicious', { from: bob });
 
-        const aId = res.logs[0].args.id;
-        await assertRevert(this.plotManager.approveApplication(aId, this.credentials, { from: bob }));
-        res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
+
+        await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: bob }));
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
 
     describe('#revertApplication()', () => {
       beforeEach(async function() {
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
@@ -1495,33 +1308,19 @@ contract('PlotManager', accounts => {
       });
 
       it('should deny validator revert an application with non-consideration status', async function() {
-        let res = await this.plotManager.applyForPlotOwnership(
-          this.contour2,
-          this.contour2,
-          0,
-          this.credentials,
-          this.ledgerIdentifier,
-          {
-            from: alice
-          }
-        );
-        const aId = res.logs[0].args.id;
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
+        await this.plotManager.rejectApplication(this.aId, 'suspicious', { from: bob });
 
-        await this.plotManager.submitApplication(aId, 0, { from: alice, value: payment });
+        let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
 
-        await assertRevert(this.plotManager.revertApplication(aId, 'blah', { from: bob }));
-        res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        await assertRevert(this.plotManager.revertApplication(this.aId, 'blah', { from: bob }));
+        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
 
     describe('#rejectApplication()', () => {
       beforeEach(async function() {
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
@@ -1564,10 +1363,6 @@ contract('PlotManager', accounts => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
