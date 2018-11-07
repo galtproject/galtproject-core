@@ -43,29 +43,55 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#segmentsIntersect()', () => {
     it('should correctly detect segmentsIntersect', async function() {
-      let res = await this.testSegmentUtils.segmentsIntersect([[2, 2], [2, -2]], [[-1, 1], [3, 1]], {
-        from: coreTeam
-      });
-      assert.equal(res.logs[0].args.result, true);
+      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
+      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
 
-      res = await this.testSegmentUtils.segmentsIntersect([[-1, 1], [-1, -1]], [[1, 1], [1, -1]], {
-        from: coreTeam
-      });
-      assert.equal(res.logs[0].args.result, false);
+      let number = 1;
+
+      this.segmentsIntersect = async function(segment1, segment2, expectedResult) {
+        console.log('      segmentsIntersect number', number);
+
+        const res = await this.testSegmentUtils.segmentsIntersect(segment1, segment2, {
+          from: coreTeam
+        });
+        assert.equal(res.logs[0].args.result, expectedResult);
+        console.log('      gasUsed', res.receipt.gasUsed);
+
+        number += 1;
+      };
+
+      await this.segmentsIntersect(intersectSegments[0], intersectSegments[1], true);
+
+      await this.segmentsIntersect(notIntersectSegments[0], notIntersectSegments[1], false);
     });
+  });
 
+  describe('#findSegmentsIntersection()', () => {
     it('should correctly detect findSegmentsIntersection', async function() {
-      let res = await this.testSegmentUtils.findSegmentsIntersection([[2, 2], [2, -2]], [[-1, 1], [3, 1]], {
-        from: coreTeam
-      });
-      assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), ['2', '1']);
+      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
+      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
 
-      res = await this.testSegmentUtils.findSegmentsIntersection([[-1, 1], [-1, -1]], [[1, 1], [1, -1]], {
-        from: coreTeam
-      });
-      assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), ['-1', '-1']);
+      let number = 1;
+
+      this.findSegmentsIntersection = async function(segment1, segment2, expectedResult) {
+        console.log('      findSegmentsIntersection number', number);
+
+        const res = await this.testSegmentUtils.findSegmentsIntersection(segment1, segment2, {
+          from: coreTeam
+        });
+        assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), expectedResult.map(a => a.toString(10)));
+        console.log('      gasUsed', res.receipt.gasUsed);
+
+        number += 1;
+      };
+
+      await this.findSegmentsIntersection(intersectSegments[0], intersectSegments[1], [2, 1]);
+
+      await this.findSegmentsIntersection(notIntersectSegments[0], notIntersectSegments[1], [-1, -1]);
     });
+  });
 
+  describe('#compareSegments', () => {
     it('should correctly detect compareSegments', async function() {
       const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
 
@@ -84,6 +110,7 @@ contract('SegmentUtils', ([coreTeam]) => {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result.toString(10), expectedResult.toString(10));
+        console.log('      gasUsed', res.receipt.gasUsed);
 
         number += 1;
       };
