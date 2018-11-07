@@ -29,7 +29,6 @@ library SegmentUtils {
   }
 
   event LogGetYInput (int[2][2] segment, int x);
-  event LogGetYResult (int deltaX0, int deltaX1, int fac, int ifac);
   event LogCompareSegmentsInput (int x, int[2][2] a, int[2][2] b);
   event LogCompareSegmentsResult (int result1, int result2, int result3);
   
@@ -109,12 +108,8 @@ library SegmentUtils {
     
     emit LogCompareSegmentsInput(sweepline.x, a, b);
 
-    int ay = getY(a, sweepline.x);
-    int by = getY(b, sweepline.x);
-    int deltaY = ay - by;
-
-    emit LogCompareSegmentsResult(ay, by, deltaY);
-
+    int deltaY = getY(a, sweepline.x) - getY(b, sweepline.x);
+    
     if (MathUtils.abs(deltaY) > MathUtils.EPS()) {
       return deltaY < 0 ? int8(-1) : int8(1);
     } else {
@@ -156,22 +151,13 @@ library SegmentUtils {
     } else if (x >= segment[1][0]) {
       return segment[1][1];
     }
-
-    int deltaX0 = x - segment[0][0];
-    int deltaX1 = segment[1][0] - x;
-    
-    int fac;
-    int ifac;
-
-    if (deltaX0 > deltaX1) {
-      ifac = 1 ether * deltaX0 / (segment[1][0] - segment[0][0]);
-      fac = 1 ether - ifac;
+ 
+    if ((x - segment[0][0]) > (segment[1][0] - x)) {
+      int ifac = 1 ether * (x - segment[0][0]) / (segment[1][0] - segment[0][0]);
+      return ((segment[0][1] * (1 ether - ifac)) / 1 ether) + ((segment[1][1] * ifac) / 1 ether);
     } else {
-      fac = 1 ether * deltaX1 / (segment[1][0] - segment[0][0]);
-      ifac = 1 ether - fac;
+      int fac = 1 ether * (segment[1][0] - x) / (segment[1][0] - segment[0][0]);
+      return ((segment[0][1] * fac) / 1 ether) + ((segment[1][1] * (1 ether - fac)) / 1 ether);
     }
-    emit LogGetYResult(deltaX0, deltaX1, fac, ifac);
-
-    return ((segment[0][1] * fac) / 1 ether) + ((segment[1][1] * ifac) / 1 ether);
   }
 }
