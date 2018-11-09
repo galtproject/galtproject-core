@@ -2,7 +2,7 @@ const PointUtils = artifacts.require('./utils/PointUtils.sol');
 const MathUtils = artifacts.require('./utils/MathUtils.sol');
 const VectorUtils = artifacts.require('./utils/VectorUtils.sol');
 const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
-const TestSegmentUtils = artifacts.require('./test/TestSegmentUtils.sol');
+const MockSegmentUtils = artifacts.require('./mocks/MockSegmentUtils.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
@@ -10,7 +10,7 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether } = require('../helpers');
 
-const web3 = new Web3(TestSegmentUtils.web3.currentProvider);
+const web3 = new Web3(MockSegmentUtils.web3.currentProvider);
 
 initHelperWeb3(web3);
 
@@ -36,9 +36,9 @@ contract('SegmentUtils', ([coreTeam]) => {
     SegmentUtils.link('MathUtils', this.mathUtils.address);
 
     this.segmentUtils = await SegmentUtils.new({ from: coreTeam });
-    TestSegmentUtils.link('SegmentUtils', this.segmentUtils.address);
+    MockSegmentUtils.link('SegmentUtils', this.segmentUtils.address);
 
-    this.testSegmentUtils = await TestSegmentUtils.new({ from: coreTeam });
+    this.mockSegmentUtils = await MockSegmentUtils.new({ from: coreTeam });
   });
 
   describe('#segmentsIntersect()', () => {
@@ -51,7 +51,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       this.segmentsIntersect = async function(segment1, segment2, expectedResult) {
         console.log('      segmentsIntersect number', number);
 
-        const res = await this.testSegmentUtils.segmentsIntersect(segment1, segment2, {
+        const res = await this.mockSegmentUtils.segmentsIntersect(segment1, segment2, {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result, expectedResult);
@@ -76,7 +76,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       this.findSegmentsIntersection = async function(segment1, segment2, expectedResult) {
         console.log('      findSegmentsIntersection number', number);
 
-        const res = await this.testSegmentUtils.findSegmentsIntersection(segment1, segment2, {
+        const res = await this.mockSegmentUtils.findSegmentsIntersection(segment1, segment2, {
           from: coreTeam
         });
         assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), expectedResult.map(a => a.toString(10)));
@@ -106,7 +106,7 @@ contract('SegmentUtils', ([coreTeam]) => {
         const etherSegment1 = segment1.map(point => point.map(coor => ether(coor)));
         const etherSegment2 = segment2.map(point => point.map(coor => ether(coor)));
 
-        const res = await this.testSegmentUtils.compareSegments(etherSegment1, etherSegment2, {
+        const res = await this.mockSegmentUtils.compareSegments(etherSegment1, etherSegment2, {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result.toString(10), expectedResult.toString(10));
@@ -115,24 +115,24 @@ contract('SegmentUtils', ([coreTeam]) => {
         number += 1;
       };
 
-      await this.testSegmentUtils.setSweeplinePosition(BEFORE);
-      await this.testSegmentUtils.setSweeplineX(ether(-1));
+      await this.mockSegmentUtils.setSweeplinePosition(BEFORE);
+      await this.mockSegmentUtils.setSweeplineX(ether(-1));
 
       await this.compareSegments(segments[0], segments[1], 1);
       await this.compareSegments(segments[1], segments[0], -1);
 
-      await this.testSegmentUtils.setSweeplineX(0);
+      await this.mockSegmentUtils.setSweeplineX(0);
 
       await this.compareSegments(segments[0], segments[1], 1);
       await this.compareSegments(segments[1], segments[0], -1);
 
-      await this.testSegmentUtils.setSweeplinePosition(AFTER);
+      await this.mockSegmentUtils.setSweeplinePosition(AFTER);
 
       await this.compareSegments(segments[0], segments[1], -1);
       await this.compareSegments(segments[1], segments[0], 1);
 
-      await this.testSegmentUtils.setSweeplinePosition(BEFORE);
-      await this.testSegmentUtils.setSweeplineX(ether(1));
+      await this.mockSegmentUtils.setSweeplinePosition(BEFORE);
+      await this.mockSegmentUtils.setSweeplineX(ether(1));
 
       await this.compareSegments(segments[0], segments[1], -1);
       await this.compareSegments(segments[1], segments[0], 1);

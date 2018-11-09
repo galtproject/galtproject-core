@@ -3,7 +3,7 @@ pragma experimental "v0.5.0";
 
 import "../utils/SegmentUtils.sol";
 
-contract TestSegmentUtils {
+contract MockSegmentUtils {
   event BoolResult(bool result);
   event PointResult(int256[2] result);
   event int8Result (int8 result);
