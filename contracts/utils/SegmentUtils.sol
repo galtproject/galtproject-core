@@ -18,6 +18,9 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library SegmentUtils {
+
+  int256 internal constant EPS = 1000000000;
+  
   enum Position {
     BEFORE,
     AFTER
@@ -28,7 +31,7 @@ library SegmentUtils {
     Position position;
   }
 
-  function segmentsIntersect(int[2][2] a, int[2][2] b) public pure returns (bool) {
+  function segmentsIntersect(int[2][2] a, int[2][2] b) internal pure returns (bool) {
     int256 d1 = VectorUtils.direction(b[0], b[1], a[0]);
     int256 d2 = VectorUtils.direction(b[0], b[1], a[1]);
     int256 d3 = VectorUtils.direction(a[0], a[1], b[0]);
@@ -48,7 +51,7 @@ library SegmentUtils {
     return false;
   }
 
-  function findSegmentsIntersection(int[2][2] a, int[2][2] b) public pure returns (int256[2]) {
+  function findSegmentsIntersection(int[2][2] a, int[2][2] b) internal pure returns (int256[2]) {
     //TODO: optimize?
     int xDivide = ((a[0][0] - a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] - b[1][0]));
     if (xDivide == 0) {
@@ -92,7 +95,7 @@ library SegmentUtils {
     return [x, y];
   }
 
-  function isEqual(int[2][2] a, int[2][2] b) public view returns (bool) {
+  function isEqual(int[2][2] a, int[2][2] b) internal view returns (bool) {
     //TODO: optimize?
     for (uint i = 0; i < a.length; i++) {
       if (b[i][0] != a[i][0] || b[i][1] != a[i][1]) {
@@ -102,14 +105,14 @@ library SegmentUtils {
     return true;
   }
 
-  function compareSegments(Sweepline storage sweepline, int[2][2] a, int[2][2] b) public returns (int8) {
+  function compareSegments(Sweepline storage sweepline, int[2][2] a, int[2][2] b) internal returns (int8) {
     if (isEqual(a, b)) {
       return int8(0);
     }
 
     int deltaY = getY(a, sweepline.x) - getY(b, sweepline.x);
 
-    if (MathUtils.abs(deltaY) > MathUtils.EPS()) {
+    if (MathUtils.abs(deltaY) > EPS) {
       return deltaY < 0 ? int8(- 1) : int8(1);
     } else {
       int aSlope = getSlope(a);
@@ -135,7 +138,7 @@ library SegmentUtils {
     return int8(0);
   }
 
-  function getSlope(int[2][2] segment) public pure returns (int) {
+  function getSlope(int[2][2] segment) internal pure returns (int) {
     if (segment[0][0] == segment[1][0]) {
       return (segment[0][1] < segment[1][1]) ? MathUtils.INT256_MAX() : MathUtils.INT256_MIN();
     } else {
@@ -143,7 +146,7 @@ library SegmentUtils {
     }
   }
 
-  function getY(int[2][2] segment, int x) public returns (int) {
+  function getY(int[2][2] segment, int x) internal returns (int) {
     if (x <= segment[0][0]) {
       return segment[0][1];
     } else if (x >= segment[1][0]) {
