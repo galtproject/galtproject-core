@@ -10,6 +10,7 @@ const Validators = artifacts.require('./Validators');
 const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
+const pIteration = require('p-iteration');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -20,9 +21,6 @@ const galt = require('@galtproject/utils');
 
 function ether(value) {
   return Web3.utils.toWei(value.toString(10), 'ether');
-}
-function weiToEther(value) {
-  return Web3.utils.fromWei(value, 'ether');
 }
 
 module.exports = async function(deployer, network, accounts) {
@@ -245,29 +243,80 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('create space tokens...');
 
-    await spaceToken.mint(coreTeam, { from: coreTeam });
-    let spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    let contour = ['w24q8xwe6ty4', 'w24q8xqxcvgc', 'w24q8xrpuv5x', 'w24q8xx1su5x', 'w24q8xxh8wr8'];
-    await splitMerge.setPackageContour(spaceTokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-    await splitMerge.setPackageHeights(spaceTokenId, contour.map(() => ether(2)), { from: coreTeam });
-    await splitMerge.setPackageLevel(spaceTokenId, 0, { from: coreTeam });
-    await spaceToken.transferFrom(coreTeam, users.DevNickUser, spaceTokenId, { from: coreTeam });
+    const spaceTokensToMint = [
+      {
+        contour: ['w24q8xwe6ty4', 'w24q8xqxcvgc', 'w24q8xrpuv5x', 'w24q8xx1su5x', 'w24q8xxh8wr8'],
+        level: 0
+      },
+      {
+        contour: ['w24q8xwf4uq0', 'w24q8xwfjuk0', 'w24q8xwfvfk0', 'w24q8xwfffq0'],
+        level: 1
+      },
+      {
+        contour: ['w24q8xwf4uq0', 'w24q8xwfjuk0', 'w24q8xwfvfk0', 'w24q8xwfffq0'],
+        level: 2
+      },
 
-    await spaceToken.mint(coreTeam, { from: coreTeam });
-    spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    contour = ['w24q8xwf4uq0', 'w24q8xwfjuk0', 'w24q8xwfvfk0', 'w24q8xwfffq0'];
-    await splitMerge.setPackageContour(spaceTokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-    await splitMerge.setPackageHeights(spaceTokenId, contour.map(() => 0), { from: coreTeam });
-    await splitMerge.setPackageLevel(spaceTokenId, 1, { from: coreTeam });
-    await spaceToken.transferFrom(coreTeam, users.DevNickUser, spaceTokenId, { from: coreTeam });
+      {
+        contour: ['w24q8r9pgd0p', 'w24q8r3newq1', 'w24q8r6pm9gc', 'w24q8rf0q48p'],
+        level: 0
+      },
+      {
+        contour: [
+          'w24q8r9f3sgd',
+          'w24q8r9g3879',
+          'w24q8r9v9x7d',
+          'w24q8r9txx24',
+          'w24q8r9er821',
+          'w24q8r9e2brc',
+          'w24q8r9s2brf',
+          'w24q8r9kqbk6',
+          'w24q8r96quu6'
+        ],
+        level: 1
+      },
+      {
+        contour: [
+          'w24q8r9f3sgd',
+          'w24q8r9g3879',
+          'w24q8r9v9x7d',
+          'w24q8r9txx24',
+          'w24q8r9er821',
+          'w24q8r9e2brc',
+          'w24q8r9s2brf',
+          'w24q8r9kqbk6',
+          'w24q8r96quu6'
+        ],
+        level: 2
+      },
+      {
+        contour: [
+          'w24q8r9f3sgd',
+          'w24q8r9g3879',
+          'w24q8r9v9x7d',
+          'w24q8r9txx24',
+          'w24q8r9er821',
+          'w24q8r9e2brc',
+          'w24q8r9s2brf',
+          'w24q8r9kqbk6',
+          'w24q8r96quu6'
+        ],
+        level: 3
+      }
+    ];
 
-    await spaceToken.mint(coreTeam, { from: coreTeam });
-    spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000002';
-    contour = ['w24q8xwf4uq0', 'w24q8xwfjuk0', 'w24q8xwfvfk0', 'w24q8xwfffq0'];
-    await splitMerge.setPackageContour(spaceTokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-    await splitMerge.setPackageHeights(spaceTokenId, contour.map(() => ether(2)), { from: coreTeam });
-    await splitMerge.setPackageLevel(spaceTokenId, 2, { from: coreTeam });
-    await spaceToken.transferFrom(coreTeam, users.DevNickUser, spaceTokenId, { from: coreTeam });
+    await pIteration.forEachSeries(spaceTokensToMint, async (spaceTokenItem, index) => {
+      await spaceToken.mint(coreTeam, { from: coreTeam });
+      const tokenId = `0x000000000000000000000000000000000000000000000000000000000000000${index}`;
+
+      const { contour, level } = spaceTokenItem;
+      const height = level === 1 ? 0 : 2;
+
+      await splitMerge.setPackageContour(tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
+      await splitMerge.setPackageHeights(tokenId, contour.map(() => ether(height)), { from: coreTeam });
+      await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
+      await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
+    });
 
     await Promise.all(promises);
   });
