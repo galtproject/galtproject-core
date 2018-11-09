@@ -18,7 +18,6 @@ only-recover:
 	./scripts/only-recover.sh
 
 test: only-skip
-	truffle compile
 	-npm test
 	tput bel
 	$(MAKE) only-recover
