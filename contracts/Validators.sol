@@ -35,6 +35,8 @@ contract Validators is Ownable, RBAC {
   string public constant ROLE_APPLICATION_TYPE_MANAGER = "application_type_manager";
   string public constant ROLE_VALIDATOR_STAKES = "validator_stakes";
 
+  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
+
   uint256 public constant ROLES_LIMIT = 50;
   bytes32 public constant ROLE_NOT_EXISTS = 0x0;
 
