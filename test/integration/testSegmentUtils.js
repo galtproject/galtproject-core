@@ -47,6 +47,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       // Helpers
       this.segmentsIntersect = async function(segment1, segment2, expectedResult) {
         console.log('      segmentsIntersect number', number);
+
         const res = await this.mockSegmentUtils.segmentsIntersect(segment1, segment2, {
           from: coreTeam
         });
@@ -74,6 +75,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       // Helpers
       this.findSegmentsIntersection = async function(segment1, segment2, expectedResult) {
         console.log('      findSegmentsIntersection number', number);
+
         const res = await this.mockSegmentUtils.findSegmentsIntersection(segment1, segment2, {
           from: coreTeam
         });
@@ -96,6 +98,11 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#compareSegments', () => {
     it('should correctly detect compareSegments', async function() {
+      const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
+
+      const BEFORE = 0;
+      const AFTER = 1;
+
       let number = 1;
 
       // Helpers
@@ -103,6 +110,7 @@ contract('SegmentUtils', ([coreTeam]) => {
         console.log('      compareSegments number', number);
         const etherSegment1 = segment1.map(point => point.map(coor => ether(coor)));
         const etherSegment2 = segment2.map(point => point.map(coor => ether(coor)));
+
         const res = await this.mockSegmentUtils.compareSegments(etherSegment1, etherSegment2, {
           from: coreTeam
         });
@@ -113,11 +121,6 @@ contract('SegmentUtils', ([coreTeam]) => {
         number += 1;
       };
       // Helpers end
-
-      const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
-
-      const BEFORE = 0;
-      const AFTER = 1;
 
       await this.mockSegmentUtils.setSweeplinePosition(BEFORE);
       await this.mockSegmentUtils.setSweeplineX(ether(-1));
