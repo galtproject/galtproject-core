@@ -11,34 +11,19 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
+import "./MathUtils.sol";
+
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-library ArrayUtils {
-  function uintSome(uint[] arr, uint el) public view returns (bool) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return true;
-      }
+library PointUtils {
+  function comparePoints(int[2] a, int[2] b) public pure returns(int8) {
+    if (a[0] - b[0] > MathUtils.EPS() || (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && a[1] - b[1] > MathUtils.EPS())) {
+      return 1;
+    } else if (b[0] - a[0] > MathUtils.EPS() || (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && b[1] - a[1] > MathUtils.EPS())) {
+      return -1;
+    } else if (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && MathUtils.abs(a[1] - b[1]) < MathUtils.EPS() ) {
+      return 0;
     }
-    return false;
-  }
-
-  function uintFind(uint[] arr, uint el) public view returns (int) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return int(j);
-      }
-    }
-    return -1;
-  }
-  
-  function intEqual(int[] arr1, int[] arr2) public view returns (bool) {
-    for (uint i = 0; i < arr1.length; i++) {
-      if (arr1[i] != arr2[i]) {
-        return false;
-      }
-    }
-    return true;
   }
 }

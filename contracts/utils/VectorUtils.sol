@@ -11,34 +11,20 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
+import "./MathUtils.sol";
+
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-library ArrayUtils {
-  function uintSome(uint[] arr, uint el) public view returns (bool) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return true;
-      }
-    }
-    return false;
+library VectorUtils {
+  function onSegment(int[2] a, int[2] b, int[2] c) public pure returns (bool) {
+    /* solium-disable-next-line */
+    return (MathUtils.minInt(a[0], b[0]) <= c[0]) && (c[0] <= MathUtils.maxInt(a[0], b[0])) &&
+    /* solium-disable-next-line */
+        (MathUtils.minInt(a[1], b[1]) <= c[1]) && (c[1] <= MathUtils.maxInt(a[1], b[1]));
   }
 
-  function uintFind(uint[] arr, uint el) public view returns (int) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return int(j);
-      }
-    }
-    return -1;
-  }
-  
-  function intEqual(int[] arr1, int[] arr2) public view returns (bool) {
-    for (uint i = 0; i < arr1.length; i++) {
-      if (arr1[i] != arr2[i]) {
-        return false;
-      }
-    }
-    return true;
+  function direction(int[2] a, int[2] b, int[2] c) public pure returns (int256) {
+    return (c[0] - a[0]) * (b[1] - a[1]) - (b[0] - a[0]) * (c[1] - a[1]);
   }
 }
