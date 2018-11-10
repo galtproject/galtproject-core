@@ -62,6 +62,10 @@ contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie]) => {
       const res = await this.auditorsWeb3.methods.getAuditors().call();
       assert.sameMembers(res.map(a => a.toLowerCase()), [alice]);
     });
+
+    it('should deny addition to non-auditor-manager', async function() {
+      await assertRevert(this.auditors.addAuditor(coreTeam, 300, { from: coreTeam }));
+    });
   });
 
   describe('#removeAuditor()', () => {
@@ -87,6 +91,36 @@ contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie]) => {
     it('should deny removing the same auditor twice', async function() {
       await this.auditors.removeAuditor(bob, { from: auditorManager });
       await assertRevert(this.auditors.removeAuditor(bob, { from: auditorManager }));
+    });
+
+    it('should deny removal to non-auditor-manager', async function() {
+      await assertRevert(this.auditors.removeAuditor(bob, { from: coreTeam }));
+    });
+  });
+
+  describe('#setAuditorWeight()', () => {
+    beforeEach(async function() {
+      await this.auditors.addAuditor(alice, 320, { from: auditorManager });
+      await this.auditors.addAuditor(bob, 280, { from: auditorManager });
+      await this.auditors.addAuditor(charlie, 560, { from: auditorManager });
+    });
+
+    it('should allow setting new auditor weight', async function() {
+      let res = await this.auditorsWeb3.methods.auditorWeight(bob).call();
+      assert.equal(res, 280);
+
+      await this.auditors.setAuditorWeight(bob, 450, { from: auditorManager });
+
+      res = await this.auditorsWeb3.methods.auditorWeight(bob).call();
+      assert.equal(res, 450);
+    });
+
+    it('should deny setting weight of non-existing auditor', async function() {
+      await assertRevert(this.auditors.setAuditorWeight(coreTeam, 300, { from: auditorManager }));
+    });
+
+    it('should deny setting weight to non-auditor-manager address', async function() {
+      await assertRevert(this.auditors.setAuditorWeight(bob, 300, { from: coreTeam }));
     });
   });
 });

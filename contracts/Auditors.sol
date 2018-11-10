@@ -51,7 +51,6 @@ contract Auditors is RBAC {
     auditorWeight[_auditor] = 0;
   }
 
-
   function setAuditorWeight(
     address _auditor,
     uint256 _weight
