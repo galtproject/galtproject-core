@@ -17,12 +17,15 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library PointUtils {
-  function comparePoints(int[2] a, int[2] b) public pure returns(int8) {
-    if (a[0] - b[0] > MathUtils.EPS() || (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && a[1] - b[1] > MathUtils.EPS())) {
+  
+  int256 internal constant EPS = 1000000000;
+  
+  function comparePoints(int[2] a, int[2] b) internal pure returns(int8) {
+    if (a[0] - b[0] > EPS || (MathUtils.abs(a[0] - b[0]) < EPS && a[1] - b[1] > EPS)) {
       return 1;
-    } else if (b[0] - a[0] > MathUtils.EPS() || (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && b[1] - a[1] > MathUtils.EPS())) {
+    } else if (b[0] - a[0] > EPS || (MathUtils.abs(a[0] - b[0]) < EPS && b[1] - a[1] > EPS)) {
       return -1;
-    } else if (MathUtils.abs(a[0] - b[0]) < MathUtils.EPS() && MathUtils.abs(a[1] - b[1]) < MathUtils.EPS() ) {
+    } else if (MathUtils.abs(a[0] - b[0]) < EPS && MathUtils.abs(a[1] - b[1]) < EPS) {
       return 0;
     }
   }
