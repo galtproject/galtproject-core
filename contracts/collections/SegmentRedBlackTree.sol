@@ -75,4 +75,29 @@ library SegmentRedBlackTree {
     RedBlackTree.insertFixup(segments.tree, key);
     segments.tree.inserted++;
   }
+  
+  function setSweeplineX(SegmentsTree storage segments, int256 x) public {
+    segments.sweepline.x = x;
+  }
+
+  function setSweeplinePosition(SegmentsTree storage segments, SegmentUtils.Position position) public {
+    segments.sweepline.position = position;
+  }
+
+  function getNewId(SegmentsTree storage segments) public returns(uint256) {
+    return segments.tree.inserted + 1;
+  }
+
+  function pop() public returns(SegmentsTree storage segments, uint256 id, int256[2][2] value) {
+    id = segments.pop();
+    value = segments.value[id];
+  }
+
+  function first(SegmentsTree storage segments) public returns(uint256) {
+    return segments.first();
+  }
+
+  function next(SegmentsTree storage segments) public returns(uint256) {
+    return segments.next();
+  }
 }

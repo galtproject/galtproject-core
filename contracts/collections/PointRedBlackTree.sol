@@ -74,4 +74,25 @@ library PointRedBlackTree {
     RedBlackTree.insertFixup(points.tree, key);
     points.tree.inserted++;
   }
+
+  function getNewId(PointsTree storage points) public returns(uint256) {
+    return points.tree.inserted + 1;
+  }
+  
+  function pop(PointsTree storage points) public returns(uint256 id, int256[2] value) {
+    id = points.pop();
+    value = points.value[id];
+  }
+  
+  function isEmpty(PointsTree storage points) public returns(bool) {
+    return points.inserted == points.removed;
+  }
+
+  function first(PointsTree storage points) public returns(uint256) {
+    return points.first();
+  }
+
+  function next(PointsTree storage points) public returns(uint256) {
+    return points.next();
+  }
 }
