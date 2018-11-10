@@ -123,4 +123,22 @@ contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie]) => {
       await assertRevert(this.auditors.setAuditorWeight(bob, 300, { from: coreTeam }));
     });
   });
+
+  describe('#setNofM()', () => {
+    it('should allow correct values', async function() {
+      await this.auditors.setNofM(2, 5, { from: auditorManager });
+    });
+
+    it('should deny n < 2', async function() {
+      await assertRevert(this.auditors.setNofM(1, 5, { from: auditorManager }));
+    });
+
+    it('should deny n > m', async function() {
+      await assertRevert(this.auditors.setNofM(3, 2, { from: auditorManager }));
+    });
+
+    it('should deny non-auditor-manager setting values', async function() {
+      await assertRevert(this.auditors.setNofM(2, 5, { from: coreTeam}));
+    });
+  });
 });

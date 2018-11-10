@@ -26,6 +26,9 @@ contract Auditors is RBAC {
   ArraySet.AddressSet auditors;
   mapping(address => uint256) public auditorWeight;
 
+  uint256 public n;
+  uint256 public m;
+
   constructor(address _roleManager) public {
     super.addRole(_roleManager, ROLE_MANAGER);
   }
@@ -61,6 +64,20 @@ contract Auditors is RBAC {
     require(auditors.has(_auditor), "Auditor doesn't exist");
 
     auditorWeight[_auditor] = _weight;
+  }
+
+  function setNofM(
+    uint256 _n,
+    uint256 _m
+  )
+    external
+    onlyRole(ROLE_AUDITOR_MANAGER)
+  {
+    require(2 <= _n, "Should satisfy `2 <= n`");
+    require(_n <= _m, "Should satisfy `n <= m`");
+
+    n = _n;
+    m = _m;
   }
 
   function addRoleTo(
