@@ -60,7 +60,7 @@ contract.only('BentleyOttman', ([coreTeam]) => {
   describe('#setSegments()', () => {
     it('should correctly setSegments', async function() {
       await this.mockBentleyOttman.setSegments(this.etherSegments);
-      // await this.mockBentleyOttman.handleQueuePoints();
+      await this.mockBentleyOttman.handleQueuePoints();
       assert.equal(true, false);
     });
   });
