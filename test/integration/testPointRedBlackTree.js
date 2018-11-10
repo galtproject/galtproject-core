@@ -72,9 +72,9 @@ contract('PointRedBlackTree', ([coreTeam]) => {
 
   describe('#comparePoints()', () => {
     it('should correctly detect comparePoints', async function() {
+      // Helpers
       this.comparePoints = async function(point1, point2, expectedResult) {
         console.log('      comparePoints', point1, point2);
-
         const res = await this.mockPointRedBlackTree.comparePoints(
           point1.map(c => ether(c)),
           point2.map(c => ether(c)),
@@ -86,6 +86,7 @@ contract('PointRedBlackTree', ([coreTeam]) => {
         // TODO: log on NODE_ENV flag active
         console.log('      gasUsed', res.receipt.gasUsed);
       };
+      // Helpers end
 
       await this.comparePoints([10, 0], [0, 0], 1);
       await this.comparePoints([2, -1], [0, 0], 1);
@@ -108,54 +109,59 @@ contract('PointRedBlackTree', ([coreTeam]) => {
   });
 
   describe('#insert() and find()', () => {
-    it('should correctly insert and find points', async function() {
-      let number = 1;
+    let number = 1;
+    let totalGasUsed = 0;
 
+    it('should correctly insert and find points', async function() {
+      // Helpers
       this.getPointId = function(point) {
         return `1${Math.abs(web3.utils.fromWei(point[0], 'ether')).toString()}1${Math.abs(
           web3.utils.fromWei(point[1], 'ether')
         ).toString()}`;
       };
 
-      let totalGasUsed = 0;
-
       this.insert = async function(point) {
         console.log('      PointRedBlackTree.insert() number', number);
-
         const id = this.getPointId(point);
-
         const res = await this.mockPointRedBlackTree.insert(id, point, {
           from: coreTeam
         });
         // TODO: log on NODE_ENV flag active
         console.log('      gasUsed', res.receipt.gasUsed);
-
         totalGasUsed += res.receipt.gasUsed;
-
         number += 1;
       };
+
+      this.find = async function(point) {
+        console.log('      PointRedBlackTree.find() on number of points:', number - 1);
+        const expectedId = this.getPointId(point);
+        const res = await this.mockPointRedBlackTree.find(point, {
+          from: coreTeam
+        });
+        const itemId = res.logs[0].args.id.toString(10);
+        assert.equal(expectedId.toString(10), itemId.toString(10));
+        // TODO: log on NODE_ENV flag active
+        console.log('      gasUsed', res.receipt.gasUsed);
+        totalGasUsed += res.receipt.gasUsed;
+      };
+
+      this.checkRightAndLeft = async function(item) {
+        if (parseInt(item.left, 10)) {
+          const leftItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(item.left).call();
+          assert.equal(comparePoints(item.value, leftItem.value), 1);
+          await this.checkRightAndLeft(leftItem);
+        }
+        if (parseInt(item.right, 10)) {
+          const rightItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(item.right).call();
+          assert.equal(comparePoints(item.value, rightItem.value), -1);
+          await this.checkRightAndLeft(rightItem);
+        }
+      };
+      // Helpers end
 
       await pIteration.forEachSeries(this.etherPoints, async point => {
         await this.insert(point);
       });
-
-      this.find = async function(point) {
-        console.log('      PointRedBlackTree.find() on number of points:', number - 1);
-
-        const expectedId = this.getPointId(point);
-
-        const res = await this.mockPointRedBlackTree.find(point, {
-          from: coreTeam
-        });
-
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
-        totalGasUsed += res.receipt.gasUsed;
-
-        const itemId = res.logs[0].args.id.toString(10);
-        assert.equal(expectedId.toString(10), itemId.toString(10));
-      };
 
       await pIteration.forEachSeries(this.etherPoints, async point => {
         await this.find(point);
@@ -167,22 +173,6 @@ contract('PointRedBlackTree', ([coreTeam]) => {
 
       const resultRootId = await this.mockPointRedBlackTreeWeb3.methods.getRoot().call();
       const resultRootItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(resultRootId).call();
-
-      this.checkRightAndLeft = async function(item) {
-        if (parseInt(item.left, 10)) {
-          const leftItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(item.left).call();
-          assert.equal(comparePoints(item.value, leftItem.value), 1);
-
-          await this.checkRightAndLeft(leftItem);
-        }
-
-        if (parseInt(item.right, 10)) {
-          const rightItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(item.right).call();
-          assert.equal(comparePoints(item.value, rightItem.value), -1);
-
-          await this.checkRightAndLeft(rightItem);
-        }
-      };
 
       await this.checkRightAndLeft(resultRootItem);
     });

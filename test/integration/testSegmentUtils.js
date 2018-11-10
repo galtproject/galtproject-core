@@ -29,7 +29,6 @@ contract('SegmentUtils', ([coreTeam]) => {
     VectorUtils.link('MathUtils', this.mathUtils.address);
 
     this.pointUtils = await PointUtils.new({ from: coreTeam });
-    // VectorUtils.link('PointUtils', this.pointUtils.address);
 
     this.vectorUtils = await VectorUtils.new({ from: coreTeam });
     SegmentUtils.link('VectorUtils', this.vectorUtils.address);
@@ -43,14 +42,11 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#segmentsIntersect()', () => {
     it('should correctly detect segmentsIntersect', async function() {
-      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
-      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
-
       let number = 1;
 
+      // Helpers
       this.segmentsIntersect = async function(segment1, segment2, expectedResult) {
         console.log('      segmentsIntersect number', number);
-
         const res = await this.mockSegmentUtils.segmentsIntersect(segment1, segment2, {
           from: coreTeam
         });
@@ -60,6 +56,10 @@ contract('SegmentUtils', ([coreTeam]) => {
 
         number += 1;
       };
+      // Helpers end
+
+      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
+      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
 
       await this.segmentsIntersect(intersectSegments[0], intersectSegments[1], true);
 
@@ -69,14 +69,11 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#findSegmentsIntersection()', () => {
     it('should correctly detect findSegmentsIntersection', async function() {
-      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
-      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
-
       let number = 1;
 
+      // Helpers
       this.findSegmentsIntersection = async function(segment1, segment2, expectedResult) {
         console.log('      findSegmentsIntersection number', number);
-
         const res = await this.mockSegmentUtils.findSegmentsIntersection(segment1, segment2, {
           from: coreTeam
         });
@@ -86,6 +83,10 @@ contract('SegmentUtils', ([coreTeam]) => {
 
         number += 1;
       };
+      // Helpers end
+
+      const intersectSegments = [[[2, 2], [2, -2]], [[-1, 1], [3, 1]]];
+      const notIntersectSegments = [[[-1, 1], [-1, -1]], [[1, 1], [1, -1]]];
 
       await this.findSegmentsIntersection(intersectSegments[0], intersectSegments[1], [2, 1]);
 
@@ -95,19 +96,13 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#compareSegments', () => {
     it('should correctly detect compareSegments', async function() {
-      const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
-
-      const BEFORE = 0;
-      const AFTER = 1;
-
       let number = 1;
 
+      // Helpers
       this.compareSegments = async function(segment1, segment2, expectedResult) {
         console.log('      compareSegments number', number);
-
         const etherSegment1 = segment1.map(point => point.map(coor => ether(coor)));
         const etherSegment2 = segment2.map(point => point.map(coor => ether(coor)));
-
         const res = await this.mockSegmentUtils.compareSegments(etherSegment1, etherSegment2, {
           from: coreTeam
         });
@@ -117,6 +112,12 @@ contract('SegmentUtils', ([coreTeam]) => {
 
         number += 1;
       };
+      // Helpers end
+
+      const segments = [[[-1, 1], [1, -1]], [[-2, -2], [2, 2]]];
+
+      const BEFORE = 0;
+      const AFTER = 1;
 
       await this.mockSegmentUtils.setSweeplinePosition(BEFORE);
       await this.mockSegmentUtils.setSweeplineX(ether(-1));

@@ -60,20 +60,18 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
   describe('#insert() and find()', () => {
     it('should correctly insert and find points', async function() {
       let number = 1;
+      let totalGasUsed = 0;
 
+      // Helpers
       this.getSegmentId = function(segment) {
         return segment
           .map(point => point.map(coor => Math.abs(web3.utils.fromWei(coor, 'ether')).toString()).join(''))
           .join('');
       };
 
-      let totalGasUsed = 0;
-
       this.insert = async function(segment) {
         console.log('      SegmentRedBlackTree.insert() number', number);
-
         const id = this.getSegmentId(segment);
-
         const res = await this.mockSegmentRedBlackTree.insert(id, segment, {
           from: coreTeam
         });
@@ -84,27 +82,24 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         number += 1;
       };
 
-      await pIteration.forEachSeries(this.etherSegments, async segment => {
-        await this.insert(segment);
-      });
-
       this.find = async function(point) {
         console.log('      SegmentRedBlackTree.find() on number of segments:', number - 1);
-
         const expectedId = this.getSegmentId(point);
-
         const res = await this.mockSegmentRedBlackTree.find(point, {
           from: coreTeam
         });
-
         // TODO: log on NODE_ENV flag active
         console.log('      gasUsed', res.receipt.gasUsed);
-
-        totalGasUsed += res.receipt.gasUsed;
-
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
+
+        totalGasUsed += res.receipt.gasUsed;
       };
+      // Helpers end
+
+      await pIteration.forEachSeries(this.etherSegments, async segment => {
+        await this.insert(segment);
+      });
 
       await pIteration.forEachSeries(this.etherSegments, async segment => {
         await this.find(segment);
@@ -113,27 +108,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       // TODO: log on NODE_ENV flag active
       console.log('');
       console.log('      Total gasUsed', totalGasUsed);
-
-      // const resultRootId = await this.mockSegmentRedBlackTreeWeb3.methods.getRoot().call();
-      // const resultRootItem = await this.mockSegmentRedBlackTreeWeb3.methods.getItem(resultRootId).call();
-
-      // this.checkRightAndLeft = async function(item) {
-      //   if (parseInt(item.left, 10)) {
-      //     const leftItem = await this.mockSegmentRedBlackTreeWeb3.methods.getItem(item.left).call();
-      //     assert.equal(compareSegments(item.value, leftItem.value), 1);
-      //
-      //     await this.checkRightAndLeft(leftItem);
-      //   }
-      //
-      //   if (parseInt(item.right, 10)) {
-      //     const rightItem = await this.mockSegmentRedBlackTreeWeb3.methods.getItem(item.right).call();
-      //     assert.equal(compareSegments(item.value, rightItem.value), -1);
-      //
-      //     await this.checkRightAndLeft(rightItem);
-      //   }
-      // };
-      //
-      // await this.checkRightAndLeft(resultRootItem);
     });
   });
 });
