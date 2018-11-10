@@ -378,15 +378,15 @@ library RedBlackTree {
   }
   
   function pop (Tree storage tree) internal returns(uint) {
-    Item memory item = tree.items[tree.root];
-    
-    if (node == 0) {
+    if (tree.root == 0) {
       return 0;
     }
     
-    while (item.left) {
+    Item memory item = tree.items[tree.root];
+    
+    while (item.left > 0) {
       if(tree.items[item.left].left == 0) {
-        tree.remove(item.left);
+        remove(tree, item.left);
         return item.left;
       } else {
         item = tree.items[item.left];

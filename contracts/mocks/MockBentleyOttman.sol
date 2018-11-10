@@ -7,15 +7,19 @@ import "../utils/BentleyOttman.sol";
 contract MockBentleyOttman {
   using BentleyOttman for BentleyOttman.State;
 
-  BentleyOttman.State private bentleyOttmanState;
+  BentleyOttman.State private bentleyOttman;
   
   event LogSetSegments(int256[2][2] firstItem);
   
   constructor() public {
-    bentleyOttmanState.init();
+    bentleyOttman.init();
   }
 
   function setSegments(int256[2][2][] value) public {
-    bentleyOttmanState.setSegments(value);
+    bentleyOttman.setSegments(value);
+  }
+  
+  function handleQueuePoints() public {
+    bentleyOttman.handleQueuePoints();
   }
 }

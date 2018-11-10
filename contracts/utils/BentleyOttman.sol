@@ -20,6 +20,7 @@ import "../collections/SegmentRedBlackTree.sol";
 import "../collections/PointRedBlackTree.sol";
 import "./MathUtils.sol";
 import "./SegmentUtils.sol";
+import "./VectorUtils.sol";
 
 library BentleyOttman {
   int256 internal constant EPS = 1000000000;
@@ -41,10 +42,12 @@ library BentleyOttman {
     int256[2][2][] segments;
     mapping(uint256 => uint256[]) segmentsIndexesByQueueKey;
 
-    mapping(uint256 => uint256[]) segmentsIndexesLpByQueueKey; // segments, for which this is the right end
-    mapping(uint256 => uint256[]) segmentsIndexesCpByQueueKey; // segments, for which this is an inner point
+    mapping(uint256 => int256[2][2][]) segmentsLpByQueueKey; // segments, for which this is the right end
+    mapping(uint256 => int256[2][2][]) segmentsCpByQueueKey; // segments, for which this is an inner point
   }
 
+  event LogHandleQueuePoints(int256[2][2] firstItem);
+  
   function init(State storage state) public {
     state.status.init();
     state.queue.init();
@@ -69,56 +72,58 @@ library BentleyOttman {
   }
   
   function handleSegment(State storage state, uint256 segmentIndex) private {
-    int256[2][2] memory segment = state.segments[index];
+    int256[2][2] memory segment = state.segments[segmentIndex];
     
     // sort points of segment
     int8 comparePointsResult = PointUtils.comparePoints(segment[0], segment[1]);
     if(comparePointsResult > 0) {
-      segment = new int256[2][2]([segment[1], segment[0]]);
-      state.segments[index] = segment;
+      segment = int256[2][2]([segment[1], segment[0]]);
+      state.segments[segmentIndex] = segment;
     }
 
     uint256 beginId = state.queue.getNewId();
     state.queue.insert(beginId, segment[0]);
     state.segmentsIndexesByQueueKey[beginId].push(segmentIndex);
 
-    state.queue.insert(beginId, segment[1]);
+    uint256 endId = state.queue.getNewId();
+    state.queue.insert(endId, segment[1]);
   }
   
-  function handleQueuePoints(State storage state) {
-    state.queue.setSweeplinePosition('before');
+  function handleQueuePoints(State storage state) public {
+//    emit LogHandleQueuePoints(state.status.values[0]);
+    state.status.setSweeplinePosition(SegmentUtils.Position.BEFORE);
     
     while(!state.queue.isEmpty()) {
-      (uint256 id, int256[2][2] memory point) = state.queue.pop();
-      state.handleEventPointStage1(state, id, point);
+      (uint256 id, int256[2] memory point) = state.queue.pop();
+      handleEventPointStage1(state, id, point);
     }
   }
   
-  function handleEventPointStage1(State storage state, uint256 id, int256[2][2] memory point) {
-    state.queue.setSweeplineX(point[0]);
+  function handleEventPointStage1(State storage state, uint256 id, int256[2] memory point) private {
+    state.status.setSweeplineX(point[0]);
 
-    uint256[] Up = state.segmentsIndexesByQueueKey[id]; // segments, for which this is the left end
+    uint256[] memory Up = state.segmentsIndexesByQueueKey[id]; // segments, for which this is the left end
     
     // step 2
     uint256 currentStatusId = state.status.first();
     while(currentStatusId > 0) {
-      uint256[2][2] segment = state.status.values[currentStatusId];
+      int256[2][2] storage segment = state.status.values[currentStatusId];
 
       // count right-ends
       if (MathUtils.abs(point[0] - segment[1][0]) < EPS && MathUtils.abs(point[1] - segment[1][1]) < EPS) {
-        state.segmentsIndexesLpByQueueKey[id].push(segment);
+        state.segmentsLpByQueueKey[id].push(segment);
         // count inner points
       } else {
         // filter left ends
         if (!(MathUtils.abs(point[0] - segment[0][0]) < EPS && MathUtils.abs(point[1] - segment[0][1]) < EPS)) {
-          if (MathUtils.abs(SegmentUtils.direction(segment[0], segment[1], [point[0], point[1]])) < EPS && SegmentUtils.onSegment(segment[0], segment[1], [point[0], point[1]])) {
-            state.segmentsIndexesCpByQueueKey[id].push(segment);
+          if (MathUtils.abs(VectorUtils.direction(segment[0], segment[1], [point[0], point[1]])) < EPS && VectorUtils.onSegment(segment[0], segment[1], [point[0], point[1]])) {
+            state.segmentsCpByQueueKey[id].push(segment);
           }
         }
       }
     }
 
-    if (state.segmentsIndexesByQueueKey[id].length > 1 || state.segmentsIndexesLpByQueueKey[id].length > 1 || state.segmentsIndexesCpByQueueKey[id].length > 1) {
+    if (state.segmentsIndexesByQueueKey[id].length > 1 || state.segmentsLpByQueueKey[id].length > 1 || state.segmentsCpByQueueKey[id].length > 1) {
       state.output.insert(state.output.getNewId(), point);
     }
   }

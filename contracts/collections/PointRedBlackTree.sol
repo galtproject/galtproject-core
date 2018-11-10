@@ -18,6 +18,7 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library PointRedBlackTree {
+  using RedBlackTree for RedBlackTree.Tree;
   
   struct PointsTree {
     RedBlackTree.Tree tree;
@@ -27,7 +28,7 @@ library PointRedBlackTree {
   uint internal constant ZERO = 0;
   
   function init(PointsTree storage points) public {
-    RedBlackTree.init(points.tree);
+    points.tree.init();
   }
 
   function find(PointsTree storage points, int256[2] value) public view returns (uint) {
@@ -71,7 +72,7 @@ library PointRedBlackTree {
     } else {
       points.tree.items[y].right = key;
     }
-    RedBlackTree.insertFixup(points.tree, key);
+    points.tree.insertFixup(key);
     points.tree.inserted++;
   }
 
@@ -80,19 +81,19 @@ library PointRedBlackTree {
   }
   
   function pop(PointsTree storage points) public returns(uint256 id, int256[2] value) {
-    id = points.pop();
-    value = points.value[id];
+    id = points.tree.pop();
+    value = points.values[id];
   }
   
   function isEmpty(PointsTree storage points) public returns(bool) {
-    return points.inserted == points.removed;
+    return points.tree.inserted == points.tree.removed;
   }
 
   function first(PointsTree storage points) public returns(uint256) {
-    return points.first();
+    return points.tree.first();
   }
 
-  function next(PointsTree storage points) public returns(uint256) {
-    return points.next();
+  function next(PointsTree storage points, uint256 id) public returns(uint256) {
+    return points.tree.next(id);
   }
 }
