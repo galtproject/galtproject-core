@@ -17,6 +17,7 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "./collections/ArraySet.sol";
 import "./ValidatorStakesMultiSig.sol";
+import "./Validators.sol";
 
 contract Auditors is RBAC {
   using ArraySet for ArraySet.AddressSet;
@@ -31,15 +32,18 @@ contract Auditors is RBAC {
   uint256 public m;
 
   ValidatorStakesMultiSig validatorStakesMultiSig;
+  Validators validators;
 
   constructor(
     address _roleManager,
-    ValidatorStakesMultiSig _validatorStakesMultiSig
+    ValidatorStakesMultiSig _validatorStakesMultiSig,
+    Validators _validators
   )
     public
   {
     super.addRole(_roleManager, ROLE_MANAGER);
     validatorStakesMultiSig = _validatorStakesMultiSig;
+    validators = _validators;
   }
 
   function addAuditor(
@@ -104,8 +108,8 @@ contract Auditors is RBAC {
       previousWeight = currentWeight;
     }
 
-    validatorStakesMultiSig.setOwners(n, m, descSortedAuditors);
-    // TODO: push top to validators
+    validatorStakesMultiSig.setAuditors(n, m, descSortedAuditors);
+    validators.setAuditors(descSortedAuditors, m);
   }
 
   function addRoleTo(

@@ -1,23 +1,27 @@
 const Auditors = artifacts.require('./Auditors.sol');
 const ValidatorStakesMultiSig = artifacts.require('./ValidatorStakesMultiSig.sol');
+const Validators = artifacts.require('./Validators.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const pIteration = require('p-iteration');
 const { assertRevert, initHelperWeb3 } = require('../helpers');
 
-const { hexToUtf8 } = Web3.utils;
 const web3 = new Web3(Auditors.web3.currentProvider);
+const { stringToHex } = Web3.utils;
 
 initHelperWeb3(web3);
 
 chai.use(chaiAsPromised);
 
+const CM_AUDITOR = 'CM_AUDITOR';
+
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie, dan, eve]) => {
+contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, charlie, dan, eve]) => {
   beforeEach(async function() {
+    this.validators = await Validators.new({ from: coreTeam });
     this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, ['0x1', '0x2', '0x3'], 2, { from: coreTeam });
-    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, { from: coreTeam });
+    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.validators.address, { from: coreTeam });
 
     await this.auditors.addRoleTo(coreTeam, await this.auditors.ROLE_MANAGER(), {
       from: coreTeam
@@ -31,8 +35,15 @@ contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie, dan, 
     await this.vsMultiSig.addRoleTo(this.auditors.address, await this.vsMultiSig.ROLE_AUDITORS_MANAGER(), {
       from: coreTeam
     });
+    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(this.auditors.address, await this.validators.ROLE_AUDITOR_MANAGER(), {
+      from: coreTeam
+    });
 
     this.auditorsWeb3 = new web3.eth.Contract(this.auditors.abi, this.auditors.address);
+    this.validatorsWeb3 = new web3.eth.Contract(this.validators.abi, this.validators.address);
     this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
   });
 
@@ -163,27 +174,61 @@ contract.only('Auditors', ([coreTeam, auditorManager, alice, bob, charlie, dan, 
       await this.auditors.setNofM(2, 3, { from: auditorManager });
     });
 
-    it.only('should push', async function() {
+    it('should push auditors', async function() {
+      // TODO: add users as a validators
+      await this.validators.addValidator(alice, 'Alice', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+
       const initialAuditors = [alice, bob, charlie, dan, eve];
       let res = await this.auditorsWeb3.methods.getAuditors().call();
       assert.sameMembers(res.map(a => a.toLowerCase()), initialAuditors);
 
-      const toSort = [];
+      let toSort = [];
       await pIteration.forEachSeries(initialAuditors, async auditor => {
         toSort.push({ auditor, weight: await this.auditorsWeb3.methods.auditorWeight(auditor).call() });
       });
 
       toSort.sort((a, b) => b.weight - a.weight);
-      const sortedAuditors = toSort.map(o => o.auditor);
+      let sortedAuditors = toSort.map(o => o.auditor);
 
       await this.auditors.pushAuditors(sortedAuditors);
 
       res = await this.vsMultiSigWeb3.methods.getOwners().call();
+      assert.equal(res.length, 3);
       assert.equal(res[0].toLowerCase(), eve);
       assert.equal(res[1].toLowerCase(), charlie);
       assert.equal(res[2].toLowerCase(), alice);
 
-      // TODO: check pushed to validators contract
+      res = await this.validatorsWeb3.methods.getValidatorsByRole(stringToHex(CM_AUDITOR)).call();
+      assert.equal(res.length, 3);
+      assert.sameMembers(res.map(a => a.toLowerCase()), sortedAuditors.slice(0, 3));
+
+      // change and recheck
+      await this.auditors.setAuditorWeight(charlie, 510, { from: auditorManager });
+      await this.auditors.setAuditorWeight(dan, 980, { from: auditorManager });
+
+      toSort = [];
+      await pIteration.forEachSeries(initialAuditors, async auditor => {
+        toSort.push({ auditor, weight: await this.auditorsWeb3.methods.auditorWeight(auditor).call() });
+      });
+
+      toSort.sort((a, b) => b.weight - a.weight);
+      sortedAuditors = toSort.map(o => o.auditor);
+      await this.auditors.pushAuditors(sortedAuditors);
+
+      res = await this.vsMultiSigWeb3.methods.getOwners().call();
+      assert.equal(res.length, 3);
+      assert.equal(res[0].toLowerCase(), dan);
+      assert.equal(res[1].toLowerCase(), eve);
+      assert.equal(res[2].toLowerCase(), charlie);
+
+      res = await this.validatorsWeb3.methods.getValidatorsByRole(stringToHex(CM_AUDITOR)).call();
+      // we don't remove doubled values
+      assert.equal(res.length, 6);
+      // assert.sameMembers(res.map(a => a.toLowerCase()), sortedAuditors.slice(0, 3));
     });
 
     it('should deny non-sorted auditors list', async function() {

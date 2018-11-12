@@ -58,7 +58,7 @@ contract ValidatorStakesMultiSig is MultiSigWallet, RBAC {
     transactionId = addTransaction(destination, value, data);
   }
 
-  function setOwners(
+  function setAuditors(
     uint256 n,
     uint256 m,
     address[] descAuditors
