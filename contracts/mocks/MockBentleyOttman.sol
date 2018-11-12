@@ -28,6 +28,10 @@ contract MockBentleyOttman {
     bentleyOttman.handleQueuePoints();
   }
 
+  function isQueuePointsOver() public returns(bool) {
+    return bentleyOttman.isQueuePointsOver();
+  }
+
   function getOutputLength() public returns(uint256) {
     return bentleyOttman.getOutputLength();
   }

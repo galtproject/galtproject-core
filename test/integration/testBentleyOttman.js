@@ -47,8 +47,14 @@ contract.only('BentleyOttman', ([coreTeam]) => {
         await this.mockBentleyOttman.addSegment(segment);
       });
 
-      const res = await this.mockBentleyOttman.handleQueuePoints();
+      let res = await this.mockBentleyOttman.handleQueuePoints();
       console.log('      gasUsed', res.receipt.gasUsed);
+
+      const isQueuePointsOver = await this.mockBentleyOttmanWeb3.methods.isQueuePointsOver().call();
+      if (!isQueuePointsOver) {
+        res = await this.mockBentleyOttman.handleQueuePoints();
+        console.log('      gasUsed', res.receipt.gasUsed);
+      }
     };
   });
 
@@ -67,14 +73,14 @@ contract.only('BentleyOttman', ([coreTeam]) => {
       assert.equal(outputLength, '2');
     });
 
-    it.skip('should correctly handleQueuePoints case 2', async function() {
+    it('should correctly handleQueuePoints case 2', async function() {
       await this.setSegmentsAndHandleQueuePoints([
         [[37.76969192083046, 55.76677008516301], [37.63181731019415, 55.751938326388974]],
         [[37.441016373071996, 55.78557135451422], [37.608522492722216, 55.73105542625078]],
         [[37.652041463641424, 55.73987541904628], [37.68218877423553, 55.76885334957768]],
         [[37.68831757976256, 55.75111211248927], [37.679768066345304, 55.76043505829761]],
         [[37.63480194752325, 55.723303783416455], [37.5096053342284, 55.729045212762685]],
-        [[37.566044579959325, 55.7377918616373], [37.516416549790414, 55.79247372710407]]
+        [[37.566044579959325, 55.7377918616373], [37.516416549790414, 55.79247372710407]],
         [[37.53609668783335, 55.74886598399479], [37.53457057953605, 55.71145403212967]],
         [[37.60169673277886, 55.74330451873227], [37.67315110221475, 55.721233976712554]]
       ]);

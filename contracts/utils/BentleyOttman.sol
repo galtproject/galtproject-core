@@ -36,6 +36,8 @@ library BentleyOttman {
   }
 
   struct State {
+    uint8 maxHandleQueuePointsPerCall;
+    
     SegmentRedBlackTree.SegmentsTree status;
     PointRedBlackTree.PointsTree queue;
     int256[2][] output;
@@ -64,6 +66,9 @@ library BentleyOttman {
   function init(State storage state) public {
     state.status.init();
     state.queue.init();
+
+    //transaction reverted on maxHandleQueuePointsPerCall = 16 
+    state.maxHandleQueuePointsPerCall = 12;
   }
 
   //This type is only supported in the new experimental ABI encoder. Use "pragma experimental ABIEncoderV2;" to enable the feature.
@@ -108,9 +113,14 @@ library BentleyOttman {
   function handleQueuePoints(State storage state) public {
     //    emit LogHandleQueuePoints(state.status.values[0]);
 
+    uint8 i = 0;
     while (!state.queue.isEmpty()) {
       (uint256 id, int256[2] memory point) = state.queue.pop();
       handleEventPointStage1(state, id, point);
+      i += 1;
+      if (i >= state.maxHandleQueuePointsPerCall) {
+        break;
+      }
     }
   }
 
@@ -277,6 +287,10 @@ library BentleyOttman {
         emit LogFindNewEventOutputInsert(intersectionPoint);
       }
     }
+  }
+  
+  function isQueuePointsOver(State storage state) public returns(bool){
+    return state.queue.isEmpty();
   }
 
   function getOutputLength(State storage state) public returns(uint256){
