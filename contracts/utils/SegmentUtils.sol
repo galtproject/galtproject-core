@@ -55,7 +55,7 @@ library SegmentUtils {
     //TODO: optimize?
     int xDivide = ((a[0][0] - a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] - b[1][0]));
     if (xDivide == 0) {
-      return int256[2]([int256(- 1), int256(- 1)]);
+      return int256[2]([int256(0),0]);
     }
 
     //TODO: optimize?
@@ -65,7 +65,7 @@ library SegmentUtils {
     //TODO: optimize?
     int yDivide = ((a[0][0] - a[1][0]) * (b[0][1] - b[1][1]) - (a[0][1] - a[1][1]) * (b[0][0] - b[1][0]));
     if (yDivide == 0) {
-      return int256[2]([int256(- 1), int256(- 1)]);
+      return int256[2]([int256(0),0]);
     }
 
     //TODO: optimize?
@@ -73,24 +73,24 @@ library SegmentUtils {
     yDivide;
 
     if (a[0][0] >= a[1][0]) {
-      if (!MathUtils.between(a[1][0], x, a[0][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(a[1][0], x, a[0][0])) {return int256[2]([int256(0),0]);}
     } else {
-      if (!MathUtils.between(a[0][0], x, a[1][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(a[0][0], x, a[1][0])) {return int256[2]([int256(0),0]);}
     }
     if (a[0][1] >= a[1][1]) {
-      if (!MathUtils.between(a[1][1], y, a[0][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(a[1][1], y, a[0][1])) {return int256[2]([int256(0),0]);}
     } else {
-      if (!MathUtils.between(a[0][1], y, a[1][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(a[0][1], y, a[1][1])) {return int256[2]([int256(0),0]);}
     }
     if (b[0][0] >= b[1][0]) {
-      if (!MathUtils.between(b[1][0], x, b[0][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(b[1][0], x, b[0][0])) {return int256[2]([int256(0),0]);}
     } else {
-      if (!MathUtils.between(b[0][0], x, b[1][0])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(b[0][0], x, b[1][0])) {return int256[2]([int256(0),0]);}
     }
     if (b[0][1] >= b[1][1]) {
-      if (!MathUtils.between(b[1][1], y, b[0][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(b[1][1], y, b[0][1])) {return int256[2]([int256(0),0]);}
     } else {
-      if (!MathUtils.between(b[0][1], y, b[1][1])) {return int256[2]([int256(- 1), int256(- 1)]);}
+      if (!MathUtils.between(b[0][1], y, b[1][1])) {return int256[2]([int256(0),0]);}
     }
     return [x, y];
   }

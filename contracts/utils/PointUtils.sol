@@ -20,7 +20,7 @@ library PointUtils {
   
   int256 internal constant EPS = 1000000000;
   
-  function comparePoints(int[2] a, int[2] b) internal pure returns(int8) {
+  function comparePoints(int[2] memory a, int[2] memory b) internal pure returns(int8) {
     if (a[0] - b[0] > EPS || (MathUtils.abs(a[0] - b[0]) < EPS && a[1] - b[1] > EPS)) {
       return 1;
     } else if (b[0] - a[0] > EPS || (MathUtils.abs(a[0] - b[0]) < EPS && b[1] - a[1] > EPS)) {

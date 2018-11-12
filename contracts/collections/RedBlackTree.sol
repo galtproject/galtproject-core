@@ -37,7 +37,7 @@ library RedBlackTree {
   event Log(string where, string action, uint key, uint parent, uint left, uint right, bool red);
 
   function init(Tree storage tree) internal {
-    require(!tree.initialised);
+    require(!tree.initialised, "RedBlackTree not initialized");
     tree.root = ZERO;
     Item memory i;
     tree.items[ZERO] = i;
@@ -63,7 +63,9 @@ library RedBlackTree {
   }
 
   function next(Tree storage tree, uint x) internal view returns (uint y) {
-    require(x != ZERO);
+    if(x == 0) {
+      return 0;
+    }
     if (tree.items[x].right != ZERO) {
       y = treeMinimum(tree, tree.items[x].right);
     } else {
@@ -78,7 +80,9 @@ library RedBlackTree {
   }
 
   function prev(Tree storage tree, uint x) internal view returns (uint y) {
-    require(x != ZERO);
+    if(x == 0) {
+      return 0;
+    }
     if (tree.items[x].left != ZERO) {
       y = treeMaximum(tree, tree.items[x].left);
     } else {
@@ -109,12 +113,16 @@ library RedBlackTree {
   //  }
 
   function parent(Tree storage tree, uint key) internal view returns (uint _parent) {
-    require(key != ZERO);
+    if(key == 0) {
+      return 0;
+    }
     _parent = tree.items[key].parent;
   }
 
   function grandparent(Tree storage tree, uint key) internal view returns (uint _grandparent) {
-    require(key != ZERO);
+    if(key == 0) {
+      return 0;
+    }
     uint _parent = tree.items[key].parent;
     if (_parent != ZERO) {
       _grandparent = tree.items[_parent].parent;
@@ -124,7 +132,9 @@ library RedBlackTree {
   }
 
   function sibling(Tree storage tree, uint key) internal view returns (uint _sibling) {
-    require(key != ZERO);
+    if(key == 0) {
+      return 0;
+    }
     uint _parent = tree.items[key].parent;
     if (_parent != ZERO) {
       if (key == tree.items[_parent].left) {
@@ -138,7 +148,9 @@ library RedBlackTree {
   }
 
   function uncle(Tree storage tree, uint key) internal view returns (uint _uncle) {
-    require(key != ZERO);
+    if(key == 0) {
+      return 0;
+    }
     uint _grandParent = grandparent(tree, key);
     if (_grandParent != ZERO) {
       uint _parent = tree.items[key].parent;
@@ -149,12 +161,12 @@ library RedBlackTree {
   }
 
   function remove(Tree storage tree, uint z) internal {
-    require(z != ZERO);
+    require(z != ZERO, "id equals ZERO");
     uint x;
     uint y;
 
     // z can be root OR z is not root && parent cannot be the ZERO
-    require(z == tree.root || (z != tree.root && tree.items[z].parent != ZERO));
+    require(z == tree.root || (z != tree.root && tree.items[z].parent != ZERO), "z can be root OR z is not root && parent cannot be the ZERO");
 
     if (tree.items[z].left == ZERO || tree.items[z].right == ZERO) {
       y = z;
@@ -378,20 +390,13 @@ library RedBlackTree {
   }
   
   function pop (Tree storage tree) internal returns(uint) {
+//    return tree.root;
     if (tree.root == 0) {
       return 0;
     }
     
-    Item memory item = tree.items[tree.root];
-    
-    while (item.left > 0) {
-      if(tree.items[item.left].left == 0) {
-        remove(tree, item.left);
-        return item.left;
-      } else {
-        item = tree.items[item.left];
-      }
-    }
-    return 0;
+    uint popId = first(tree);
+    remove(tree, popId);
+    return popId;
   }
 }
