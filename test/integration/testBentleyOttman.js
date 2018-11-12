@@ -38,23 +38,33 @@ contract.only('BentleyOttman', ([coreTeam]) => {
 
     this.mockBentleyOttmanWeb3 = new web3.eth.Contract(this.mockBentleyOttman.abi, this.mockBentleyOttman.address);
 
+    this.handleQueuePoints = async function() {
+      const isOver = await this.mockBentleyOttmanWeb3.methods.isQueuePointsOver().call();
+      if (isOver) {
+        return 0;
+      }
+      const res = await this.mockBentleyOttman.handleQueuePoints();
+      console.log('      handleQueuePoints tx gasUsed', res.receipt.gasUsed);
+
+      return res.receipt.gasUsed + (await this.handleQueuePoints());
+    };
     this.setSegmentsAndHandleQueuePoints = async function(segments) {
+      console.log(`      Segments count: ${segments.length}\n`);
       const etherSegments = segments.map(segment =>
         segment.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)))
       );
 
+      let totalAddSegmentGasUsed = 0;
       await pIteration.forEachSeries(etherSegments, async segment => {
-        await this.mockBentleyOttman.addSegment(segment);
+        const res = await this.mockBentleyOttman.addSegment(segment);
+        console.log('      addSegment tx gasUsed', res.receipt.gasUsed);
+        totalAddSegmentGasUsed += res.receipt.gasUsed;
       });
 
-      let res = await this.mockBentleyOttman.handleQueuePoints();
-      console.log('      gasUsed', res.receipt.gasUsed);
-
-      const isQueuePointsOver = await this.mockBentleyOttmanWeb3.methods.isQueuePointsOver().call();
-      if (!isQueuePointsOver) {
-        res = await this.mockBentleyOttman.handleQueuePoints();
-        console.log('      gasUsed', res.receipt.gasUsed);
-      }
+      const handleQueueTotalGasUsed = await this.handleQueuePoints();
+      console.log('');
+      console.log('      addSegment total gasUsed', totalAddSegmentGasUsed);
+      console.log('      handleQueuePoints total gasUsed', handleQueueTotalGasUsed);
     };
   });
 
