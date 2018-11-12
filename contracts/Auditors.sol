@@ -16,6 +16,7 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "./collections/ArraySet.sol";
+import "./ValidatorStakesMultiSig.sol";
 
 contract Auditors is RBAC {
   using ArraySet for ArraySet.AddressSet;
@@ -29,8 +30,16 @@ contract Auditors is RBAC {
   uint256 public n;
   uint256 public m;
 
-  constructor(address _roleManager) public {
+  ValidatorStakesMultiSig validatorStakesMultiSig;
+
+  constructor(
+    address _roleManager,
+    ValidatorStakesMultiSig _validatorStakesMultiSig
+  )
+    public
+  {
     super.addRole(_roleManager, ROLE_MANAGER);
+    validatorStakesMultiSig = _validatorStakesMultiSig;
   }
 
   function addAuditor(
@@ -78,6 +87,25 @@ contract Auditors is RBAC {
 
     n = _n;
     m = _m;
+  }
+
+  function pushAuditors(address[] descSortedAuditors) external {
+    require(descSortedAuditors.length == auditors.size(), "Sorted auditors list should be equal to the stored one");
+
+    uint256 len = descSortedAuditors.length;
+    uint256 previousWeight = auditorWeight[descSortedAuditors[0]];
+    require(previousWeight > 0, "Could not accept auditors with 0 weight");
+
+    for (uint256 i = 0; i < len; i++) {
+      uint256 currentWeight = auditorWeight[descSortedAuditors[i]];
+      require(currentWeight > 0, "Could not accept auditors with 0 weight");
+
+      require(currentWeight <= previousWeight, "Invalid sorting");
+      previousWeight = currentWeight;
+    }
+
+    validatorStakesMultiSig.setOwners(n, m, descSortedAuditors);
+    // TODO: push top to validators
   }
 
   function addRoleTo(
