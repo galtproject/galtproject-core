@@ -92,7 +92,7 @@ contract('SegmentUtils', ([coreTeam]) => {
 
       await this.findSegmentsIntersection(intersectSegments[0], intersectSegments[1], [2, 1]);
 
-      await this.findSegmentsIntersection(notIntersectSegments[0], notIntersectSegments[1], [-1, -1]);
+      await this.findSegmentsIntersection(notIntersectSegments[0], notIntersectSegments[1], [0, 0]);
     });
   });
 
