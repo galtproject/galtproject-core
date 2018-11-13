@@ -25,6 +25,7 @@ import "./VectorUtils.sol";
 library BentleyOttman {
   int256 internal constant EPS = 1000000000;
 
+  using RedBlackTree for RedBlackTree.Tree;
   using SegmentRedBlackTree for SegmentRedBlackTree.SegmentsTree;
   using PointRedBlackTree for PointRedBlackTree.PointsTree;
 
@@ -100,20 +101,21 @@ library BentleyOttman {
       state.segments[segmentIndex] = segment;
     }
 
-    uint256 beginId = state.queue.getNewId();
+    uint256 beginId = state.queue.tree.inserted + 1;
     state.queue.insert(beginId, segment[0]);
 
     state.segmentsUpIndexesByQueueKey[beginId].push(segmentIndex);
     
-    state.queue.insert(state.queue.getNewId(), segment[1]);
+    state.queue.insert(state.queue.tree.inserted + 1, segment[1]);
   }
 
   function handleQueuePoints(State storage state) public {
     //    emit LogHandleQueuePoints(state.status.values[0]);
 
     uint8 i = 0;
-    while (!state.queue.isEmpty()) {
-      (uint256 id, int256[2] memory point) = state.queue.pop();
+    while (state.queue.tree.inserted != state.queue.tree.removed) {
+      uint256 id = state.queue.tree.pop();
+      int256[2] memory point = state.queue.values[id];
       handleEventPointStage1(state, id, point);
       i += 1;
       if (i >= state.maxHandleQueuePointsPerCall) {
@@ -123,12 +125,12 @@ library BentleyOttman {
   }
 
   function handleEventPointStage1(State storage state, uint256 id, int256[2] memory point) private {
-    state.status.setSweeplinePosition(SegmentUtils.Position.BEFORE);
-    state.status.setSweeplineX(point[0]);
+    state.status.sweepline.position = SegmentUtils.Position.BEFORE;
+    state.status.sweepline.x = point[0];
 
     emit LogPoint(point);
     // step 2
-    uint256 currentStatusId = state.status.first();
+    uint256 currentStatusId = state.status.tree.first();
     while (currentStatusId > 0) {
       int256[2][2] storage segment = state.status.values[currentStatusId];
 
@@ -147,7 +149,7 @@ library BentleyOttman {
           }
         }
       }
-      currentStatusId = state.status.next(currentStatusId);
+      currentStatusId = state.status.tree.next(currentStatusId);
     }
     //
     if (state.segmentsUpIndexesByQueueKey[id].length > 1 || state.segmentsLpByQueueKey[id].length > 1 || state.segmentsCpByQueueKey[id].length > 1) {
@@ -168,18 +170,18 @@ library BentleyOttman {
 
     for (uint j = 0; j < state.segmentsCpByQueueKey[id].length; j++) {
       segmentHash = keccak256(abi.encode(state.segmentsCpByQueueKey[id][j]));
-      state.status.remove(state.segmentHashToStatusId[segmentHash]);
+      state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
       delete state.segmentHashToStatusId[segmentHash];
       
 //      emit LogStatusRemove("Cp", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
     }
 
-    state.status.setSweeplinePosition(SegmentUtils.Position.AFTER);
+    state.status.sweepline.position = SegmentUtils.Position.AFTER;
 
     for (uint k = 0; k < state.segmentsUpIndexesByQueueKey[id].length; k++) {
       segmentHash = keccak256(abi.encode(state.segments[state.segmentsUpIndexesByQueueKey[id][k]]));
       if (state.segmentHashToStatusId[segmentHash] == 0) {
-        newId = state.status.getNewId();
+        newId = state.status.tree.inserted + 1;
 
 //        emit LogStatusInsert("Up", point, state.segments[state.segmentsUpIndexesByQueueKey[id][k]]);
         
@@ -190,7 +192,7 @@ library BentleyOttman {
     for (uint l = 0; l < state.segmentsCpByQueueKey[id].length; l++) {
       segmentHash = keccak256(abi.encode(state.segmentsCpByQueueKey[id][l]));
       if (state.segmentHashToStatusId[segmentHash] == 0) {
-        newId = state.status.getNewId();
+        newId = state.status.tree.inserted + 1;
         
 //        emit LogStatusInsert("Cp", point, state.segmentsCpByQueueKey[id][l]);
         
@@ -209,14 +211,14 @@ library BentleyOttman {
       emit LogHandleEventPointStage3If(point);
       for (uint i = 0; i < state.segmentsLpByQueueKey[id].length; i++) {
         segmentHash = keccak256(abi.encode(state.segmentsLpByQueueKey[id][i]));
-        left = state.status.prev(state.segmentHashToStatusId[segmentHash]);
-        right = state.status.next(state.segmentHashToStatusId[segmentHash]);
+        left = state.status.tree.prev(state.segmentHashToStatusId[segmentHash]);
+        right = state.status.tree.next(state.segmentHashToStatusId[segmentHash]);
 
         if (left != 0 && right != 0) {
           findNewEvent(state, state.status.values[left], state.status.values[right]);
         }
 
-        state.status.remove(state.segmentHashToStatusId[segmentHash]);
+        state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
 
 //        emit LogStatusRemove("Lp1.1", point, i, state.segmentsLpByQueueKey[id][i]);
 //        emit LogStatusRemove("Lp1.2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
@@ -247,11 +249,11 @@ library BentleyOttman {
 
       segmentHash = keccak256(abi.encode(UCpmin));
       left = state.segmentHashToStatusId[segmentHash];
-      left = state.status.prev(left);
+      left = state.status.tree.prev(left);
 
       segmentHash = keccak256(abi.encode(UCpmax));
       right = state.segmentHashToStatusId[segmentHash];
-      right = state.status.next(right);
+      right = state.status.tree.next(right);
 
       if (left != 0 && UCpmin[0][0] != 0 && UCpmin[1][1] != 0) {
         findNewEvent(state, state.status.values[left], UCpmin);
@@ -263,7 +265,7 @@ library BentleyOttman {
 
       for (uint256 p = 0; p < state.segmentsLpByQueueKey[id].length; p++) {
         segmentHash = keccak256(abi.encode(state.segmentsLpByQueueKey[id][p]));
-        state.status.remove(state.segmentHashToStatusId[segmentHash]);
+        state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
 //        emit LogStatusRemove("Lp2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
       }
     }
@@ -279,7 +281,7 @@ library BentleyOttman {
       if (state.pointHashToQueueId[pointHash] == 0 ) {
         state.output.push(intersectionPoint);
 
-        uint256 queueId = state.queue.getNewId();
+        uint256 queueId = state.queue.tree.inserted + 1;
         state.queue.insert(queueId, intersectionPoint);
         state.pointHashToQueueId[pointHash] = queueId;
         emit LogFindNewEventOutputInsert(intersectionPoint);

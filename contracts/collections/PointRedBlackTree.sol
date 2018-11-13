@@ -79,10 +79,6 @@ library PointRedBlackTree {
   function getNewId(PointsTree storage points) public returns(uint256) {
     return points.tree.inserted + 1;
   }
-
-  function remove(PointsTree storage points, uint256 id) public {
-    points.tree.remove(id);
-  }
   
   function pop(PointsTree storage points) public returns(uint256 id, int256[2] value) {
     id = points.tree.pop();
@@ -91,17 +87,5 @@ library PointRedBlackTree {
   
   function isEmpty(PointsTree storage points) public returns(bool) {
     return points.tree.inserted == points.tree.removed;
-  }
-
-  function first(PointsTree storage points) public returns(uint256) {
-    return points.tree.first();
-  }
-
-  function next(PointsTree storage points, uint256 id) public returns(uint256) {
-    return points.tree.next(id);
-  }
-
-  function prev(PointsTree storage points, uint256 id) public returns(uint256) {
-    return points.tree.prev(id);
   }
 }

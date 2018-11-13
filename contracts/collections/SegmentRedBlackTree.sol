@@ -89,24 +89,8 @@ library SegmentRedBlackTree {
     return segments.tree.inserted + 1;
   }
 
-  function remove(SegmentsTree storage segments, uint256 id) public {
-    segments.tree.remove(id);
-  }
-
   function pop(SegmentsTree storage segments) public returns(uint256 id, int256[2][2] value) {
     id = segments.tree.pop();
     value = segments.values[id];
-  }
-
-  function first(SegmentsTree storage segments) public returns(uint256) {
-    return segments.tree.first();
-  }
-
-  function next(SegmentsTree storage segments, uint256 id) public returns(uint256) {
-    return segments.tree.next(id);
-  }
-
-  function prev(SegmentsTree storage segments, uint256 id) public returns(uint256) {
-    return segments.tree.prev(id);
   }
 }
