@@ -63,7 +63,7 @@ library RedBlackTree {
   }
 
   function next(Tree storage tree, uint x) internal view returns (uint y) {
-    if(x == 0) {
+    if (x == 0) {
       return 0;
     }
     if (tree.items[x].right != ZERO) {
@@ -80,7 +80,7 @@ library RedBlackTree {
   }
 
   function prev(Tree storage tree, uint x) internal view returns (uint y) {
-    if(x == 0) {
+    if (x == 0) {
       return 0;
     }
     if (tree.items[x].left != ZERO) {
@@ -113,14 +113,14 @@ library RedBlackTree {
   //  }
 
   function parent(Tree storage tree, uint key) internal view returns (uint _parent) {
-    if(key == 0) {
+    if (key == 0) {
       return 0;
     }
     _parent = tree.items[key].parent;
   }
 
   function grandparent(Tree storage tree, uint key) internal view returns (uint _grandparent) {
-    if(key == 0) {
+    if (key == 0) {
       return 0;
     }
     uint _parent = tree.items[key].parent;
@@ -132,7 +132,7 @@ library RedBlackTree {
   }
 
   function sibling(Tree storage tree, uint key) internal view returns (uint _sibling) {
-    if(key == 0) {
+    if (key == 0) {
       return 0;
     }
     uint _parent = tree.items[key].parent;
@@ -148,7 +148,7 @@ library RedBlackTree {
   }
 
   function uncle(Tree storage tree, uint key) internal view returns (uint _uncle) {
-    if(key == 0) {
+    if (key == 0) {
       return 0;
     }
     uint _grandParent = grandparent(tree, key);
@@ -271,7 +271,7 @@ library RedBlackTree {
     tree.items[y].right = x;
     tree.items[x].parent = y;
   }
-  
+
   /* solium-disable-next-line */
   function insertFixup(Tree storage tree, uint z) internal {
     uint y;
@@ -388,12 +388,12 @@ library RedBlackTree {
     }
     tree.items[x].red = false;
   }
-  
-  function pop (Tree storage tree) internal returns(uint) {
+
+  function pop(Tree storage tree) internal returns (uint) {
     if (tree.root == 0) {
       return 0;
     }
-    
+
     uint popId = first(tree);
     remove(tree, popId);
     return popId;

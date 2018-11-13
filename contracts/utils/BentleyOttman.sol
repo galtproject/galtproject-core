@@ -38,7 +38,7 @@ library BentleyOttman {
 
   struct State {
     uint8 maxHandleQueuePointsPerCall;
-    
+
     SegmentRedBlackTree.SegmentsTree status;
     PointRedBlackTree.PointsTree queue;
     int256[2][] output;
@@ -73,22 +73,22 @@ library BentleyOttman {
   }
 
   //This type is only supported in the new experimental ABI encoder. Use "pragma experimental ABIEncoderV2;" to enable the feature.
-//  function setSegments(State storage state, int256[2][2][] segments) public {
-//    state.segments = segments;
-//    for (uint i = 0; i < segments.length; i++) {
-//      emit LogSegment(state.segments[i]);
-//      handleSegment(state, i);
-//    }
-//  }
+  //  function setSegments(State storage state, int256[2][2][] segments) public {
+  //    state.segments = segments;
+  //    for (uint i = 0; i < segments.length; i++) {
+  //      emit LogSegment(state.segments[i]);
+  //      handleSegment(state, i);
+  //    }
+  //  }
 
   function addSegment(State storage state, int256[2][2] segment) public {
     state.segments.push(segment);
-//    emit LogSegment(segment);
-//    emit LogSegment(state.segments[state.segments.length - 1]);
+    //    emit LogSegment(segment);
+    //    emit LogSegment(state.segments[state.segments.length - 1]);
     handleSegment(state, state.segments.length - 1);
   }
 
-  function getSegment(State storage state, uint256 index) public view returns (int256 [2][2]) {
+  function getSegment(State storage state, uint256 index) public view returns (int256[2][2]) {
     return state.segments[index];
   }
 
@@ -105,7 +105,7 @@ library BentleyOttman {
     state.queue.insert(beginId, segment[0]);
 
     state.segmentsUpIndexesByQueueKey[beginId].push(segmentIndex);
-    
+
     state.queue.insert(state.queue.tree.inserted + 1, segment[1]);
   }
 
@@ -160,7 +160,7 @@ library BentleyOttman {
     handleEventPointStage2(state, id, point);
 
     handleEventPointStage3(state, id, point);
-    
+
     emit LogString("");
   }
 
@@ -172,8 +172,8 @@ library BentleyOttman {
       segmentHash = keccak256(abi.encode(state.segmentsCpByQueueKey[id][j]));
       state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
       delete state.segmentHashToStatusId[segmentHash];
-      
-//      emit LogStatusRemove("Cp", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
+
+      //      emit LogStatusRemove("Cp", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
     }
 
     state.status.sweepline.position = SegmentUtils.Position.AFTER;
@@ -183,20 +183,20 @@ library BentleyOttman {
       if (state.segmentHashToStatusId[segmentHash] == 0) {
         newId = state.status.tree.inserted + 1;
 
-//        emit LogStatusInsert("Up", point, state.segments[state.segmentsUpIndexesByQueueKey[id][k]]);
-        
+        //        emit LogStatusInsert("Up", point, state.segments[state.segmentsUpIndexesByQueueKey[id][k]]);
+
         state.status.insert(newId, state.segments[state.segmentsUpIndexesByQueueKey[id][k]]);
         state.segmentHashToStatusId[segmentHash] = newId;
       }
     }
-    for (uint l = 0; l < state.segmentsCpByQueueKey[id].length; l++) {
-      segmentHash = keccak256(abi.encode(state.segmentsCpByQueueKey[id][l]));
+    for (uint m = 0; m < state.segmentsCpByQueueKey[id].length; m++) {
+      segmentHash = keccak256(abi.encode(state.segmentsCpByQueueKey[id][m]));
       if (state.segmentHashToStatusId[segmentHash] == 0) {
         newId = state.status.tree.inserted + 1;
-        
-//        emit LogStatusInsert("Cp", point, state.segmentsCpByQueueKey[id][l]);
-        
-        state.status.insert(newId, state.segmentsCpByQueueKey[id][l]);
+
+        //        emit LogStatusInsert("Cp", point, state.segmentsCpByQueueKey[id][m]);
+
+        state.status.insert(newId, state.segmentsCpByQueueKey[id][m]);
         state.segmentHashToStatusId[segmentHash] = newId;
       }
     }
@@ -220,8 +220,8 @@ library BentleyOttman {
 
         state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
 
-//        emit LogStatusRemove("Lp1.1", point, i, state.segmentsLpByQueueKey[id][i]);
-//        emit LogStatusRemove("Lp1.2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
+        //        emit LogStatusRemove("Lp1.1", point, i, state.segmentsLpByQueueKey[id][i]);
+        //        emit LogStatusRemove("Lp1.2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
         delete state.segmentHashToStatusId[segmentHash];
       }
     } else {
@@ -266,11 +266,11 @@ library BentleyOttman {
       for (uint256 p = 0; p < state.segmentsLpByQueueKey[id].length; p++) {
         segmentHash = keccak256(abi.encode(state.segmentsLpByQueueKey[id][p]));
         state.status.tree.remove(state.segmentHashToStatusId[segmentHash]);
-//        emit LogStatusRemove("Lp2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
+        //        emit LogStatusRemove("Lp2", point, state.segmentHashToStatusId[segmentHash], state.status.values[state.segmentHashToStatusId[segmentHash]]);
       }
     }
   }
-  
+
   function findNewEvent(State storage state, int256[2][2] memory leftSegment, int256[2][2] memory rightSegment) private {
     emit LogFindNewEvent(leftSegment, rightSegment);
 
@@ -278,7 +278,7 @@ library BentleyOttman {
 
     if (intersectionPoint[0] != 0 && intersectionPoint[1] != 0) {
       bytes32 pointHash = keccak256(abi.encode(intersectionPoint));
-      if (state.pointHashToQueueId[pointHash] == 0 ) {
+      if (state.pointHashToQueueId[pointHash] == 0) {
         state.output.push(intersectionPoint);
 
         uint256 queueId = state.queue.tree.inserted + 1;
@@ -288,15 +288,16 @@ library BentleyOttman {
       }
     }
   }
-  
-  function isQueuePointsOver(State storage state) public returns(bool){
+
+  function isQueuePointsOver(State storage state) public returns (bool) {
     return state.queue.isEmpty();
   }
 
-  function getOutputLength(State storage state) public returns(uint256){
+  function getOutputLength(State storage state) public returns (uint256) {
     return state.output.length;
   }
-  function getOutputPoint(State storage state, uint256 index) public returns(int256[2]){
+
+  function getOutputPoint(State storage state, uint256 index) public returns (int256[2]) {
     return state.output[index];
   }
 }
