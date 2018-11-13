@@ -95,8 +95,7 @@ library BentleyOttman {
     int256[2][2] memory segment = state.segments[segmentIndex];
 
     // sort points of segment
-    int8 comparePointsResult = PointUtils.comparePoints(segment[0], segment[1]);
-    if (comparePointsResult > 0) {
+    if (PointUtils.comparePoints(segment[0], segment[1]) > 0) {
       segment = int256[2][2]([segment[1], segment[0]]);
       state.segments[segmentIndex] = segment;
     }
@@ -106,8 +105,7 @@ library BentleyOttman {
 
     state.segmentsUpIndexesByQueueKey[beginId].push(segmentIndex);
     
-    uint256 endId = state.queue.getNewId();
-    state.queue.insert(endId, segment[1]);
+    state.queue.insert(state.queue.getNewId(), segment[1]);
   }
 
   function handleQueuePoints(State storage state) public {
