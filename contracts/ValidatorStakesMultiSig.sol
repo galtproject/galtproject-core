@@ -30,6 +30,11 @@ contract ValidatorStakesMultiSig is MultiSigWallet, RBAC {
     _;
   }
 
+  modifier forbidden() {
+    assert(false);
+    _;
+  }
+
   constructor(
     address _roleManager,
     address[] _initialOwners,
@@ -40,6 +45,11 @@ contract ValidatorStakesMultiSig is MultiSigWallet, RBAC {
   {
     super.addRole(_roleManager, ROLE_MANAGER);
   }
+
+  function addOwner(address owner) public forbidden {}
+  function removeOwner(address owner) public forbidden {}
+  function replaceOwner(address owner, address newOwner) public forbidden {}
+  function changeRequirement(uint _required) public forbidden {}
 
   /*
    * @dev ROLE_AUTO_PROPOSER role could propose any transaction such as
