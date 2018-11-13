@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('BentleyOttman', ([coreTeam]) => {
+contract('BentleyOttman', ([coreTeam]) => {
   beforeEach(async function() {
     this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
     BentleyOttman.link('PointRedBlackTree', this.pointRedBlackTree.address);
