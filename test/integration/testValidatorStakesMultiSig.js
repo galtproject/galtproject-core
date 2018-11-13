@@ -5,9 +5,8 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { assertRevert, ether, initHelperWeb3 } = require('../helpers');
+const { initHelperWeb3 } = require('../helpers');
 
-const { stringToHex } = Web3.utils;
 const web3 = new Web3(Validators.web3.currentProvider);
 
 initHelperWeb3(web3);
@@ -22,13 +21,7 @@ chai.should();
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('ValidatorStakesMultiSig', accounts => {
-  const [
-    coreTeam,
-    alice,
-    bob,
-    charlie,
-    dan,
-  ] = accounts;
+  const [coreTeam, alice, bob, charlie, dan] = accounts;
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
