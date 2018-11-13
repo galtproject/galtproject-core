@@ -3,7 +3,6 @@ const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree
 const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
 const MockBentleyOttman = artifacts.require('./mocks/MockBentleyOttman.sol');
 
-// const pIteration = require('p-iteration');
 const Web3 = require('web3');
 const chai = require('chai');
 const pIteration = require('p-iteration');

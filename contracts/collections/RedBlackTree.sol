@@ -390,7 +390,6 @@ library RedBlackTree {
   }
   
   function pop (Tree storage tree) internal returns(uint) {
-//    return tree.root;
     if (tree.root == 0) {
       return 0;
     }
