@@ -78,8 +78,13 @@ contract('BentleyOttman', ([coreTeam]) => {
       ]);
 
       const outputLength = await this.mockBentleyOttmanWeb3.methods.getOutputLength().call();
-
       assert.equal(outputLength, '2');
+
+      const outputPoint1 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(0).call();
+      assert.deepEqual(outputPoint1.map(c => c.toString(10)), ['37717413344078919255', '55744268878164737395']);
+
+      const outputPoint2 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(1).call();
+      assert.deepEqual(outputPoint2.map(c => c.toString(10)), ['37749639151743334230', '55745685549624400907']);
     });
 
     it('should correctly handleQueuePoints case 2', async function() {
@@ -97,6 +102,18 @@ contract('BentleyOttman', ([coreTeam]) => {
       const outputLength = await this.mockBentleyOttmanWeb3.methods.getOutputLength().call();
 
       assert.equal(outputLength, '4');
+
+      const outputPoint1 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(0).call();
+      assert.deepEqual(outputPoint1.map(c => c.toString(10)), ['37556914657470942910', '55747851523314402727']);
+
+      const outputPoint2 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(1).call();
+      assert.deepEqual(outputPoint2.map(c => c.toString(10)), ['37535240203994515438', '55727869615518710383']);
+
+      const outputPoint3 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(2).call();
+      assert.deepEqual(outputPoint3.map(c => c.toString(10)), ['37668721279193154269', '55755908243427922272']);
+
+      const outputPoint4 = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(3).call();
+      assert.deepEqual(outputPoint4.map(c => c.toString(10)), ['37682554673476539477', '55757396360537304177']);
     });
   });
 });
