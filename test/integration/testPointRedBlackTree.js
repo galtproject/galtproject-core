@@ -83,8 +83,6 @@ contract('PointRedBlackTree', ([coreTeam]) => {
           }
         );
         assert.deepEqual(res.logs[0].args.result.toString(10), expectedResult.toString(10));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
       };
       // Helpers end
 
@@ -109,9 +107,6 @@ contract('PointRedBlackTree', ([coreTeam]) => {
   });
 
   describe('#insert() and find()', () => {
-    let number = 1;
-    let totalGasUsed = 0;
-
     it('should correctly insert and find points', async function() {
       // Helpers
       this.getPointId = function(point) {
@@ -121,28 +116,21 @@ contract('PointRedBlackTree', ([coreTeam]) => {
       };
 
       this.insert = async function(point) {
-        console.log('      PointRedBlackTree.insert() number', number);
+        console.log('      PointRedBlackTree.insert()', point);
         const id = this.getPointId(point);
-        const res = await this.mockPointRedBlackTree.insert(id, point, {
+        await this.mockPointRedBlackTree.insert(id, point, {
           from: coreTeam
         });
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-        totalGasUsed += res.receipt.gasUsed;
-        number += 1;
       };
 
       this.find = async function(point) {
-        console.log('      PointRedBlackTree.find() on number of points:', number - 1);
+        console.log('      PointRedBlackTree.find()', point);
         const expectedId = this.getPointId(point);
         const res = await this.mockPointRedBlackTree.find(point, {
           from: coreTeam
         });
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-        totalGasUsed += res.receipt.gasUsed;
       };
 
       this.checkRightAndLeft = async function(item) {
@@ -166,10 +154,6 @@ contract('PointRedBlackTree', ([coreTeam]) => {
       await pIteration.forEachSeries(this.etherPoints, async point => {
         await this.find(point);
       });
-
-      // TODO: log on NODE_ENV flag active
-      console.log('');
-      console.log('      Total gasUsed', totalGasUsed);
 
       const resultRootId = await this.mockPointRedBlackTreeWeb3.methods.getRoot().call();
       const resultRootItem = await this.mockPointRedBlackTreeWeb3.methods.getItem(resultRootId).call();
