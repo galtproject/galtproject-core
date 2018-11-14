@@ -29,6 +29,7 @@ library BentleyOttman {
   using SegmentRedBlackTree for SegmentRedBlackTree.SegmentsTree;
   using PointRedBlackTree for PointRedBlackTree.PointsTree;
 
+  // TODO: use stages
   enum Stage {
     NONE,
     INIT,
