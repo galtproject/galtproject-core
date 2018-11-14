@@ -225,7 +225,6 @@ contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, c
       res = await this.validatorsWeb3.methods.getValidatorsByRole(stringToHex(CM_AUDITOR)).call();
       // we don't remove doubled values
       assert.equal(res.length, 6);
-      // assert.sameMembers(res.map(a => a.toLowerCase()), sortedAuditors.slice(0, 3));
     });
 
     it('should deny non-sorted auditors list', async function() {
@@ -238,7 +237,6 @@ contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, c
         toSort.push({ auditor, weight: await this.auditorsWeb3.methods.auditorWeight(auditor).call() });
       });
 
-      // toSort.sort((a, b) => b.weight - a.weight);
       const sortedAuditors = toSort.map(o => o.auditor);
 
       await assertRevert(this.auditors.pushAuditors(sortedAuditors));
