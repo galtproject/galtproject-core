@@ -79,7 +79,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         const res = await this.mockSegmentRedBlackTree.find(point, {
           from: coreTeam
         });
-        console.log('      gasUsed', res.receipt.gasUsed);
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
       };

@@ -78,7 +78,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('split', res, firstPackage, secondPackage, basePackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('split', res, firstPackage, secondPackage, basePackage);
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {
@@ -105,7 +106,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('merge', res, firstPackage, secondPackage, resultPackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('merge', res, firstPackage, secondPackage, resultPackage);
     };
   });
 
@@ -249,7 +251,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('split', res, baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('split', res, baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
 
       const newPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
@@ -273,7 +276,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('merge', res, contourToSplitForOldPackage, contourToSplitForNewPackage, baseContour);
+      // TODO: move to benchmark
+      // this.logGasUsed('merge', res, contourToSplitForOldPackage, contourToSplitForNewPackage, baseContour);
 
       res = await this.splitMerge.getPackageContour.call(newPackageId);
       assert.deepEqual(res.map(item => item.toString(10)), baseContour);
