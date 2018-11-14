@@ -3,16 +3,19 @@ const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree
 const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
 const MockBentleyOttman = artifacts.require('./mocks/MockBentleyOttman.sol');
 
+const pIteration = require('p-iteration');
 const Web3 = require('web3');
 
 const web3 = new Web3(MockBentleyOttman.web3.currentProvider);
 
-const pIteration = require('p-iteration');
+const { initHelperWeb3, ether } = require('../test/helpers');
+
+initHelperWeb3(web3);
 
 module.exports = async function(callback) {
   const accounts = await web3.eth.getAccounts();
   const coreTeam = accounts[0];
-  
+
   this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
   BentleyOttman.link('PointRedBlackTree', this.pointRedBlackTree.address);
 
@@ -63,5 +66,5 @@ module.exports = async function(callback) {
     [[37.68599959332016, 55.782359403768204], [37.49501443612691, 55.72772231919566]]
   ]);
 
-  callback(true);
+  callback();
 };
