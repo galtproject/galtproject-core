@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: test benchmark
 
 cleanup:
 	rm -rf ./build
@@ -26,6 +26,9 @@ retest: cleanup test
 
 check-size:
 	node scripts/checkContractSize.js
+	
+benchmark:
+	./node_modules/.bin/truffle exec benchmark/bentleyOttman.js --network test -c
 
 deploy-ganache:
 	rm -rf build && truffle migrate --network ganache && ./node_modules/.bin/surge ./deployed $$DOMAIN && echo "CONTRACTS_CONFIG_URL=$$DOMAIN\ganache.json"
