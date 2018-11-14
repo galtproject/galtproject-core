@@ -55,7 +55,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
   describe('#insert() and find()', () => {
     it('should correctly insert and find points', async function() {
       let number = 1;
-      let totalGasUsed = 0;
 
       // Helpers
       this.getSegmentId = function(segment) {
@@ -67,12 +66,10 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       this.insert = async function(segment) {
         console.log('      SegmentRedBlackTree.insert() number', number);
         const id = this.getSegmentId(segment);
-        const res = await this.mockSegmentRedBlackTree.insert(id, segment, {
+        await this.mockSegmentRedBlackTree.insert(id, segment, {
           from: coreTeam
         });
-        console.log('      gasUsed', res.receipt.gasUsed);
 
-        totalGasUsed += res.receipt.gasUsed;
         number += 1;
       };
 
@@ -85,8 +82,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         console.log('      gasUsed', res.receipt.gasUsed);
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
-
-        totalGasUsed += res.receipt.gasUsed;
       };
       // Helpers end
 
@@ -97,9 +92,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       await pIteration.forEachSeries(this.etherSegments, async segment => {
         await this.find(segment);
       });
-
-      console.log('');
-      console.log('      Total gasUsed', totalGasUsed);
     });
   });
 });

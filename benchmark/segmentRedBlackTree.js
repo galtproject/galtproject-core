@@ -53,7 +53,6 @@ module.exports = async function(callback) {
     await find(segment);
   });
 
-  // TODO: log on NODE_ENV flag active
   console.log('');
   console.log('      Total gasUsed', totalGasUsed);
   callback();
@@ -71,7 +70,6 @@ module.exports = async function(callback) {
     const res = await mockSegmentRedBlackTree.insert(id, segment, {
       from: coreTeam
     });
-    // TODO: log on NODE_ENV flag active
     console.log('      gasUsed', res.receipt.gasUsed);
 
     totalGasUsed += res.receipt.gasUsed;
@@ -83,7 +81,6 @@ module.exports = async function(callback) {
     const res = await mockSegmentRedBlackTree.find(point, {
       from: coreTeam
     });
-    // TODO: log on NODE_ENV flag active
     console.log('      gasUsed', res.receipt.gasUsed);
 
     totalGasUsed += res.receipt.gasUsed;
