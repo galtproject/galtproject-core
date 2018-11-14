@@ -52,9 +52,6 @@ contract('SegmentUtils', ([coreTeam]) => {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result, expectedResult);
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
         number += 1;
       };
       // Helpers end
@@ -80,9 +77,6 @@ contract('SegmentUtils', ([coreTeam]) => {
           from: coreTeam
         });
         assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), expectedResult.map(a => a.toString(10)));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
         number += 1;
       };
       // Helpers end
@@ -115,9 +109,6 @@ contract('SegmentUtils', ([coreTeam]) => {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result.toString(10), expectedResult.toString(10));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
         number += 1;
       };
       // Helpers end
