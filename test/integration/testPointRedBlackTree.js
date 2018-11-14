@@ -1,6 +1,6 @@
 const PointUtils = artifacts.require('./utils/PointUtils.sol');
 const PointRedBlackTree = artifacts.require('./collections/PointRedBlackTree.sol');
-const MockPointRedBlackTree = artifacts.require('./test/MockPointRedBlackTree.sol');
+const MockPointRedBlackTree = artifacts.require('./mocks/MockPointRedBlackTree.sol');
 
 const pIteration = require('p-iteration');
 const Web3 = require('web3');

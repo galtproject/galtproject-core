@@ -1,5 +1,5 @@
 const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree.sol');
-const MockSegmentRedBlackTree = artifacts.require('./test/MockSegmentRedBlackTree.sol');
+const MockSegmentRedBlackTree = artifacts.require('./mocks/MockSegmentRedBlackTree.sol');
 const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
 
 const _ = require('lodash');
@@ -31,11 +31,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
     MockSegmentRedBlackTree.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
 
     this.mockSegmentRedBlackTree = await MockSegmentRedBlackTree.new({ from: coreTeam });
-
-    this.mockSegmentRedBlackTreeWeb3 = new web3.eth.Contract(
-      this.mockSegmentRedBlackTree.abi,
-      this.mockSegmentRedBlackTree.address
-    );
 
     this.points = [
       [200, 12],
@@ -75,7 +70,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         const res = await this.mockSegmentRedBlackTree.insert(id, segment, {
           from: coreTeam
         });
-        // TODO: log on NODE_ENV flag active
         console.log('      gasUsed', res.receipt.gasUsed);
 
         totalGasUsed += res.receipt.gasUsed;
@@ -88,7 +82,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         const res = await this.mockSegmentRedBlackTree.find(point, {
           from: coreTeam
         });
-        // TODO: log on NODE_ENV flag active
         console.log('      gasUsed', res.receipt.gasUsed);
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
@@ -105,7 +98,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         await this.find(segment);
       });
 
-      // TODO: log on NODE_ENV flag active
       console.log('');
       console.log('      Total gasUsed', totalGasUsed);
     });
