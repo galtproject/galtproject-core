@@ -76,22 +76,20 @@ contract ValidatorStakesMultiSig is MultiSigWallet, RBAC {
     external
     onlyRole(ROLE_AUDITORS_MANAGER)
   {
-    require(descAuditors.length > m, "Auditors array size less than required");
+    require(descAuditors.length >= m, "Auditors array size less than required");
     required = n;
 
-    emit Size(owners.length);
     delete owners;
-    emit Size(owners.length);
-//    owners = descAuditors;
-    emit NewAuditorsSet(descAuditors, n, m);
 
     for (uint8 i = 0; i < m; i++) {
-      owners.push(descAuditors[i]);
+      address o = descAuditors[i];
+
+      isOwner[o] = true;
+      owners.push(o);
+      emit OwnerAddition(o);
     }
-    emit Size(owners.length);
     emit NewAuditorsSet(owners, n, m);
   }
-  event Size(uint256);
 
   function addRoleTo(
     address _operator,

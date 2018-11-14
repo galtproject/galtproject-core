@@ -29,9 +29,6 @@ contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, c
     await this.auditors.addRoleTo(auditorManager, await this.auditors.ROLE_AUDITOR_MANAGER(), {
       from: coreTeam
     });
-    await this.vsMultiSig.addRoleTo(coreTeam, await this.vsMultiSig.ROLE_MANAGER(), {
-      from: coreTeam
-    });
     await this.vsMultiSig.addRoleTo(this.auditors.address, await this.vsMultiSig.ROLE_AUDITORS_MANAGER(), {
       from: coreTeam
     });
