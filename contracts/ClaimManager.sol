@@ -347,7 +347,6 @@ contract ClaimManager is AbstractApplication {
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
         validatorStakes.slash(p.validators, p.roles, p.fines);
-        bytes memory data;
 
         validatorStakesMultiSig.proposeTransaction(
           galtToken,
