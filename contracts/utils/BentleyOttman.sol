@@ -36,13 +36,19 @@ library BentleyOttman {
     SEGMENTS_SET,
     QUEUE_INSERT
   }
+  
+  struct OutputPoint {
+    int256[2] point;
+    int256[2][2] leftSegment;
+    int256[2][2] rightSegment;
+  }
 
   struct State {
     uint8 maxHandleQueuePointsPerCall;
 
     SegmentRedBlackTree.SegmentsTree status;
     PointRedBlackTree.PointsTree queue;
-    int256[2][] output;
+    OutputPoint[] output;
     int256[2][2][] segments;
     mapping(uint256 => uint256[]) segmentsUpIndexesByQueueKey; // segments, for which this is the left end
 
@@ -155,7 +161,10 @@ library BentleyOttman {
     //
     if (state.segmentsUpIndexesByQueueKey[id].length > 1 || state.segmentsLpByQueueKey[id].length > 1 || state.segmentsCpByQueueKey[id].length > 1) {
       emit LogHandleEventPointStage1OutputInsert(point);
-      state.output.push(point);
+      OutputPoint memory outputPoint;
+      outputPoint.point = point;
+      
+      state.output.push(outputPoint);
     }
 
     handleEventPointStage2(state, id, point);
@@ -280,7 +289,11 @@ library BentleyOttman {
     if (intersectionPoint[0] != 0 && intersectionPoint[1] != 0) {
       bytes32 pointHash = keccak256(abi.encode(intersectionPoint));
       if (state.pointHashToQueueId[pointHash] == 0) {
-        state.output.push(intersectionPoint);
+        state.output.push(OutputPoint({
+          point: intersectionPoint,
+          leftSegment: leftSegment,
+          rightSegment: rightSegment
+        }));
 
         uint256 queueId = state.queue.tree.inserted + 1;
         state.queue.insert(queueId, intersectionPoint);
@@ -299,6 +312,6 @@ library BentleyOttman {
   }
 
   function getOutputPoint(State storage state, uint256 index) public returns (int256[2]) {
-    return state.output[index];
+    return state.output[index].point;
   }
 }

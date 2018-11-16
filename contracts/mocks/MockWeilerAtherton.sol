@@ -3,32 +3,35 @@ pragma experimental "v0.5.0";
 //pragma experimental ABIEncoderV2;
 
 import "../utils/WeilerAtherton.sol";
+import "../utils/PolygonUtils.sol";
 
 contract MockWeilerAtherton {
   using WeilerAtherton for WeilerAtherton.State;
 
   WeilerAtherton.State private weilerAtherton;
-  WeilerAtherton.Input private basePolygon;
-  WeilerAtherton.Input private cropPolygon;
+  PolygonUtils.CoorsPolygon private basePolygon;
+  PolygonUtils.CoorsPolygon private cropPolygon;
   
   constructor() public {
-    bentleyOttman.init();
+    weilerAtherton.init();
   }
   
   function addPointToBasePolygon(int256[2] point) public {
-    basePolygon.points.push(value);
+    basePolygon.points.push(point);
   }
 
   function addPointToCropPolygon(int256[2] point) public {
-    cropPolygon.points.push(value);
+    cropPolygon.points.push(point);
   }
   
   function initBasePolygon() public {
-    weilerAtherton.initPolygon(basePolygon);
+    weilerAtherton.basePolygonInput = basePolygon;
+    weilerAtherton.initPolygon(basePolygon, weilerAtherton.basePolygon);
   }
 
   function initCropPolygon() public {
-    weilerAtherton.initPolygon(cropPolygon);
+    weilerAtherton.cropPolygonInput = cropPolygon;
+    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.cropPolygon);
   }
 
   function addBasePolygonSegments() public {
@@ -37,5 +40,21 @@ contract MockWeilerAtherton {
 
   function addCropPolygonSegments() public {
     weilerAtherton.addPolygonSegments(weilerAtherton.cropPolygon);
+  }
+  
+  function processBentleyOttman() public {
+    weilerAtherton.processBentleyOttman();
+  }
+
+  function isBentleyOttmanFinished() public returns(bool) {
+    return weilerAtherton.isBentleyOttmanFinished();
+  }
+  
+  function addIntersectedPoints() public {
+    weilerAtherton.addIntersectedPoints();
+  }
+
+  function buildResultPolygon() public {
+    weilerAtherton.buildResultPolygon();
   }
 }

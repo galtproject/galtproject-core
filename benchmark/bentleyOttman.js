@@ -87,3 +87,9 @@ module.exports = async function(callback) {
   }
   // Helpers end
 };
+
+function inSameDirection(firstPoint, secondPoint, thirdPoint) {
+  const firstPart = (secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1]);
+  const secondPart = (thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]);
+  return (firstPart >= 0 ? 1 : -1) === (secondPart >= 0 ? 1 : -1) || Math.abs(firstPart) > Math.abs(secondPart);
+}

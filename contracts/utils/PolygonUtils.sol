@@ -19,6 +19,13 @@ import "./LandUtils.sol";
 library PolygonUtils {
   struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
 
+  struct CoorsPolygon {
+    int256[2][] points;
+  }
+  
+  event LogPoint(int256[2] point);
+  event LogPolygonPoint(int256[2] point);
+
   function geohash5ToLatLonArr(LatLonData storage self, uint256 _geohash5) public returns (int256[2]) {
     (int256 lat, int256 lon) = geohash5ToLatLon(self, _geohash5);
     return [lat, lon];
@@ -52,4 +59,32 @@ library PolygonUtils {
 
     return inside;
   }
+
+  function isInsideCoors(int256[2] _point, CoorsPolygon _polygon) internal returns (bool) {
+    bool inside = false;
+    uint256 j = _polygon.points.length - 1;
+
+    emit LogPoint(_point);
+    for (uint256 i = 0; i < _polygon.points.length; i++) {
+      emit LogPolygonPoint(_polygon.points[i]);
+      bool intersect = ((_polygon.points[i][1] > _point[1]) != (_polygon.points[j][1] > _point[1])) && (_point[0] < (_polygon.points[j][0] - _polygon.points[i][0]) * (_point[1] - _polygon.points[i][1]) / (_polygon.points[j][1] - _polygon.points[i][1]) + _polygon.points[i][0]);
+      if (intersect) {
+        inside = !inside;
+      }
+      j = i;
+    }
+
+    return inside;
+  }
+  
+  //TODO: test it
+  function isClockwise(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
+    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1]))
+    + ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
+  }
+
+//  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
+//    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) > 0 ? 1 : -1) == 
+//    ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]) > 0 ? 1 : -1);
+//  }
 }
