@@ -6,7 +6,7 @@ const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
 const WeilerAtherton = artifacts.require('./utils/WeilerAtherton.sol');
 const MockWeilerAtherton = artifacts.require('./mocks/MockWeilerAtherton.sol');
 
-// const galt = require('@galtproject/utils');
+const galt = require('@galtproject/utils');
 const Web3 = require('web3');
 const chai = require('chai');
 const pIteration = require('p-iteration');
@@ -98,6 +98,19 @@ contract('WeilerAtherton', ([coreTeam]) => {
       await this.processBentleyOttman();
       await this.mockWeilerAtherton.addIntersectedPoints();
       await this.mockWeilerAtherton.buildResultPolygon();
+
+      const resultPolygonLength = await this.mockWeilerAthertonWeb3.methods.getResultPolygonLength(0).call();
+      console.log('resultPolygonLength', resultPolygonLength);
+
+      for (let i = 0; i < resultPolygonLength; i++) {
+        const resultPolygonPoint = (await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call()).map(
+          coor => web3.utils.fromWei(coor, 'ether')
+        );
+        console.log(
+          'resultPolygonPoint',
+          galt.geohash.extra.encodeFromLatLng(resultPolygonPoint[0], resultPolygonPoint[1], 12)
+        );
+      }
 
       assert.equal(true, false);
     });

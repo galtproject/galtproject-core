@@ -129,19 +129,35 @@ library WeilerAtherton {
     for (uint j = 0; j < state.bentleyOttman.output.length; j++) {
       BentleyOttman.OutputPoint memory outputPoint = state.bentleyOttman.output[j];
       bytes32 newPointHash = keccak256(abi.encode(outputPoint.point));
-      bytes32 findStartPointHash = keccak256(abi.encode(outputPoint.leftSegment[0]));
-      bytes32 findEndPointHash = keccak256(abi.encode(outputPoint.leftSegment[1]));
       
-      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
-      //LogPlacePointBetween(placePoint: 1203772639856000000,104509898666292000000, startPoint: 1203600978479000000,104531994033605000000, endPoint: 1203772639856000000,104509898666292000000)
-      //LogPlacePointBetween(placePoint: 1215271437541000000,104522552657872000000, startPoint: 1212697019801000000,104542980026454000000, endPoint: 1215271437541000000,104522552657872000000)
-      bool added = addIntersectedPointsToPolygon(state.basePolygon, outputPoint.point, newPointHash, findStartPointHash, findEndPointHash);
-      if(!added) {
-        added = addIntersectedPointsToPolygon(state.cropPolygon, outputPoint.point, newPointHash, findStartPointHash, findEndPointHash);
+      bytes32 leftStartPointHash = keccak256(abi.encode(outputPoint.leftSegment[0]));
+      bytes32 leftEndPointHash = keccak256(abi.encode(outputPoint.leftSegment[1]));
+      bytes32 rightStartPointHash = keccak256(abi.encode(outputPoint.rightSegment[0]));
+      bytes32 rightEndPointHash = keccak256(abi.encode(outputPoint.rightSegment[1]));
+      
+      if(outputPoint.leftSegment[0][0] == 0 || outputPoint.rightSegment[0][0] == 0) {
+        continue;
       }
-      if(!added) {
+      if(PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0])
+        || PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1])
+        || PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0])
+        || PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[1])) {
+        continue;
+      }
+      
+      if(addIntersectedPointsToPolygon(state.basePolygon, outputPoint.point, newPointHash, leftStartPointHash, leftEndPointHash)) {
+        if(!addIntersectedPointsToPolygon(state.cropPolygon, outputPoint.point, newPointHash, rightStartPointHash, rightEndPointHash)) {
+          require(false, "Intersected point of base polygon not found in crop polygon");
+        }
+      } else if(addIntersectedPointsToPolygon(state.basePolygon, outputPoint.point, newPointHash, rightStartPointHash, rightEndPointHash)) {
+        if(!addIntersectedPointsToPolygon(state.cropPolygon, outputPoint.point, newPointHash, leftStartPointHash, leftEndPointHash)) {
+          require(false, "Intersected point of base polygon not found in crop polygon");
+        }
+      } else {
         require(false, "Segments of intersection point not found in polygons");
       }
+      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
+      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
     }
   }
   
@@ -258,15 +274,20 @@ library WeilerAtherton {
     // fill resultPolygon from cropPolygon
     while(true) {
       if(state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
+        if(PointUtils.isEqual(state.cropPolygon.pointsByHash[curPointHash].coors, resultPolygon.points[0])) {
+          //successful finish
+          break;
+        } else {
+          require(false, "End point of result polygon not equals to start point");
+        }
+      }
+      
+      if(state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
         state.cropPolygon.handledIntersectionPoints++;
       }
 
       emit LogPushToResult(state.cropPolygon.pointsByHash[curPointHash].coors);
       resultPolygon.points.push(state.cropPolygon.pointsByHash[curPointHash].coors);
-
-      if(state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
-        break;
-      }
 
       if(direction == Direction.FORWARD) {
         curPointHash = state.cropPolygon.pointsByHash[curPointHash].nextPoint;
@@ -276,6 +297,5 @@ library WeilerAtherton {
         nextPointHash = state.cropPolygon.pointsByHash[curPointHash].prevPoint;
       }
     }
-    
   }
 }

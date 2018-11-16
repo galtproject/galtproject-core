@@ -63,10 +63,12 @@ library BentleyOttman {
   event LogSegment(int256[2][2] segment);
   event LogString(string s);
   event LogUpPush(int256[2] point, int256[2][2] segment);
+  event LogSegmentSort(int256[2][2] segment);
   event LogStatusInsert(string name, int256[2] point, int256[2][2] segment);
   event LogStatusRemove(string name, int256[2] point, uint256 id, int256[2][2] segment);
   event LogFindNewEvent(int256[2][2] leftSegment, int256[2][2] rightSegment);
   event LogFindNewEventOutputInsert(int256[2] point);
+  event LogHandleEventPointStage1If(uint256 UpLength, uint256 LpLength, uint256 CpLength);
   event LogHandleEventPointStage1OutputInsert(int256[2] point);
   event LogHandleEventPointStage3If(int256[2] point);
   event LogHandleEventPointStage3Else(int256[2] point, int256[2][2] UCpmin, int256[2][2] UCpmax);
@@ -76,7 +78,7 @@ library BentleyOttman {
     state.queue.init();
 
     //transaction reverted on maxHandleQueuePointsPerCall = 16 
-    state.maxHandleQueuePointsPerCall = 12;
+    state.maxHandleQueuePointsPerCall = 6;
   }
 
   //This type is only supported in the new experimental ABI encoder. Use "pragma experimental ABIEncoderV2;" to enable the feature.
@@ -106,14 +108,29 @@ library BentleyOttman {
     if (PointUtils.comparePoints(segment[0], segment[1]) > 0) {
       segment = int256[2][2]([segment[1], segment[0]]);
       state.segments[segmentIndex] = segment;
+      emit LogSegmentSort(segment);
+    }
+    
+    bytes32 pointHash = keccak256(abi.encode(segment[0]));
+
+    uint256 pointId;
+    if(state.pointHashToQueueId[pointHash] == 0) {
+      pointId = state.queue.tree.inserted + 1;
+      state.pointHashToQueueId[pointHash] = pointId;
+      state.queue.insert(pointId, segment[0]);
+    } else {
+      pointId = state.pointHashToQueueId[pointHash];
     }
 
-    uint256 beginId = state.queue.tree.inserted + 1;
-    state.queue.insert(beginId, segment[0]);
+    state.segmentsUpIndexesByQueueKey[pointId].push(segmentIndex);
+    emit LogUpPush(segment[0], segment);
 
-    state.segmentsUpIndexesByQueueKey[beginId].push(segmentIndex);
-
-    state.queue.insert(state.queue.tree.inserted + 1, segment[1]);
+    pointHash = keccak256(abi.encode(segment[1]));
+    if(state.pointHashToQueueId[pointHash] == 0) {
+      pointId = state.queue.tree.inserted + 1;
+      state.pointHashToQueueId[pointHash] = pointId;
+      state.queue.insert(pointId, segment[1]);
+    }
   }
 
   function handleQueuePoints(State storage state) public {
@@ -158,8 +175,9 @@ library BentleyOttman {
       }
       currentStatusId = state.status.tree.next(currentStatusId);
     }
-    //
-    if (state.segmentsUpIndexesByQueueKey[id].length > 1 || state.segmentsLpByQueueKey[id].length > 1 || state.segmentsCpByQueueKey[id].length > 1) {
+
+    emit LogHandleEventPointStage1If(state.segmentsUpIndexesByQueueKey[id].length, state.segmentsLpByQueueKey[id].length, state.segmentsCpByQueueKey[id].length);
+    if (state.segmentsUpIndexesByQueueKey[id].length + state.segmentsLpByQueueKey[id].length + state.segmentsCpByQueueKey[id].length > 1) {
       emit LogHandleEventPointStage1OutputInsert(point);
       OutputPoint memory outputPoint;
       outputPoint.point = point;

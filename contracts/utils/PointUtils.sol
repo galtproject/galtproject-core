@@ -29,8 +29,12 @@ library PointUtils {
       return 0;
     }
   }
-  
+
   function isEqual(int[2] memory a, int[2] memory b) internal pure returns(bool) {
     return a[0] == b[0] && a[1] == b[1];
+  }
+
+  function isEqualEPS(int[2] memory a, int[2] memory b) internal pure returns(bool) {
+    return MathUtils.abs(a[0] - b[0]) < EPS && MathUtils.abs(a[1] - b[1]) < EPS;
   }
 }

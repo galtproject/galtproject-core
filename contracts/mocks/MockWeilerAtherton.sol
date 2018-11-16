@@ -57,4 +57,12 @@ contract MockWeilerAtherton {
   function buildResultPolygon() public {
     weilerAtherton.buildResultPolygon();
   }
+
+  function getResultPolygonLength(uint256 polygonIndex) public returns(uint256) {
+    return weilerAtherton.resultPolygons[polygonIndex].points.length;
+  }
+
+  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public returns(int256[2]) {
+    return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
+  }
 }
