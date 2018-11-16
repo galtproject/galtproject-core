@@ -59,6 +59,7 @@ library WeilerAtherton {
     Polygon cropPolygon;
     BentleyOttman.State bentleyOttman;
     PolygonUtils.CoorsPolygon[] resultPolygons;
+    PolygonUtils.CoorsPolygon basePolygonOutput;
   }
 
   event LogBentleyOttman(uint256 queueInserted, uint256 queueRemoved, uint256 outputLength);
@@ -219,8 +220,7 @@ library WeilerAtherton {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].prevPoint;
       direction = Direction.BACKWARD;
     } else {
-      return;
-//      require(false, "Not found adjoining points inside crop polygon");
+      require(false, "Not found adjoining points inside crop polygon");
     }
 
     PolygonUtils.CoorsPolygon memory newPolygon;
@@ -276,7 +276,7 @@ library WeilerAtherton {
       if(state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
         if(PointUtils.isEqual(state.cropPolygon.pointsByHash[curPointHash].coors, resultPolygon.points[0])) {
           //successful finish
-          break;
+          return true;
         } else {
           require(false, "End point of result polygon not equals to start point");
         }
