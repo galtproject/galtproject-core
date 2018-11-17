@@ -64,9 +64,9 @@ library PolygonUtils {
     bool inside = false;
     uint256 j = _polygon.points.length - 1;
 
-    emit LogPoint(_point);
+//    emit LogPoint(_point);
     for (uint256 i = 0; i < _polygon.points.length; i++) {
-      emit LogPolygonPoint(_polygon.points[i]);
+//      emit LogPolygonPoint(_polygon.points[i]);
       bool intersect = ((_polygon.points[i][1] > _point[1]) != (_polygon.points[j][1] > _point[1])) && (_point[0] < (_polygon.points[j][0] - _polygon.points[i][0]) * (_point[1] - _polygon.points[i][1]) / (_polygon.points[j][1] - _polygon.points[i][1]) + _polygon.points[i][0]);
       if (intersect) {
         inside = !inside;

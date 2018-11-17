@@ -112,6 +112,21 @@ contract('WeilerAtherton', ([coreTeam]) => {
         );
       }
 
+      await this.mockWeilerAtherton.buildBasePolygonOutput();
+
+      const basePolygonOutputLength = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputLength().call();
+      console.log('basePolygonOutputLength', basePolygonOutputLength);
+
+      for (let i = 0; i < basePolygonOutputLength; i++) {
+        const basePolygonOutput = (await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(i).call()).map(
+          coor => web3.utils.fromWei(coor, 'ether')
+        );
+        console.log(
+          'basePolygonOutputPoint',
+          galt.geohash.extra.encodeFromLatLng(basePolygonOutput[0], basePolygonOutput[1], 12)
+        );
+      }
+
       assert.equal(true, false);
     });
   });
