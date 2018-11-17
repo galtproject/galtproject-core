@@ -40,30 +40,23 @@ contract('BentleyOttman', ([coreTeam]) => {
     this.handleQueuePoints = async function() {
       const isOver = await this.mockBentleyOttmanWeb3.methods.isQueuePointsOver().call();
       if (isOver) {
-        return 0;
+        return;
       }
-      const res = await this.mockBentleyOttman.handleQueuePoints();
-      console.log('      handleQueuePoints tx gasUsed', res.receipt.gasUsed);
+      await this.mockBentleyOttman.handleQueuePoints();
 
-      return res.receipt.gasUsed + (await this.handleQueuePoints());
+      await this.handleQueuePoints();
     };
+
     this.setSegmentsAndHandleQueuePoints = async function(segments) {
-      console.log(`      Segments count: ${segments.length}\n`);
       const etherSegments = segments.map(segment =>
         segment.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)))
       );
 
-      let totalAddSegmentGasUsed = 0;
       await pIteration.forEachSeries(etherSegments, async segment => {
-        const res = await this.mockBentleyOttman.addSegment(segment);
-        console.log('      addSegment tx gasUsed', res.receipt.gasUsed);
-        totalAddSegmentGasUsed += res.receipt.gasUsed;
+        await this.mockBentleyOttman.addSegment(segment);
       });
 
-      const handleQueueTotalGasUsed = await this.handleQueuePoints();
-      console.log('');
-      console.log('      addSegment total gasUsed', totalAddSegmentGasUsed);
-      console.log('      handleQueuePoints total gasUsed', handleQueueTotalGasUsed);
+      await this.handleQueuePoints();
     };
   });
 

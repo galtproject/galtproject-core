@@ -3,7 +3,7 @@ const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
-const _ = require('lodash');
+// const _ = require('lodash');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -69,16 +69,17 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      const intersectionGeohashes = _.intersection(firstContour, secondContour);
-      intersectionGeohashes.forEach(geohash => {
-        console.log(geohash, galt.geohash.contour.isGeohashInsideContour(geohash, baseContour, false));
-      });
+      // const intersectionGeohashes = _.intersection(firstContour, secondContour);
+      // intersectionGeohashes.forEach(geohash => {
+      //   console.log(geohash, galt.geohash.contour.isGeohashInsideContour(geohash, baseContour, false));
+      // });
 
       res = await this.splitMerge.splitPackage(basePackageId, secondPackage, firstPackage, {
         from: alice
       });
 
-      this.logGasUsed('split', res, firstPackage, secondPackage, basePackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('split', res, firstPackage, secondPackage, basePackage);
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {
@@ -105,7 +106,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('merge', res, firstPackage, secondPackage, resultPackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('merge', res, firstPackage, secondPackage, resultPackage);
     };
   });
 
@@ -249,7 +251,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('split', res, baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
+      // TODO: move to benchmark
+      // this.logGasUsed('split', res, baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
 
       const newPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
@@ -273,7 +276,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      this.logGasUsed('merge', res, contourToSplitForOldPackage, contourToSplitForNewPackage, baseContour);
+      // TODO: move to benchmark
+      // this.logGasUsed('merge', res, contourToSplitForOldPackage, contourToSplitForNewPackage, baseContour);
 
       res = await this.splitMerge.getPackageContour.call(newPackageId);
       assert.deepEqual(res.map(item => item.toString(10)), baseContour);

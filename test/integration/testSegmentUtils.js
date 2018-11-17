@@ -42,20 +42,17 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#segmentsIntersect()', () => {
     it('should correctly detect segmentsIntersect', async function() {
-      let number = 1;
+      // let number = 1;
 
       // Helpers
       this.segmentsIntersect = async function(segment1, segment2, expectedResult) {
-        console.log('      segmentsIntersect number', number);
+        // console.log('      segmentsIntersect number', number);
 
         const res = await this.mockSegmentUtils.segmentsIntersect(segment1, segment2, {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result, expectedResult);
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
-        number += 1;
+        // number += 1;
       };
       // Helpers end
 
@@ -70,20 +67,17 @@ contract('SegmentUtils', ([coreTeam]) => {
 
   describe('#findSegmentsIntersection()', () => {
     it('should correctly detect findSegmentsIntersection', async function() {
-      let number = 1;
+      // let number = 1;
 
       // Helpers
       this.findSegmentsIntersection = async function(segment1, segment2, expectedResult) {
-        console.log('      findSegmentsIntersection number', number);
+        // console.log('      findSegmentsIntersection number', number);
 
         const res = await this.mockSegmentUtils.findSegmentsIntersection(segment1, segment2, {
           from: coreTeam
         });
         assert.deepEqual(res.logs[0].args.result.map(a => a.toString(10)), expectedResult.map(a => a.toString(10)));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
-        number += 1;
+        // number += 1;
       };
       // Helpers end
 
@@ -103,11 +97,11 @@ contract('SegmentUtils', ([coreTeam]) => {
       const BEFORE = 0;
       const AFTER = 1;
 
-      let number = 1;
+      // let number = 1;
 
       // Helpers
       this.compareSegments = async function(segment1, segment2, expectedResult) {
-        console.log('      compareSegments number', number);
+        // console.log('      compareSegments number', number);
         const etherSegment1 = segment1.map(point => point.map(coor => ether(coor)));
         const etherSegment2 = segment2.map(point => point.map(coor => ether(coor)));
 
@@ -115,10 +109,7 @@ contract('SegmentUtils', ([coreTeam]) => {
           from: coreTeam
         });
         assert.equal(res.logs[0].args.result.toString(10), expectedResult.toString(10));
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
-
-        number += 1;
+        // number += 1;
       };
       // Helpers end
 

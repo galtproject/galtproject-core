@@ -1,5 +1,5 @@
 const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree.sol');
-const MockSegmentRedBlackTree = artifacts.require('./test/MockSegmentRedBlackTree.sol');
+const MockSegmentRedBlackTree = artifacts.require('./mocks/MockSegmentRedBlackTree.sol');
 const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
 
 const _ = require('lodash');
@@ -32,11 +32,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
 
     this.mockSegmentRedBlackTree = await MockSegmentRedBlackTree.new({ from: coreTeam });
 
-    this.mockSegmentRedBlackTreeWeb3 = new web3.eth.Contract(
-      this.mockSegmentRedBlackTree.abi,
-      this.mockSegmentRedBlackTree.address
-    );
-
     this.points = [
       [200, 12],
       [612, 401],
@@ -59,8 +54,7 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
 
   describe('#insert() and find()', () => {
     it('should correctly insert and find points', async function() {
-      let number = 1;
-      let totalGasUsed = 0;
+      // let number = 1;
 
       // Helpers
       this.getSegmentId = function(segment) {
@@ -70,30 +64,23 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       };
 
       this.insert = async function(segment) {
-        console.log('      SegmentRedBlackTree.insert() number', number);
+        // console.log('      SegmentRedBlackTree.insert() number', number);
         const id = this.getSegmentId(segment);
-        const res = await this.mockSegmentRedBlackTree.insert(id, segment, {
+        await this.mockSegmentRedBlackTree.insert(id, segment, {
           from: coreTeam
         });
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
 
-        totalGasUsed += res.receipt.gasUsed;
-        number += 1;
+        // number += 1;
       };
 
       this.find = async function(point) {
-        console.log('      SegmentRedBlackTree.find() on number of segments:', number - 1);
+        // console.log('      SegmentRedBlackTree.find() on number of segments:', number - 1);
         const expectedId = this.getSegmentId(point);
         const res = await this.mockSegmentRedBlackTree.find(point, {
           from: coreTeam
         });
-        // TODO: log on NODE_ENV flag active
-        console.log('      gasUsed', res.receipt.gasUsed);
         const itemId = res.logs[0].args.id.toString(10);
         assert.equal(expectedId.toString(10), itemId.toString(10));
-
-        totalGasUsed += res.receipt.gasUsed;
       };
       // Helpers end
 
@@ -104,10 +91,6 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       await pIteration.forEachSeries(this.etherSegments, async segment => {
         await this.find(segment);
       });
-
-      // TODO: log on NODE_ENV flag active
-      console.log('');
-      console.log('      Total gasUsed', totalGasUsed);
     });
   });
 });
