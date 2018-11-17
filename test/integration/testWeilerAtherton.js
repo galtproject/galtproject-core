@@ -162,8 +162,6 @@ contract('WeilerAtherton', ([coreTeam]) => {
       //     galt.geohash.extra.encodeFromLatLng(basePolygonOutput[0], basePolygonOutput[1], 12)
       //   );
       // }
-
-      // assert.equal(true, false);
     });
   });
 });
