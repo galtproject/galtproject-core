@@ -15,38 +15,40 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library MathUtils {
-  function INT256_MIN() internal pure returns(int256) {
+  function INT256_MIN() internal pure returns (int256) {
     return int256((uint256(1) << 255));
   }
-  function INT256_MAX() internal pure returns(int256) {
+
+  function INT256_MAX() internal pure returns (int256) {
     return int256(~((uint256(1) << 255)));
   }
-  
-  function UINT256_MIN() internal pure returns(uint256) {
+
+  function UINT256_MIN() internal pure returns (uint256) {
     return 0;
   }
-  function UINT256_MAX() internal pure returns(uint256) {
+
+  function UINT256_MAX() internal pure returns (uint256) {
     return ~uint256(0);
   }
-  
-  function EPS() internal pure returns(int256) {
+
+  function EPS() internal pure returns (int256) {
     return 1000000000;
-//    return 0;
-  }
-  
-  function abs(int number) internal pure returns(int) {
-    return number > 0 ? number : number * (-1);
+    //    return 0;
   }
 
-  function between (int a, int b, int c) internal pure returns(bool) {
+  function abs(int number) internal pure returns (int) {
+    return number > 0 ? number : number * (- 1);
+  }
+
+  function between(int a, int b, int c) internal pure returns (bool) {
     return (a - EPS() <= b) && (b <= c + EPS());
   }
-  
-  function minInt(int a, int b) internal pure returns(int) {
+
+  function minInt(int a, int b) internal pure returns (int) {
     return a < b ? a : b;
   }
 
-  function maxInt(int a, int b) internal pure returns(int) {
+  function maxInt(int a, int b) internal pure returns (int) {
     return a > b ? a : b;
   }
 }

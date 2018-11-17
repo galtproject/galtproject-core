@@ -30,9 +30,9 @@ library ArrayUtils {
         return int(j);
       }
     }
-    return -1;
+    return - 1;
   }
-  
+
   function intEqual(int[] arr1, int[] arr2) public view returns (bool) {
     for (uint i = 0; i < arr1.length; i++) {
       if (arr1[i] != arr2[i]) {

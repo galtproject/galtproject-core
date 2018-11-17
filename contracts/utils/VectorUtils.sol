@@ -21,7 +21,7 @@ library VectorUtils {
     /* solium-disable-next-line */
     return (MathUtils.minInt(a[0], b[0]) <= c[0]) && (c[0] <= MathUtils.maxInt(a[0], b[0])) &&
     /* solium-disable-next-line */
-        (MathUtils.minInt(a[1], b[1]) <= c[1]) && (c[1] <= MathUtils.maxInt(a[1], b[1]));
+    (MathUtils.minInt(a[1], b[1]) <= c[1]) && (c[1] <= MathUtils.maxInt(a[1], b[1]));
   }
 
   function direction(int[2] a, int[2] b, int[2] c) internal pure returns (int256) {
