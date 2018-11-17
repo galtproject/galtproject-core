@@ -49,20 +49,19 @@ contract('ValidatorStakes', accounts => {
     this.validators = await Validators.new({ from: coreTeam });
     this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
 
-    await this.validatorStakes.initialize(
-      this.validators.address,
-      this.galtToken.address,
-      slashManager,
-      multiSigWallet,
-      { from: coreTeam }
-    );
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+      from: coreTeam
+    });
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
     await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validatorStakes.addRoleTo(slashManager, await this.validatorStakes.SLASH_MANAGER(), {
+    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+      from: coreTeam
+    });
+    await this.validatorStakes.addRoleTo(slashManager, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 

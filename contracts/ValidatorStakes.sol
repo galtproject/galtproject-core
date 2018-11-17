@@ -23,11 +23,12 @@ import "./collections/ArraySet.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 
 
+// TODO: rename ValidatorStakesAccounting
 contract ValidatorStakes is Ownable, RBAC, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant ROLE_SLASH_MANAGER = 'slash_manager';
+  string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
   address slashManager;
   address multiSigWallet;
@@ -75,7 +76,7 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   }
 
   function _slash(address _validator, bytes32 _role, uint256 _amount) internal {
-    validators.requireHasRole(_validator, _role);
+    require(validators.isValidatorRoleAssigned(_validator, _role), "Some roles doesn't match");
 
     int256 initialBalance = validatorRoles[_validator].roleStakes[_role];
     int256 finalBalance = validatorRoles[_validator].roleStakes[_role] - int256(_amount);
@@ -88,7 +89,7 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   }
 
   function stake(address _validator, bytes32 _role, uint256 _amount) external {
-    validators.requireHasRole(_validator, _role);
+    validators.requireValidatorActiveWithAssignedRole(_validator, _role);
     galtToken.transferFrom(msg.sender, multiSigWallet, _amount);
 
     require(_amount > 0, "Expect positive amount");
@@ -99,6 +100,7 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
 
     validators.onStakeChanged(_validator, _role, finalValue);
   }
+  event FailedCheck(address _v, bytes32 _r, bool _hhas);
 
   function stakeOf(address _validator, bytes32 _role) external view returns (int256) {
     return validatorRoles[_validator].roleStakes[_role];

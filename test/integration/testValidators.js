@@ -3,7 +3,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { ether, assertRevert, initHelperWeb3 } = require('../helpers');
+const { assertRevert, initHelperWeb3 } = require('../helpers');
 
 const { hexToUtf8 } = Web3.utils;
 const web3 = new Web3(Validators.web3.currentProvider);
@@ -161,11 +161,6 @@ contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, val
       it('return true if validator is active and has deposited his stake', async function() {
         assert(!(await this.validators.isValidatorActive(alice)));
         await this.validators.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: validatorManager });
-        assert(!(await this.validators.isValidatorActive(alice)));
-
-        await this.validators.setRoleMinimalDeposit('🦄', ether(40), { from: applicationTypeManager });
-        await this.validators.onStakeChanged(alice, '🦄', ether(40), { from: validatorStakes });
-
         assert(await this.validators.isValidatorActive(alice));
         await this.validators.removeValidator(alice, { from: validatorManager });
         assert(!(await this.validators.isValidatorActive(alice)));

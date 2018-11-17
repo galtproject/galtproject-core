@@ -37,6 +37,18 @@ library ArraySet {
     _set.array.push(_v);
   }
 
+  function addSilent(AddressSet storage _set, address _v) internal returns (bool) {
+    if (_set.exists[_v] == true) {
+      return false;
+    }
+
+    _set.map[_v] = _set.array.length;
+    _set.exists[_v] = true;
+    _set.array.push(_v);
+
+    return true;
+  }
+
   function remove(AddressSet storage _set, address _v) internal {
     require(_set.array.length > 0, "Array is empty");
     require(_set.exists[_v] == true, "Element doesn't exist");
@@ -74,6 +86,20 @@ library ArraySet {
   function add(Bytes32Set storage _set, bytes32 _v) internal {
     require(_set.exists[_v] == false, "Element already exists");
 
+    _add(_set, _v);
+  }
+
+  function addSilent(Bytes32Set storage _set, bytes32 _v) internal returns (bool) {
+    if (_set.exists[_v] == true) {
+      return false;
+    }
+
+    _add(_set, _v);
+
+    return true;
+  }
+
+  function _add(Bytes32Set storage _set, bytes32 _v) internal {
     _set.map[_v] = _set.array.length;
     _set.exists[_v] = true;
     _set.array.push(_v);
@@ -83,6 +109,19 @@ library ArraySet {
     require(_set.array.length > 0, "Array is empty");
     require(_set.exists[_v] == true, "Element doesn't exist");
 
+    _remove(_set, _v);
+  }
+
+  function removeSilent(Bytes32Set storage _set, bytes32 _v) internal returns (bool) {
+    if (_set.exists[_v] == false) {
+      return false;
+    }
+
+    _remove(_set, _v);
+    return true;
+  }
+
+  function _remove(Bytes32Set storage _set, bytes32 _v) internal {
     uint256 lastElementIndex = _set.array.length - 1;
     uint256 currentElementIndex = _set.map[_v];
     bytes32 lastElement = _set.array[lastElementIndex];
@@ -94,6 +133,15 @@ library ArraySet {
     delete _set.map[_v];
     delete _set.exists[_v];
     _set.map[lastElement] = currentElementIndex;
+  }
+
+  function clear(Bytes32Set storage _set) internal {
+    bytes32[] storage ary = _set.array;
+
+    for (uint256 i = 0; i < ary.length; i++) {
+      delete _set.exists[ary[i]];
+      delete ary[i];
+    }
   }
 
   function has(Bytes32Set storage _set, bytes32 _v) internal view returns (bool) {

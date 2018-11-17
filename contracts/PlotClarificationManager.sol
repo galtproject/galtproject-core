@@ -53,7 +53,7 @@ contract PlotClarificationManager is AbstractApplication {
     address applicant;
     bytes32 ledgerIdentifier;
     uint256 spaceTokenId;
-
+    
     uint256 validatorsReward;
     uint256 galtSpaceReward;
     uint256 gasDeposit;
@@ -61,10 +61,13 @@ contract PlotClarificationManager is AbstractApplication {
     bool tokenWithdrawn;
     bool gasDepositWithdrawn;
 
+    // Default is ETH
     Currency currency;
     ApplicationStatus status;
 
     uint256[] newContour;
+    int256[] newHeights;
+    int256 newLevel;
     bytes32[] assignedRoles;
 
     mapping(bytes32 => uint256) assignedRewards;
@@ -92,7 +95,7 @@ contract PlotClarificationManager is AbstractApplication {
     Application storage a = applications[_aId];
 
     require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    validators.ensureValidatorActive(msg.sender);
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, a.addressRoles[msg.sender]);
 
     _;
   }
@@ -136,6 +139,8 @@ contract PlotClarificationManager is AbstractApplication {
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
     uint256[] _newContour,
+    int256[] _newHeights,
+    int256 _newLevel,
     uint256 _applicationFeeInGalt
   )
     external
@@ -145,26 +150,9 @@ contract PlotClarificationManager is AbstractApplication {
   {
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
+    require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
 
     spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
-
-    // Default is ETH
-    Currency currency;
-    uint256 fee;
-
-    // GALT
-    if (_applicationFeeInGalt > 0) {
-      require(msg.value == 0, "Could not accept both GALT and ETH");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
-      fee = _applicationFeeInGalt;
-      currency = Currency.GALT;
-      // ETH
-    } else {
-      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment");
-
-      fee = msg.value;
-    }
 
     Application memory a;
     bytes32 _id = keccak256(
@@ -174,13 +162,30 @@ contract PlotClarificationManager is AbstractApplication {
       )
     );
 
+    uint256 fee;
+
+    // GALT
+    if (_applicationFeeInGalt > 0) {
+      require(msg.value == 0, "Could not accept both GALT and ETH");
+      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Insufficient payment");
+      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      fee = _applicationFeeInGalt;
+      a.currency = Currency.GALT;
+      // ETH
+    } else {
+      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment");
+
+      fee = msg.value;
+    }
+
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
     a.applicant = msg.sender;
     a.newContour = _newContour;
-    a.currency = currency;
+    a.newHeights = _newHeights;
+    a.newLevel = _newLevel;
 
     a.spaceTokenId = _spaceTokenId;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -201,7 +206,7 @@ contract PlotClarificationManager is AbstractApplication {
   function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
     Application storage a = applications[_aId];
 
-    require(validators.hasRole(msg.sender, _role), "Unable to lock with given roles");
+    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, _role);
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
     require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
     require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
@@ -240,6 +245,9 @@ contract PlotClarificationManager is AbstractApplication {
     }
 
     if (allApproved) {
+      splitMerge.setPackageContour(a.spaceTokenId, a.newContour);
+      splitMerge.setPackageHeights(a.spaceTokenId, a.newHeights);
+      splitMerge.setPackageLevel(a.spaceTokenId, a.newLevel);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
@@ -409,6 +417,8 @@ contract PlotClarificationManager is AbstractApplication {
     view
     returns(
       uint256[] newContour,
+      int256[] newHeights,
+      int256 newLevel,
       bytes32 ledgerIdentifier
     )
   {
@@ -416,7 +426,7 @@ contract PlotClarificationManager is AbstractApplication {
 
     Application storage m = applications[_id];
 
-    return (m.newContour, m.ledgerIdentifier);
+    return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier);
   }
 
   function getApplicationValidator(
@@ -512,5 +522,17 @@ contract PlotClarificationManager is AbstractApplication {
     }
 
     assert(totalReward == a.validatorsReward);
+  }
+
+  function getAllApplications() external view returns (bytes32[]) {
+    return applicationsArray;
+  }
+
+  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
+    return applicationsByAddresses[_applicant];
+  }
+
+  function getApplicationsByValidator(address _validator) external view returns (bytes32[]) {
+    return applicationsByValidator[_validator];
   }
 }

@@ -2,13 +2,22 @@ const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
+const ValidatorStakesMultiSig = artifacts.require('./ValidatorStakesMultiSig.sol');
+const Auditors = artifacts.require('./Auditors.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { ether, assertRevert } = require('../helpers');
+const {
+  initHelperWeb3,
+  ether,
+  zeroAddress,
+  assertGaltBalanceChanged,
+  assertEthBalanceChanged,
+  assertRevert
+} = require('../helpers');
 
 const { stringToHex } = Web3.utils;
 
@@ -25,6 +34,7 @@ const PC_AUDITOR_ROLE = 'PC_AUDITOR_ROLE';
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
+initHelperWeb3(web3);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
@@ -66,8 +76,8 @@ contract("ClaimManager", (accounts) => {
     galtSpaceOrg,
     feeManager,
     applicationTypeManager,
+    auditorManager,
     validatorManager,
-    multiSigWallet,
     alice,
     bob,
     charlie,
@@ -94,22 +104,38 @@ contract("ClaimManager", (accounts) => {
     this.validators = await Validators.new({ from: coreTeam });
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    // auditors should be explicitly reassigned in order to synchronize MultiSig, Auditors and Validators contract
+    this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, [bob, charlie, dan], 2, { from: coreTeam });
+    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.validators.address, { from: coreTeam });
 
     await this.claimManager.initialize(
       this.validators.address,
       this.galtToken.address,
       this.validatorStakes.address,
+      this.vsMultiSig.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, this.vsMultiSig.address, {
       from: coreTeam
     });
 
     await this.claimManager.setFeeManager(feeManager, true, { from: coreTeam });
 
+    await this.auditors.addRoleTo(coreTeam, await this.auditors.ROLE_MANAGER(), {
+      from: coreTeam
+    });
+    await this.auditors.addRoleTo(auditorManager, await this.auditors.ROLE_AUDITOR_MANAGER(), {
+      from: coreTeam
+    });
+    await this.vsMultiSig.addRoleTo(this.auditors.address, await this.vsMultiSig.ROLE_AUDITORS_MANAGER(), {
+      from: coreTeam
+    });
+    await this.vsMultiSig.addRoleTo(this.claimManager.address, await this.vsMultiSig.ROLE_PROPOSER(), {
+      from: coreTeam
+    });
     await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
@@ -117,6 +143,9 @@ contract("ClaimManager", (accounts) => {
       from: coreTeam
     });
     await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+      from: coreTeam
+    });
+    await this.validators.addRoleTo(this.auditors.address, await this.validators.ROLE_AUDITOR_MANAGER(), {
       from: coreTeam
     });
     await this.validatorStakes.addRoleTo(this.claimManager.address, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
@@ -135,6 +164,7 @@ contract("ClaimManager", (accounts) => {
     this.claimManagerWeb3 = new web3.eth.Contract(this.claimManager.abi, this.claimManager.address);
     this.validatorStakesWeb3 = new web3.eth.Contract(this.validatorStakes.abi, this.validatorStakes.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
+    this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -317,7 +347,7 @@ contract("ClaimManager", (accounts) => {
           res = await this.claimManagerWeb3.methods.claim(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-          res = await this.claimManagerWeb3.methods.claimFees(this.aId).call();
+          res = await this.claimManagerWeb3.methods.getClaimFees(this.aId).call();
           assert.equal(res.currency, Currency.GALT);
 
           assert.equal(res.validatorsReward, ether('46.11'));
@@ -374,7 +404,7 @@ contract("ClaimManager", (accounts) => {
           res = await this.claimManagerWeb3.methods.claim(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-          res = await this.claimManagerWeb3.methods.claimFees(this.aId).call();
+          res = await this.claimManagerWeb3.methods.getClaimFees(this.aId).call();
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.validatorsReward, ether('8.71'));
@@ -404,11 +434,19 @@ contract("ClaimManager", (accounts) => {
       await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(200), { from: applicationTypeManager });
       await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(200), { from: applicationTypeManager });
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [CM_AUDITOR], { from: validatorManager });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [CM_AUDITOR], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [CM_AUDITOR], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [CM_AUDITOR], { from: validatorManager });
-      await this.validators.addValidator(frank, 'Frank', 'MN', [], [CM_AUDITOR], { from: validatorManager });
+      await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+      await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+
+      await this.auditors.setNofM(3, 5, { from: auditorManager });
+      await this.auditors.addAuditor(bob, 280, { from: auditorManager });
+      await this.auditors.addAuditor(charlie, 560, { from: auditorManager });
+      await this.auditors.addAuditor(dan, 120, { from: auditorManager });
+      await this.auditors.addAuditor(eve, 700, { from: auditorManager });
+      await this.auditors.addAuditor(frank, 300, { from: auditorManager });
+      await this.auditors.pushAuditors([eve, charlie, frank, bob, dan], { from: auditorManager });
 
       await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
       await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
@@ -458,6 +496,75 @@ contract("ClaimManager", (accounts) => {
       it('should deny proposal when claim is executed');
     });
 
+    describe('#pushMessage()', () => {
+      it('should allow any validator push a message into registry', async function() {
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hi!', { from: bob });
+      });
+
+      it('should allow a claimer pushing message into registry', async function() {
+        await this.claimManager.pushMessage(this.cId, 'hi!', { from: alice });
+      });
+
+      it('should deny a stranger pushing message into registry', async function() {
+        await assertRevert(this.claimManager.pushMessage(this.cId, 'hi!', { from: bob }));
+      });
+
+      it('should deny messaging in non-submitted state', async function() {
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        const res = await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
+        const pId1 = res.logs[0].args.proposalId;
+
+        await this.claimManager.vote(this.cId, pId1, { from: eve });
+        await this.claimManager.vote(this.cId, pId1, { from: dan });
+      });
+
+      it('should provide with messages getter', async function() {
+        await this.claimManager.lock(this.cId, { from: charlie });
+        await this.claimManager.lock(this.cId, { from: bob });
+
+        let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.messageCount, 0);
+
+        await this.claimManager.pushMessage(this.cId, 'hi', { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hey', { from: bob });
+        await this.claimManager.pushMessage(this.cId, 'hello', { from: alice });
+        await this.claimManager.pushMessage(this.cId, 'you', { from: charlie });
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.messageCount, 4);
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 0).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.text, 'hi');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 1).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.text, 'hey');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 2).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), alice);
+        assert.equal(res.text, 'hello');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 3).call();
+        assert(res.timestamp > 0);
+        assert.equal(res.from.toLowerCase(), charlie);
+        assert.equal(res.text, 'you');
+
+        res = await this.claimManagerWeb3.methods.getMessage(this.cId, 4).call();
+        assert.equal(res.timestamp, 0);
+        assert.equal(res.from.toLowerCase(), zeroAddress);
+        assert.equal(res.text, '');
+      });
+    });
+
     describe('#proposeApproval()', () => {
       beforeEach(async function() {
         const res = await this.claimManagerWeb3.methods.claim(this.cId).call();
@@ -471,14 +578,23 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should allow new proposals from members who has already locked the application', async function() {
-        let res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
-          from: bob
-        });
+        let res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          ether(20),
+          [dan],
+          [CM_AUDITOR],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
         const pId1 = res.logs[0].args.proposalId;
 
         res = await this.claimManager.proposeApproval(
           this.cId,
           'looks good',
+          ether(20),
           [bob, eve],
           [CM_AUDITOR, CM_AUDITOR],
           [ether(10), ether(20)],
@@ -510,18 +626,22 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should deny non-validator proposing a proposal', async function() {
-        await assertRevert(this.claimManager.proposeApproval(this.cId, 'looks good', [], [], [], { from: coreTeam }));
+        await assertRevert(
+          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], { from: coreTeam })
+        );
       });
 
       it('should deny validator proposing when claim is not locked', async function() {
-        await assertRevert(this.claimManager.proposeApproval(this.cId, 'looks good', [], [], [], { from: eve }));
+        await assertRevert(
+          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], { from: eve })
+        );
       });
 
       it('should allow multiple proposals from the same validator', async function() {
-        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
+        await this.claimManager.proposeApproval(this.cId, 'good enough', ether(10), [dan], [CM_AUDITOR], [ether(20)], {
           from: bob
         });
-        await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(30)], {
+        await this.claimManager.proposeApproval(this.cId, 'good enough', ether(10), [dan], [CM_AUDITOR], [ether(30)], {
           from: bob
         });
         await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
@@ -589,14 +709,23 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
 
-        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [CM_AUDITOR], [ether(20)], {
-          from: bob
-        });
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          ether(10),
+          [dan],
+          [CM_AUDITOR],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
         this.pId1 = res.logs[0].args.proposalId;
 
         res = await this.claimManager.proposeApproval(
           this.cId,
           'looks good',
+          ether(10),
           [bob, eve],
           [CM_AUDITOR, CM_AUDITOR],
           [ether(10), ether(20)],
@@ -615,7 +744,7 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
-        //
+
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
         assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
       });
@@ -702,6 +831,7 @@ contract("ClaimManager", (accounts) => {
           this.claimManager.proposeApproval(
             this.cId,
             'looks good',
+            ether(10),
             [bob, eve],
             [CM_AUDITOR, CM_AUDITOR],
             [ether(15), ether(20)],
@@ -733,14 +863,23 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.lock(this.cId, { from: dan });
         await this.claimManager.lock(this.cId, { from: eve });
 
-        res = await this.claimManager.proposeApproval(this.cId, 'good enough', [dan], [PC_AUDITOR_ROLE], [ether(20)], {
-          from: bob
-        });
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          ether(20),
+          [dan],
+          [PC_AUDITOR_ROLE],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
         this.pId1 = res.logs[0].args.proposalId;
 
         res = await this.claimManager.proposeApproval(
           this.cId,
           'looks good',
+          ether(30),
           [bob, eve],
           [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
           [ether(10), ether(20)],
@@ -754,9 +893,19 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res, ether(200));
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(200));
+
         res = await this.validators.isValidatorActive(bob);
         assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+
         res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -769,9 +918,19 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res, ether(190));
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(180));
+        //
         res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, false);
+
         res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, false);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -779,6 +938,68 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        // staking back
+        await this.galtToken.approve(this.validatorStakes.address, ether(30), { from: alice });
+        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(10), { from: alice });
+        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(20), { from: alice });
+
+        res = await this.validators.isValidatorActive(bob);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        assert.equal(res, true);
+
+        res = await this.validators.isValidatorActive(eve);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
+        assert.equal(res, true);
+      });
+
+      it('should create transfer claim value to a beneficiary', async function() {
+        let res = await this.vsMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        assert.equal(res, 0);
+        await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+        await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+
+        res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        res = await this.vsMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        assert.equal(res, 1);
+
+        const txId = '0';
+        res = await this.vsMultiSigWeb3.methods.transactions(txId).call();
+        assert.equal(res.destination.toLowerCase(), this.galtToken.address);
+        assert.equal(res.value, 0);
+        assert.equal(
+          res.data,
+          `0xa9059cbb000000000000000000000000${alice
+            .toLowerCase()
+            .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
+        );
+
+        const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.vsMultiSig.address).call();
+        assert(multiSigBalance > ether(20));
+        res = await this.vsMultiSigWeb3.methods.required().call();
+        assert.equal(res, 3);
+        res = await this.vsMultiSigWeb3.methods.getConfirmationCount(txId).call();
+        assert.equal(res, 0);
+        res = await this.vsMultiSigWeb3.methods.getOwners().call();
+        assert.sameMembers(res.map(a => a.toLowerCase()), [bob, charlie, dan, eve, frank]);
+
+        const aliceInitialBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
+
+        await this.vsMultiSig.confirmTransaction(txId, { from: bob });
+        res = await this.vsMultiSig.confirmTransaction(txId, { from: dan });
+        await this.vsMultiSig.confirmTransaction(txId, { from: frank });
+
+        const aliceFinalBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
+
+        assertGaltBalanceChanged(aliceInitialBalance, aliceFinalBalance, ether(30));
       });
 
       it('should reject when REJECT propose reached threshold', async function() {
@@ -791,6 +1012,432 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.votesFor.length, 3);
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.REJECTED);
+      });
+    });
+
+    describe('claims fee paid by GALT', () => {
+      beforeEach(async function() {
+        await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
+
+        let res = await this.claimManager.submit(
+          alice,
+          ether(350),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          ether(47),
+          { from: alice }
+        );
+
+        // override default which paid by ETH
+        this.cId = res.logs[0].args.id;
+
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+        await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          ether(10),
+          [dan],
+          [CM_AUDITOR],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
+        this.pId1 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'looks good',
+          ether(30),
+          [bob, eve],
+          [CM_AUDITOR, CM_AUDITOR],
+          [ether(10), ether(20)],
+          { from: dan }
+        );
+        this.pId2 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeReject(this.cId, 'its fake', {
+          from: eve
+        });
+        this.pId3 = res.logs[0].args.proposalId;
+
+        res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+        assert.equal(res.currency, Currency.GALT);
+
+        assert.equal(res.validatorsReward, '40890000000000000000');
+        assert.equal(res.galtSpaceReward, '6110000000000000000');
+      });
+
+      describe('on success proposal win (APPROVED status)', () => {
+        it('should revert auditor claims when status is SUBMITTED', async function() {
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+        });
+
+        it('should revert galt space claims when status is SUBMITTED', async function() {
+          await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
+        });
+
+        describe('with 4 active slots', () => {
+          beforeEach(async function() {
+            await this.claimManager.lock(this.cId, { from: charlie });
+            await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+            await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+          });
+
+          it('should calculate and assign rewards for auditors and galt space', async function() {
+            let res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+            assert.equal(res.validatorReward, '10222500000000000000');
+
+            res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+            assert.equal(res.slotsTaken, '4');
+            assert.equal(res.totalSlots, '5');
+          });
+
+          it('should allow galt space withdrawal only once', async function() {
+            const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+            await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+            const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+            assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
+          });
+
+          it('should deny galt space double claim a reward', async function() {
+            await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+            await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
+          });
+
+          it('should allow validators claiming their rewards', async function() {
+            const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+            const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+            const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+            const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+            await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+            await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+            await this.claimManager.claimValidatorReward(this.cId, { from: charlie });
+            await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+            const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+            const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+            const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+            const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+            assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
+            assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
+            assertGaltBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(10.2225));
+            assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(10.2225));
+          });
+
+          it('should deny validators claiming their rewards twice', async function() {
+            await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+            await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+            await this.claimManager.claimValidatorReward(this.cId, { from: charlie });
+            await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: dan }));
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: charlie }));
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
+          });
+        });
+
+        describe('with 3 active slots', () => {
+          beforeEach(async function() {
+            await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+            await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+          });
+
+          it('should calculate and assign rewards for auditors and galt space', async function() {
+            let res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+            assert.equal(res.validatorReward, '13630000000000000000');
+
+            res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+            assert.equal(res.slotsTaken, '3');
+            assert.equal(res.totalSlots, '5');
+          });
+
+          it('should allow validators claiming their rewards', async function() {
+            const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+            const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+            const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+            await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+            await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+            await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+            const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+            const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+            const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+            assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(13.63));
+            assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(13.63));
+            assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(13.63));
+          });
+
+          it('should deny validators claiming their rewards twice', async function() {
+            await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+            await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+            await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: dan }));
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
+          });
+
+          it('should deny validators who dont locked application claiming revards', async function() {
+            await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: charlie }));
+          });
+        });
+      });
+
+      describe('on reject proposal win (REJECTED status) with 3 active slots', () => {
+        beforeEach(async function() {
+          await this.claimManager.vote(this.cId, this.pId3, { from: dan });
+          await this.claimManager.vote(this.cId, this.pId3, { from: bob });
+        });
+
+        it('should calculate and assign rewards for auditors and galt space', async function() {
+          let res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+          assert.equal(res.validatorReward, '13630000000000000000');
+
+          res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+          assert.equal(res.status, ApplicationStatus.REJECTED);
+          assert.equal(res.slotsTaken, '3');
+          assert.equal(res.totalSlots, '5');
+        });
+
+        it('should allow validators claiming their rewards', async function() {
+          const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+          const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+          const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+          const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+          const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+          const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+          assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(13.63));
+          assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(13.63));
+          assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(13.63));
+        });
+
+        it('should deny validators claiming their rewards twice', async function() {
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: dan }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
+        });
+
+        it('should deny validators who dont locked application claiming revards', async function() {
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: charlie }));
+        });
+      });
+    });
+
+    describe('claims fee paid by ETH', () => {
+      beforeEach(async function() {
+        await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
+
+        let res = await this.claimManager.submit(
+          alice,
+          ether(350),
+          this.attachedDocuments.map(galt.ipfsHashToBytes32),
+          0,
+          { from: alice, value: ether(9) }
+        );
+
+        // override default which paid by ETH
+        this.cId = res.logs[0].args.id;
+
+        await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+        await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+
+        await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
+        await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+        await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
+
+        await this.claimManager.lock(this.cId, { from: bob });
+        await this.claimManager.lock(this.cId, { from: dan });
+        await this.claimManager.lock(this.cId, { from: eve });
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'good enough',
+          ether(10),
+          [dan],
+          [CM_AUDITOR],
+          [ether(20)],
+          {
+            from: bob
+          }
+        );
+        this.pId1 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeApproval(
+          this.cId,
+          'looks good',
+          ether(10),
+          [bob, eve],
+          [CM_AUDITOR, CM_AUDITOR],
+          [ether(10), ether(20)],
+          { from: dan }
+        );
+        this.pId2 = res.logs[0].args.proposalId;
+
+        res = await this.claimManager.proposeReject(this.cId, 'its fake', {
+          from: eve
+        });
+        this.pId3 = res.logs[0].args.proposalId;
+      });
+
+      describe('on approve proposal win (APPROVED status) with 5 active slots', () => {
+        beforeEach(async function() {
+          await this.claimManager.lock(this.cId, { from: charlie });
+          await this.claimManager.lock(this.cId, { from: frank });
+          await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+          await this.claimManager.vote(this.cId, this.pId3, { from: charlie });
+          await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+        });
+
+        it('should calculate and assign rewards for auditors and galt space', async function() {
+          let res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+          assert.equal(res.currency, Currency.ETH);
+
+          assert.equal(res.validatorsReward, '6030000000000000000');
+          assert.equal(res.galtSpaceReward, '2970000000000000000');
+
+          res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+          assert.equal(res.status, ApplicationStatus.APPROVED);
+          assert.equal(res.slotsTaken, '5');
+          assert.equal(res.totalSlots, '5');
+        });
+
+        it('should allow validators claiming their rewards', async function() {
+          const bobBalanceBefore = await web3.eth.getBalance(bob);
+          const danBalanceBefore = await web3.eth.getBalance(dan);
+          const eveBalanceBefore = await web3.eth.getBalance(eve);
+          const charlieBalanceBefore = await web3.eth.getBalance(charlie);
+          const frankBalanceBefore = await web3.eth.getBalance(frank);
+
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: charlie });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+          await this.claimManager.claimValidatorReward(this.cId, { from: frank });
+
+          const bobBalanceAfter = await web3.eth.getBalance(bob);
+          const charlieBalanceAfter = await web3.eth.getBalance(charlie);
+          const danBalanceAfter = await web3.eth.getBalance(dan);
+          const eveBalanceAfter = await web3.eth.getBalance(eve);
+          const frankBalanceAfter = await web3.eth.getBalance(frank);
+
+          assertEthBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(danBalanceBefore, danBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(1.206));
+        });
+
+        it('should allow galt space claiming reward', async function() {
+          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
+          await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
+
+          assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
+        });
+
+        it('should deny validators claiming their rewards twice', async function() {
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: dan }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
+        });
+      });
+
+      describe('on reject proposal win (REJECTED status) with 3 active slots', () => {
+        beforeEach(async function() {
+          await this.claimManager.vote(this.cId, this.pId3, { from: dan });
+          await this.claimManager.vote(this.cId, this.pId3, { from: bob });
+        });
+
+        it('should calculate and assign rewards for auditors and galt space', async function() {
+          let res = await this.claimManagerWeb3.methods.getClaimFees(this.cId).call();
+          assert.equal(res.currency, Currency.ETH);
+
+          assert.equal(res.validatorsReward, '6030000000000000000');
+          assert.equal(res.galtSpaceReward, '2970000000000000000');
+
+          res = await this.claimManagerWeb3.methods.claim(this.cId).call();
+          assert.equal(res.status, ApplicationStatus.REJECTED);
+          assert.equal(res.slotsTaken, '3');
+          assert.equal(res.totalSlots, '5');
+        });
+
+        it('should allow validators claiming their rewards', async function() {
+          const bobBalanceBefore = await web3.eth.getBalance(bob);
+          const danBalanceBefore = await web3.eth.getBalance(dan);
+          const eveBalanceBefore = await web3.eth.getBalance(eve);
+
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+          const bobBalanceAfter = await web3.eth.getBalance(bob);
+          const danBalanceAfter = await web3.eth.getBalance(dan);
+          const eveBalanceAfter = await web3.eth.getBalance(eve);
+
+          assertEthBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(2.01));
+          assertEthBalanceChanged(danBalanceBefore, danBalanceAfter, ether(2.01));
+          assertEthBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(2.01));
+        });
+
+        it('should allow galt space claiming reward', async function() {
+          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
+          await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
+
+          assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
+        });
+
+        it('should deny validators claiming their rewards twice', async function() {
+          await this.claimManager.claimValidatorReward(this.cId, { from: bob });
+          await this.claimManager.claimValidatorReward(this.cId, { from: dan });
+          await this.claimManager.claimValidatorReward(this.cId, { from: eve });
+
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: bob }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: dan }));
+          await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
+        });
       });
     });
   });

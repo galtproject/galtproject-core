@@ -17,10 +17,12 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
+import "./collections/ArraySet.sol";
 
 
 contract Validators is Ownable, RBAC {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.Bytes32Set;
 
   event LogValidatorRoleAdded(bytes32 role, uint8 share);
   event LogValidatorRoleRemoved(bytes32 role);
@@ -29,9 +31,14 @@ contract Validators is Ownable, RBAC {
   event LogReadyForApplications();
   event LogNotReadyForApplications(uint256 total);
 
+
   string public constant ROLE_VALIDATOR_MANAGER = "validator_manager";
+  string public constant ROLE_AUDITOR_MANAGER = "auditor_manager";
   string public constant ROLE_APPLICATION_TYPE_MANAGER = "application_type_manager";
   string public constant ROLE_VALIDATOR_STAKES = "validator_stakes";
+
+  bytes32 public constant CLAIM_MANAGER_APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
+  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
 
   uint256 public constant ROLES_LIMIT = 50;
   bytes32 public constant ROLE_NOT_EXISTS = 0x0;
@@ -44,16 +51,15 @@ contract Validators is Ownable, RBAC {
   mapping(bytes32 => ValidatorRole) public roles;
 
   // Validator Role details
-  mapping(address => Validator) public validators;
+  mapping(address => Validator) validators;
 
   struct Validator {
     bytes32 name;
     bytes32[] descriptionHashes;
-    bytes32[] rolesList;
-    mapping(bytes32 => bool) roles;
+    ArraySet.Bytes32Set assignedRoles;
+    ArraySet.Bytes32Set activeRoles;
     bytes32 position;
     bool active;
-    bool stakeActive;
   }
 
   struct ValidatorRole {
@@ -87,6 +93,12 @@ contract Validators is Ownable, RBAC {
 
   modifier onlyValidatorStakes() {
     require(hasRole(msg.sender, ROLE_VALIDATOR_STAKES), "No permissions for this action");
+
+    _;
+  }
+
+  modifier onlyAuditorManager() {
+    require(hasRole(msg.sender, ROLE_AUDITOR_MANAGER), "No permissions for this action");
 
     _;
   }
@@ -170,6 +182,23 @@ contract Validators is Ownable, RBAC {
     delete applicationTypeRoles[_applicationType];
   }
 
+  function setAuditors(
+    address[] _auditors,
+    uint256 _limit
+  )
+    external
+    onlyAuditorManager
+  {
+    for (uint256 i = 0; i < _limit; i++) {
+      Validator storage a = validators[_auditors[i]];
+      require(a.active, "Validator not active");
+
+      a.assignedRoles.addSilent(CM_AUDITOR);
+
+      validatorsByRoles[CM_AUDITOR].push(_auditors[i]);
+    }
+  }
+
   function isApplicationTypeReady(bytes32 _applicationType) external view returns (bool) {
     return applicationTypeRoles[_applicationType].length > 0;
   }
@@ -219,19 +248,21 @@ contract Validators is Ownable, RBAC {
     require(_position != 0x0, "Missing position");
     require(_roles.length <= ROLES_LIMIT, "Roles count should be <= 50");
 
-    validators[_validator] = Validator({
-      name: _name,
-      descriptionHashes: _descriptionHashes,
-      rolesList: _roles,
-      position: _position,
-      active: true,
-      stakeActive: false
-    });
+    Validator memory v;
+
+    v.name = _name;
+    v.descriptionHashes = _descriptionHashes;
+    v.position = _position;
+    v.active = true;
+
+    validators[_validator] = v;
+    validators[_validator].assignedRoles.clear();
 
     for (uint8 i = 0; i < _roles.length; i++) {
       bytes32 role = _roles[i];
+      require(role != CM_AUDITOR, "Can't assign CM_AUDITOR role");
       require(roles[role].applicationType != 0x0, "Role doesn't exist");
-      validators[_validator].roles[role] = true;
+      validators[_validator].assignedRoles.addSilent(role);
       validatorsByRoles[role].push(_validator);
     }
 
@@ -240,45 +271,57 @@ contract Validators is Ownable, RBAC {
 
   function removeValidator(address _validator) external onlyValidatorManager {
     require(_validator != address(0), "Missing validator");
-    // TODO: use index to remove validator
+    // TODO: use index (Set) to remove validator
     validators[_validator].active = false;
   }
 
-  // TODO: rename to requireActive
-  function ensureValidatorActive(address _validator) external view {
-    Validator storage v = validators[_validator];
-    require(v.active == true && v.stakeActive == true, "Validator is not active");
-  }
-
-  // TODO: rename to requireActiveWithRole
-  function ensureActiveWithRole(address _validator, bytes32 _role) external view {
+  function requireValidatorActive(address _validator) external view {
     Validator storage v = validators[_validator];
     require(v.active == true, "Validator is not active");
-    require(v.stakeActive == true, "Validator stake is not active");
-    require(v.roles[_role] == true, "Validator role invalid");
-  }
-
-  function requireHasRole(address _validator, bytes32 _role) external view returns (bool) {
-    require(validators[_validator].roles[_role] == true, "Validator has no such role");
-  }
-
-  // TODO: rename isActive
-  function isValidatorActive(address _validator) external view returns (bool) {
-    Validator storage v = validators[_validator];
-    return v.active == true && v.stakeActive == true;
-  }
-
-  function hasRole(address _validator, bytes32 _role) external view returns (bool) {
-    return validators[_validator].roles[_role] == true;
   }
 
   /**
-   * @dev Multiple validator roles check
+   * @dev Require the following conditions:
+   *
+   * - validator is active
+   * - validator role is assigned
+   * - validator role is active
+   */
+  function requireValidatorActiveWithAssignedActiveRole(address _validator, bytes32 _role) external view {
+    Validator storage v = validators[_validator];
+
+    require(v.active == true, "Validator is not active");
+    require(v.assignedRoles.has(_role), "Validator role not assigned");
+    require(v.activeRoles.has(_role), "Validator role not active");
+  }
+
+  function requireValidatorActiveWithAssignedRole(address _validator, bytes32 _role) external view {
+    Validator storage v = validators[_validator];
+
+    require(v.active == true, "Validator is not active");
+    require(v.assignedRoles.has(_role), "Validator role not assigned");
+  }
+
+  function isValidatorActive(address _validator) external view returns (bool) {
+    Validator storage v = validators[_validator];
+    return v.active == true;
+  }
+
+  function isValidatorRoleAssigned(address _validator, bytes32 _role) external view returns (bool) {
+    return validators[_validator].assignedRoles.has(_role) == true;
+  }
+
+  function isValidatorRoleActive(address _validator, bytes32 _role) external view returns (bool) {
+    return validators[_validator].activeRoles.has(_role) == true;
+  }
+
+  /**
+   * @dev Multiple assigned validator roles check
    * @return true if all given validator-role pairs are exist
    */
-  function hasRoles(address[] _validators, bytes32[] _roles) external view returns (bool) {
+  function validatorsHaveRolesAssigned(address[] _validators, bytes32[] _roles) external view returns (bool) {
     for (uint256 i = 0; i < _validators.length; i++) {
-      if (validators[_validators[i]].roles[_roles[i]] == false) {
+      if (validators[_validators[i]].assignedRoles.has(_roles[i]) == false) {
         return false;
       }
     }
@@ -295,17 +338,12 @@ contract Validators is Ownable, RBAC {
     external
     onlyValidatorStakes
   {
-    bool beforeValue = validators[_validator].stakeActive;
-    bool afterValue = _newDepositValue >= int256(roles[_role].minimalDeposit);
-
-    emit PreCheck(beforeValue, afterValue, int256(roles[_role].minimalDeposit), _newDepositValue);
-    if (beforeValue != afterValue) {
-      emit AfterCheck(beforeValue, afterValue);
-      validators[_validator].stakeActive = afterValue;
+    if (_newDepositValue >= int256(roles[_role].minimalDeposit)) {
+      validators[_validator].activeRoles.addSilent(_role);
+    } else {
+      validators[_validator].activeRoles.removeSilent(_role);
     }
   }
-  event PreCheck(bool before, bool afterCheck, int256 currentDeposit, int256 newDeposit);
-  event AfterCheck(bool before, bool afterCheck);
 
   function getValidator(
     address validator
@@ -315,10 +353,10 @@ contract Validators is Ownable, RBAC {
     returns (
       bytes32 name,
       bytes32 position,
-      bytes32[] roles,
       bytes32[] descriptionHashes,
-      bool active,
-      bool stakeActive
+      bytes32[] activeRoles,
+      bytes32[] assignedRoles,
+      bool active
     )
   {
     Validator storage v = validators[validator];
@@ -326,10 +364,10 @@ contract Validators is Ownable, RBAC {
     return (
       v.name,
       v.position,
-      v.rolesList,
       v.descriptionHashes,
-      v.active,
-      v.stakeActive
+      v.activeRoles.elements(),
+      v.assignedRoles.elements(),
+      v.active
     );
   }
 
