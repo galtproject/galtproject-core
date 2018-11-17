@@ -79,8 +79,8 @@ library PolygonUtils {
   
   //TODO: test it
   function isClockwise(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
-    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1]))
-    + ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
+    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) + 
+      ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
 //  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {

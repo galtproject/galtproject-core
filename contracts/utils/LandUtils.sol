@@ -87,9 +87,9 @@ library LandUtils {
     int256[2] latInterval,
     int256[2] lonInterval
   )
-    public
-    pure
-    returns (int256 lat, int256 lon)
+  public
+  pure
+  returns (int256 lat, int256 lon)
   {
     int256 lat = (latInterval[0] + latInterval[1]) / 2;
     int256 lon = (lonInterval[0] + lonInterval[1]) / 2;

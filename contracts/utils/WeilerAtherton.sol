@@ -90,7 +90,7 @@ library WeilerAtherton {
       } else {
         polygon.pointsByHash[prevPointHash].nextPoint = pointHash;
         polygon.pointsByHash[pointHash].prevPoint = prevPointHash;
-//        emit LogAddPoint(polygon.pointsByHash[prevPointHash].coors, prevPointHash, polygon.pointsByHash[prevPointHash].nextPoint);
+        //        emit LogAddPoint(polygon.pointsByHash[prevPointHash].coors, prevPointHash, polygon.pointsByHash[prevPointHash].nextPoint);
       }
       prevPointHash = pointHash;
     }
@@ -111,7 +111,7 @@ library WeilerAtherton {
     while (true) {
       state.bentleyOttman.addSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
       currentPoint = polygon.pointsByHash[currentPoint].nextPoint;
-//      emit LogAddSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
+      //      emit LogAddSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
       if (currentPoint == polygon.startPoint) {
         break;
       }
@@ -120,7 +120,7 @@ library WeilerAtherton {
 
   function processBentleyOttman(State storage state) public {
     state.bentleyOttman.handleQueuePoints();
-//    emit LogBentleyOttman(state.bentleyOttman.queue.tree.inserted, state.bentleyOttman.queue.tree.removed, state.bentleyOttman.output.length);
+    //    emit LogBentleyOttman(state.bentleyOttman.queue.tree.inserted, state.bentleyOttman.queue.tree.removed, state.bentleyOttman.output.length);
   }
 
   function isBentleyOttmanFinished(State storage state) public returns (bool) {
@@ -140,10 +140,12 @@ library WeilerAtherton {
       if (outputPoint.leftSegment[0][0] == 0 || outputPoint.rightSegment[0][0] == 0) {
         continue;
       }
-      if (PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0])
-      || PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1])
-      || PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0])
-        || PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[1])) {
+
+      /* solium-disable-next-line */
+      if (PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0]) || 
+        PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1]) || 
+        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0]) || 
+        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[1])) {
         continue;
       }
 
@@ -158,8 +160,8 @@ library WeilerAtherton {
       } else {
         require(false, "Segments of intersection point not found in polygons");
       }
-//      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
-//      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
+      //      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
+      //      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
     }
   }
 
@@ -241,7 +243,7 @@ library WeilerAtherton {
         state.basePolygon.startPoint = nextPointHash;
       }
 
-//      emit LogPushToResult(state.basePolygon.pointsByHash[curPointHash].coors);
+      //      emit LogPushToResult(state.basePolygon.pointsByHash[curPointHash].coors);
       resultPolygon.points.push(state.basePolygon.pointsByHash[curPointHash].coors);
 
       if (state.basePolygon.pointsByHash[curPointHash].intersectionPoint && curPointHash != startPointHash) {
@@ -262,7 +264,7 @@ library WeilerAtherton {
     if (state.cropPolygon.pointsByHash[curPointHash].nextPoint == bytes32(0)) {
       require(false, "Intersection point not found in crop polygon");
     }
-    
+
     Direction cropDirection;
 
     // find direction and next point
@@ -288,7 +290,7 @@ library WeilerAtherton {
         state.basePolygon.pointsByHash[nextPointHash].prevPoint = curPointHash;
       }
       emit LogSetNextPoint(state.basePolygon.pointsByHash[curPointHash].coors, state.cropPolygon.pointsByHash[nextPointHash].coors);
-      
+
       if (state.cropPolygon.pointsByHash[nextPointHash].intersectionPoint) {
         if (PointUtils.isEqual(state.cropPolygon.pointsByHash[nextPointHash].coors, resultPolygon.points[0])) {
           state.cropPolygon.handledIntersectionPoints++;
@@ -300,8 +302,8 @@ library WeilerAtherton {
           require(false, "End point of result polygon not equals to start point");
         }
       }
-      
-      if(state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
+
+      if (state.cropPolygon.pointsByHash[curPointHash].intersectionPoint) {
         state.cropPolygon.handledIntersectionPoints++;
         require(!state.cropPolygon.pointsByHash[curPointHash].includedInResult, "cropPolygon current intersectionPoint already included");
         state.cropPolygon.pointsByHash[curPointHash].includedInResult = true;
@@ -310,7 +312,7 @@ library WeilerAtherton {
       resultPolygon.points.push(state.cropPolygon.pointsByHash[nextPointHash].coors);
 
       curPointHash = nextPointHash;
-      
+
       if (cropDirection == Direction.FORWARD) {
         nextPointHash = state.cropPolygon.pointsByHash[curPointHash].nextPoint;
       } else {
