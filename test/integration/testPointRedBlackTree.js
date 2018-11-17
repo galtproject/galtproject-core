@@ -74,7 +74,7 @@ contract('PointRedBlackTree', ([coreTeam]) => {
     it('should correctly detect comparePoints', async function() {
       // Helpers
       this.comparePoints = async function(point1, point2, expectedResult) {
-        console.log('      comparePoints', point1, point2);
+        // console.log('      comparePoints', point1, point2);
         const res = await this.mockPointRedBlackTree.comparePoints(
           point1.map(c => ether(c)),
           point2.map(c => ether(c)),
@@ -116,7 +116,7 @@ contract('PointRedBlackTree', ([coreTeam]) => {
       };
 
       this.insert = async function(point) {
-        console.log('      PointRedBlackTree.insert()', point);
+        // console.log('      PointRedBlackTree.insert()', point);
         const id = this.getPointId(point);
         await this.mockPointRedBlackTree.insert(id, point, {
           from: coreTeam
@@ -124,7 +124,7 @@ contract('PointRedBlackTree', ([coreTeam]) => {
       };
 
       this.find = async function(point) {
-        console.log('      PointRedBlackTree.find()', point);
+        // console.log('      PointRedBlackTree.find()', point);
         const expectedId = this.getPointId(point);
         const res = await this.mockPointRedBlackTree.find(point, {
           from: coreTeam

@@ -64,7 +64,7 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       };
 
       this.insert = async function(segment) {
-        console.log('      SegmentRedBlackTree.insert() number', number);
+        // console.log('      SegmentRedBlackTree.insert() number', number);
         const id = this.getSegmentId(segment);
         await this.mockSegmentRedBlackTree.insert(id, segment, {
           from: coreTeam
@@ -74,7 +74,7 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
       };
 
       this.find = async function(point) {
-        console.log('      SegmentRedBlackTree.find() on number of segments:', number - 1);
+        // console.log('      SegmentRedBlackTree.find() on number of segments:', number - 1);
         const expectedId = this.getSegmentId(point);
         const res = await this.mockSegmentRedBlackTree.find(point, {
           from: coreTeam
