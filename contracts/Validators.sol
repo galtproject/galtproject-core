@@ -31,9 +31,14 @@ contract Validators is Ownable, RBAC {
   event LogReadyForApplications();
   event LogNotReadyForApplications(uint256 total);
 
+
   string public constant ROLE_VALIDATOR_MANAGER = "validator_manager";
+  string public constant ROLE_AUDITOR_MANAGER = "auditor_manager";
   string public constant ROLE_APPLICATION_TYPE_MANAGER = "application_type_manager";
   string public constant ROLE_VALIDATOR_STAKES = "validator_stakes";
+
+  bytes32 public constant CLAIM_MANAGER_APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
+  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
 
   uint256 public constant ROLES_LIMIT = 50;
   bytes32 public constant ROLE_NOT_EXISTS = 0x0;
@@ -88,6 +93,12 @@ contract Validators is Ownable, RBAC {
 
   modifier onlyValidatorStakes() {
     require(hasRole(msg.sender, ROLE_VALIDATOR_STAKES), "No permissions for this action");
+
+    _;
+  }
+
+  modifier onlyAuditorManager() {
+    require(hasRole(msg.sender, ROLE_AUDITOR_MANAGER), "No permissions for this action");
 
     _;
   }
@@ -171,6 +182,23 @@ contract Validators is Ownable, RBAC {
     delete applicationTypeRoles[_applicationType];
   }
 
+  function setAuditors(
+    address[] _auditors,
+    uint256 _limit
+  )
+    external
+    onlyAuditorManager
+  {
+    for (uint256 i = 0; i < _limit; i++) {
+      Validator storage a = validators[_auditors[i]];
+      require(a.active, "Validator not active");
+
+      a.assignedRoles.addSilent(CM_AUDITOR);
+
+      validatorsByRoles[CM_AUDITOR].push(_auditors[i]);
+    }
+  }
+
   function isApplicationTypeReady(bytes32 _applicationType) external view returns (bool) {
     return applicationTypeRoles[_applicationType].length > 0;
   }
@@ -232,6 +260,7 @@ contract Validators is Ownable, RBAC {
 
     for (uint8 i = 0; i < _roles.length; i++) {
       bytes32 role = _roles[i];
+      require(role != CM_AUDITOR, "Can't assign CM_AUDITOR role");
       require(roles[role].applicationType != 0x0, "Role doesn't exist");
       validators[_validator].assignedRoles.addSilent(role);
       validatorsByRoles[role].push(_validator);

@@ -23,6 +23,7 @@ import "./collections/ArraySet.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 
 
+// TODO: rename ValidatorStakesAccounting
 contract ValidatorStakes is Ownable, RBAC, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;

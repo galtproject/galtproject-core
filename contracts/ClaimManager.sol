@@ -21,6 +21,7 @@ import "./SpaceToken.sol";
 import "./Validators.sol";
 import "./collections/ArraySet.sol";
 import "./ValidatorStakes.sol";
+import "./ValidatorStakesMultiSig.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -32,6 +33,9 @@ contract ClaimManager is AbstractApplication {
 
   // `CM_JUROR` bytes32 representation hash
   bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
+
+  // `bytes4(keccak256('transfer(address,uint256)'))`
+  bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -89,6 +93,7 @@ contract ClaimManager is AbstractApplication {
     ArraySet.AddressSet votesFor;
     address from;
     string message;
+    uint256 amount;
     address[] validators;
     bytes32[] roles;
     uint256[] fines;
@@ -110,6 +115,7 @@ contract ClaimManager is AbstractApplication {
   uint256 public m;
 
   ValidatorStakes validatorStakes;
+  ValidatorStakesMultiSig validatorStakesMultiSig;
 
   modifier onlyValidSuperValidator() {
     validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, CM_AUDITOR);
@@ -131,6 +137,7 @@ contract ClaimManager is AbstractApplication {
     Validators _validators,
     ERC20 _galtToken,
     ValidatorStakes _validatorStakes,
+    ValidatorStakesMultiSig _validatorStakesMultiSig,
     address _galtSpaceRewardsAddress
   )
     public
@@ -141,6 +148,7 @@ contract ClaimManager is AbstractApplication {
     validators = _validators;
     galtToken = _galtToken;
     validatorStakes = _validatorStakes;
+    validatorStakesMultiSig = _validatorStakesMultiSig;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     n = 3;
@@ -248,7 +256,7 @@ contract ClaimManager is AbstractApplication {
    * @dev Super-Validator makes approve proposal
    * @param _cId Claim ID
    */
-  function proposeApproval(bytes32 _cId, string _msg, address[] _a, bytes32[] _r, uint256[] _f) external {
+  function proposeApproval(bytes32 _cId, string _msg, uint256 _amount, address[] _a, bytes32[] _r, uint256[] _f) external {
     require(_a.length == _r.length, "Address/Role arrays should be equal");
     require(_r.length == _f.length, "Role/Fine arrays should be equal");
 
@@ -270,6 +278,7 @@ contract ClaimManager is AbstractApplication {
     p.from = msg.sender;
     p.action = Action.APPROVE;
     p.message = _msg;
+    p.amount = _amount;
     p.validators = _a;
     p.roles = _r;
     p.fines = _f;
@@ -338,6 +347,12 @@ contract ClaimManager is AbstractApplication {
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
         validatorStakes.slash(p.validators, p.roles, p.fines);
+
+        validatorStakesMultiSig.proposeTransaction(
+          galtToken,
+          0x0,
+          abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
+        );
       } else {
         changeSaleOrderStatus(c, ApplicationStatus.REJECTED);
       }
