@@ -79,7 +79,7 @@ contract('WeilerAtherton', ([coreTeam]) => {
   const etherBaseContour = baseContour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
   const etherCropContour = cropContour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
 
-  describe.only('#initBasePolygon() and initCropPolygon()', () => {
+  describe('#initBasePolygon() and initCropPolygon()', () => {
     it('should correctly init polygons points', async function() {
       await pIteration.forEachSeries(etherBaseContour, async point => {
         await this.mockWeilerAtherton.addPointToBasePolygon(point);
@@ -98,36 +98,72 @@ contract('WeilerAtherton', ([coreTeam]) => {
       await this.processBentleyOttman();
       await this.mockWeilerAtherton.addIntersectedPoints();
       await this.mockWeilerAtherton.buildResultPolygon();
-
-      const resultPolygonLength = await this.mockWeilerAthertonWeb3.methods.getResultPolygonLength(0).call();
-      console.log('resultPolygonLength', resultPolygonLength);
-
-      for (let i = 0; i < resultPolygonLength; i++) {
-        const resultPolygonPoint = (await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call()).map(
-          coor => web3.utils.fromWei(coor, 'ether')
-        );
-        console.log(
-          'resultPolygonPoint',
-          galt.geohash.extra.encodeFromLatLng(resultPolygonPoint[0], resultPolygonPoint[1], 12)
-        );
-      }
-
       await this.mockWeilerAtherton.buildBasePolygonOutput();
 
+      const resultPolygonsCount = await this.mockWeilerAthertonWeb3.methods.getResultPolygonsCount().call();
+      assert.equal(resultPolygonsCount, '1');
+
+      // dev.highlightContour([ 'w24qftn244vj', 'w24qfxqukn80', 'w24qfrx3sxuc', 'w24qfmpp2p00']);
+      const resultPolygonLength = await this.mockWeilerAthertonWeb3.methods.getResultPolygonLength(0).call();
+      assert.equal(resultPolygonLength, '4');
+
+      let resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 0).call();
+      assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1214004978082921703', '104532601700706953950']);
+
+      resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 1).call();
+      assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1227113390341000000', '104533367324620000000']);
+
+      resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 2).call();
+      assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1228021425037785016', '104523095334564247375']);
+
+      resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 3).call();
+      assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1215271437541000000', '104522552657872000000']);
+
+      // for (let i = 0; i < resultPolygonLength; i++) {
+      //   console.log(await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call());
+      //   const resultPolygonPoint = (await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call()).map(
+      //     coor => web3.utils.fromWei(coor, 'ether')
+      //   );
+      //   console.log(
+      //     'resultPolygonPoint',
+      //     galt.geohash.extra.encodeFromLatLng(resultPolygonPoint[0], resultPolygonPoint[1], 12)
+      //   );
+      // }
+
+      // dev.highlightContour([ 'w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qftn244vj', 'w24qfmpp2p00', 'w24qfrx3sxuc']);
       const basePolygonOutputLength = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputLength().call();
-      console.log('basePolygonOutputLength', basePolygonOutputLength);
+      assert.equal(basePolygonOutputLength, '6');
 
-      for (let i = 0; i < basePolygonOutputLength; i++) {
-        const basePolygonOutput = (await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(i).call()).map(
-          coor => web3.utils.fromWei(coor, 'ether')
-        );
-        console.log(
-          'basePolygonOutputPoint',
-          galt.geohash.extra.encodeFromLatLng(basePolygonOutput[0], basePolygonOutput[1], 12)
-        );
-      }
+      let basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(0).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1229172823951000000', '104510070327669000000']);
 
-      assert.equal(true, false);
+      basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(1).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1203772639856000000', '104509898666292000000']);
+
+      basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(2).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1203600978479000000', '104531994033605000000']);
+
+      basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(3).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1214004978082921703', '104532601700706953950']);
+
+      basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(4).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1215271437541000000', '104522552657872000000']);
+
+      basePoint = await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(5).call();
+      assert.deepEqual(basePoint.map(c => c.toString(10)), ['1228021425037785016', '104523095334564247375']);
+
+      // for (let i = 0; i < basePolygonOutputLength; i++) {
+      //   console.log(await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(i).call());
+      //   const basePolygonOutput = (await this.mockWeilerAthertonWeb3.methods.getBasePolygonOutputPoint(i).call()).map(
+      //     coor => web3.utils.fromWei(coor, 'ether')
+      //   );
+      //   console.log(
+      //     'basePolygonOutputPoint',
+      //     galt.geohash.extra.encodeFromLatLng(basePolygonOutput[0], basePolygonOutput[1], 12)
+      //   );
+      // }
+
+      // assert.equal(true, false);
     });
   });
 });
