@@ -6,7 +6,7 @@ const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
 const WeilerAtherton = artifacts.require('./utils/WeilerAtherton.sol');
 const MockWeilerAtherton = artifacts.require('./mocks/MockWeilerAtherton.sol');
 
-const galt = require('@galtproject/utils');
+// const galt = require('@galtproject/utils');
 const Web3 = require('web3');
 const chai = require('chai');
 const pIteration = require('p-iteration');

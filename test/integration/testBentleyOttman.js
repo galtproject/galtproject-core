@@ -42,7 +42,7 @@ contract('BentleyOttman', ([coreTeam]) => {
       if (isOver) {
         return;
       }
-      const res = await this.mockBentleyOttman.handleQueuePoints();
+      await this.mockBentleyOttman.handleQueuePoints();
 
       await this.handleQueuePoints();
     };
