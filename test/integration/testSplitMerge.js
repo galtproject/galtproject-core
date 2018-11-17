@@ -69,10 +69,10 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      const intersectionGeohashes = _.intersection(firstContour, secondContour);
-      intersectionGeohashes.forEach(geohash => {
-        console.log(geohash, galt.geohash.contour.isGeohashInsideContour(geohash, baseContour, false));
-      });
+      // const intersectionGeohashes = _.intersection(firstContour, secondContour);
+      // intersectionGeohashes.forEach(geohash => {
+      //   console.log(geohash, galt.geohash.contour.isGeohashInsideContour(geohash, baseContour, false));
+      // });
 
       res = await this.splitMerge.splitPackage(basePackageId, secondPackage, firstPackage, {
         from: alice
