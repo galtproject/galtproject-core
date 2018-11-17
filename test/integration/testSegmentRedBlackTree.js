@@ -54,7 +54,7 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
 
   describe('#insert() and find()', () => {
     it('should correctly insert and find points', async function() {
-      let number = 1;
+      // let number = 1;
 
       // Helpers
       this.getSegmentId = function(segment) {
