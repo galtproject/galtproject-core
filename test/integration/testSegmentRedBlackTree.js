@@ -70,7 +70,7 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
           from: coreTeam
         });
 
-        number += 1;
+        // number += 1;
       };
 
       this.find = async function(point) {
