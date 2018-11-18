@@ -30,10 +30,12 @@ library LandUtils {
 
   // bytes32("0123456789bcdefghjkmnpqrstuvwxyz")
   bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
+  
+  event LogLatLonToGeohash5(uint256 geohash, uint8 precision);
 
   function geohash5Precision(uint256 _geohash5) public pure returns (uint256) {
     if (_geohash5 == 0) {
-      revert("Invalid geohash5");
+      return 0;
     } else if (_geohash5 <= C1_GEOHASH) {
       return 1;
     } else if (_geohash5 <= C2_GEOHASH) {
@@ -150,5 +152,77 @@ library LandUtils {
     }
 
     return latLonIntervalToLatLon(lat_interval, lon_interval);
+  }
+  
+  function latLonToGeohash5(int256 lat, int256 lon) public returns(uint256) {
+    bytes32 fiveOn = bytes32(31);
+    
+    int256[2] memory lat_interval = [int256(- 90 ether), int256(90 ether)];
+    int256[2] memory lon_interval = [int256(- 180 ether), int256(180 ether)];
+    
+    uint8[5] memory bits = [16, 8, 4, 2, 1];
+
+    uint8 bit = 0;
+    uint8 ch = 0;
+
+    int256 mid;
+    bool even = true;
+
+    uint256 _geohash;
+    uint8 precision = 7;
+    while(precision > 0) {
+      if(even) {
+        mid = (lon_interval[0] + lon_interval[1]) / 2;
+        if(lon > mid) {
+          ch |= bits[bit];
+          lon_interval[0] = mid;
+        } else {
+          lon_interval[1] = mid;
+        }
+      } else {
+        mid = (lat_interval[0] + lat_interval[1]) / 2;
+        if(lat > mid) {
+          ch |= bits[bit];
+          lat_interval[0] = mid;
+        } else {
+          lat_interval[1] = mid;
+        }
+      }
+
+      even = !even;
+
+      if(bit < 4) {
+        bit += 1;
+      } else {
+        precision -= 1;
+        _geohash += uint256(bytes32(ch) & fiveOn) << 5 * precision;
+        bit = 0;
+        ch = 0;
+      }
+      emit LogLatLonToGeohash5(_geohash, precision);
+    }
+    return _geohash;
+  }
+
+  function geohash5ToGeohashString(uint256 _input) public pure returns (bytes32) {
+    if (_input > C12_GEOHASH) {
+      revert("Number exceeds the limit");
+      return 0x0;
+    }
+
+    uint256 num = _input;
+    bytes32 output;
+    bytes32 fiveOn = bytes32(31);
+    uint8 counter = 0;
+
+    while(num != 0) {
+      output = output >> 8;
+      uint256 d = uint256(bytes32(num) & fiveOn);
+      output = output ^ (bytes1(GEOHASH5_MASK[d]));
+      num = num >> 5;
+      counter++;
+    }
+
+    return output;
   }
 }
