@@ -128,6 +128,8 @@ library WeilerAtherton {
   }
 
   function addIntersectedPoints(State storage state) public {
+    require(isBentleyOttmanFinished(state), "Bentley ottman not finished");
+    
     for (uint j = 0; j < state.bentleyOttman.output.length; j++) {
       BentleyOttman.OutputPoint memory outputPoint = state.bentleyOttman.output[j];
       bytes32 newPointHash = keccak256(abi.encode(outputPoint.point));
