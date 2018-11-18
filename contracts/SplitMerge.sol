@@ -46,7 +46,7 @@ contract SplitMerge is Initializable, Ownable {
 
   uint256[] allPackages;
 
-  PolygonUtils.LatLonData latLonData;
+  PolygonUtils.LatLonData public latLonData;
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
@@ -113,99 +113,21 @@ contract SplitMerge is Initializable, Ownable {
   {
     packageToLevel[_packageTokenId] = _level;
   }
+  
+  function cacheGeohashToLatLon(uint256 _geohash) public {
+    latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
+  }
 
   function splitPackage(
     uint256 _sourcePackageTokenId, 
-    uint256[] _sourcePackageContour, 
-    uint256[] _newPackageContour
+    uint256[] _cropContour
   ) 
     public
     onlySpaceTokenOwner(_sourcePackageTokenId)
     returns (uint256) 
   {
-    uint256[] memory currentSourcePackageContour = getPackageContour(_sourcePackageTokenId);
-    checkSplitContours(currentSourcePackageContour, _sourcePackageContour, _newPackageContour);
 
-    setPackageContour(_sourcePackageTokenId, _sourcePackageContour);
-    
-    int256 minHeight = packageToHeights[_sourcePackageTokenId][0];
-    
-    int256[] memory sourcePackageHeights = new int256[](_sourcePackageContour.length);
-    for (uint i = 0; i < _sourcePackageContour.length; i++) {
-      if (i + 1 > packageToHeights[_sourcePackageTokenId].length) {
-        sourcePackageHeights[i] = minHeight;
-      } else {
-        if (packageToHeights[_sourcePackageTokenId][i] < minHeight) {
-          minHeight = packageToHeights[_sourcePackageTokenId][i];
-        }
-        sourcePackageHeights[i] = packageToHeights[_sourcePackageTokenId][i];
-      } 
-    }
-
-    setPackageHeights(_sourcePackageTokenId, sourcePackageHeights);
-
-    uint256 newPackageTokenId = initPackage();
-    setPackageContour(newPackageTokenId, _newPackageContour);
-
-    int256[] memory newPackageHeights = new int256[](_newPackageContour.length);
-    for (uint i = 0; i < _newPackageContour.length; i++) {
-      newPackageHeights[i] = minHeight;
-    }
-    
-    setPackageHeights(newPackageTokenId, newPackageHeights);
-    setPackageLevel(newPackageTokenId, getPackageLevel(_sourcePackageTokenId));
-
-    return newPackageTokenId;
-  }
-
-  // TODO: Rework, deprecated due to unsafe logic
-  function checkSplitContours(
-    uint256[] memory sourceContour, 
-    uint256[] memory splitContour1, 
-    uint256[] memory splitContour2
-  ) 
-    public
-  {
-    uint256[] memory checkContour1 = new uint256[](splitContour1.length);
-    uint256[] memory checkContour2 = new uint256[](splitContour2.length);
-
-    for (uint i = 0; i < splitContour1.length; i++) {
-      for (uint j = 0; j < splitContour2.length; j++) {
-        if (splitContour1[i] == splitContour2[j] && splitContour2[j] != 0) {
-          require(
-            PolygonUtils.isInside(latLonData, splitContour1[i], sourceContour), 
-            "Duplicate element not inside source contour"
-          );
-
-          checkContour1[i] = 0;
-          checkContour2[j] = 0;
-        } else {
-          if (j == 0) {
-            checkContour1[i] = splitContour1[i];
-          }
-          if (i == 0) {
-            checkContour2[j] = splitContour2[j];
-          }
-        }
-      }
-    }
-
-    for (uint i = 0; i < checkContour1.length + checkContour2.length; i++) {
-      uint256 el = 0;
-      if (i < checkContour1.length) {
-        if (checkContour1[i] != 0) {
-          el = checkContour1[i];
-        }
-      } else if (checkContour2[i - checkContour1.length] != 0) {
-        el = checkContour2[i - checkContour1.length];
-      }
-
-      if (el != 0) {
-        int index = ArrayUtils.uintFind(sourceContour, el);
-        require(index != - 1, "Unique element not exists in source contour");
-        sourceContour[uint(index)] = 0;
-      }
-    }
+    return 0;
   }
 
   function mergePackage(

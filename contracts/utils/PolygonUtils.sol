@@ -26,12 +26,12 @@ library PolygonUtils {
   event LogPoint(int256[2] point);
   event LogPolygonPoint(int256[2] point);
 
-  function geohash5ToLatLonArr(LatLonData storage self, uint256 _geohash5) public returns (int256[2]) {
+  function geohash5ToLatLonArr(LatLonData storage self, uint256 _geohash5) internal returns (int256[2]) {
     (int256 lat, int256 lon) = geohash5ToLatLon(self, _geohash5);
     return [lat, lon];
   }
 
-  function geohash5ToLatLon(LatLonData storage self, uint256 _geohash5) public returns (int256 lat, int256 lon) {
+  function geohash5ToLatLon(LatLonData storage self, uint256 _geohash5) internal returns (int256 lat, int256 lon) {
     if (self.latLonByGeohash[_geohash5][0] == 0) {
       (int256 lat, int256 lon) = LandUtils.geohash5ToLatLon(_geohash5);
       self.latLonByGeohash[_geohash5] = [lat, lon];

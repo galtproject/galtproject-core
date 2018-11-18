@@ -218,6 +218,7 @@ library WeilerAtherton {
     Direction baseDirection;
 
     // find direction and next point
+    //TODO: need to add OR intersection point?
     if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].nextPoint].coors, state.cropPolygonInput)) {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].nextPoint;
       baseDirection = Direction.FORWARD;
@@ -270,6 +271,7 @@ library WeilerAtherton {
     Direction cropDirection;
 
     // find direction and next point
+    //TODO: need to add OR intersection point?
     if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].nextPoint].coors, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].nextPoint != prevPointHash) {
       nextPointHash = state.cropPolygon.pointsByHash[curPointHash].nextPoint;
       cropDirection = Direction.FORWARD;
