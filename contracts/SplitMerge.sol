@@ -23,12 +23,14 @@ import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
 import "./SpaceSplitOperation.sol";
 
-contract SplitMerge is Initializable, Ownable {
+contract SplitMerge is Initializable, Ownable, RBAC {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
   uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
   uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
+  
+  string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
   event LogFirstStage(uint256[] arr1, int256[] arr2);
   event LogSecondStage(uint256[] arr1, uint256[] arr2);
@@ -40,6 +42,7 @@ contract SplitMerge is Initializable, Ownable {
   address plotManager;
 
   event PackageInit(bytes32 id, address owner);
+  event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
 
   mapping(uint256 => uint256[]) public packageToContour;
   mapping(uint256 => int256[]) public packageToHeights;
@@ -51,7 +54,7 @@ contract SplitMerge is Initializable, Ownable {
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
   address[] public allSplitOperations;
 
-  LandUtils.LatLonData public latLonData;
+  LandUtils.LatLonData private latLonData;
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
@@ -76,19 +79,27 @@ contract SplitMerge is Initializable, Ownable {
     _;
   }
 
-  // TODO: restrict for role
-  function initPackage(address spaceTokenOwner) public returns (uint256) {
+  modifier onlyGeoDataManager() {
+    require(
+    /* solium-disable-next-line */
+      hasRole(msg.sender, GEO_DATA_MANAGER),
+      "This action not permitted for msg.sender");
+    _;
+  }
+
+  function initPackage(address spaceTokenOwner) 
+    public onlyGeoDataManager() 
+    returns (uint256) 
+  {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
-    allPackages.push(_packageTokenId);
 
     emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
 
     return _packageTokenId;
   }
 
-  // TODO: restrict for role
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour) 
-    public onlySpaceTokenOwner(_packageTokenId) 
+    public onlyGeoDataManager() 
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -107,24 +118,25 @@ contract SplitMerge is Initializable, Ownable {
     packageToContour[_packageTokenId] = _geohashesContour;
   }
 
-  // TODO: restrict for role
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
-    public onlySpaceTokenOwner(_packageTokenId)
+    public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
     packageToHeights[_packageTokenId] = _heightsList;
   }
 
-  // TODO: restrict for role
   function setPackageLevel(uint256 _packageTokenId, int256 _level)
-    public onlySpaceTokenOwner(_packageTokenId)
+    public onlyGeoDataManager()
   {
     packageToLevel[_packageTokenId] = _level;
   }
   
-  function cacheGeohashToLatLon(uint256 _geohash) public {
+  function cacheGeohashToLatLon(uint256 _geohash) public returns(int256[2]){
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
+    bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
+    latLonData.geohashByLatLonHash[pointHash][12] = _geohash;
+    return latLonData.latLonByGeohash[_geohash];
   }
   
   function cacheGeohashListToLatLon(uint256[] _geohashList) public {
@@ -132,76 +144,101 @@ contract SplitMerge is Initializable, Ownable {
       cacheGeohashToLatLon(_geohashList[i]);
     }
   }
-
-  function cacheLatLonToGeohash(uint256[2] point, uint8 precision) public {
-    bytes32 pointHash = keccak256(abi.encode(point));
-    latLonData.latLonByGeohash[pointHash][precision] = LandUtils.latLonToGeohash5(point, precision);
+  
+  function getCachedLatLonByGeohash(uint256 _geohash) public returns(int256[2]) {
+    return latLonData.latLonByGeohash[_geohash];
   }
 
-  function cacheLatLonListToGeohash(uint256[2][] _pointList, uint8 precision) public {
+  function cacheLatLonToGeohash(int256[2] point, uint8 precision) public returns(uint256) {
+    bytes32 pointHash = keccak256(abi.encode(point));
+    latLonData.geohashByLatLonHash[pointHash][precision] = LandUtils.latLonToGeohash5(point[0], point[1], precision);
+    return latLonData.geohashByLatLonHash[pointHash][precision];
+  }
+
+  function cacheLatLonListToGeohash(int256[2][] _pointList, uint8 precision) public {
     for(uint i = 0; i < _pointList.length; i++) {
       cacheLatLonToGeohash(_pointList[i], precision);
     }
   }
+  
+  function getCachedGeohashByLatLon(int256[2] point, uint8 precision) public returns(uint256) {
+    bytes32 pointHash = keccak256(abi.encode(point));
+    return latLonData.geohashByLatLonHash[pointHash][precision];
+  }
 
   // TODO: add SpaceSplitOperationFactory for migrations between versions
   function startSplitOperation(
-    uint256 _sourcePackageTokenId, 
+    uint256 _spaceTokenId, 
     uint256[] _cropContour
   ) 
     public
-    onlySpaceTokenOwner(_sourcePackageTokenId)
+    onlySpaceTokenOwner(_spaceTokenId)
     returns (address) 
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
-    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(spaceTokenOwner, _spaceTokenId, getPackageContour(_sourcePackageTokenId), _cropContour);
+    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(address(spaceToken), spaceTokenOwner, _spaceTokenId, getPackageContour(_spaceTokenId), _cropContour);
     activeSplitOperations[address(newSplitOperation)] = true;
     tokenIdToSplitOperations[_spaceTokenId].push(address(newSplitOperation)); 
     allSplitOperations.push(newSplitOperation);
-    
-    spaceToken.transferFrom(spaceTokenOwner, address(newSplitOperation), _sourcePackageTokenId);
+
+    spaceToken.transferFrom(spaceTokenOwner, address(newSplitOperation), _spaceTokenId);
+    newSplitOperation.init();
+
+    emit SplitOperationStart(_spaceTokenId, address(newSplitOperation));
     return newSplitOperation;
   }
   
-  function finishSplitPackage(uint256 _packageId) public {
-    require(activeSplitOperations[newSplitOperation], "Method should be called from active SpaceSplitOperation contract");
+  function finishSplitOperation(uint256 _spaceTokenId) public {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
-    SpaceSplitOperation splitOperation = SpaceSplitOperation(tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1]);
+    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+    require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
+    SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
 
-    require(splitOperation.baseContourOutput.length > 0 && splitOperation.resultContours.length > 0, "SpaceSplitOperation should be finished first");
-    setPackageContour(_packageId, newSplitOperation.baseContourOutput);
+    require(splitOperation.doneStage() == SpaceSplitOperation.Stage.POLYGONS_FINISH, "SpaceSplitOperation should be finished first");
+    
+    packageToContour[_spaceTokenId] = splitOperation.getBaseContourOutput();
 
-    int256 minHeight = packageToHeights[_packageId][0];
-
-    int256[] memory sourcePackageHeights = new int256[](_sourcePackageContour.length);
-    for (uint i = 0; i < _sourcePackageContour.length; i++) {
-      if (i + 1 > packageToHeights[_packageId].length) {
-        sourcePackageHeights[i] = minHeight;
+    int256 minHeight = packageToHeights[_spaceTokenId][0];
+    
+    int256[] memory basePackageHeights = new int256[](packageToContour[_spaceTokenId].length);
+    for (uint i = 0; i < packageToContour[_spaceTokenId].length; i++) {
+      if (i + 1 > packageToHeights[_spaceTokenId].length) {
+        basePackageHeights[i] = minHeight;
       } else {
-        if (packageToHeights[_packageId][i] < minHeight) {
-          minHeight = packageToHeights[_packageId][i];
+        if (packageToHeights[_spaceTokenId][i] < minHeight) {
+          minHeight = packageToHeights[_spaceTokenId][i];
         }
-        sourcePackageHeights[i] = packageToHeights[_packageId][i];
+        basePackageHeights[i] = packageToHeights[_spaceTokenId][i];
       }
     }
-    
-    setPackageHeights(_packageId, sourcePackageHeights);
 
-    for(uint i = 0; i < splitOperation.resultContours.length; i++) {
-      uint256 newPackageId = initPackage(splitOperation.baseTokenOwner);
-      setPackageContour(newPackageId, splitOperation.resultContours[i]);
-      
-      int256[] memory newPackageHeights = new int256[](splitOperation.resultContours[i].length);
-      for (uint i = 0; i < _newPackageContour.length; i++) {
-        newPackageHeights[i] = minHeight;
+    address baseTokenOwner = splitOperation.baseTokenOwner();
+    packageToHeights[_spaceTokenId] = basePackageHeights;
+    spaceToken.transferFrom(splitOperationAddress, baseTokenOwner, _spaceTokenId);
+    uint256 resultContoursLength = splitOperation.getResultContoursCount();
+    for(uint j = 0; j < resultContoursLength; j++) {
+      uint256 newPackageId = spaceToken.mint(baseTokenOwner);
+      packageToContour[newPackageId] = splitOperation.getResultContour(j);
+
+      packageToHeights[newPackageId] = new int256[](packageToContour[newPackageId].length);
+      for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
+        packageToHeights[newPackageId][k] = minHeight;
       }
-
-      setPackageHeights(newPackageId, newPackageHeights);
-      setPackageLevel(newPackageId, getPackageLevel(_packageId));
+      packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
     }
-    
-    activeSplitOperations[newSplitOperation] = false;
+
+    activeSplitOperations[splitOperationAddress] = false;
+  }
+  
+  function cancelSplitPackage(uint256 _spaceTokenId) public {
+    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+    require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
+    require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
+
+    SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
+    spaceToken.transferFrom(splitOperationAddress, splitOperation.baseTokenOwner(), _spaceTokenId);
+    activeSplitOperations[splitOperationAddress] = false;
   }
 
   function mergePackage(
@@ -304,5 +341,13 @@ contract SplitMerge is Initializable, Ownable {
       getPackageHeights(_packageTokenId),
       getPackageLevel(_packageTokenId)
     );
+  }
+
+  function addRoleTo(address _operator, string _role) external onlyOwner {
+    super.addRole(_operator, _role);
+  }
+
+  function removeRoleFrom(address _operator, string _role) external onlyOwner {
+    super.removeRole(_operator, _role);
   }
 }

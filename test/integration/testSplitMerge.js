@@ -7,6 +7,7 @@ const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
+const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 // const _ = require('lodash');
 const Web3 = require('web3');
 const chai = require('chai');
@@ -42,6 +43,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
     BentleyOttman.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
 
+    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
     this.bentleyOttman = await BentleyOttman.new({ from: coreTeam });
     WeilerAtherton.link('BentleyOttman', this.bentleyOttman.address);
     WeilerAtherton.link('PolygonUtils', this.polygonUtils.address);
@@ -50,9 +52,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     SplitMerge.link('LandUtils', this.landUtils.address);
     SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
     SplitMerge.link('PolygonUtils', this.polygonUtils.address);
+    SplitMerge.link('WeilerAtherton', this.weilerAtherton.address);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
@@ -64,6 +65,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
+    await this.splitMerge.addRoleTo(coreTeam, 'geo_data_manager');
+
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
 
     this.splitPackage = async (baseContour, cropContour) => {
@@ -71,16 +74,47 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const cropPackage = cropContour.map(galt.geohashToGeohash5);
 
       let res;
-      res = await this.splitMerge.initPackage({ from: alice });
+      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
       const basePackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      await this.splitMerge.setPackageContour(basePackageId, basePackage, { from: alice });
+      await this.splitMerge.setPackageContour(basePackageId, basePackage, { from: coreTeam });
       await this.splitMerge.setPackageHeights(basePackageId, basePackage.map((geohash, index) => index + 10), {
-        from: alice
+        from: coreTeam
       });
 
-      await this.splitMerge.splitPackage(basePackageId, cropPackage, {
+      let totalGasUsed = 0;
+
+      res = await this.splitMerge.startSplitOperation(basePackageId, cropPackage, {
         from: alice
       });
+      console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
+
+      totalGasUsed += res.receipt.gasUsed;
+
+      const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
+      res = await splitOperation.prepareAndInitAllPolygons();
+      console.log('      prepareAndInitAllPolygons gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await splitOperation.addAllPolygonsSegments();
+      console.log('      addAllPolygonsSegments gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await splitOperation.processBentleyOttman();
+      console.log('      processBentleyOttman gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await splitOperation.processBentleyOttman();
+      console.log('      processBentleyOttman gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await splitOperation.processWeilerAtherton();
+      console.log('      processWeilerAtherton gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await splitOperation.finishAllPolygons();
+      console.log('      finishAllPolygons gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      res = await this.splitMerge.finishSplitOperation(basePackageId, {
+        from: alice
+      });
+      console.log('      finishSplitOperation gasUsed', res.receipt.gasUsed);
+      totalGasUsed += res.receipt.gasUsed;
+      console.log('      totalGasUsed', totalGasUsed);
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {
@@ -89,18 +123,18 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const resultPackage = resultContour.map(galt.geohashToGeohash5);
 
       let res;
-      res = await this.splitMerge.initPackage({ from: alice });
+      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
       const firstPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      await this.splitMerge.setPackageContour(firstPackageId, firstPackage, { from: alice });
+      await this.splitMerge.setPackageContour(firstPackageId, firstPackage, { from: coreTeam });
       await this.splitMerge.setPackageHeights(firstPackageId, firstPackage.map((geohash, index) => index + 10), {
-        from: alice
+        from: coreTeam
       });
 
-      res = await this.splitMerge.initPackage({ from: alice });
+      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
       const secondPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      await this.splitMerge.setPackageContour(secondPackageId, secondPackage, { from: alice });
+      await this.splitMerge.setPackageContour(secondPackageId, secondPackage, { from: coreTeam });
       await this.splitMerge.setPackageHeights(secondPackageId, secondPackage.map((geohash, index) => index + 10), {
-        from: alice
+        from: coreTeam
       });
 
       await this.splitMerge.mergePackage(firstPackageId, secondPackageId, resultPackage, {
@@ -113,14 +147,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     it('should creating correctly', async function() {
       let res;
 
-      res = await this.splitMerge.initPackage({ from: alice });
+      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
 
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      await this.splitMerge.setPackageContour(packageId, this.baseContour, { from: alice });
+      await this.splitMerge.setPackageContour(packageId, this.baseContour, { from: coreTeam });
 
       res = (await this.splitMerge.getPackageContour(packageId)).map(geohash => geohash.toString(10));
 
@@ -177,27 +211,34 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       await assertRevert(this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.baseContour));
     });
 
-    describe('should handle 4, 6, 4 contours correctly', () => {
-      const firstContour = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
+    // describe('should handle 4, 6, 4 contours correctly', () => {
+    //   const firstContour = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
+    //
+    //   const secondContour = [
+    //     'w24mjr9xcudz',
+    //     'w24mjm2gzc84',
+    //     'w24mhugn2gzd',
+    //     'w24mkgbt2fzs',
+    //     'w24mmedp2fzt',
+    //     'w24mjxbh2rw7'
+    //   ];
+    //
+    //   const thirdContour = galt.geohash.contour.mergeContours(firstContour, secondContour, false);
+    //
+    //   it('should split 4 => 6, 4', async function() {
+    //     await this.splitPackage(firstContour, secondContour, thirdContour);
+    //   });
+    //
+    //   it('should merge 4, 6 => 4', async function() {
+    //     await this.mergePackage(firstContour, secondContour, thirdContour);
+    //   });
+    // });
 
-      const secondContour = [
-        'w24mjr9xcudz',
-        'w24mjm2gzc84',
-        'w24mhugn2gzd',
-        'w24mkgbt2fzs',
-        'w24mmedp2fzt',
-        'w24mjxbh2rw7'
-      ];
-
-      const thirdContour = galt.geohash.contour.mergeContours(firstContour, secondContour, false);
-
-      it('should split 4 => 6, 4', async function() {
-        await this.splitPackage(firstContour, secondContour, thirdContour);
-      });
-
-      it('should merge 4, 6 => 4', async function() {
-        await this.mergePackage(firstContour, secondContour, thirdContour);
-      });
+    it.only('should split 4 => 6, 4', async function() {
+      await this.splitPackage(
+        ['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80'],
+        ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n']
+      );
     });
 
     it('should split and then merge correctly', async function() {
@@ -218,13 +259,13 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       // const contourToSplitForOldPackage = baseContourAfterSplit.map(galt.geohashToGeohash5);
       // const contourToSplitForNewPackage = newContourAfterSplit.map(galt.geohashToGeohash5);
 
-      const res = await this.splitMerge.initPackage({ from: alice });
+      const res = await this.splitMerge.initPackage(alice, { from: coreTeam });
 
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
-      await this.splitMerge.setPackageContour(packageId, baseContour, { from: alice });
+      await this.splitMerge.setPackageContour(packageId, baseContour, { from: coreTeam });
       await this.splitMerge.setPackageHeights(packageId, baseContour.map((geohash, index) => index + 10), {
-        from: alice
+        from: coreTeam
       });
 
       // CACHING

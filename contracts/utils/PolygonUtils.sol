@@ -33,8 +33,7 @@ library PolygonUtils {
 
   function geohash5ToLatLon(LatLonData storage self, uint256 _geohash5) internal returns (int256 lat, int256 lon) {
     if (self.latLonByGeohash[_geohash5][0] == 0) {
-      (int256 lat, int256 lon) = LandUtils.geohash5ToLatLon(_geohash5);
-      self.latLonByGeohash[_geohash5] = [lat, lon];
+      self.latLonByGeohash[_geohash5] = LandUtils.geohash5ToLatLonArr(_geohash5);
     }
 
     return (self.latLonByGeohash[_geohash5][0], self.latLonByGeohash[_geohash5][1]);

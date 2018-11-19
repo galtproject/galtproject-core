@@ -38,7 +38,7 @@ contract SpaceSplitOperation {
     POLYGONS_FINISH
   }
 
-  Stage doneStage;
+  Stage public doneStage;
 
   SplitMerge private splitMerge;
   SpaceToken private spaceToken;
@@ -52,8 +52,8 @@ contract SpaceSplitOperation {
   uint256[][] public resultContours;
   
   constructor(address _spaceToken, address _baseTokenOwner, uint256 _baseTokenId, uint256[] _baseContour, uint256[] _cropContour) public {
-    splitMerge = msg.sender;
-    spaceToken = _spaceToken;
+    splitMerge = SplitMerge(msg.sender);
+    spaceToken = SpaceToken(_spaceToken);
 
     baseTokenOwner = _baseTokenOwner;
     baseTokenId = _baseTokenId;
@@ -61,7 +61,7 @@ contract SpaceSplitOperation {
     cropContour = _cropContour;
   }
   
-  function init() {
+  function init() public {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
     
     weilerAtherton.init();
@@ -93,22 +93,23 @@ contract SpaceSplitOperation {
     prepareBasePolygon();
     prepareCropPolygon();
   }
-  
+
   function convertContourToPoints(uint256[] storage geohashesContour, PolygonUtils.CoorsPolygon storage resultPolygon) private {
     require(resultPolygon.points.length == 0, "Contour already converted");
 
     for(uint i = 0; i < geohashesContour.length; i++) {
-      if(splitMerge.latLonData.latLonByGeohash[geohashesContour[i]][0] == 0 && splitMerge.latLonData.latLonByGeohash[geohashesContour[i]][1] == 0) {
-        splitMerge.cacheGeohashToLatLon(geohashesContour[i]);
+      int256[2] memory point = splitMerge.getCachedLatLonByGeohash(geohashesContour[i]);
+      if(point[0] == 0 && point[1] == 0) {
+        point = splitMerge.cacheGeohashToLatLon(geohashesContour[i]);
       }
-      resultPolygon.points.push(splitMerge.latLonData.latLonByGeohash[geohashesContour[i]]);
+      resultPolygon.points.push(point);
     }
   }
   
   function initBasePolygon() public {
     require(doneStage == Stage.POLYGONS_PREPARE, "doneStage should be POLYGONS_PREPARE");
     
-    weilerAtherton.initPolygon(basePolygon, weilerAtherton.basePolygon);
+    weilerAtherton.initPolygon(weilerAtherton.basePolygonInput, weilerAtherton.basePolygon);
     if (weilerAtherton.cropPolygon.startPoint != bytes32(0)) {
       doneStage = Stage.POLYGONS_INIT;
     }
@@ -117,7 +118,7 @@ contract SpaceSplitOperation {
   function initCropPolygon() public {
     require(doneStage == Stage.POLYGONS_PREPARE, "doneStage should be POLYGONS_PREPARE");
     
-    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.cropPolygon);
+    weilerAtherton.initPolygon(weilerAtherton.cropPolygonInput, weilerAtherton.cropPolygon);
     if (weilerAtherton.basePolygon.startPoint != bytes32(0)) {
       doneStage = Stage.POLYGONS_INIT;
     }
@@ -221,15 +222,15 @@ contract SpaceSplitOperation {
   }
   
   function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] geohashContour) {
-    geohashContour = new uint256[](latLonPolygon.length);
+    geohashContour = new uint256[](latLonPolygon.points.length);
 
     for(uint i = 0; i < latLonPolygon.points.length; i++) {
-      bytes32 pointHash = keccak256(abi.encode(latLonPolygon.points[i]));
-      if(splitMerge.latLonData.geohashByLatLonHash[pointHash][12] == 0) {
-        splitMerge.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
+      uint256 geohash = splitMerge.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
+      if(geohash == 0) {
+        geohash = splitMerge.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
       }
       
-      geohashContour[i] = splitMerge.latLonData.geohashByLatLonHash[pointHash][12];
+      geohashContour[i] = geohash;
     }
   }
   
@@ -238,6 +239,9 @@ contract SpaceSplitOperation {
     require(baseContourOutput.length == 0, "Crop polygons already finished");
     
     baseContourOutput = convertPointsToContour(weilerAtherton.basePolygonOutput);
+    if(resultContours.length > 0) {
+      doneStage = Stage.POLYGONS_FINISH;
+    }
   }
 
   function finishCropPolygons() public {
@@ -247,10 +251,33 @@ contract SpaceSplitOperation {
     for(uint i = 0; i < weilerAtherton.resultPolygons.length; i++) {
       resultContours.push(convertPointsToContour(weilerAtherton.resultPolygons[i]));
     }
+    if(baseContourOutput.length > 0) {
+      doneStage = Stage.POLYGONS_FINISH;
+    }
   }
   
   function finishAllPolygons() public {
     finishBasePolygon();
     finishCropPolygons();
+  }
+
+  function getResultContoursCount() public returns(uint256) {
+    return resultContours.length;
+  }
+
+  function getResultContourLength(uint256 contourIndex) public returns(uint256) {
+    return resultContours[contourIndex].length;
+  }
+
+  function getResultContour(uint256 contourIndex) public returns(uint256[]) {
+    return resultContours[contourIndex];
+  }
+
+  function getBaseContourOutputLength() public returns(uint256) {
+    return baseContourOutput.length;
+  }
+
+  function getBaseContourOutput() public returns(uint256[]) {
+    return baseContourOutput;
   }
 }

@@ -17,8 +17,8 @@ contract MockLandUtils {
     emit LogPointResult(point);
   }
 
-  function latLonToGeohash5(int256[2] point) public returns(uint256 geohash5) {
-    geohash5 = LandUtils.latLonToGeohash5(point[0], point[1]);
+  function latLonToGeohash5(int256[2] point, uint8 precision) public returns(uint256 geohash5) {
+    geohash5 = LandUtils.latLonToGeohash5(point[0], point[1], precision);
     emit LogGeohash5Result(geohash5);
   }
 }

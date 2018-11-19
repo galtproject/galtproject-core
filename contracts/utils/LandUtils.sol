@@ -96,9 +96,8 @@ library LandUtils {
   pure
   returns (int256 lat, int256 lon)
   {
-    int256 lat = (latInterval[0] + latInterval[1]) / 2;
-    int256 lon = (lonInterval[0] + lonInterval[1]) / 2;
-    return (lat, lon);
+    lat = (latInterval[0] + latInterval[1]) / 2;
+    lon = (lonInterval[0] + lonInterval[1]) / 2;
   }
 
   function geohash5ToLatLonArr(uint256 _geohash5) public pure returns (int256[2]) {
