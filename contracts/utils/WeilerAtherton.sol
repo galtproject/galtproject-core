@@ -46,11 +46,11 @@ library WeilerAtherton {
 
   struct Polygon {
     mapping(bytes32 => Point) pointsByHash;
-    bool segmentsAdded;
     bytes32 startPoint;
     bytes32 currentPointForAddSegment;
     bytes32[] intersectionPoints;
     uint256 handledIntersectionPoints;
+//    bool segmentsAdded;
   }
 
   struct State {
@@ -114,7 +114,7 @@ library WeilerAtherton {
       currentPoint = polygon.pointsByHash[currentPoint].nextPoint;
       //      emit LogAddSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
       if (currentPoint == polygon.startPoint) {
-        polygon.segmentsAdded = true;
+//        polygon.segmentsAdded = true;
         break;
       }
     }
