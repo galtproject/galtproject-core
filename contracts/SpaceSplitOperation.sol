@@ -140,21 +140,21 @@ contract SpaceSplitOperation {
   }
 
   function addBasePolygonSegments() public {
-//    require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
-//    
-//    weilerAtherton.addPolygonSegments(weilerAtherton.basePolygon);
-//    if (weilerAtherton.cropPolygon.segmentsAdded) {
-//      doneStage = Stage.SEGMENTS_ADD;
-//    }
+    require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
+
+    weilerAtherton.addPolygonSegments(weilerAtherton.basePolygon);
+    if (weilerAtherton.cropPolygon.segmentsAdded) {
+      doneStage = Stage.SEGMENTS_ADD;
+    }
   }
 
   function addCropPolygonSegments() public {
-//    require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
-//    
-//    weilerAtherton.addPolygonSegments(weilerAtherton.cropPolygon);
-//    if (weilerAtherton.basePolygon.segmentsAdded) {
-//      doneStage = Stage.SEGMENTS_ADD;
-//    }
+    require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
+
+    weilerAtherton.addPolygonSegments(weilerAtherton.cropPolygon);
+    if (weilerAtherton.basePolygon.segmentsAdded) {
+      doneStage = Stage.SEGMENTS_ADD;
+    }
   }
 
   function addAllPolygonsSegments() public {
