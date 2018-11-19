@@ -73,19 +73,11 @@ library LandUtils {
   }
 
   function incrementIntervalFirst(int256[2] interval) private pure returns (int256[2]) {
-    return [(interval[0] + interval[1]) / 2, interval[1]];
+    return ;
   }
 
   function convertIntervalSecond(int256[2] interval) private pure returns (int256[2]) {
-    return [interval[0], (interval[0] + interval[1]) / 2];
-  }
-
-  function convertIntervalByCdAndMask(uint256 cd, uint8 mask, int256[2] interval) private pure returns (int256[2]) {
-    if (cd & mask != 0) {
-      return incrementIntervalFirst(interval);
-    } else {
-      return convertIntervalSecond(interval);
-    }
+    return ;
   }
 
   function latLonIntervalToLatLon(
@@ -129,24 +121,35 @@ library LandUtils {
     bool is_even = true;
 
     uint256 capacity = geohash5Precision(_geohash5);
+    uint256 num;
+    uint256 cd;
+    uint8 mask;
 
     while (capacity > 0) {
       capacity--;
 
-      uint256 num = _geohash5 >> 5 * capacity;
-      uint256 cd = uint256(bytes32(num) & fiveOn);
+      num = _geohash5 >> 5 * capacity;
+      cd = uint256(bytes32(num) & fiveOn);
 
       for (uint8 i = 0; i < mask_arr.length; i++) {
-        uint8 mask = mask_arr[i];
+        mask = mask_arr[i];
 
         if (is_even) {
           // adds longitude info
           // lon_err /= 2;
-          lon_interval = convertIntervalByCdAndMask(cd, mask, lon_interval);
+          if (cd & mask != 0) {
+            lon_interval[0] = (lon_interval[0] + lon_interval[1]) / 2;
+          } else {
+            lon_interval[1] = (lon_interval[0] + lon_interval[1]) / 2;
+          }
         } else {
           // adds latitude info
           // lat_err /= 2;
-          lat_interval = convertIntervalByCdAndMask(cd, mask, lat_interval);
+          if (cd & mask != 0) {
+            lat_interval[0] = (lat_interval[0] + lat_interval[1]) / 2;
+          } else {
+            lat_interval[1] = (lat_interval[0] + lat_interval[1]) / 2;
+          }
         }
 
         is_even = !is_even;

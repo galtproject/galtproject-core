@@ -51,6 +51,8 @@ contract SpaceSplitOperation {
   uint256[] public baseContourOutput;
   uint256[][] public resultContours;
   
+  event BoolResult(bool result);
+  
   constructor(address _spaceToken, address _baseTokenOwner, uint256 _baseTokenId, uint256[] _baseContour, uint256[] _cropContour) public {
     splitMerge = SplitMerge(msg.sender);
     spaceToken = SpaceToken(_spaceToken);
@@ -97,8 +99,9 @@ contract SpaceSplitOperation {
   function convertContourToPoints(uint256[] storage geohashesContour, PolygonUtils.CoorsPolygon storage resultPolygon) private {
     require(resultPolygon.points.length == 0, "Contour already converted");
 
+    int256[2] memory point;
     for(uint i = 0; i < geohashesContour.length; i++) {
-      int256[2] memory point = splitMerge.getCachedLatLonByGeohash(geohashesContour[i]);
+      point = splitMerge.getCachedLatLonByGeohash(geohashesContour[i]);
       if(point[0] == 0 && point[1] == 0) {
         point = splitMerge.cacheGeohashToLatLon(geohashesContour[i]);
       }
@@ -163,13 +166,10 @@ contract SpaceSplitOperation {
     require(doneStage == Stage.SEGMENTS_ADD, "doneStage should be SEGMENTS_ADD");
     
     weilerAtherton.processBentleyOttman();
-    if(isBentleyOttmanFinished()) {
+    // is Bentley Ottman finished
+    if(weilerAtherton.bentleyOttman.queue.tree.inserted == weilerAtherton.bentleyOttman.queue.tree.removed) {
       doneStage = Stage.BENTLEY_OTTMAN_PROCESS;
     }
-  }
-
-  function isBentleyOttmanFinished() public returns(bool) {
-    return weilerAtherton.isBentleyOttmanFinished();
   }
   
   function addIntersectedPoints() public {
@@ -179,23 +179,20 @@ contract SpaceSplitOperation {
     doneStage = Stage.INTERSECT_POINTS_ADD;
   }
 
-  function getResultPolygonsCount() public returns(uint256) {
-    return weilerAtherton.resultPolygons.length;
+  function getPolygonsLengths() public view returns(uint256 resultPolygonsLength, uint256 baseOutputPointsLength) {
+    resultPolygonsLength = weilerAtherton.resultPolygons.length;
+    baseOutputPointsLength = weilerAtherton.basePolygonOutput.points.length;
   }
 
-  function getResultPolygonLength(uint256 polygonIndex) public returns(uint256) {
+  function getResultPolygonLength(uint256 polygonIndex) public view returns(uint256) {
     return weilerAtherton.resultPolygons[polygonIndex].points.length;
   }
 
-  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public returns(int256[2]) {
+  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public view returns(int256[2]) {
     return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
   }
 
-  function getBasePolygonOutputLength() public returns(uint256) {
-    return weilerAtherton.basePolygonOutput.points.length;
-  }
-
-  function getBasePolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
+  function getBasePolygonOutputPoint(uint256 pointIndex) public view returns(int256[2]) {
     return weilerAtherton.basePolygonOutput.points[pointIndex];
   }
 
@@ -224,8 +221,9 @@ contract SpaceSplitOperation {
   function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] geohashContour) {
     geohashContour = new uint256[](latLonPolygon.points.length);
 
+    uint256 geohash;
     for(uint i = 0; i < latLonPolygon.points.length; i++) {
-      uint256 geohash = splitMerge.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
+      geohash = splitMerge.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
       if(geohash == 0) {
         geohash = splitMerge.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
       }
@@ -261,23 +259,14 @@ contract SpaceSplitOperation {
     finishCropPolygons();
   }
 
-  function getResultContoursCount() public returns(uint256) {
-    return resultContours.length;
-  }
-
-  function getResultContourLength(uint256 contourIndex) public returns(uint256) {
-    return resultContours[contourIndex].length;
-  }
-
-  function getResultContour(uint256 contourIndex) public returns(uint256[]) {
+  function getResultContour(uint256 contourIndex) public view returns(uint256[]) {
     return resultContours[contourIndex];
   }
-
-  function getBaseContourOutputLength() public returns(uint256) {
-    return baseContourOutput.length;
-  }
-
-  function getBaseContourOutput() public returns(uint256[]) {
-    return baseContourOutput;
+  
+  function getFinishInfo() public view returns(uint256[] baseContourResult, address tokenOwner, uint256 resultContoursCount) {
+    require(doneStage == Stage.POLYGONS_FINISH, "SpaceSplitOperation not finished");
+    baseContourResult = baseContourOutput;
+    tokenOwner = baseTokenOwner;
+    resultContoursCount = resultContours.length;
   }
 }

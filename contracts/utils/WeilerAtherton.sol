@@ -131,27 +131,40 @@ library WeilerAtherton {
 
   function addIntersectedPoints(State storage state) public {
     require(isBentleyOttmanFinished(state), "Bentley ottman not finished");
-    
-    for (uint j = 0; j < state.bentleyOttman.output.length; j++) {
-      BentleyOttman.OutputPoint memory outputPoint = state.bentleyOttman.output[j];
-      bytes32 newPointHash = keccak256(abi.encode(outputPoint.point));
 
-      bytes32 leftStartPointHash = keccak256(abi.encode(outputPoint.leftSegment[0]));
-      bytes32 leftEndPointHash = keccak256(abi.encode(outputPoint.leftSegment[1]));
-      bytes32 rightStartPointHash = keccak256(abi.encode(outputPoint.rightSegment[0]));
-      bytes32 rightEndPointHash = keccak256(abi.encode(outputPoint.rightSegment[1]));
+    bytes32 newPointHash;
+    bytes32 leftStartPointHash;
+    bytes32 leftEndPointHash;
+    bytes32 rightStartPointHash;
+    bytes32 rightEndPointHash;
+    BentleyOttman.OutputPoint memory outputPoint;
+
+    for (uint j = 0; j < state.bentleyOttman.output.length; j++) {
+      outputPoint = state.bentleyOttman.output[j];
+      newPointHash = keccak256(abi.encode(outputPoint.point));
+
+      leftStartPointHash = keccak256(abi.encode(outputPoint.leftSegment[0]));
+      leftEndPointHash = keccak256(abi.encode(outputPoint.leftSegment[1]));
+      rightStartPointHash = keccak256(abi.encode(outputPoint.rightSegment[0]));
+      rightEndPointHash = keccak256(abi.encode(outputPoint.rightSegment[1]));
 
       if (outputPoint.leftSegment[0][0] == 0 || outputPoint.rightSegment[0][0] == 0) {
         continue;
       }
 
       /* solium-disable-next-line */
-      if (PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0]) || 
-        PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1]) || 
-        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0]) || 
+      if (PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0]) ||
+        PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1]) ||
+        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0]) ||
         PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[1])) {
         continue;
       }
+      //      if ((outputPoint.point[0] == outputPoint.leftSegment[0][0] && outputPoint.point[1] == outputPoint.leftSegment[0][1]) ||
+      //      (outputPoint.point[0] == outputPoint.leftSegment[1][0] && outputPoint.point[1] == outputPoint.leftSegment[1][1]) ||
+      //      (outputPoint.point[0] == outputPoint.rightSegment[0][0] && outputPoint.point[1] == outputPoint.rightSegment[0][1]) ||
+      //        (outputPoint.point[0] == outputPoint.rightSegment[1][0] && outputPoint.point[1] == outputPoint.rightSegment[1][1])) {
+      //        continue;
+      //      }
 
       if (addIntersectedPointsToPolygon(state.basePolygon, outputPoint.point, newPointHash, leftStartPointHash, leftEndPointHash)) {
         if (!addIntersectedPointsToPolygon(state.cropPolygon, outputPoint.point, newPointHash, rightStartPointHash, rightEndPointHash)) {

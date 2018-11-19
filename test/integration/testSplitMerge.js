@@ -234,7 +234,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     //   });
     // });
 
-    it.only('should split 4 => 6, 4', async function() {
+    it('should split 4 => 6, 4', async function() {
       await this.splitPackage(
         ['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80'],
         ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n']
