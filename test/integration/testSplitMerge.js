@@ -115,6 +115,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       console.log('      finishSplitOperation gasUsed', res.receipt.gasUsed);
       totalGasUsed += res.receipt.gasUsed;
       console.log('      totalGasUsed', totalGasUsed);
+
+      let geohash5List = (await this.splitMerge.getPackageContour(basePackageId)).map(geohash => geohash.toString(10));
+      console.log(geohash5List.map(galt.numberToGeohash));
+      const newPackageId = res.logs[0].args.id;
+      geohash5List = (await this.splitMerge.getPackageContour(newPackageId)).map(geohash => geohash.toString(10));
+      console.log(geohash5List.map(galt.numberToGeohash));
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {

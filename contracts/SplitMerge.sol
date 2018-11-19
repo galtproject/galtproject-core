@@ -55,6 +55,8 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   address[] public allSplitOperations;
 
   LandUtils.LatLonData private latLonData;
+  
+  event NewSpaceToken(uint256 id);
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
@@ -224,6 +226,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
         packageToHeights[newPackageId][k] = minHeight;
       }
       packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
+      emit NewSpaceToken(newPackageId);
     }
 
     activeSplitOperations[splitOperationAddress] = false;

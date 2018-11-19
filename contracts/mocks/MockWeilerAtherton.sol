@@ -33,6 +33,11 @@ contract MockWeilerAtherton {
     weilerAtherton.cropPolygonInput = cropPolygon;
     weilerAtherton.initPolygon(cropPolygon, weilerAtherton.cropPolygon);
   }
+  
+  function initAllPolygons() public {
+    initBasePolygon();
+    initCropPolygon();
+  }
 
   function addBasePolygonSegments() public {
     weilerAtherton.addPolygonSegments(weilerAtherton.basePolygon);
