@@ -39,9 +39,9 @@ contract('LandUtils', ([coreTeam]) => {
     });
   });
 
-  describe('#latLonToGeohash5()', () => {
+  describe.only('#latLonToGeohash5()', () => {
     it('should correctly convert lat lon to geohash5', async function() {
-      const res = await this.mockLandUtils.latLonToGeohash5(['1178970336914062500', '104513626098632812500'], {
+      const res = await this.mockLandUtils.latLonToGeohash5(['1178970336914062500', '104513626098632812500'], 7, {
         from: coreTeam
       });
 

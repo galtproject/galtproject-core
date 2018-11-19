@@ -30,9 +30,12 @@ library LandUtils {
 
   // bytes32("0123456789bcdefghjkmnpqrstuvwxyz")
   bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
-  
-  event LogLatLonToGeohash5(uint256 geohash, uint8 precision);
 
+  struct LatLonData {
+    mapping(uint256 => int256[2]) latLonByGeohash;
+    mapping(bytes32 => mapping(uint8 => uint256)) geohashByLatLonHash;
+  }
+  
   function geohash5Precision(uint256 _geohash5) public pure returns (uint256) {
     if (_geohash5 == 0) {
       return 0;
@@ -154,7 +157,7 @@ library LandUtils {
     return latLonIntervalToLatLon(lat_interval, lon_interval);
   }
   
-  function latLonToGeohash5(int256 lat, int256 lon) public returns(uint256) {
+  function latLonToGeohash5(int256 lat, int256 lon, uint8 precision) public returns(uint256) {
     bytes32 fiveOn = bytes32(31);
     
     int256[2] memory lat_interval = [int256(- 90 ether), int256(90 ether)];
@@ -169,7 +172,6 @@ library LandUtils {
     bool even = true;
 
     uint256 _geohash;
-    uint8 precision = 7;
     while(precision > 0) {
       if(even) {
         mid = (lon_interval[0] + lon_interval[1]) / 2;
@@ -199,7 +201,6 @@ library LandUtils {
         bit = 0;
         ch = 0;
       }
-      emit LogLatLonToGeohash5(_geohash, precision);
     }
     return _geohash;
   }
