@@ -4,7 +4,7 @@ const { assertRevert } = require('../helpers');
 
 const web3 = new Web3(LandUtils.web3.currentProvider);
 
-contract.only('LandUtils', ([deployer]) => {
+contract('LandUtils', ([deployer]) => {
   beforeEach(async function() {
     this.utils = await LandUtils.new({ from: deployer });
     this.utils3 = new web3.eth.Contract(this.utils.abi, this.utils.address);
