@@ -5,7 +5,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(MockLandUtils.web3.currentProvider);
 

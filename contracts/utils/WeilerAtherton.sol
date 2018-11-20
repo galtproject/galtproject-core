@@ -39,7 +39,7 @@ library WeilerAtherton {
   struct Point {
     bytes32 nextPoint;
     bytes32 prevPoint;
-    int256[2] coors;
+    int256[2] latLon;
     bool intersectionPoint;
     bool includedInResult;
   }
@@ -85,13 +85,13 @@ library WeilerAtherton {
 
     for (uint j = 0; j < input.points.length; j++) {
       pointHash = keccak256(abi.encode(input.points[j]));
-      polygon.pointsByHash[pointHash].coors = input.points[j];
+      polygon.pointsByHash[pointHash].latLon = input.points[j];
       if (j == 0) {
         polygon.startPoint = pointHash;
       } else {
         polygon.pointsByHash[prevPointHash].nextPoint = pointHash;
         polygon.pointsByHash[pointHash].prevPoint = prevPointHash;
-        //        emit LogAddPoint(polygon.pointsByHash[prevPointHash].coors, prevPointHash, polygon.pointsByHash[prevPointHash].nextPoint);
+        //        emit LogAddPoint(polygon.pointsByHash[prevPointHash].latLon, prevPointHash, polygon.pointsByHash[prevPointHash].nextPoint);
       }
       prevPointHash = pointHash;
     }
@@ -110,9 +110,9 @@ library WeilerAtherton {
 
     //TODO: find max possible iterations count and break on it
     while (true) {
-      state.bentleyOttman.addSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
+      state.bentleyOttman.addSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
       currentPoint = polygon.pointsByHash[currentPoint].nextPoint;
-      //      emit LogAddSegment([polygon.pointsByHash[currentPoint].coors, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].coors]);
+      //      emit LogAddSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
       if (currentPoint == polygon.startPoint) {
         polygon.segmentsAdded = true;
         break;
@@ -186,7 +186,7 @@ library WeilerAtherton {
     // is segment points exists in polygon
     if (polygon.pointsByHash[findStartPointHash].nextPoint != bytes32(0) || polygon.pointsByHash[findEndPointHash].nextPoint != bytes32(0)) {
       // write new point coors to polygon by hash
-      polygon.pointsByHash[pointHash].coors = point;
+      polygon.pointsByHash[pointHash].latLon = point;
       polygon.pointsByHash[pointHash].intersectionPoint = true;
       polygon.intersectionPoints.push(pointHash);
 
@@ -234,10 +234,10 @@ library WeilerAtherton {
 
     // find direction and next point
     //TODO: need to add OR intersection point?
-    if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].nextPoint].coors, state.cropPolygonInput)) {
+    if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].nextPoint].latLon, state.cropPolygonInput)) {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].nextPoint;
       baseDirection = Direction.FORWARD;
-    } else if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].prevPoint].coors, state.cropPolygonInput)) {
+    } else if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].prevPoint].latLon, state.cropPolygonInput)) {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].prevPoint;
       baseDirection = Direction.BACKWARD;
     } else {
@@ -261,8 +261,8 @@ library WeilerAtherton {
         state.basePolygon.startPoint = nextPointHash;
       }
 
-      //      emit LogPushToResult(state.basePolygon.pointsByHash[curPointHash].coors);
-      resultPolygon.points.push(state.basePolygon.pointsByHash[curPointHash].coors);
+      //      emit LogPushToResult(state.basePolygon.pointsByHash[curPointHash].latLon);
+      resultPolygon.points.push(state.basePolygon.pointsByHash[curPointHash].latLon);
 
       if (state.basePolygon.pointsByHash[curPointHash].intersectionPoint && curPointHash != startPointHash) {
         break;
@@ -287,10 +287,10 @@ library WeilerAtherton {
 
     // find direction and next point
     //TODO: need to add OR intersection point?
-    if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].nextPoint].coors, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].nextPoint != prevPointHash) {
+    if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].nextPoint].latLon, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].nextPoint != prevPointHash) {
       nextPointHash = state.cropPolygon.pointsByHash[curPointHash].nextPoint;
       cropDirection = Direction.FORWARD;
-    } else if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].prevPoint].coors, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].prevPoint != prevPointHash) {
+    } else if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].prevPoint].latLon, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].prevPoint != prevPointHash) {
       nextPointHash = state.cropPolygon.pointsByHash[curPointHash].prevPoint;
       cropDirection = Direction.BACKWARD;
     } else {
@@ -301,17 +301,17 @@ library WeilerAtherton {
     while (true) {
       if (baseDirection == Direction.FORWARD) {
         state.basePolygon.pointsByHash[curPointHash].prevPoint = nextPointHash;
-        state.basePolygon.pointsByHash[curPointHash].coors = state.cropPolygon.pointsByHash[curPointHash].coors;
+        state.basePolygon.pointsByHash[curPointHash].latLon = state.cropPolygon.pointsByHash[curPointHash].latLon;
         state.basePolygon.pointsByHash[nextPointHash].nextPoint = curPointHash;
       } else {
         state.basePolygon.pointsByHash[curPointHash].nextPoint = nextPointHash;
-        state.basePolygon.pointsByHash[curPointHash].coors = state.cropPolygon.pointsByHash[curPointHash].coors;
+        state.basePolygon.pointsByHash[curPointHash].latLon = state.cropPolygon.pointsByHash[curPointHash].latLon;
         state.basePolygon.pointsByHash[nextPointHash].prevPoint = curPointHash;
       }
-      emit LogSetNextPoint(state.basePolygon.pointsByHash[curPointHash].coors, state.cropPolygon.pointsByHash[nextPointHash].coors);
+      emit LogSetNextPoint(state.basePolygon.pointsByHash[curPointHash].latLon, state.cropPolygon.pointsByHash[nextPointHash].latLon);
 
       if (state.cropPolygon.pointsByHash[nextPointHash].intersectionPoint) {
-        if (PointUtils.isEqual(state.cropPolygon.pointsByHash[nextPointHash].coors, resultPolygon.points[0])) {
+        if (PointUtils.isEqual(state.cropPolygon.pointsByHash[nextPointHash].latLon, resultPolygon.points[0])) {
           state.cropPolygon.handledIntersectionPoints++;
           require(!state.cropPolygon.pointsByHash[nextPointHash].includedInResult, "cropPolygon next intersectionPoint already included");
           state.cropPolygon.pointsByHash[nextPointHash].includedInResult = true;
@@ -328,7 +328,7 @@ library WeilerAtherton {
         state.cropPolygon.pointsByHash[curPointHash].includedInResult = true;
       }
 
-      resultPolygon.points.push(state.cropPolygon.pointsByHash[nextPointHash].coors);
+      resultPolygon.points.push(state.cropPolygon.pointsByHash[nextPointHash].latLon);
 
       curPointHash = nextPointHash;
 
@@ -347,8 +347,8 @@ library WeilerAtherton {
 
     bytes32 currentPoint = state.basePolygon.startPoint;
     while (true) {
-      emit LogPushToResult(state.basePolygon.pointsByHash[currentPoint].coors);
-      state.basePolygonOutput.points.push(state.basePolygon.pointsByHash[currentPoint].coors);
+      emit LogPushToResult(state.basePolygon.pointsByHash[currentPoint].latLon);
+      state.basePolygonOutput.points.push(state.basePolygon.pointsByHash[currentPoint].latLon);
       currentPoint = state.basePolygon.pointsByHash[currentPoint].nextPoint;
       if (currentPoint == state.basePolygon.startPoint) {
         break;

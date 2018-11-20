@@ -18,7 +18,7 @@ const { BN } = Web3.utils;
 
 const web3 = new Web3(SplitMerge.web3.currentProvider);
 
-const { initHelperWeb3, zeroAddress, ether } = require('../test/helpers');
+const { initHelperWeb3, zeroAddress } = require('../test/helpers');
 
 initHelperWeb3(web3);
 
