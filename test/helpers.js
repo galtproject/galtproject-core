@@ -6,6 +6,7 @@ const min = new BN('0');
 const adjust = new BN('10000000000000000');
 
 let web3;
+let artifacts;
 
 const requireCache = {};
 const libCache = {};
@@ -139,6 +140,9 @@ const Helpers = {
     for (let i = 0; i < results.length; i++) {
       console.log(`slot #${i}`, results[i]);
     }
+  },
+  initHelperArtifacts(_artifacts) {
+    artifacts = _artifacts;
   },
   requireContract(path) {
     if (!requireCache[path]) {

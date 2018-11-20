@@ -10,12 +10,13 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { zeroAddress, initHelperWeb3, ether, szabo, deploySplitMerge } = require('../helpers');
+const { zeroAddress, initHelperWeb3, ether, szabo, initHelperArtifacts, deploySplitMerge } = require('../helpers');
 
 const { BN } = Web3.utils;
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;

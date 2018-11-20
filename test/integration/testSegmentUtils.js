@@ -4,11 +4,12 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether, getSegmentUtilsLib } = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, getSegmentUtilsLib } = require('../helpers');
 
 const web3 = new Web3(MockSegmentUtils.web3.currentProvider);
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;

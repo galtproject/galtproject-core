@@ -10,7 +10,9 @@ const galt = require('@galtproject/utils');
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
 const { BN } = Web3.utils;
-const { zeroAddress, assertRevert, deploySplitMerge } = require('../helpers');
+const { zeroAddress, assertRevert, deploySplitMerge, initHelperArtifacts } = require('../helpers');
+
+initHelperArtifacts(artifacts);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;

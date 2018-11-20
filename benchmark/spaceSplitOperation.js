@@ -1,11 +1,3 @@
-const PointRedBlackTree = artifacts.require('../contracts/collections/PointRedBlackTree.sol');
-const SegmentRedBlackTree = artifacts.require('../contracts/collections/SegmentRedBlackTree.sol');
-const ArrayUtils = artifacts.require('../contracts/utils/ArrayUtils.sol');
-const LandUtils = artifacts.require('../contracts/utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('../contracts/utils/PolygonUtils.sol');
-const BentleyOttman = artifacts.require('../contracts/utils/BentleyOttman.sol');
-const WeilerAtherton = artifacts.require('../contracts/utils/WeilerAtherton.sol');
-const SplitMerge = artifacts.require('../contracts/mocks/SplitMerge.sol');
 const SpaceSplitOperation = artifacts.require('../contracts/SpaceSplitOperation.sol');
 const SpaceToken = artifacts.require('../contracts/mocks/SpaceToken.sol');
 
@@ -16,40 +8,24 @@ const galt = require('@galtproject/utils');
 
 const { BN } = Web3.utils;
 
-const web3 = new Web3(SplitMerge.web3.currentProvider);
+const web3 = new Web3(SpaceSplitOperation.web3.currentProvider);
 
-const { initHelperWeb3, zeroAddress } = require('../test/helpers');
+const { initHelperWeb3, initHelperArtifacts, zeroAddress, deploySplitMerge } = require('../test/helpers');
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 module.exports = async function(callback) {
   const accounts = await web3.eth.getAccounts();
   const coreTeam = accounts[0];
-  const landUtils = await LandUtils.new({ from: coreTeam });
-  const arrayUtils = await ArrayUtils.new({ from: coreTeam });
-  PolygonUtils.link('LandUtils', landUtils.address);
-  const polygonUtils = await PolygonUtils.new({ from: coreTeam });
-
-  const pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
-  BentleyOttman.link('PointRedBlackTree', pointRedBlackTree.address);
-
-  const segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
-  BentleyOttman.link('SegmentRedBlackTree', segmentRedBlackTree.address);
-
-  const bentleyOttman = await BentleyOttman.new({ from: coreTeam });
-
-  WeilerAtherton.link('BentleyOttman', bentleyOttman.address);
-  WeilerAtherton.link('PolygonUtils', polygonUtils.address);
-
-  const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
-
-  SplitMerge.link('LandUtils', landUtils.address);
-  SplitMerge.link('ArrayUtils', arrayUtils.address);
-  SplitMerge.link('PolygonUtils', polygonUtils.address);
-  SplitMerge.link('WeilerAtherton', weilerAtherton.address);
 
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-  const splitMerge = await SplitMerge.new({ from: coreTeam });
+  let splitMerge;
+  try {
+    splitMerge = await deploySplitMerge();
+  } catch (e) {
+    console.error(e);
+  }
 
   // const splitMergeWeb3 = new web3.eth.Contract(splitMerge.abi, splitMerge.address);
 

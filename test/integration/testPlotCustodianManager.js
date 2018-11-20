@@ -11,7 +11,15 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { initHelperWeb3, ether, assertEqualBN, assertRevert, zeroAddress, deploySplitMerge } = require('../helpers');
+const {
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  assertEqualBN,
+  assertRevert,
+  zeroAddress,
+  deploySplitMerge
+} = require('../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;
@@ -30,6 +38,7 @@ Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
