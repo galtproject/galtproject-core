@@ -81,40 +81,20 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: coreTeam
       });
 
-      let totalGasUsed = 0;
-
       res = await this.splitMerge.startSplitOperation(basePackageId, cropPackage, {
         from: alice
       });
-      console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
-
-      totalGasUsed += res.receipt.gasUsed;
 
       const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
-      res = await splitOperation.prepareAndInitAllPolygons();
-      console.log('      prepareAndInitAllPolygons gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      res = await splitOperation.addAllPolygonsSegments();
-      console.log('      addAllPolygonsSegments gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      res = await splitOperation.processBentleyOttman();
-      console.log('      processBentleyOttman gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      res = await splitOperation.processBentleyOttman();
-      console.log('      processBentleyOttman gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      res = await splitOperation.processWeilerAtherton();
-      console.log('      processWeilerAtherton gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      res = await splitOperation.finishAllPolygons();
-      console.log('      finishAllPolygons gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
+      await splitOperation.prepareAndInitAllPolygons();
+      await splitOperation.addAllPolygonsSegments();
+      await splitOperation.processBentleyOttman();
+      await splitOperation.processBentleyOttman();
+      await splitOperation.processWeilerAtherton();
+      await splitOperation.finishAllPolygons();
       res = await this.splitMerge.finishSplitOperation(basePackageId, {
         from: alice
       });
-      console.log('      finishSplitOperation gasUsed', res.receipt.gasUsed);
-      totalGasUsed += res.receipt.gasUsed;
-      console.log('      totalGasUsed', totalGasUsed);
 
       let geohash5List = (await this.splitMerge.getPackageContour(basePackageId)).map(geohash => geohash.toString(10));
       console.log(geohash5List.map(galt.numberToGeohash));
