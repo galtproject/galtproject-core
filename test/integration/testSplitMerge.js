@@ -1,12 +1,4 @@
-const PointRedBlackTree = artifacts.require('./utils/PointRedBlackTree.sol');
-const SegmentRedBlackTree = artifacts.require('./utils/SegmentRedBlackTree.sol');
-const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
-const WeilerAtherton = artifacts.require('./utils/WeilerAtherton.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 // const _ = require('lodash');
 const Web3 = require('web3');
@@ -15,10 +7,10 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 
-const web3 = new Web3(SplitMerge.web3.currentProvider);
+const web3 = new Web3(SpaceToken.web3.currentProvider);
 
 const { BN } = Web3.utils;
-const { zeroAddress, assertRevert } = require('../helpers');
+const { zeroAddress, assertRevert, deploySplitMerge } = require('../helpers');
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -28,35 +20,12 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SplitMerge', ([coreTeam, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   beforeEach(async function() {
     this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-
-    this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('PointRedBlackTree', this.pointRedBlackTree.address);
-
-    this.segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    this.bentleyOttman = await BentleyOttman.new({ from: coreTeam });
-    WeilerAtherton.link('BentleyOttman', this.bentleyOttman.address);
-    WeilerAtherton.link('PolygonUtils', this.polygonUtils.address);
-
-    this.weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
-
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-    SplitMerge.link('WeilerAtherton', this.weilerAtherton.address);
-
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
 
     await this.splitMerge.initialize(this.spaceToken.address, zeroAddress, { from: coreTeam });
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
@@ -65,7 +34,7 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.splitMerge.addRoleTo(coreTeam, 'geo_data_manager');
+    await this.splitMerge.addRoleTo(coreTeam, await this.splitMerge.GEO_DATA_MANAGER());
 
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
 

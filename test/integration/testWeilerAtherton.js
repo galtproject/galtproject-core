@@ -79,7 +79,7 @@ contract('WeilerAtherton', ([coreTeam]) => {
   const etherBaseContour = baseContour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
   const etherCropContour = cropContour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
 
-  describe.only('#initBasePolygon() and initCropPolygon()', () => {
+  describe('#initBasePolygon() and initCropPolygon()', () => {
     it('should correctly init polygons points', async function() {
       await pIteration.forEachSeries(etherBaseContour, async point => {
         await this.mockWeilerAtherton.addPointToBasePolygon(point);
