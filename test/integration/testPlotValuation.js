@@ -12,6 +12,7 @@ const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
+  initHelperArtifacts,
   ether,
   assertGaltBalanceChanged,
   assertRevert,
@@ -33,6 +34,7 @@ Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
