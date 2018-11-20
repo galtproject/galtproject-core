@@ -62,14 +62,28 @@ module.exports = async function(callback) {
   await splitMerge.addRoleTo(coreTeam, 'geo_data_manager');
 
   const spaceTokenId = await mintSpaceTokenId(['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80']);
-  await splitSpaceTokenByCrop(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n']);
+  await splitSpaceTokenByCrop(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'], true);
 
   callback();
 
   // Helpers
 
-  async function splitSpaceTokenByCrop(_spaceTokenId, _cropGeohashContour) {
+  async function splitSpaceTokenByCrop(_spaceTokenId, _cropGeohashContour, _cacheGeohashes = false) {
     const oldSpaceTokenContour = await getGeohashesContour(_spaceTokenId);
+
+    if (_cacheGeohashes) {
+      let totalGasUsedForCache = 0;
+      await pIteration.forEach(oldSpaceTokenContour, async geohash => {
+        const res = await splitMerge.cacheGeohashToLatLon(galt.geohashToNumber(geohash).toString(10));
+        totalGasUsedForCache = res.receipt.gasUsed;
+      });
+      await pIteration.forEach(_cropGeohashContour, async geohash => {
+        const res = await splitMerge.cacheGeohashToLatLon(galt.geohashToNumber(geohash).toString(10));
+        totalGasUsedForCache = res.receipt.gasUsed;
+      });
+      console.log('');
+      console.log('      totalGasUsedForCache', totalGasUsedForCache);
+    }
 
     let res = await splitMerge.startSplitOperation(_spaceTokenId, _cropGeohashContour.map(galt.geohashToNumber));
     console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
