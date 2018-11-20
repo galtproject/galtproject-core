@@ -2,10 +2,7 @@ const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
@@ -14,7 +11,14 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { initHelperWeb3, ether, assertGaltBalanceChanged, assertRevert, zeroAddress } = require('../helpers');
+const {
+  initHelperWeb3,
+  ether,
+  assertGaltBalanceChanged,
+  assertRevert,
+  zeroAddress,
+  deploySplitMerge
+} = require('../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -110,14 +114,7 @@ contract('PlotValuation', (accounts) => {
     this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     await this.plotManager.initialize(

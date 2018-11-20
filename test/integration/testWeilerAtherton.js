@@ -1,9 +1,3 @@
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
-const PointRedBlackTree = artifacts.require('./collections/PointRedBlackTree.sol');
-const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree.sol');
-const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
-const WeilerAtherton = artifacts.require('./utils/WeilerAtherton.sol');
 const MockWeilerAtherton = artifacts.require('./mocks/MockWeilerAtherton.sol');
 
 // const galt = require('@galtproject/utils');
@@ -12,7 +6,7 @@ const chai = require('chai');
 const pIteration = require('p-iteration');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, ether, getWeilerAthertonLib, getPolygonUtilsLib } = require('../helpers');
 
 const web3 = new Web3(MockWeilerAtherton.web3.currentProvider);
 
@@ -28,21 +22,8 @@ chai.should();
 
 contract('WeilerAtherton', ([coreTeam]) => {
   beforeEach(async function() {
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-
-    this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('PointRedBlackTree', this.pointRedBlackTree.address);
-
-    this.segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
-
-    this.bentleyOttman = await BentleyOttman.new({ from: coreTeam });
-    WeilerAtherton.link('BentleyOttman', this.bentleyOttman.address);
-    WeilerAtherton.link('PolygonUtils', this.polygonUtils.address);
-
-    this.weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
+    this.weilerAtherton = await getWeilerAthertonLib();
+    this.polygonUtils = await getPolygonUtilsLib();
     MockWeilerAtherton.link('WeilerAtherton', this.weilerAtherton.address);
     MockWeilerAtherton.link('PolygonUtils', this.polygonUtils.address);
 

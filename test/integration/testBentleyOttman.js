@@ -1,6 +1,3 @@
-const PointRedBlackTree = artifacts.require('./collections/PointRedBlackTree.sol');
-const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree.sol');
-const BentleyOttman = artifacts.require('./utils/BentleyOttman.sol');
 const MockBentleyOttman = artifacts.require('./mocks/MockBentleyOttman.sol');
 
 const Web3 = require('web3');
@@ -8,7 +5,7 @@ const chai = require('chai');
 const pIteration = require('p-iteration');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, ether, getBentleyOttmanLib } = require('../helpers');
 
 const web3 = new Web3(MockBentleyOttman.web3.currentProvider);
 
@@ -24,13 +21,7 @@ chai.should();
 
 contract('BentleyOttman', ([coreTeam]) => {
   beforeEach(async function() {
-    this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('PointRedBlackTree', this.pointRedBlackTree.address);
-
-    this.segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
-    BentleyOttman.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
-
-    this.bentleyOttman = await BentleyOttman.new({ from: coreTeam });
+    this.bentleyOttman = await getBentleyOttmanLib();
     MockBentleyOttman.link('BentleyOttman', this.bentleyOttman.address);
 
     this.mockBentleyOttman = await MockBentleyOttman.new({ from: coreTeam });

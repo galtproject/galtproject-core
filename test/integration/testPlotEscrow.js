@@ -23,7 +23,8 @@ const {
   assertGaltBalanceChanged,
   ether,
   assertRevert,
-  zeroAddress
+  zeroAddress,
+  deploySplitMerge
 } = require('../helpers');
 
 const web3 = new Web3(PlotEscrow.web3.currentProvider);
@@ -133,8 +134,6 @@ contract("PlotEscrow", (accounts) => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-
     this.landUtils = await LandUtils.new({ from: coreTeam });
     PlotManagerLib.link('LandUtils', this.landUtils.address);
 
@@ -154,14 +153,7 @@ contract("PlotEscrow", (accounts) => {
     this.plotEscrow = await PlotEscrow.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });

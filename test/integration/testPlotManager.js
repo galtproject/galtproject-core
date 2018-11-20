@@ -2,9 +2,7 @@ const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
@@ -19,7 +17,8 @@ const {
   assertEthBalanceChanged,
   assertEqualBN,
   assertRevert,
-  zeroAddress
+  zeroAddress,
+  deploySplitMerge
 } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -91,8 +90,6 @@ contract('PlotManager', accounts => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-
     this.landUtils = await LandUtils.new({ from: coreTeam });
     PlotManagerLib.link('LandUtils', this.landUtils.address);
 
@@ -105,14 +102,7 @@ contract('PlotManager', accounts => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     await this.plotManager.initialize(

@@ -1,14 +1,10 @@
-const PointUtils = artifacts.require('./utils/PointUtils.sol');
-const MathUtils = artifacts.require('./utils/MathUtils.sol');
-const VectorUtils = artifacts.require('./utils/VectorUtils.sol');
-const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
 const MockSegmentUtils = artifacts.require('./mocks/MockSegmentUtils.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, ether, getSegmentUtilsLib } = require('../helpers');
 
 const web3 = new Web3(MockSegmentUtils.web3.currentProvider);
 
@@ -24,17 +20,7 @@ chai.should();
 
 contract('SegmentUtils', ([coreTeam]) => {
   beforeEach(async function() {
-    this.mathUtils = await MathUtils.new({ from: coreTeam });
-    PointUtils.link('MathUtils', this.mathUtils.address);
-    VectorUtils.link('MathUtils', this.mathUtils.address);
-
-    this.pointUtils = await PointUtils.new({ from: coreTeam });
-
-    this.vectorUtils = await VectorUtils.new({ from: coreTeam });
-    SegmentUtils.link('VectorUtils', this.vectorUtils.address);
-    SegmentUtils.link('MathUtils', this.mathUtils.address);
-
-    this.segmentUtils = await SegmentUtils.new({ from: coreTeam });
+    this.segmentUtils = await getSegmentUtilsLib();
     MockSegmentUtils.link('SegmentUtils', this.segmentUtils.address);
 
     this.mockSegmentUtils = await MockSegmentUtils.new({ from: coreTeam });

@@ -146,6 +146,14 @@ const Helpers = {
     }
     return requireCache[path];
   },
+  async getSegmentUtilsLib() {
+    if (libCache.SegmentUtils) {
+      return libCache.SegmentUtils;
+    }
+    const SegmentUtils = Helpers.requireContract('./utils/SegmentUtils.sol');
+    libCache.SegmentUtils = await SegmentUtils.new();
+    return libCache.SegmentUtils;
+  },
   async getLandUtilsLib() {
     if (libCache.LandUtils) {
       return libCache.LandUtils;

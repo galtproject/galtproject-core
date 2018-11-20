@@ -14,7 +14,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { zeroAddress, initHelperWeb3, ether, szabo } = require('../helpers');
+const { zeroAddress, initHelperWeb3, ether, szabo, deploySplitMerge } = require('../helpers');
 
 const { BN } = Web3.utils;
 
@@ -38,15 +38,7 @@ contract('SpaceDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
 
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
     this.validators = await Validators.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });

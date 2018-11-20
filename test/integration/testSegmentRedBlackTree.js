@@ -1,6 +1,4 @@
-const SegmentRedBlackTree = artifacts.require('./collections/SegmentRedBlackTree.sol');
 const MockSegmentRedBlackTree = artifacts.require('./mocks/MockSegmentRedBlackTree.sol');
-const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
 
 const _ = require('lodash');
 const pIteration = require('p-iteration');
@@ -8,7 +6,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, ether, getSegmentRedBlackTreeLib } = require('../helpers');
 
 const web3 = new Web3(MockSegmentRedBlackTree.web3.currentProvider);
 
@@ -24,10 +22,7 @@ chai.should();
 
 contract('SegmentRedBlackTree', ([coreTeam]) => {
   beforeEach(async function() {
-    this.segmentUtils = await SegmentUtils.new({ from: coreTeam });
-    SegmentRedBlackTree.link('SegmentUtils', this.segmentUtils.address);
-
-    this.segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
+    this.segmentRedBlackTree = await getSegmentRedBlackTreeLib();
     MockSegmentRedBlackTree.link('SegmentRedBlackTree', this.segmentRedBlackTree.address);
 
     this.mockSegmentRedBlackTree = await MockSegmentRedBlackTree.new({ from: coreTeam });

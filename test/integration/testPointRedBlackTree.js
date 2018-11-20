@@ -1,5 +1,3 @@
-const PointUtils = artifacts.require('./utils/PointUtils.sol');
-const PointRedBlackTree = artifacts.require('./collections/PointRedBlackTree.sol');
 const MockPointRedBlackTree = artifacts.require('./mocks/MockPointRedBlackTree.sol');
 
 const pIteration = require('p-iteration');
@@ -7,7 +5,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, ether, getPointRedBlackTreeLib, getPolygonUtilsLib } = require('../helpers');
 
 const web3 = new Web3(MockPointRedBlackTree.web3.currentProvider);
 
@@ -42,8 +40,8 @@ function comparePoints(a, b) {
 
 contract('PointRedBlackTree', ([coreTeam]) => {
   beforeEach(async function() {
-    this.pointUtils = await PointUtils.new({ from: coreTeam });
-    this.pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
+    this.pointUtils = await getPolygonUtilsLib();
+    this.pointRedBlackTree = await getPointRedBlackTreeLib();
     MockPointRedBlackTree.link('PointRedBlackTree', this.pointRedBlackTree.address);
     MockPointRedBlackTree.link('PointUtils', this.pointUtils.address);
 
