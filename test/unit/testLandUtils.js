@@ -4,7 +4,7 @@ const { assertRevert } = require('../helpers');
 
 const web3 = new Web3(LandUtils.web3.currentProvider);
 
-contract('LandUtils', ([deployer]) => {
+contract.only('LandUtils', ([deployer]) => {
   beforeEach(async function() {
     this.utils = await LandUtils.new({ from: deployer });
     this.utils3 = new web3.eth.Contract(this.utils.abi, this.utils.address);
@@ -39,12 +39,8 @@ contract('LandUtils', ([deployer]) => {
       assert.equal(await this.utils3.methods.geohash5Precision('1152921504606846975').call(), 12);
     });
 
-    it('should revert on 0 input', async function() {
-      await assertRevert(this.utils3.methods.geohash5Precision('0').call());
-    });
-
-    it('should revert on empty input', async function() {
-      await assertRevert(this.utils3.methods.geohash5Precision('0').call());
+    it('should return 0 on 0 input', async function() {
+      assert.equal(await this.utils3.methods.geohash5Precision('0').call(), 0);
     });
 
     it('should revert if a value is greater than max', async function() {
