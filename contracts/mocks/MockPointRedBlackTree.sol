@@ -15,7 +15,7 @@ contract MockPointRedBlackTree {
   event LogComparePoints(int8 result);
   
   constructor() public {
-    pointsTree.init();
+
   }
 
   function insert(uint64 id, int256[2] value) public {

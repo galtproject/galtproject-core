@@ -15,7 +15,7 @@ contract MockSegmentRedBlackTree {
   event LogComparePoints(int8 result);
   
   constructor() public {
-    segmentsTree.init();
+
   }
 
   function insert(uint64 id, int256[2][2] value) public {
