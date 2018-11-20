@@ -18,7 +18,8 @@ const {
   assertEqualBN,
   assertRevert,
   zeroAddress,
-  deploySplitMerge
+  deploySplitMerge,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
@@ -72,6 +73,7 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotClarificationManager', (accounts) => {
+  before(clearLibCache);
   const [
     coreTeam,
     galtSpaceOrg,

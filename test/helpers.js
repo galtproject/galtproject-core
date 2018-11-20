@@ -8,8 +8,8 @@ const adjust = new BN('10000000000000000');
 let web3;
 let artifacts;
 
-const requireCache = {};
-const libCache = {};
+let requireCache = {};
+let libCache = {};
 
 const Helpers = {
   initHelperWeb3(_web3) {
@@ -144,6 +144,12 @@ const Helpers = {
   initHelperArtifacts(_artifacts) {
     artifacts = _artifacts;
   },
+  clearRequireCache() {
+    requireCache = {};
+  },
+  clearLibCache() {
+    libCache = {};
+  },
   requireContract(path) {
     if (!requireCache[path]) {
       requireCache[path] = artifacts.require(path);
@@ -159,50 +165,50 @@ const Helpers = {
     return libCache.SegmentUtils;
   },
   async getLandUtilsLib() {
-    // if (libCache.LandUtils) {
-    //   return libCache.LandUtils;
-    // }
+    if (libCache.LandUtils) {
+      return libCache.LandUtils;
+    }
     const LandUtils = Helpers.requireContract('./utils/LandUtils.sol');
     libCache.LandUtils = await LandUtils.new();
     return libCache.LandUtils;
   },
   async getArrayUtilsLib() {
-    // if (libCache.ArrayUtils) {
-    //   return libCache.ArrayUtils;
-    // }
+    if (libCache.ArrayUtils) {
+      return libCache.ArrayUtils;
+    }
     const ArrayUtils = Helpers.requireContract('./utils/ArrayUtils.sol');
     libCache.ArrayUtils = await ArrayUtils.new();
     return libCache.ArrayUtils;
   },
   async getPolygonUtilsLib() {
-    // if (libCache.PolygonUtils) {
-    //   return libCache.PolygonUtils;
-    // }
+    if (libCache.PolygonUtils) {
+      return libCache.PolygonUtils;
+    }
     const PolygonUtils = Helpers.requireContract('./utils/PolygonUtils.sol');
     PolygonUtils.link('LandUtils', (await Helpers.getLandUtilsLib()).address);
     libCache.PolygonUtils = await PolygonUtils.new();
     return libCache.PolygonUtils;
   },
   async getPointRedBlackTreeLib() {
-    // if (libCache.PointRedBlackTree) {
-    //   return libCache.PointRedBlackTree;
-    // }
+    if (libCache.PointRedBlackTree) {
+      return libCache.PointRedBlackTree;
+    }
     const PointRedBlackTree = Helpers.requireContract('./utils/PointRedBlackTree.sol');
     libCache.PointRedBlackTree = await PointRedBlackTree.new();
     return libCache.PointRedBlackTree;
   },
   async getSegmentRedBlackTreeLib() {
-    // if (libCache.SegmentRedBlackTree) {
-    //   return libCache.SegmentRedBlackTree;
-    // }
+    if (libCache.SegmentRedBlackTree) {
+      return libCache.SegmentRedBlackTree;
+    }
     const SegmentRedBlackTree = Helpers.requireContract('./utils/SegmentRedBlackTree.sol');
     libCache.SegmentRedBlackTree = await SegmentRedBlackTree.new();
     return libCache.SegmentRedBlackTree;
   },
   async getBentleyOttmanLib() {
-    // if (libCache.BentleyOttman) {
-    //   return libCache.BentleyOttman;
-    // }
+    if (libCache.BentleyOttman) {
+      return libCache.BentleyOttman;
+    }
     const BentleyOttman = Helpers.requireContract('./utils/BentleyOttman.sol');
     BentleyOttman.link('PointRedBlackTree', (await Helpers.getPointRedBlackTreeLib()).address);
     BentleyOttman.link('SegmentRedBlackTree', (await Helpers.getSegmentRedBlackTreeLib()).address);
@@ -210,10 +216,9 @@ const Helpers = {
     return libCache.BentleyOttman;
   },
   async getWeilerAthertonLib() {
-    // if (libCache.WeilerAtherton) {
-    //   console.log('get WeilerAtherton from cache', libCache.WeilerAtherton.address);
-    //   return libCache.WeilerAtherton;
-    // }
+    if (libCache.WeilerAtherton) {
+      return libCache.WeilerAtherton;
+    }
     const WeilerAtherton = Helpers.requireContract('./utils/WeilerAtherton.sol');
     WeilerAtherton.link('BentleyOttman', (await Helpers.getBentleyOttmanLib()).address);
     WeilerAtherton.link('PolygonUtils', (await Helpers.getPolygonUtilsLib()).address);

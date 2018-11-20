@@ -10,7 +10,8 @@ const {
   initHelperArtifacts,
   ether,
   getPointRedBlackTreeLib,
-  getPolygonUtilsLib
+  getPolygonUtilsLib,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(MockPointRedBlackTree.web3.currentProvider);
@@ -46,6 +47,7 @@ function comparePoints(a, b) {
 }
 
 contract('PointRedBlackTree', ([coreTeam]) => {
+  before(clearLibCache);
   beforeEach(async function() {
     this.pointUtils = await getPolygonUtilsLib();
     this.pointRedBlackTree = await getPointRedBlackTreeLib();

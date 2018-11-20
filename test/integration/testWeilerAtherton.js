@@ -6,7 +6,14 @@ const chai = require('chai');
 const pIteration = require('p-iteration');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, initHelperArtifacts, ether, getWeilerAthertonLib, getPolygonUtilsLib } = require('../helpers');
+const {
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  getWeilerAthertonLib,
+  getPolygonUtilsLib,
+  clearLibCache
+} = require('../helpers');
 
 const web3 = new Web3(MockWeilerAtherton.web3.currentProvider);
 
@@ -22,6 +29,8 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('WeilerAtherton', ([coreTeam]) => {
+  before(clearLibCache);
+
   beforeEach(async function() {
     this.weilerAtherton = await getWeilerAthertonLib();
     this.polygonUtils = await getPolygonUtilsLib();

@@ -10,7 +10,15 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { zeroAddress, initHelperWeb3, ether, szabo, initHelperArtifacts, deploySplitMerge } = require('../helpers');
+const {
+  zeroAddress,
+  initHelperWeb3,
+  ether,
+  szabo,
+  initHelperArtifacts,
+  deploySplitMerge,
+  clearLibCache
+} = require('../helpers');
 
 const { BN } = Web3.utils;
 
@@ -27,6 +35,7 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('SpaceDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+  before(clearLibCache);
   const feePercent = 5;
   const plotPriceGalt = 150;
 

@@ -17,7 +17,8 @@ const {
   assertEqualBN,
   assertRevert,
   zeroAddress,
-  deploySplitMerge
+  deploySplitMerge,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -75,6 +76,7 @@ Object.freeze(Currency);
  * Bob is a validator
  */
 contract('PlotManager', accounts => {
+  before(clearLibCache);
   const [coreTeam, galtSpaceOrg, feeManager, multiSigWallet, alice, bob, charlie, dan, eve, frank] = accounts;
 
   beforeEach(async function() {

@@ -10,7 +10,7 @@ const galt = require('@galtproject/utils');
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
 const { BN } = Web3.utils;
-const { zeroAddress, assertRevert, deploySplitMerge, initHelperArtifacts } = require('../helpers');
+const { zeroAddress, assertRevert, deploySplitMerge, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
 
@@ -23,6 +23,8 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('SplitMerge', ([coreTeam, alice]) => {
+  before(clearLibCache);
+
   beforeEach(async function() {
     this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 

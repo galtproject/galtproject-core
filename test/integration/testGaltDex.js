@@ -16,7 +16,8 @@ const {
   initHelperArtifacts,
   ether,
   szabo,
-  deploySplitMerge
+  deploySplitMerge,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
@@ -33,6 +34,7 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+  before(clearLibCache);
   const fee = 15;
   const baseExchangeRate = 1;
 

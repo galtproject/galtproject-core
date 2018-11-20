@@ -17,7 +17,8 @@ const {
   assertGaltBalanceChanged,
   assertRevert,
   zeroAddress,
-  deploySplitMerge
+  deploySplitMerge,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
@@ -74,6 +75,7 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotValuation', (accounts) => {
+  before(clearLibCache);
   const [
     coreTeam,
     galtSpaceOrg,
