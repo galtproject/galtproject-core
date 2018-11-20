@@ -17,13 +17,11 @@ pragma experimental "v0.5.0";
 import "./PlotManager.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
-import "./utils/LandUtils.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 library PlotManagerLib {
   using SafeMath for uint256;
-  using LandUtils for uint256;
 
   function rejectApplicationHelper(
     PlotManager.Application storage _a,

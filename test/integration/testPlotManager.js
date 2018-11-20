@@ -1,6 +1,5 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
@@ -89,9 +88,6 @@ contract('PlotManager', accounts => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PlotManagerLib.link('LandUtils', this.landUtils.address);
-
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
@@ -124,6 +120,8 @@ contract('PlotManager', accounts => {
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
+
+    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
