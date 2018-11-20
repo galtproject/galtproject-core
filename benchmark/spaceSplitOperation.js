@@ -51,7 +51,7 @@ module.exports = async function(callback) {
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
   const splitMerge = await SplitMerge.new({ from: coreTeam });
 
-  const splitMergeWeb3 = new web3.eth.Contract(splitMerge.abi, splitMerge.address);
+  // const splitMergeWeb3 = new web3.eth.Contract(splitMerge.abi, splitMerge.address);
 
   await splitMerge.initialize(spaceToken.address, zeroAddress, { from: coreTeam });
   await spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });

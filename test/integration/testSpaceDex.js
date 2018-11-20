@@ -4,11 +4,7 @@ const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const Validators = artifacts.require('./Validators.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
