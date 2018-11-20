@@ -12,7 +12,7 @@ contract MockBentleyOttman {
   event LogSetSegment(int256[2][2] firstItem);
   
   constructor() public {
-    bentleyOttman.init();
+    bentleyOttman.initBentleyOttman();
   }
 
 //  function setSegments(int256[2][2][] value) public {

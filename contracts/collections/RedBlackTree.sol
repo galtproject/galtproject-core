@@ -27,7 +27,6 @@ library RedBlackTree {
   struct Tree {
     uint root;
     mapping(uint => Item) items;
-    bool initialised;
     uint inserted;
     uint removed;
   }
@@ -35,14 +34,6 @@ library RedBlackTree {
   uint internal constant ZERO = 0;
 
   event Log(string where, string action, uint key, uint parent, uint left, uint right, bool red);
-
-  function init(Tree storage tree) internal {
-    require(!tree.initialised, "RedBlackTree not initialized");
-    tree.root = ZERO;
-    Item memory i;
-    tree.items[ZERO] = i;
-    tree.initialised = true;
-  }
 
   function count(Tree storage tree) internal view returns (uint _count) {
     return tree.inserted >= tree.removed ? tree.inserted - tree.removed : 0;

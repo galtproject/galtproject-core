@@ -13,7 +13,7 @@ contract MockWeilerAtherton {
   PolygonUtils.CoorsPolygon private cropPolygon;
   
   constructor() public {
-    weilerAtherton.init();
+    weilerAtherton.initWeilerAtherton();
   }
   
   function addPointToBasePolygon(int256[2] point) public {

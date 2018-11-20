@@ -64,7 +64,7 @@ contract SpaceSplitOperation {
   function init() public {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
-    weilerAtherton.init();
+    weilerAtherton.initWeilerAtherton();
     spaceToken.approve(address(splitMerge), baseTokenId);
     doneStage = Stage.CONTRACT_INIT;
   }

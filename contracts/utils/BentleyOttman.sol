@@ -73,10 +73,7 @@ library BentleyOttman {
   event LogHandleEventPointStage3If(int256[2] point);
   event LogHandleEventPointStage3Else(int256[2] point, int256[2][2] UCpmin, int256[2][2] UCpmax);
 
-  function init(State storage state) public {
-    state.status.init();
-    state.queue.init();
-
+  function initBentleyOttman(State storage state) internal {
     //transaction reverted on maxHandleQueuePointsPerCall = 16 
     state.maxHandleQueuePointsPerCall = 6;
   }

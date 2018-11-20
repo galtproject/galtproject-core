@@ -70,8 +70,8 @@ library WeilerAtherton {
   event LogPushToResult(int256[2] point);
   event LogSetNextPoint(int256[2] curPoint, int256[2] nextPoint);
 
-  function init(State storage state) public {
-    state.bentleyOttman.init();
+  function initWeilerAtherton(State storage state) internal {
+    state.bentleyOttman.initBentleyOttman();
   }
 
   function initAllPolygons(State storage state) public {

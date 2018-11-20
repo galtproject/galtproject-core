@@ -26,10 +26,6 @@ library PointRedBlackTree {
   }
   
   uint internal constant ZERO = 0;
-  
-  function init(PointsTree storage points) public {
-    points.tree.init();
-  }
 
   function find(PointsTree storage points, int256[2] value) public view returns (uint) {
     uint _key = points.tree.root;
