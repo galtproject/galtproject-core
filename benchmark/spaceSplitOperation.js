@@ -9,6 +9,7 @@ const SplitMerge = artifacts.require('../contracts/mocks/SplitMerge.sol');
 const SpaceSplitOperation = artifacts.require('../contracts/SpaceSplitOperation.sol');
 const SpaceToken = artifacts.require('../contracts/mocks/SpaceToken.sol');
 
+const _ = require('lodash');
 const pIteration = require('p-iteration');
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -72,17 +73,10 @@ module.exports = async function(callback) {
     const oldSpaceTokenContour = await getGeohashesContour(_spaceTokenId);
 
     if (_cacheGeohashes) {
-      let totalGasUsedForCache = 0;
-      await pIteration.forEach(oldSpaceTokenContour, async geohash => {
-        const res = await splitMerge.cacheGeohashToLatLon(galt.geohashToNumber(geohash).toString(10));
-        totalGasUsedForCache = res.receipt.gasUsed;
-      });
-      await pIteration.forEach(_cropGeohashContour, async geohash => {
-        const res = await splitMerge.cacheGeohashToLatLon(galt.geohashToNumber(geohash).toString(10));
-        totalGasUsedForCache = res.receipt.gasUsed;
-      });
+      const geohashesForCache = _.uniq(_cropGeohashContour.concat(oldSpaceTokenContour));
+      const res = await splitMerge.cacheGeohashListToLatLon(geohashesForCache.map(galt.geohashToNumber));
+      console.log('      geohashToLatLonCache gasUsed', res.receipt.gasUsed);
       console.log('');
-      console.log('      totalGasUsedForCache', totalGasUsedForCache);
     }
 
     let res = await splitMerge.startSplitOperation(_spaceTokenId, _cropGeohashContour.map(galt.geohashToNumber));
