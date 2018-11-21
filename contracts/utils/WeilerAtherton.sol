@@ -148,10 +148,10 @@ library WeilerAtherton {
       }
 
       /* solium-disable-next-line */
-      if (PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[0]) ||
-        PointUtils.isEqual(outputPoint.point, outputPoint.leftSegment[1]) ||
-        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[0]) ||
-        PointUtils.isEqual(outputPoint.point, outputPoint.rightSegment[1])) {
+      if ((outputPoint.point[0] == outputPoint.leftSegment[0][0] && outputPoint.point[1] == outputPoint.leftSegment[0][1]) ||
+          (outputPoint.point[0] == outputPoint.leftSegment[1][0] && outputPoint.point[1] == outputPoint.leftSegment[1][1]) ||
+          (outputPoint.point[0] == outputPoint.rightSegment[0][0] && outputPoint.point[1] == outputPoint.rightSegment[0][1]) ||
+          (outputPoint.point[0] == outputPoint.rightSegment[1][0] && outputPoint.point[1] == outputPoint.rightSegment[1][1])) {
         continue;
       }
 
@@ -161,12 +161,6 @@ library WeilerAtherton {
       rightStartPointHash = keccak256(abi.encode(outputPoint.rightSegment[0]));
       rightEndPointHash = keccak256(abi.encode(outputPoint.rightSegment[1]));
 
-      //      if ((outputPoint.point[0] == outputPoint.leftSegment[0][0] && outputPoint.point[1] == outputPoint.leftSegment[0][1]) ||
-      //      (outputPoint.point[0] == outputPoint.leftSegment[1][0] && outputPoint.point[1] == outputPoint.leftSegment[1][1]) ||
-      //      (outputPoint.point[0] == outputPoint.rightSegment[0][0] && outputPoint.point[1] == outputPoint.rightSegment[0][1]) ||
-      //        (outputPoint.point[0] == outputPoint.rightSegment[1][0] && outputPoint.point[1] == outputPoint.rightSegment[1][1])) {
-      //        continue;
-      //      }
 
       if (addIntersectedPointsToPolygon(state.basePolygon, outputPoint.point, newPointHash, leftStartPointHash, leftEndPointHash)) {
         if (!addIntersectedPointsToPolygon(state.cropPolygon, outputPoint.point, newPointHash, rightStartPointHash, rightEndPointHash)) {
