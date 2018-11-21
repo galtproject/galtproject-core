@@ -16,12 +16,12 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
 import "./PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
 import "./SpaceToken.sol";
-import "./Validators.sol";
+import "./Oracles.sol";
 import "./collections/ArraySet.sol";
+import "./AbstractOracleApplication.sol";
 
 
 /**
@@ -31,10 +31,10 @@ import "./collections/ArraySet.sol";
  * - Order - Sale order to sell SpaceToken using escrow contract
  * - Offer - Offer for a specific order
  *
- * There is only `PV_AUDITOR_ROLE` validator role. It's reward is assigned only in
+ * There is only `PV_AUDITOR_ROLE` oracle role. It's reward is assigned only in
  * a case when escrow cancellation audit process was instantiated.
  */
-contract PlotEscrow is AbstractApplication {
+contract PlotEscrow is AbstractOracleApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.Bytes32Set;
 
@@ -169,7 +169,7 @@ contract PlotEscrow is AbstractApplication {
   function initialize(
     SpaceToken _spaceToken,
     PlotCustodianManager _plotCustodianManager,
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
@@ -180,7 +180,7 @@ contract PlotEscrow is AbstractApplication {
 
     spaceToken = _spaceToken;
     plotCustodianManager = _plotCustodianManager;
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -412,7 +412,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer status required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ROLE);
 
     saleOffer.auditor.addr = msg.sender;
 
@@ -434,7 +434,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ROLE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
@@ -455,7 +455,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ROLE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
@@ -720,7 +720,7 @@ contract PlotEscrow is AbstractApplication {
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.OPEN);
   }
 
-  function claimValidatorReward(
+  function claimOracleReward(
     bytes32 _rId
   )
     external

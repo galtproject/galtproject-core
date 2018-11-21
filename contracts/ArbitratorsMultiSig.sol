@@ -17,7 +17,7 @@ pragma experimental "v0.5.0";
 import "./vendor/MultiSigWallet/MultiSigWallet.sol";
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 
-contract ValidatorStakesMultiSig is MultiSigWallet, RBAC {
+contract ArbitratorsMultiSig is MultiSigWallet, RBAC {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
 
   string public constant ROLE_MANAGER = "role_manager";

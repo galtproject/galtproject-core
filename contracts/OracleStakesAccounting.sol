@@ -17,14 +17,13 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
-import "./Validators.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./collections/ArraySet.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
+import "./collections/ArraySet.sol";
+import "./Oracles.sol";
 
 
-// TODO: rename ValidatorStakesAccounting
-contract ValidatorStakes is Ownable, RBAC, Initializable {
+contract OracleStakesAccounting is Ownable, RBAC, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -33,12 +32,12 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   address slashManager;
   address multiSigWallet;
   ERC20 galtToken;
-  Validators validators;
-  mapping(address => ValidatorRoles) validatorRoles;
+  Oracles oracles;
+  mapping(address => OracleTypes) oracleTypes;
 
 
-  struct ValidatorRoles {
-    mapping(bytes32 => int256) roleStakes;
+  struct OracleTypes {
+    mapping(bytes32 => int256) oracleTypeStakes;
   }
 
   modifier onlySlashManager {
@@ -48,7 +47,7 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
   }
 
   function initialize(
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
     address _multiSigWallet
   )
@@ -58,52 +57,51 @@ contract ValidatorStakes is Ownable, RBAC, Initializable {
     owner = msg.sender;
 
     multiSigWallet = _multiSigWallet;
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
   }
 
-  function slash(address _validator, bytes32 _role, uint256 _amount) external onlySlashManager {
-    _slash(_validator, _role, _amount);
+  function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
+    _slash(_oracle, _oracleType, _amount);
   }
 
-  function slash(address[] _validators, bytes32[] _roles, uint256[] _amounts) external onlySlashManager {
-    assert(_validators.length == _roles.length);
-    assert(_roles.length == _amounts.length);
+  function slash(address[] _oracles, bytes32[] _oracleTypes, uint256[] _amounts) external onlySlashManager {
+    assert(_oracles.length == _oracleTypes.length);
+    assert(_oracleTypes.length == _amounts.length);
 
-    for (uint256 i = 0; i < _validators.length; i++) {
-      _slash(_validators[i], _roles[i], _amounts[i]);
+    for (uint256 i = 0; i < _oracles.length; i++) {
+      _slash(_oracles[i], _oracleTypes[i], _amounts[i]);
     }
   }
 
-  function _slash(address _validator, bytes32 _role, uint256 _amount) internal {
-    require(validators.isValidatorRoleAssigned(_validator, _role), "Some roles doesn't match");
+  function _slash(address _oracle, bytes32 _oracleType, uint256 _amount) internal {
+    require(oracles.isOracleTypeAssigned(_oracle, _oracleType), "Some oracle types doesn't match");
 
-    int256 initialBalance = validatorRoles[_validator].roleStakes[_role];
-    int256 finalBalance = validatorRoles[_validator].roleStakes[_role] - int256(_amount);
+    int256 initialBalance = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
+    int256 finalBalance = oracleTypes[_oracle].oracleTypeStakes[_oracleType] - int256(_amount);
 
-    validatorRoles[_validator].roleStakes[_role] = finalBalance;
+    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalBalance;
 
     assert(finalBalance < initialBalance);
 
-    validators.onStakeChanged(_validator, _role, finalBalance);
+    oracles.onStakeChanged(_oracle, _oracleType, finalBalance);
   }
 
-  function stake(address _validator, bytes32 _role, uint256 _amount) external {
-    validators.requireValidatorActiveWithAssignedRole(_validator, _role);
+  function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
+    oracles.requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
     galtToken.transferFrom(msg.sender, multiSigWallet, _amount);
 
     require(_amount > 0, "Expect positive amount");
-    int256 initialValue = validatorRoles[_validator].roleStakes[_role];
+    int256 initialValue = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
     int256 finalValue = initialValue + int256(_amount);
-    validatorRoles[_validator].roleStakes[_role] = finalValue;
-    assert(validatorRoles[_validator].roleStakes[_role] > initialValue);
+    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalValue;
+    assert(oracleTypes[_oracle].oracleTypeStakes[_oracleType] > initialValue);
 
-    validators.onStakeChanged(_validator, _role, finalValue);
+    oracles.onStakeChanged(_oracle, _oracleType, finalValue);
   }
-  event FailedCheck(address _v, bytes32 _r, bool _hhas);
 
-  function stakeOf(address _validator, bytes32 _role) external view returns (int256) {
-    return validatorRoles[_validator].roleStakes[_role];
+  function stakeOf(address _oracle, bytes32 _oracleType) external view returns (int256) {
+    return oracleTypes[_oracle].oracleTypeStakes[_oracleType];
   }
 
   function addRoleTo(address _operator, string _role) external onlyOwner {
