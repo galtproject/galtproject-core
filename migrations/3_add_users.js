@@ -12,6 +12,8 @@ const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
+
+const Auditors = artifacts.require('./Auditors');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -46,6 +48,7 @@ module.exports = async function(deployer, network, accounts) {
     const validators = await Validators.at(data.validatorsAddress);
     const validatorStakes = await ValidatorStakes.at(data.validatorStakesAddress);
     const claimManager = await ClaimManager.at(data.claimManagerAddress);
+    const auditors = await Auditors.at(data.auditorsAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -252,6 +255,9 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotClarification.setFeeManager(address, true, { from: coreTeam }));
+
+        promises.push(auditors.addRoleTo(address, 'role_manager', { from: coreTeam }));
+        promises.push(auditors.addRoleTo(address, 'auditor_manager', { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
