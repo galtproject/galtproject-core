@@ -78,7 +78,13 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       await splitOperation.prepareAndInitAllPolygons();
       await splitOperation.addAllPolygonsSegments();
       await this.processBentleyOttman(splitOperation);
-      await splitOperation.processWeilerAtherton();
+
+      // processWeilerAtherton
+      await splitOperation.addIntersectedPoints();
+      await splitOperation.buildResultPolygon();
+      await splitOperation.buildResultPolygon();
+      await splitOperation.buildBasePolygonOutput();
+
       await splitOperation.finishAllPolygons();
 
       res = await this.splitMerge.finishSplitOperation(baseSpaceTokenId, {
@@ -178,6 +184,81 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qftn244vj',
         'w24qfmpp2p00',
         'w24qfrx3sxuc'
+      ]);
+    });
+
+    it('should correctly split 4, 5 => 7, 5', async function() {
+      const baseSpaceTokenId = await this.mintSpaceTokenId([
+        'w24qfpvrmnke',
+        'w24qfxtrkyqv',
+        'w24qfev5kp24',
+        'w24qf5mkrzrv'
+      ]);
+
+      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+        'w24qfq7pkn8p',
+        'w24r42ec2n0p',
+        'w24r4c9ekjbp',
+        'w24qgn832n8n',
+        'w24qfmv92nbh'
+      ]);
+
+      assert.equal(croppedSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+        'w24qfwj73jy9',
+        'w24qfxtrkyqv',
+        'w24qfrgs3s5g',
+        'w24qfq7pkn8p',
+        'w24qfmv92nbh'
+      ]);
+
+      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+        'w24qfpvrmnke',
+        'w24qfrgs3s5g',
+        'w24qfq7pkn8p',
+        'w24qfmv92nbh',
+        'w24qfwj73jy9',
+        'w24qfev5kp24',
+        'w24qf5mkrzrv'
+      ]);
+    });
+
+    it.skip('should correctly split 6, 4 => 5, 4', async function() {
+      const baseSpaceTokenId = await this.mintSpaceTokenId([
+        'w24qcv6bkp00',
+        'w24qfjpj2p00',
+        'w24qf5rp2p2j',
+        'w24qf7kb2p2n',
+        'w24qf3uc2pb1',
+        'w24qccsm2pb4'
+      ]);
+
+      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+        'w24qf5xh8cgw',
+        'w24qf1wf0zf1',
+        'w24qf99npg84',
+        'w24qfe8tpg05'
+      ]);
+      console.log(JSON.stringify(await this.getGeohashesContour(croppedSpaceTokensIds[0])));
+      console.log(JSON.stringify(await this.getGeohashesContour(baseSpaceTokenId)));
+
+      assert.equal(croppedSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+        'w24qfwj73jy9',
+        'w24qfxtrkyqv',
+        'w24qfrgs3s5g',
+        'w24qfq7pkn8p',
+        'w24qfmv92nbh'
+      ]);
+
+      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+        'w24qfpvrmnke',
+        'w24qfrgs3s5g',
+        'w24qfq7pkn8p',
+        'w24qfmv92nbh',
+        'w24qfwj73jy9',
+        'w24qfev5kp24',
+        'w24qf5mkrzrv'
       ]);
     });
 
