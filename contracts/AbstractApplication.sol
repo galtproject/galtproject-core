@@ -14,13 +14,15 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./Oracles.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "zos-lib/contracts/migrations/Initializable.sol";
+import "./utils/Initializable.sol";
 
 
-contract AbstractApplication is Initializable, Ownable {
+contract AbstractApplication is Initializable, Permissionable {
+  string public constant ROLE_FEE_MANAGER = "fee_manager";
+  string public constant ROLE_GALT_SPACE = "galt_space";
+
   PaymentMethod public paymentMethod;
   uint256 public minimalApplicationFeeInEth;
   uint256 public minimalApplicationFeeInGalt;
@@ -32,9 +34,6 @@ contract AbstractApplication is Initializable, Ownable {
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
-
-  // TODO: replace with role
-  mapping(address => bool) public feeManagers;
 
   enum Currency {
     ETH,
@@ -49,7 +48,7 @@ contract AbstractApplication is Initializable, Ownable {
   }
 
   modifier onlyFeeManager() {
-    require(feeManagers[msg.sender] == true, "Not a fee manager");
+    requireRole(msg.sender, ROLE_FEE_MANAGER);
     _;
   }
 
@@ -57,11 +56,7 @@ contract AbstractApplication is Initializable, Ownable {
 
   function claimGaltSpaceReward(bytes32 _aId) external;
 
-  function setFeeManager(address _feeManager, bool _active) external onlyOwner {
-    feeManagers[_feeManager] = _active;
-  }
-
-  function setGaltSpaceRewardsAddress(address _newAddress) external onlyOwner {
+  function setGaltSpaceRewardsAddress(address _newAddress) external onlyRole(ROLE_GALT_SPACE) {
     galtSpaceRewardsAddress = _newAddress;
   }
 

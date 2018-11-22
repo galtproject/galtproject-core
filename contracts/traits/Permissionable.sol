@@ -12,9 +12,9 @@
  */
 
 pragma solidity 0.4.24;
-
-import "openzeppelin-solidity/contracts/ownership/rbac/Roles.sol";
 pragma experimental "v0.5.0";
+
+import "openzeppelin-solidity/contracts/access/Roles.sol";
 
 contract Permissionable {
   using Roles for Roles.Role;
@@ -26,6 +26,10 @@ contract Permissionable {
 
   string public constant ROLE_MANAGER = "role_manager";
 
+  constructor() public {
+    _addRoleTo(msg.sender, ROLE_MANAGER);
+  }
+
   modifier onlyRole(string _role) {
     require(roles[_role].has(msg.sender), "Invalid role");
 
@@ -33,15 +37,27 @@ contract Permissionable {
   }
 
   function hasRole(address _account, string _role) public returns (bool) {
+    return roles[_role].has(_account);
+  }
+
+  function requireRole(address _account, string _role) public {
     require(roles[_role].has(_account), "Invalid role");
   }
 
-  function addRoleTo(address _account, string _role) external onlyRole(ROLE_MANAGER) {
+  function addRoleTo(address _account, string _role) public onlyRole(ROLE_MANAGER) {
+    _addRoleTo(_account, _role);
+  }
+
+  function removeRoleFrom(address _account, string _role) public onlyRole(ROLE_MANAGER) {
+    _removeRoleFrom(_account, _role);
+  }
+
+  function _addRoleTo(address _account, string _role) internal {
     roles[_role].add(_account);
     emit RoleAdded(_account, _role);
   }
 
-  function addRoleFrom(address _account, string _role) external onlyRole(ROLE_MANAGER) {
+  function _removeRoleFrom(address _account, string _role) public {
     roles[_role].remove(_account);
     emit RoleRemoved(_account, _role);
   }

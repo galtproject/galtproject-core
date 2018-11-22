@@ -116,8 +116,6 @@ contract PlotManager is AbstractOracleApplication {
     public
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
     oracles = _oracles;
@@ -368,7 +366,9 @@ contract PlotManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external onlyOwner {
+  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external {
+    // TODO: move permissions to an applicant
+    assert(false);
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.SUBMITTED,

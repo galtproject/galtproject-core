@@ -14,11 +14,11 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "./collections/ArraySet.sol";
 import "./ArbitratorsMultiSig.sol";
+import "./traits/Permissionable.sol";
 
-contract Arbitrators is RBAC {
+contract Arbitrators is Permissionable {
   using ArraySet for ArraySet.AddressSet;
 
   string public constant ROLE_MANAGER= "role_manager";
@@ -38,7 +38,7 @@ contract Arbitrators is RBAC {
   )
     public
   {
-    super.addRole(_roleManager, ROLE_MANAGER);
+    _addRoleTo(_roleManager, ROLE_MANAGER);
     arbitratorsMultiSig = _arbitratorsMultiSig;
   }
 
@@ -105,26 +105,6 @@ contract Arbitrators is RBAC {
     }
 
     arbitratorsMultiSig.setAuditors(n, m, descSortedAuditors);
-  }
-
-  function addRoleTo(
-    address _operator,
-    string _role
-  )
-    public
-    onlyRole(ROLE_MANAGER)
-  {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(
-    address _operator,
-    string _role
-  )
-    public
-    onlyRole(ROLE_MANAGER)
-  {
-    super.removeRole(_operator, _role);
   }
 
   // Getters

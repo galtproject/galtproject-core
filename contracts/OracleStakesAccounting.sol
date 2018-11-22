@@ -14,16 +14,14 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "zos-lib/contracts/migrations/Initializable.sol";
 import "./collections/ArraySet.sol";
 import "./Oracles.sol";
+import "./utils/Initializable.sol";
 
 
-contract OracleStakesAccounting is Ownable, RBAC, Initializable {
+contract OracleStakesAccounting is Permissionable, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -41,7 +39,7 @@ contract OracleStakesAccounting is Ownable, RBAC, Initializable {
   }
 
   modifier onlySlashManager {
-    require(hasRole(msg.sender, ROLE_SLASH_MANAGER), "Invalid sender");
+    requireRole(msg.sender, ROLE_SLASH_MANAGER);
 
     _;
   }
@@ -54,8 +52,6 @@ contract OracleStakesAccounting is Ownable, RBAC, Initializable {
     public
     isInitializer
   {
-    owner = msg.sender;
-
     multiSigWallet = _multiSigWallet;
     oracles = _oracles;
     galtToken = _galtToken;
@@ -102,13 +98,5 @@ contract OracleStakesAccounting is Ownable, RBAC, Initializable {
 
   function stakeOf(address _oracle, bytes32 _oracleType) external view returns (int256) {
     return oracleTypes[_oracle].oracleTypeStakes[_oracleType];
-  }
-
-  function addRoleTo(address _operator, string _role) external onlyOwner {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(address _operator, string _role) external onlyOwner {
-    super.removeRole(_operator, _role);
   }
 }

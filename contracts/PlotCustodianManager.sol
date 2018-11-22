@@ -142,8 +142,6 @@ contract PlotCustodianManager is AbstractOracleApplication {
     external
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
     oracles = _oracles;
@@ -502,7 +500,9 @@ contract PlotCustodianManager is AbstractOracleApplication {
   }
 
   // DANGER: could reset non-existing role
-  function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
+  function resetApplicationRole(bytes32 _aId, bytes32 _role) external {
+    // TODO: move permissions to an applicant
+    assert(false);
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.LOCKED &&

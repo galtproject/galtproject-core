@@ -176,8 +176,6 @@ contract PlotEscrow is AbstractOracleApplication {
     public
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     plotCustodianManager = _plotCustodianManager;
     oracles = _oracles;

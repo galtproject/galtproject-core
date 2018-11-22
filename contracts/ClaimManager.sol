@@ -32,6 +32,7 @@ contract ClaimManager is AbstractApplication {
   bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
 
   // `CM_JUROR` bytes32 representation hash
+  // TODO: rename to CM_AUDITOR_ORACLE_TYPE
   bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
 
   // `bytes4(keccak256('transfer(address,uint256)'))`
@@ -129,7 +130,7 @@ contract ClaimManager is AbstractApplication {
 
   constructor () public {}
 
-  function setNofM(uint256 _n, uint256 _m) external onlyOwner {
+  function setNofM(uint256 _n, uint256 _m) external onlyRole(ROLE_GALT_SPACE) {
     require(2 <= _n, "Should satisfy `2 <= n`");
     require(_n <= _m, "Should satisfy `n <= m`");
 
@@ -147,8 +148,6 @@ contract ClaimManager is AbstractApplication {
     public
     isInitializer
   {
-    owner = msg.sender;
-
     oracles = _oracles;
     galtToken = _galtToken;
     oracleStakesAccounting = _oracleStakesAccounting;

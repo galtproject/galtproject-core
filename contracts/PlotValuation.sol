@@ -28,12 +28,12 @@ contract PlotValuation is AbstractOracleApplication {
   // `PlotValuation` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9;
 
-  // `APPRAISER_ORACLE_TYPE` bytes32 representation hash
-  bytes32 public constant PV_APPRAISER_ORACLE_TYPE = 0x50565f4150505241495345525f524f4c45000000000000000000000000000000;
-  // `APPRAISER2_ORACLE_TYPE` bytes32 representation
-  bytes32 public constant PV_APPRAISER2_ORACLE_TYPE = 0x50565f415050524149534552325f524f4c450000000000000000000000000000;
-  // `AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant PV_AUDITOR_ORACLE_TYPE = 0x50565f41554449544f525f524f4c450000000000000000000000000000000000;
+  // `PV_APPRAISER_ORACLE_TYPE` bytes32 representation hash
+  bytes32 public constant PV_APPRAISER_ORACLE_TYPE = 0x50565f4150505241495345525f4f5241434c455f545950450000000000000000;
+  // `PV_APPRAISER2_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PV_APPRAISER2_ORACLE_TYPE = 0x50565f415050524149534552325f4f5241434c455f5459504500000000000000;
+  // `PV_AUDITOR_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PV_AUDITOR_ORACLE_TYPE = 0x50565f41554449544f525f4f5241434c455f5459504500000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -107,8 +107,6 @@ contract PlotValuation is AbstractOracleApplication {
     public
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
     oracles = _oracles;
@@ -248,7 +246,9 @@ contract PlotValuation is AbstractOracleApplication {
   }
 
   // DANGER: could reset non-existing oracleType
-  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external onlyOwner {
+  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external {
+  // TODO: move permissions to an applicant
+    assert(false);
     Application storage a = applications[_aId];
     require(
       a.status != ApplicationStatus.APPROVED &&

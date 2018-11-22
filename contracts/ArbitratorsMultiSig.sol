@@ -15,20 +15,14 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./vendor/MultiSigWallet/MultiSigWallet.sol";
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
+import "./traits/Permissionable.sol";
 
-contract ArbitratorsMultiSig is MultiSigWallet, RBAC {
+contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
 
   string public constant ROLE_MANAGER = "role_manager";
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_AUDITORS_MANAGER = "auditors_manager";
-
-  modifier onlyRole(string _role) {
-    require(hasRole(msg.sender, _role), "Invalid role");
-
-    _;
-  }
 
   modifier forbidden() {
     assert(false);
@@ -43,7 +37,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, RBAC {
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    super.addRole(_roleManager, ROLE_MANAGER);
+    _addRoleTo(_roleManager, ROLE_MANAGER);
   }
 
   function addOwner(address owner) public forbidden {}
@@ -89,25 +83,5 @@ contract ArbitratorsMultiSig is MultiSigWallet, RBAC {
       emit OwnerAddition(o);
     }
     emit NewAuditorsSet(owners, n, m);
-  }
-
-  function addRoleTo(
-    address _operator,
-    string _role
-  )
-    external
-    onlyRole(ROLE_MANAGER)
-  {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(
-    address _operator,
-    string _role
-  )
-    external
-    onlyRole(ROLE_MANAGER)
-  {
-    super.removeRole(_operator, _role);
   }
 }

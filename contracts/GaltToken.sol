@@ -14,25 +14,22 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
 
 
-contract GaltToken is MintableToken {
+contract GaltToken is ERC20Mintable {
   // solium-disable-next-line uppercase
-  string public constant name = "Galt Token";
-
-  // solium-disable-next-line uppercase
-  string public constant symbol = "GALT";
+  string public constant _name = "Galt Token";
 
   // solium-disable-next-line uppercase
-  uint8 public constant decimals = 18;
+  string public constant _symbol = "GALT";
+
+  // solium-disable-next-line uppercase
+  uint8 public constant _decimals = 18;
 
   uint256 public constant INITIAL_SUPPLY = 0;
 
-  constructor() public MintableToken() {
-    // TODO: figure out how the owner is assigned
-    totalSupply_ = INITIAL_SUPPLY;
-    balances[msg.sender] = INITIAL_SUPPLY;
-    emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
+  constructor() public {
+    _mint(msg.sender, INITIAL_SUPPLY);
   }
 }

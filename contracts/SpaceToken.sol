@@ -14,45 +14,30 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
-import "zos-lib/contracts/migrations/Initializable.sol";
-
-// Just keep it here to make it loaded in tests
-import "zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol";
+import "./traits/Permissionable.sol";
+import "./utils/Initializable.sol";
 
 
 /*
  * SpaceToken contract
  */
-contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
-  // solium-disable-next-line uppercase
-  bytes4 private constant InterfaceId_ERC721Enumerable = 0x780e9d63;
-
-  // solium-disable-next-line uppercase
-  bytes4 private constant InterfaceId_ERC721Metadata = 0x5b5e139f;
-
+contract SpaceToken is ERC721Full, Ownable, Permissionable {
   string public constant ROLE_MINTER = "minter";
   string public constant ROLE_BURNER = "burner";
-  string public constant ROLE_OPERATOR = "operator";
 
   event NewSpaceToken(uint256 tokenId, address owner);
 
   uint256 packTokenIdCounter;
 
-  modifier canTransfer(uint256 _tokenId) {
-    require(isApprovedOrOwner(msg.sender, _tokenId) || hasRole(msg.sender, ROLE_OPERATOR), "No permissions to transfer tokens");
-    _;
-  }
-
   modifier onlyMinter() {
-    checkRole(msg.sender, ROLE_MINTER);
+    require(hasRole(msg.sender, ROLE_MINTER));
     _;
   }
 
   modifier onlyBurner() {
-    checkRole(msg.sender, ROLE_BURNER);
+    require(hasRole(msg.sender, ROLE_BURNER));
     _;
   }
 
@@ -61,26 +46,8 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     string symbol
   )
     public
-    ERC721Token(name, symbol)
+    ERC721Full(name, symbol)
   {
-  }
-
-  function initialize(string _name, string _symbol) public isInitializer {
-    // TODO: figure out how to call constructor
-    // For now all parent constructors code is copied here
-    owner = msg.sender;
-    name_ = _name;
-    symbol_ = _symbol;
-
-    addRole(msg.sender, ROLE_MINTER);
-    addRole(msg.sender, ROLE_BURNER);
-    addRole(msg.sender, ROLE_OPERATOR);
-
-    packTokenIdCounter = 0;
-
-    // register the supported interfaces to conform to ERC721 via ERC165
-    _registerInterface(InterfaceId_ERC721Enumerable);
-    _registerInterface(InterfaceId_ERC721Metadata);
   }
 
   function mint(
@@ -102,26 +69,23 @@ contract SpaceToken is ERC721Token, Ownable, RBAC, Initializable {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
 
+  function exists(uint256 _tokenId) external returns (bool) {
+    return _exists(_tokenId);
+  }
+
   function setTokenURI(
     uint256 _tokenId,
     string _uri
   )
     external
-    onlyOwnerOf(_tokenId)
+    // TODO: fix later
+//    onlyOwnerOf(_tokenId)
   {
     super._setTokenURI(_tokenId, _uri);
   }
 
   function tokensOfOwner(address _owner) external view returns (uint256[]) {
-    return ownedTokens[_owner];
-  }
-
-  function addRoleTo(address _operator, string _role) external onlyOwner {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(address _operator, string _role) external onlyOwner {
-    super.removeRole(_operator, _role);
+//    return _ownedTokens[_owner];
   }
 
   function generateTokenId() internal returns (uint256) {

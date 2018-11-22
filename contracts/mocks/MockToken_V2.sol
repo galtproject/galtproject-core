@@ -10,7 +10,6 @@ contract MockToken_V2 is MockToken {
 
   function faucet() public {
     uint256 _amount = 87 ether;
-    totalSupply_ = totalSupply_.add(_amount);
-    balances[msg.sender] = balances[msg.sender].add(_amount);
+    _mint(msg.sender, _amount);
   }
 }

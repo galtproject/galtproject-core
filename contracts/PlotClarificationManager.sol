@@ -118,8 +118,6 @@ contract PlotClarificationManager is AbstractOracleApplication {
     external
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
     oracles = _oracles;

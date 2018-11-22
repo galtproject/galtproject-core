@@ -14,10 +14,10 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
+import "./utils/Initializable.sol";
 import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
@@ -49,13 +49,12 @@ contract SplitMerge is Initializable, Ownable {
   PolygonUtils.LatLonData latLonData;
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
-    owner = msg.sender;
     spaceToken = _spaceToken;
     plotManager = _plotManager;
   }
 
   modifier ownerOrPlotManager() {
-    require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
+    require(plotManager == msg.sender || owner() == msg.sender, "No permissions to mint geohash");
     _;
   }
 
