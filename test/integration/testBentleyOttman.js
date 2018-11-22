@@ -174,5 +174,70 @@ contract('BentleyOttman', ([coreTeam]) => {
       outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(9).call();
       assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1234493153170000000', '104548988509923000000']);
     });
+
+    it('should correctly handleQueuePoints case 5', async function() {
+      await this.setSegmentsAndHandleQueuePoints([
+        // [[1.230889102444052694, 104.508869033306837081], [1.201198389753699301, 104.507961440831422805]],
+        // [[1.201198389753699301, 104.507961440831422805], [1.200340250506997107, 104.532680679112672805]],
+        // [[1.200340250506997107, 104.532680679112672805], [1.209607785567641256, 104.532165359705686569]],
+        [[1.209607785567641256, 104.532165359705686569], [1.2108092475682497, 104.518947433680295944]],//---
+        // [[1.2108092475682497, 104.518947433680295944], [1.221278244629502294, 104.517917465418577194]],
+        [[1.221278244629502294, 104.517917465418577194], [1.221964722499251363, 104.533367324620485305]],//---
+        // [[1.221964722499251363, 104.533367324620485305], [1.2300309631973505, 104.534265864640474318]],
+        // [[1.2300309631973505, 104.534265864640474318], [1.230889102444052694, 104.508869033306837081]],
+        // [[1.194818755611777304, 104.524910990148782728], [1.195333572104573248, 104.542420450598001478]],
+        // [[1.195333572104573248, 104.542420450598001478], [1.23137441463768482, 104.540703836828470228]],
+        // [[1.23137441463768482, 104.540703836828470228], [1.232232553884387014, 104.523194376379251478]],
+        [[1.232232553884387014, 104.523194376379251478], [1.194818755611777304, 104.524910990148782728]]// |
+      ]);
+
+      const outputLength = await this.mockBentleyOttmanWeb3.methods.getOutputLength().call();
+
+      assert.equal(outputLength, '14');
+      //1.21033187909499, 104.52419921955606
+      //1.22153452120974, 104.52368522176373
+
+      let outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(0).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1194818755612000000', '104524910990149000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(1).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1195333572105000000', '104542420450598000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(2).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1200340250507000000', '104532680679113000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(3).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1200619217705684612', '104524644854296393079']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(4).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1201198389754000000', '104507961440831000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(5).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1209607785568000000', '104532165359706000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(6).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1210809247568000000', '104518947433680000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(7).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1221278244630000000', '104517917465419000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(8).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1221964722499000000', '104533367324620000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(9).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1230030963197000000', '104534265864640000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(10).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1230889102444000000', '104508869033307000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(11).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1230402222620459024', '104523278355338522197']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(12).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1231374414638000000', '104540703836828000000']);
+
+      outputPoint = await this.mockBentleyOttmanWeb3.methods.getOutputPoint(13).call();
+      assert.deepEqual(outputPoint.map(c => c.toString(10)), ['1232232553884000000', '104523194376379000000']);
+    });
   });
 });

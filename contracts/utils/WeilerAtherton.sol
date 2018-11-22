@@ -63,10 +63,11 @@ library WeilerAtherton {
     PolygonUtils.CoorsPolygon basePolygonOutput;
   }
 
+  event LogBentleyOttmanOutput(int256[2] point);
   event LogBentleyOttman(uint256 queueInserted, uint256 queueRemoved, uint256 outputLength);
   event LogAddPoint(int256[2] point, bytes32 pointHash, bytes32 nextPointHash);
   event LogAddSegment(int256[2][2] segment);
-  event LogPlacePointBetween(int256[2] placePoint, int256[2] startPoint, int256[2] endPoint);
+  event LogPlacePointBetween(string ifCase, int256[2] placePoint, int256[2] startPoint, int256[2] endPoint);
   event LogPushToResult(int256[2] point);
   event LogSetNextPoint(int256[2] curPoint, bool isIntersection, int256[2] nextPoint);
   event LogIncludeIntersectionInResult(string polygon, int256[2] point, uint256 handledPoints);
@@ -113,7 +114,7 @@ library WeilerAtherton {
     while (true) {
       state.bentleyOttman.addSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
       currentPoint = polygon.pointsByHash[currentPoint].nextPoint;
-      //      emit LogAddSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
+      emit LogAddSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
       if (currentPoint == polygon.startPoint) {
         polygon.segmentsAdded = true;
         break;
@@ -142,6 +143,7 @@ library WeilerAtherton {
 
     for (uint j = 0; j < state.bentleyOttman.output.length; j++) {
       outputPoint = state.bentleyOttman.output[j];
+      emit LogBentleyOttmanOutput(outputPoint.point);
 
       if (outputPoint.leftSegment[0][0] == 0 || outputPoint.rightSegment[0][0] == 0) {
         continue;
@@ -173,8 +175,8 @@ library WeilerAtherton {
       } else {
         require(false, "Segments of intersection point not found in polygons");
       }
-      //      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
-      //      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
+//      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
+//      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
     }
   }
 
@@ -188,6 +190,7 @@ library WeilerAtherton {
       bytes32 pointToReplace;
 
       if (polygon.pointsByHash[findStartPointHash].nextPoint == findEndPointHash) {
+        emit LogPlacePointBetween("1", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         // is end point hash - next of start point hash
         // place point between findStartPointHash and findEndPointHash
         polygon.pointsByHash[findStartPointHash].nextPoint = pointHash;
@@ -196,16 +199,17 @@ library WeilerAtherton {
         polygon.pointsByHash[pointHash].nextPoint = findEndPointHash;
         //        emit LogPlacePointBetween(pointHash, findStartPointHash, findEndPointHash);
       } else if (polygon.pointsByHash[findStartPointHash].prevPoint == findEndPointHash) {
+        emit LogPlacePointBetween("2", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         // is start point hash - next of end point hash(vice versa)
         // place point between findEndPointHash and findStartPointHash
         polygon.pointsByHash[findEndPointHash].nextPoint = pointHash;
         polygon.pointsByHash[findStartPointHash].prevPoint = pointHash;
         polygon.pointsByHash[pointHash].prevPoint = findEndPointHash;
         polygon.pointsByHash[pointHash].nextPoint = findStartPointHash;
-        //        emit LogPlacePointBetween(pointHash, findEndPointHash, findStartPointHash);
       } else if (polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].nextPoint].intersectionPoint && 
         SegmentUtils.pointOnSegment(point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].nextPoint].latLon))
       {
+        emit LogPlacePointBetween("3", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         pointToReplace = polygon.pointsByHash[findStartPointHash].nextPoint;
 
         polygon.pointsByHash[pointToReplace].prevPoint = pointHash;
@@ -216,6 +220,7 @@ library WeilerAtherton {
       } else if (polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].prevPoint].intersectionPoint && 
         SegmentUtils.pointOnSegment(point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].prevPoint].latLon))
       {
+        emit LogPlacePointBetween("4", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         pointToReplace = polygon.pointsByHash[findStartPointHash].prevPoint;
 
         polygon.pointsByHash[pointToReplace].nextPoint = pointHash;
@@ -226,6 +231,7 @@ library WeilerAtherton {
       } else if (polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].nextPoint].intersectionPoint && 
         SegmentUtils.pointOnSegment(point, polygon.pointsByHash[findEndPointHash].latLon, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].nextPoint].latLon))
       {
+        emit LogPlacePointBetween("5", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         pointToReplace = polygon.pointsByHash[findEndPointHash].nextPoint;
 
         polygon.pointsByHash[pointToReplace].prevPoint = pointHash;
@@ -236,6 +242,7 @@ library WeilerAtherton {
       } else if (polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].prevPoint].intersectionPoint && 
         SegmentUtils.pointOnSegment(point, polygon.pointsByHash[findEndPointHash].latLon, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].prevPoint].latLon))
       {
+        emit LogPlacePointBetween("6", point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
         pointToReplace = polygon.pointsByHash[findEndPointHash].prevPoint;
 
         polygon.pointsByHash[pointToReplace].nextPoint = pointHash;
@@ -244,9 +251,8 @@ library WeilerAtherton {
         polygon.pointsByHash[pointHash].prevPoint = pointToReplace;
 
       } else {
-        emit LogPlacePointBetween(point, polygon.pointsByHash[findStartPointHash].latLon, polygon.pointsByHash[findEndPointHash].latLon);
-        emit LogPlacePointBetween(point, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].nextPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].prevPoint].latLon);
-        emit LogPlacePointBetween(point, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].nextPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].prevPoint].latLon);
+//        emit LogPlacePointBetween(point, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].nextPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[findStartPointHash].prevPoint].latLon);
+//        emit LogPlacePointBetween(point, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].nextPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[findEndPointHash].prevPoint].latLon);
         require(false, "Found intersection point cant be placed in polygon");
       }
       return true;
