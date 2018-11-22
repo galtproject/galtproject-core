@@ -37,7 +37,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    _addRoleTo(_roleManager, ROLE_MANAGER);
+    _addRoleTo(_roleManager, ROLE_ROLE_MANAGER);
   }
 
   function addOwner(address owner) public forbidden {}

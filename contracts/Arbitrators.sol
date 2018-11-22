@@ -38,7 +38,7 @@ contract Arbitrators is Permissionable {
   )
     public
   {
-    _addRoleTo(_roleManager, ROLE_MANAGER);
+    _addRoleTo(_roleManager, ROLE_ROLE_MANAGER);
     arbitratorsMultiSig = _arbitratorsMultiSig;
   }
 

@@ -451,7 +451,7 @@ contract PlotValuation is AbstractOracleApplication {
       uint256 firstValuation,
       uint256 secondValuation,
       bytes32[] attachedDocuments,
-      bytes32[] assignedOracleOracleTypes,
+      bytes32[] assignedOracleTypes,
       uint256 galtSpaceReward,
       uint256 oraclesReward,
       bool galtSpaceRewardPaidOut

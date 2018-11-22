@@ -24,10 +24,10 @@ contract Permissionable {
 
   mapping (string => Roles.Role) private roles;
 
-  string public constant ROLE_MANAGER = "role_manager";
+  string public constant ROLE_ROLE_MANAGER = "role_manager";
 
   constructor() public {
-    _addRoleTo(msg.sender, ROLE_MANAGER);
+    _addRoleTo(msg.sender, ROLE_ROLE_MANAGER);
   }
 
   modifier onlyRole(string _role) {
@@ -44,11 +44,11 @@ contract Permissionable {
     require(roles[_role].has(_account), "Invalid role");
   }
 
-  function addRoleTo(address _account, string _role) public onlyRole(ROLE_MANAGER) {
+  function addRoleTo(address _account, string _role) public onlyRole(ROLE_ROLE_MANAGER) {
     _addRoleTo(_account, _role);
   }
 
-  function removeRoleFrom(address _account, string _role) public onlyRole(ROLE_MANAGER) {
+  function removeRoleFrom(address _account, string _role) public onlyRole(ROLE_ROLE_MANAGER) {
     _removeRoleFrom(_account, _role);
   }
 
