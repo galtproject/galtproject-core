@@ -24,22 +24,22 @@ const NON_EXISTING_APPLICATION = '0x00000000000000000000000000000000000000000000
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, validatorStakes, alice, bob]) => {
   beforeEach(async function() {
-    this.validators = await Validators.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
 
-    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(validatorManager, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorStakes, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(oracleStakeAccounting, await this.oracles.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
   });
 
   describe('roles management', () => {
     beforeEach(async function() {
-      this.res = await this.validators.setApplicationTypeRoles(
+      this.res = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['human', 'cat', 'dog'],
         [25, 30, 45],
@@ -49,23 +49,23 @@ contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, val
     });
 
     it('should provide an ability to set roles for the given type', async function() {
-      let res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
+      let res = await this.oracles.getApplicationTypeRoles(NEW_APPLICATION);
       assert.sameMembers(res.map(hexToUtf8), ['human', 'cat', 'dog']);
-      res = await this.validators.getApplicationTypeRolesCount(NEW_APPLICATION);
+      res = await this.oracles.getApplicationTypeRolesCount(NEW_APPLICATION);
       assert.equal(res.toString(), '3');
 
-      assert.equal(await this.validators.getRoleApplicationType('human'), NEW_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('cat'), NEW_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('dog'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('human'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('cat'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('dog'), NEW_APPLICATION);
 
-      assert.equal(await this.validators.getRoleRewardShare('human'), 25);
-      assert.equal(await this.validators.getRoleRewardShare('cat'), 30);
-      assert.equal(await this.validators.getRoleRewardShare('dog'), 45);
+      assert.equal(await this.oracles.getRoleRewardShare('human'), 25);
+      assert.equal(await this.oracles.getRoleRewardShare('cat'), 30);
+      assert.equal(await this.oracles.getRoleRewardShare('dog'), 45);
     });
 
     it('should prevent non-applicationManager from overwriting an existing application type', async function() {
       await assertRevert(
-        this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
+        this.oracles.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
           from: bob
         })
       );
@@ -73,55 +73,55 @@ contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, val
 
     it('should prevent an applicationManager owerwriting existing application type', async function() {
       await assertRevert(
-        this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
+        this.oracles.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
           from: applicationTypeManager
         })
       );
-      let res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
+      let res = await this.oracles.getApplicationTypeRoles(NEW_APPLICATION);
       assert.sameMembers(res.map(hexToUtf8), ['human', 'cat', 'dog']);
-      res = await this.validators.getApplicationTypeRolesCount(NEW_APPLICATION);
+      res = await this.oracles.getApplicationTypeRolesCount(NEW_APPLICATION);
       assert.equal(res.toString(), '3');
     });
 
     it('should provide an ability to delete all roles of the given type', async function() {
-      assert.equal(await this.validators.getRoleRewardShare('human'), '25');
+      assert.equal(await this.oracles.getRoleRewardShare('human'), '25');
 
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
+      await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
 
-      const res = await this.validators.getApplicationTypeRoles(NEW_APPLICATION);
+      const res = await this.oracles.getApplicationTypeRoles(NEW_APPLICATION);
       assert.equal(res.length, 0);
 
-      assert.equal(await this.validators.getRoleApplicationType('human'), NON_EXISTING_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('cat'), NON_EXISTING_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('dog'), NON_EXISTING_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('human'), NON_EXISTING_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('cat'), NON_EXISTING_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('dog'), NON_EXISTING_APPLICATION);
 
-      assert.equal(await this.validators.getRoleRewardShare('human'), 0);
-      assert.equal(await this.validators.getRoleRewardShare('cat'), 0);
-      assert.equal(await this.validators.getRoleRewardShare('dog'), 0);
+      assert.equal(await this.oracles.getRoleRewardShare('human'), 0);
+      assert.equal(await this.oracles.getRoleRewardShare('cat'), 0);
+      assert.equal(await this.oracles.getRoleRewardShare('dog'), 0);
     });
 
     it('should allow add a brand new list of roles after deletion', async function() {
-      await this.validators.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
-      await this.validators.setApplicationTypeRoles(
+      await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: applicationTypeManager });
+      await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['foo', 'bar', 'buzz'],
         [30, 30, 40],
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      assert.equal(await this.validators.getRoleApplicationType('foo'), NEW_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('bar'), NEW_APPLICATION);
-      assert.equal(await this.validators.getRoleApplicationType('buzz'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('foo'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('bar'), NEW_APPLICATION);
+      assert.equal(await this.oracles.getRoleApplicationType('buzz'), NEW_APPLICATION);
 
-      assert.equal(await this.validators.getRoleRewardShare('foo'), 30);
-      assert.equal(await this.validators.getRoleRewardShare('bar'), 30);
-      assert.equal(await this.validators.getRoleRewardShare('buzz'), 40);
+      assert.equal(await this.oracles.getRoleRewardShare('foo'), 30);
+      assert.equal(await this.oracles.getRoleRewardShare('bar'), 30);
+      assert.equal(await this.oracles.getRoleRewardShare('buzz'), 40);
     });
   });
 
-  describe('validators management', () => {
+  describe('oracles management', () => {
     beforeEach(async function() {
-      const res = await this.validators.setApplicationTypeRoles(
+      const res = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['🦄', '🦆', '🦋'],
         [30, 30, 40],
@@ -132,38 +132,38 @@ contract('Validators', ([coreTeam, validatorManager, applicationTypeManager, val
     });
 
     describe('#addValidator()', () => {
-      it('should allow an validatorManager to assign validators', async function() {
-        await this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: validatorManager });
+      it('should allow an validatorManager to assign oracles', async function() {
+        await this.oracles.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: validatorManager });
       });
 
       it('should deny an validatorManager to assign validator with non-existent role', async function() {
         await assertRevert(
-          this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: validatorManager })
+          this.oracles.addValidator(alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: validatorManager })
         );
       });
 
-      it('should deny any other person than validatorManager to assign validators', async function() {
-        await assertRevert(this.validators.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: alice }));
+      it('should deny any other person than validatorManager to assign oracles', async function() {
+        await assertRevert(this.oracles.addValidator(alice, 'Alice', 'sezu06', [], ['🦄'], { from: alice }));
       });
     });
 
     describe('#removeValidator()', () => {
-      it('should allow an ower to remove validators', async function() {
-        await this.validators.removeValidator(alice, { from: validatorManager });
+      it('should allow an ower to remove oracles', async function() {
+        await this.oracles.removeValidator(alice, { from: validatorManager });
       });
 
-      it('should deny any other person than validatorManager to remove validators', async function() {
-        await assertRevert(this.validators.removeValidator(alice, { from: alice }));
+      it('should deny any other person than validatorManager to remove oracles', async function() {
+        await assertRevert(this.oracles.removeValidator(alice, { from: alice }));
       });
     });
 
     describe('#isValidatorActive()', () => {
       it('return true if validator is active and has deposited his stake', async function() {
-        assert(!(await this.validators.isValidatorActive(alice)));
-        await this.validators.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: validatorManager });
-        assert(await this.validators.isValidatorActive(alice));
-        await this.validators.removeValidator(alice, { from: validatorManager });
-        assert(!(await this.validators.isValidatorActive(alice)));
+        assert(!(await this.oracles.isValidatorActive(alice)));
+        await this.oracles.addValidator(alice, 'Alice', 'IN', [], ['🦄'], { from: validatorManager });
+        assert(await this.oracles.isValidatorActive(alice));
+        await this.oracles.removeValidator(alice, { from: validatorManager });
+        assert(!(await this.oracles.isValidatorActive(alice)));
       });
     });
   });

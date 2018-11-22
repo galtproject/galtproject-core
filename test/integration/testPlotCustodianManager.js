@@ -117,8 +117,8 @@ contract('PlotCustodianManager', (accounts) => {
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
-    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
+    this.oracleStakeAccounting = await ValidatorStakes.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
@@ -136,7 +136,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.plotManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
-      this.validators.address,
+      this.oracles.address,
       this.galtToken.address,
       galtSpaceOrg,
       {
@@ -146,7 +146,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.plotValuation.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
-      this.validators.address,
+      this.oracles.address,
       this.galtToken.address,
       galtSpaceOrg,
       {
@@ -156,7 +156,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.plotCustodianManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
-      this.validators.address,
+      this.oracles.address,
       this.galtToken.address,
       // PlotEscrow integration doesn't required here
       zeroAddress,
@@ -168,20 +168,20 @@ contract('PlotCustodianManager', (accounts) => {
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
       from: coreTeam
     });
     await this.plotManager.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotValuation.setFeeManager(feeManager, true, { from: coreTeam });
     await this.plotCustodianManager.setFeeManager(feeManager, true, { from: coreTeam });
 
-    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(validatorManager, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
 
@@ -204,11 +204,11 @@ contract('PlotCustodianManager', (accounts) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.validators.setRoleMinimalDeposit(PV_APPRAISER_ROLE, ether(30), { from: applicationTypeManager });
-    await this.validators.setRoleMinimalDeposit(PV_APPRAISER2_ROLE, ether(30), { from: applicationTypeManager });
-    await this.validators.setRoleMinimalDeposit(PV_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
-    await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(30), { from: applicationTypeManager });
-    await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setRoleMinimalDeposit(PV_APPRAISER_ROLE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setRoleMinimalDeposit(PV_APPRAISER2_ROLE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setRoleMinimalDeposit(PV_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(30), { from: applicationTypeManager });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
@@ -318,7 +318,7 @@ contract('PlotCustodianManager', (accounts) => {
 
   describe('application pipeline for GALT', () => {
     beforeEach(async function() {
-      this.resNewAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resNewAddRoles = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['foo', 'bar', 'buzz'],
         [50, 25, 25],
@@ -326,14 +326,14 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resClarificationAddRoles = await this.oracles.setApplicationTypeRoles(
         VALUATION_APPLICATION,
         [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
         [50, 25, 25],
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resClarificationAddRoles = await this.oracles.setApplicationTypeRoles(
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
         [60, 40],
@@ -341,30 +341,30 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
+      await this.oracles.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
       });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+      await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
         from: validatorManager
       });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
+      await this.oracles.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
         from: validatorManager
       });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE, PC_AUDITOR_ROLE], {
+      await this.oracles.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE, PC_AUDITOR_ROLE], {
         from: validatorManager
       });
 
-      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
-      await this.validatorStakes.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
 
       const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
@@ -666,7 +666,7 @@ contract('PlotCustodianManager', (accounts) => {
 
   describe('application pipeline for ETH', () => {
     beforeEach(async function() {
-      this.resNewAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resNewAddRoles = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['foo', 'bar', 'buzz'],
         [50, 25, 25],
@@ -674,14 +674,14 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resClarificationAddRoles = await this.oracles.setApplicationTypeRoles(
         VALUATION_APPLICATION,
         [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
         [50, 25, 25],
         ['', '', ''],
         { from: applicationTypeManager }
       );
-      this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resClarificationAddRoles = await this.oracles.setApplicationTypeRoles(
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
         [60, 40],
@@ -689,29 +689,29 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
+      await this.oracles.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE, 'foo'], {
         from: validatorManager
       });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+      await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
         from: validatorManager
       });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
+      await this.oracles.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, 'buzz'], {
         from: validatorManager
       });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE, PC_AUDITOR_ROLE], {
+      await this.oracles.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE, PC_AUDITOR_ROLE], {
         from: validatorManager
       });
-      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
-      await this.validatorStakes.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(bob, 'foo', ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PV_APPRAISER_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, PC_CUSTODIAN_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, PC_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, PV_APPRAISER2_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, PV_AUDITOR_ROLE, ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ROLE, ether(30), { from: alice });
 
       const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
 

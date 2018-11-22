@@ -93,7 +93,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotManager.initialize(
       spaceToken.address,
       splitMerge.address,
-      validators.address,
+      oracles.address,
       galtToken.address,
       coreTeam,
       {
@@ -104,7 +104,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotClarification.initialize(
       spaceToken.address,
       splitMerge.address,
-      validators.address,
+      oracles.address,
       galtToken.address,
       coreTeam,
       {
@@ -115,7 +115,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotValuation.initialize(
       spaceToken.address,
       splitMerge.address,
-      validators.address,
+      oracles.address,
       galtToken.address,
       coreTeam,
       {
@@ -126,7 +126,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotCustodian.initialize(
       spaceToken.address,
       splitMerge.address,
-      validators.address,
+      oracles.address,
       galtToken.address,
       plotEscrow.address,
       coreTeam,
@@ -138,7 +138,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotEscrow.initialize(
       spaceToken.address,
       plotCustodian.address,
-      validators.address,
+      oracles.address,
       galtToken.address,
       coreTeam,
       {
@@ -160,10 +160,10 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await claimManager.initialize(validators.address, galtToken.address, validatorStakes.address, coreTeam, {
+    await claimManager.initialize(oracles.address, galtToken.address, oracleStakeAccounting.address, coreTeam, {
       from: coreTeam
     });
-    await validatorStakes.initialize(validators.address, galtToken.address, coreTeam, {
+    await oracleStakeAccounting.initialize(oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
     });
 
@@ -180,10 +180,10 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
-    await validators.addRoleTo(coreTeam, await validators.ROLE_VALIDATOR_MANAGER(), { from: coreTeam });
-    await validators.addRoleTo(coreTeam, await validators.ROLE_APPLICATION_TYPE_MANAGER(), { from: coreTeam });
-    await validators.addRoleTo(validatorStakes.address, await validators.ROLE_VALIDATOR_STAKES(), { from: coreTeam });
-    await validatorStakes.addRoleTo(claimManager.address, await validatorStakes.ROLE_SLASH_MANAGER(), {
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_VALIDATOR_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_APPLICATION_TYPE_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(oracleStakeAccounting.address, await oracles.ROLE_VALIDATOR_STAKES(), { from: coreTeam });
+    await oracleStakeAccounting.addRoleTo(claimManager.address, await oracleStakeAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 
@@ -260,10 +260,10 @@ module.exports = async function(deployer, network, accounts) {
             spaceDexAbi: spaceDex.abi,
             claimManagerAddress: claimManager.address,
             claimManagerAbi: claimManager.abi,
-            validatorsAddress: validators.address,
-            validatorsAbi: validators.abi,
-            validatorStakesAddress: validatorStakes.address,
-            validatorStakesAbi: validatorStakes.abi
+            validatorsAddress: oracles.address,
+            validatorsAbi: oracles.abi,
+            validatorStakesAddress: oracleStakeAccounting.address,
+            validatorStakesAbi: oracleStakeAccounting.abi
           },
           null,
           2

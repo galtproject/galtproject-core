@@ -100,8 +100,8 @@ contract('PlotManager', accounts => {
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
-    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
+    this.oracleStakeAccounting = await ValidatorStakes.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
@@ -118,14 +118,14 @@ contract('PlotManager', accounts => {
     await this.plotManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
-      this.validators.address,
+      this.oracles.address,
       this.galtToken.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
       from: coreTeam
     });
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
@@ -140,25 +140,25 @@ contract('PlotManager', accounts => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(coreTeam, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
 
-    await this.validators.setRoleMinimalDeposit('foo', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('bar', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('buzz', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('human', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('dog', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('cat', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('🦋', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('🦆', ether(30), { from: coreTeam });
-    await this.validators.setRoleMinimalDeposit('🦄', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('foo', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('bar', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('buzz', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('human', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('dog', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('cat', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('🦋', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('🦆', ether(30), { from: coreTeam });
+    await this.oracles.setRoleMinimalDeposit('🦄', ether(30), { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
@@ -283,7 +283,7 @@ contract('PlotManager', accounts => {
 
   describe('application pipeline for GALT payment method', () => {
     beforeEach(async function() {
-      this.resAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resAddRoles = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['🦄', '🦆', '🦋'],
         [25, 30, 45],
@@ -380,8 +380,8 @@ contract('PlotManager', accounts => {
         });
 
         it('should calculate validator rewards according to their roles share', async function() {
-          await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-          this.resAddRoles = await this.validators.setApplicationTypeRoles(
+          await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+          this.resAddRoles = await this.oracles.setApplicationTypeRoles(
             NEW_APPLICATION,
             ['cat', 'dog', 'human'],
             [52, 47, 1],
@@ -427,14 +427,14 @@ contract('PlotManager', accounts => {
     describe('#closeApplication()', () => {
       describe('with status REVERTED', () => {
         it('should change status to CLOSED', async function() {
-          await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
-          await this.validators.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
-          await this.validators.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
+          await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
+          await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
+          await this.oracles.addValidator(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
 
-          await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-          await this.validatorStakes.stake(charlie, '🦄', ether(30), { from: alice });
-          await this.validatorStakes.stake(dan, '🦆', ether(30), { from: alice });
-          await this.validatorStakes.stake(eve, '🦋', ether(30), { from: alice });
+          await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+          await this.oracleStakeAccounting.stake(charlie, '🦄', ether(30), { from: alice });
+          await this.oracleStakeAccounting.stake(dan, '🦆', ether(30), { from: alice });
+          await this.oracleStakeAccounting.stake(eve, '🦋', ether(30), { from: alice });
 
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
           await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
@@ -451,25 +451,25 @@ contract('PlotManager', accounts => {
     // TODO: fix resubmission fee values after area calculation logic be ready
     describe('#resubmitApplication()', () => {
       beforeEach(async function() {
-        await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+        await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+        this.resAddRoles = await this.oracles.setApplicationTypeRoles(
           NEW_APPLICATION,
           ['cat', 'dog', 'human'],
           [52, 47, 1],
           ['', '', ''],
           { from: coreTeam }
         );
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
         //
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
-        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
 
         await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
         const res = await this.plotManager.submitApplication(
@@ -554,25 +554,25 @@ contract('PlotManager', accounts => {
     // TODO: implement after area calculation logic be ready
     describe.skip('#withdrawSubmissionFee()', () => {
       beforeEach(async function() {
-        await this.validators.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+        await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
+        this.resAddRoles = await this.oracles.setApplicationTypeRoles(
           NEW_APPLICATION,
           ['cat', 'dog', 'human'],
           [52, 47, 1],
           ['', '', ''],
           { from: coreTeam }
         );
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(dan, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(eve, 'cat', ether(30), { from: alice });
-        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, 'cat', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
@@ -629,8 +629,8 @@ contract('PlotManager', accounts => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        await this.validators.deleteApplicationType(NEW_APPLICATION);
-        this.resAddRoles = await this.validators.setApplicationTypeRoles(
+        await this.oracles.deleteApplicationType(NEW_APPLICATION);
+        this.resAddRoles = await this.oracles.setApplicationTypeRoles(
           NEW_APPLICATION,
           ['human', 'dog', 'cat'],
           [50, 25, 25],
@@ -656,17 +656,17 @@ contract('PlotManager', accounts => {
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-        await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
-        await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
-        await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -738,7 +738,7 @@ contract('PlotManager', accounts => {
       });
 
       describe('on close', () => {
-        it('should allow validators claim reward after reject', async function() {
+        it('should allow oracles claim reward after reject', async function() {
           await this.plotManager.revertApplication(this.aId, this.credentials, { from: bob });
           await this.plotManager.closeApplication(this.aId, { from: alice });
 
@@ -771,7 +771,7 @@ contract('PlotManager', accounts => {
 
   describe('application pipeline for ETH', () => {
     beforeEach(async function() {
-      this.resAddRoles = await this.validators.setApplicationTypeRoles(
+      this.resAddRoles = await this.oracles.setApplicationTypeRoles(
         NEW_APPLICATION,
         ['human', 'dog', 'cat'],
         [50, 25, 25],
@@ -799,17 +799,17 @@ contract('PlotManager', accounts => {
       this.packageTokenId = res.packageTokenId;
       assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+      await this.oracles.addValidator(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+      await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+      await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+      await this.oracles.addValidator(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-      await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-      await this.validatorStakes.stake(bob, 'human', ether(30), { from: alice });
-      await this.validatorStakes.stake(charlie, 'human', ether(30), { from: alice });
-      await this.validatorStakes.stake(dan, 'cat', ether(30), { from: alice });
-      await this.validatorStakes.stake(eve, 'dog', ether(30), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
     });
 
     describe('#submitApplication()', () => {
@@ -1058,7 +1058,7 @@ contract('PlotManager', accounts => {
     });
 
     describe('#lockApplicationForReview()', () => {
-      it('should allow multiple validators of different roles to lock a submitted application', async function() {
+      it('should allow multiple oracles of different roles to lock a submitted application', async function() {
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
 
@@ -1084,7 +1084,7 @@ contract('PlotManager', accounts => {
         await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
       });
 
-      it('should push an application id to the validators list for caching', async function() {
+      it('should push an application id to the oracles list for caching', async function() {
         let res = await this.plotManager.submitApplication(
           this.contour,
           this.heights,
@@ -1229,7 +1229,7 @@ contract('PlotManager', accounts => {
 
       // eslint-disable-next-line
       it("should deny validator whose role doesnt present in application type to approve application", async function() {
-        await this.validators.setApplicationTypeRoles(
+        await this.oracles.setApplicationTypeRoles(
           ANOTHER_APPLICATION,
           ['foo', 'bar', 'buzz'],
           [50, 25, 25],
@@ -1237,10 +1237,10 @@ contract('PlotManager', accounts => {
           { from: coreTeam }
         );
 
-        await this.validators.addValidator(frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
+        await this.oracles.addValidator(frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(150), { from: alice });
-        await this.validatorStakes.stake(frank, 'foo', ether(30), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
+        await this.oracleStakeAccounting.stake(frank, 'foo', ether(30), { from: alice });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
       });
 
@@ -1281,7 +1281,7 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
-      it('should not reset validation statuses of another validators', async function() {
+      it('should not reset validation statuses of another oracles', async function() {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
         await this.plotManager.revertApplication(this.aId, 'it looks suspicious', { from: eve });
 
@@ -1412,7 +1412,7 @@ contract('PlotManager', accounts => {
       });
 
       describe('on reject', () => {
-        it('should allow validators claim reward after reject', async function() {
+        it('should allow oracles claim reward after reject', async function() {
           await this.plotManager.rejectApplication(this.aId, this.credentials, { from: bob });
 
           const bobsInitialBalance = await web3.eth.getBalance(bob);
@@ -1448,7 +1448,7 @@ contract('PlotManager', accounts => {
       });
 
       describe('on reject', () => {
-        it('should allow validators claim reward after reject', async function() {
+        it('should allow oracles claim reward after reject', async function() {
           await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
           await this.plotManager.closeApplication(this.aId, { from: alice });
 

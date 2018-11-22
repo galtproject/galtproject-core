@@ -62,7 +62,7 @@ module.exports = async function(deployer, network, accounts) {
     const PM_AUDITOR_ROLE = 'pm_auditor';
 
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(
+    await oracles.setApplicationTypeRoles(
       PLOT_MANAGER_APPLICATION_TYPE,
       [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE],
       [75, 25],
@@ -76,7 +76,7 @@ module.exports = async function(deployer, network, accounts) {
     const PCL_AUDITOR_ROLE = 'pcl_auditor';
 
     const PLOT_CLARIFICATION_APPLICATION_TYPE = await plotClarification.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(
+    await oracles.setApplicationTypeRoles(
       PLOT_CLARIFICATION_APPLICATION_TYPE,
       [PCL_CADASTRAL_ROLE, PCL_AUDITOR_ROLE],
       [75, 25],
@@ -91,7 +91,7 @@ module.exports = async function(deployer, network, accounts) {
     const PV_AUDITOR_ROLE = await plotValuation.PV_AUDITOR_ROLE.call();
 
     const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(
+    await oracles.setApplicationTypeRoles(
       PLOT_VALUATION_APPLICATION_TYPE,
       [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
       [35, 35, 30],
@@ -105,7 +105,7 @@ module.exports = async function(deployer, network, accounts) {
     const PC_AUDITOR_ROLE = await plotCustodian.PC_AUDITOR_ROLE.call();
 
     const PLOT_CUSTODIAN_APPLICATION_TYPE = await plotCustodian.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(
+    await oracles.setApplicationTypeRoles(
       PLOT_CUSTODIAN_APPLICATION_TYPE,
       [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
       [75, 25],
@@ -117,7 +117,7 @@ module.exports = async function(deployer, network, accounts) {
 
     const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
     const CLAIM_MANAGER_APPLICATION_TYPE = await claimManager.APPLICATION_TYPE.call();
-    await validators.setApplicationTypeRoles(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
+    await oracles.setApplicationTypeRoles(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
       from: coreTeam
     });
 
@@ -216,12 +216,12 @@ module.exports = async function(deployer, network, accounts) {
 
     await galtDex.exchangeEthToGalt({ from: coreTeam, value: ether(needGaltForDeposits) });
 
-    await galtToken.approve(validatorStakes.address, ether(needGaltForDeposits), { from: coreTeam });
+    await galtToken.approve(oracleStakeAccounting.address, ether(needGaltForDeposits), { from: coreTeam });
 
     const rolesPromises = [];
     _.forEach(allRoles, roleName => {
       const minDeposit = ether(minDepositGalt[roleName]);
-      rolesPromises.push(validators.setRoleMinimalDeposit(roleName, minDeposit, { from: coreTeam }));
+      rolesPromises.push(oracles.setRoleMinimalDeposit(roleName, minDeposit, { from: coreTeam }));
     });
     await Promise.all(rolesPromises);
 
@@ -230,10 +230,10 @@ module.exports = async function(deployer, network, accounts) {
       if (validatorsSpecificRoles[name]) {
         promises.push(
           new Promise(async resolve => {
-            await validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam });
+            await oracles.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam });
 
             const validatorPromises = validatorsSpecificRoles[name].map(roleName =>
-              validatorStakes.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
+              oracleStakeAccounting.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
             );
 
             Promise.all(validatorPromises).then(resolve);
@@ -244,8 +244,8 @@ module.exports = async function(deployer, network, accounts) {
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(spaceDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(validators.addRoleTo(address, 'validator_manager', { from: coreTeam }));
-        promises.push(validators.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
+        promises.push(oracles.addRoleTo(address, 'validator_manager', { from: coreTeam }));
+        promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));

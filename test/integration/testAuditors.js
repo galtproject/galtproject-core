@@ -19,9 +19,9 @@ const CM_AUDITOR = 'CM_AUDITOR';
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, charlie, dan, eve]) => {
   beforeEach(async function() {
-    this.validators = await Validators.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
     this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, ['0x1', '0x2', '0x3'], 2, { from: coreTeam });
-    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.validators.address, { from: coreTeam });
+    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.oracles.address, { from: coreTeam });
 
     await this.auditors.addRoleTo(coreTeam, await this.auditors.ROLE_MANAGER(), {
       from: coreTeam
@@ -32,15 +32,15 @@ contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, c
     await this.vsMultiSig.addRoleTo(this.auditors.address, await this.vsMultiSig.ROLE_AUDITORS_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(validatorManager, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.auditors.address, await this.validators.ROLE_AUDITOR_MANAGER(), {
+    await this.oracles.addRoleTo(this.auditors.address, await this.oracles.ROLE_AUDITOR_MANAGER(), {
       from: coreTeam
     });
 
     this.auditorsWeb3 = new web3.eth.Contract(this.auditors.abi, this.auditors.address);
-    this.validatorsWeb3 = new web3.eth.Contract(this.validators.abi, this.validators.address);
+    this.validatorsWeb3 = new web3.eth.Contract(this.oracles.abi, this.oracles.address);
     this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
   });
 
@@ -172,12 +172,12 @@ contract('Auditors', ([coreTeam, auditorManager, validatorManager, alice, bob, c
     });
 
     it('should push auditors', async function() {
-      // TODO: add users as a validators
-      await this.validators.addValidator(alice, 'Alice', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+      // TODO: add users as a oracles
+      await this.oracles.addValidator(alice, 'Alice', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
 
       const initialAuditors = [alice, bob, charlie, dan, eve];
       let res = await this.auditorsWeb3.methods.getAuditors().call();

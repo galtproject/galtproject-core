@@ -46,34 +46,34 @@ contract('ValidatorStakes', accounts => {
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
-    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
+    this.oracleStakeAccounting = await ValidatorStakes.new({ from: coreTeam });
 
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, multiSigWallet, {
+    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
       from: coreTeam
     });
-    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(validatorManager, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
-    await this.validatorStakes.addRoleTo(slashManager, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
+    await this.oracleStakeAccounting.addRoleTo(slashManager, await this.oracleStakeAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
-    await this.validators.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
+    await this.oracles.setApplicationTypeRoles(NEW_APPLICATION, ['foo', 'bar', 'buzz'], [30, 30, 40], ['', '', ''], {
       from: applicationTypeManager
     });
-    await this.validators.setApplicationTypeRoles(ESCROW_APPLICATION, [PE_AUDITOR_ROLE], [100], [''], {
+    await this.oracles.setApplicationTypeRoles(ESCROW_APPLICATION, [PE_AUDITOR_ROLE], [100], [''], {
       from: applicationTypeManager
     });
-    this.resClarificationAddRoles = await this.validators.setApplicationTypeRoles(
+    this.resClarificationAddRoles = await this.oracles.setApplicationTypeRoles(
       CUSTODIAN_APPLICATION,
       [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
       [60, 40],
@@ -81,27 +81,27 @@ contract('ValidatorStakes', accounts => {
       { from: applicationTypeManager }
     );
 
-    // assign validators
-    await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
+    // assign oracles
+    await this.oracles.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE, 'foo'], {
       from: validatorManager
     });
-    await this.validators.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
+    await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], ['bar', PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE], {
       from: validatorManager
     });
-    await this.validators.addValidator(dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ROLE], {
+    await this.oracles.addValidator(dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ROLE], {
       from: validatorManager
     });
-    await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
+    await this.oracles.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE, PE_AUDITOR_ROLE], {
       from: validatorManager
     });
 
-    this.validatorStakesWeb3 = new web3.eth.Contract(this.validatorStakes.abi, this.validatorStakes.address);
+    this.validatorStakesWeb3 = new web3.eth.Contract(this.oracleStakeAccounting.abi, this.oracleStakeAccounting.address);
   });
 
   describe('#stake()', () => {
     it('should allow any user stake for validator', async function() {
-      await this.galtToken.approve(this.validatorStakes.address, ether(35), { from: alice });
-      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(35), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
 
       let res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(CM_JUROR)).call();
       assert.equal(res, 0);
@@ -110,16 +110,16 @@ contract('ValidatorStakes', accounts => {
     });
 
     it('should deny staking for non-existing role', async function() {
-      await this.galtToken.approve(this.validatorStakes.address, ether(35), { from: alice });
-      await assertRevert(this.validatorStakes.stake(bob, 'non-exisitng-role', ether(35), { from: alice }));
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(35), { from: alice });
+      await assertRevert(this.oracleStakeAccounting.stake(bob, 'non-exisitng-role', ether(35), { from: alice }));
 
       const res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(CM_JUROR)).call();
       assert.equal(res, 0);
     });
 
     it('should deny staking for non-existing validator', async function() {
-      await this.galtToken.approve(this.validatorStakes.address, ether(35), { from: alice });
-      await assertRevert(this.validatorStakes.stake(alice, CM_JUROR, ether(35), { from: alice }));
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(35), { from: alice });
+      await assertRevert(this.oracleStakeAccounting.stake(alice, CM_JUROR, ether(35), { from: alice }));
 
       const res = await this.validatorStakesWeb3.methods.stakeOf(alice, stringToHex(CM_JUROR)).call();
       assert.equal(res, 0);
@@ -128,7 +128,7 @@ contract('ValidatorStakes', accounts => {
 
   describe('#slash()', () => {
     beforeEach(async function() {
-      await this.validators.addValidator(
+      await this.oracles.addValidator(
         bob,
         'Bob',
         'MN',
@@ -139,36 +139,36 @@ contract('ValidatorStakes', accounts => {
         }
       );
 
-      await this.galtToken.approve(this.validatorStakes.address, ether(1000), { from: alice });
-      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
-      await this.validatorStakes.stake(bob, PC_AUDITOR_ROLE, ether(55), { from: alice });
-      await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(25), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1000), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(35), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_AUDITOR_ROLE, ether(55), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(25), { from: alice });
     });
 
     it('should allow slash manager slashing validator stake', async function() {
-      await this.validatorStakes.slash(bob, PC_AUDITOR_ROLE, ether(18), { from: slashManager });
+      await this.oracleStakeAccounting.slash(bob, PC_AUDITOR_ROLE, ether(18), { from: slashManager });
 
       const res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_AUDITOR_ROLE)).call();
       assert.equal(res, ether(37));
     });
 
     it('should allow slash a stake to a negative value', async function() {
-      await this.validatorStakes.slash(bob, PC_AUDITOR_ROLE, ether(100), { from: slashManager });
+      await this.oracleStakeAccounting.slash(bob, PC_AUDITOR_ROLE, ether(100), { from: slashManager });
 
       const res = await this.validatorStakesWeb3.methods.stakeOf(bob, stringToHex(PC_AUDITOR_ROLE)).call();
       assert.equal(res, ether(-45));
     });
 
     it('should deny non-slashing manager slashing stake', async function() {
-      await assertRevert(this.validatorStakes.slash(bob, PC_AUDITOR_ROLE, ether(100), { from: bob }));
+      await assertRevert(this.oracleStakeAccounting.slash(bob, PC_AUDITOR_ROLE, ether(100), { from: bob }));
     });
 
     it('should deny slashing non-existent role', async function() {
-      await assertRevert(this.validatorStakes.slash(bob, PE_AUDITOR_ROLE, ether(100), { from: slashManager }));
+      await assertRevert(this.oracleStakeAccounting.slash(bob, PE_AUDITOR_ROLE, ether(100), { from: slashManager }));
     });
 
     it('should allow slashing existent role with 0 balance', async function() {
-      await this.validatorStakes.slash(dan, PE_AUDITOR_ROLE, ether(100), { from: slashManager });
+      await this.oracleStakeAccounting.slash(dan, PE_AUDITOR_ROLE, ether(100), { from: slashManager });
 
       const res = await this.validatorStakesWeb3.methods.stakeOf(dan, stringToHex(PE_AUDITOR_ROLE)).call();
       assert.equal(res, ether(-100));

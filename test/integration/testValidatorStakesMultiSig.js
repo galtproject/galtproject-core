@@ -25,7 +25,7 @@ contract('ValidatorStakesMultiSig', accounts => {
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
     this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, [alice, bob, charlie], 2, { from: coreTeam });
     this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
   });

@@ -101,24 +101,24 @@ contract("ClaimManager", (accounts) => {
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.validators = await Validators.new({ from: coreTeam });
+    this.oracles = await Validators.new({ from: coreTeam });
     this.claimManager = await ClaimManager.new({ from: coreTeam });
-    this.validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    this.oracleStakeAccounting = await ValidatorStakes.new({ from: coreTeam });
     // auditors should be explicitly reassigned in order to synchronize MultiSig, Auditors and Validators contract
     this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, [bob, charlie, dan], 2, { from: coreTeam });
-    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.validators.address, { from: coreTeam });
+    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.oracles.address, { from: coreTeam });
 
     await this.claimManager.initialize(
-      this.validators.address,
+      this.oracles.address,
       this.galtToken.address,
-      this.validatorStakes.address,
+      this.oracleStakeAccounting.address,
       this.vsMultiSig.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-    await this.validatorStakes.initialize(this.validators.address, this.galtToken.address, this.vsMultiSig.address, {
+    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, this.vsMultiSig.address, {
       from: coreTeam
     });
 
@@ -136,19 +136,19 @@ contract("ClaimManager", (accounts) => {
     await this.vsMultiSig.addRoleTo(this.claimManager.address, await this.vsMultiSig.ROLE_PROPOSER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(applicationTypeManager, await this.validators.ROLE_APPLICATION_TYPE_MANAGER(), {
+    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(validatorManager, await this.validators.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(validatorManager, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.validatorStakes.address, await this.validators.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_VALIDATOR_STAKES(), {
       from: coreTeam
     });
-    await this.validators.addRoleTo(this.auditors.address, await this.validators.ROLE_AUDITOR_MANAGER(), {
+    await this.oracles.addRoleTo(this.auditors.address, await this.oracles.ROLE_AUDITOR_MANAGER(), {
       from: coreTeam
     });
-    await this.validatorStakes.addRoleTo(this.claimManager.address, await this.validatorStakes.ROLE_SLASH_MANAGER(), {
+    await this.oracleStakeAccounting.addRoleTo(this.claimManager.address, await this.oracleStakeAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 
@@ -162,7 +162,7 @@ contract("ClaimManager", (accounts) => {
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
 
     this.claimManagerWeb3 = new web3.eth.Contract(this.claimManager.abi, this.claimManager.address);
-    this.validatorStakesWeb3 = new web3.eth.Contract(this.validatorStakes.abi, this.validatorStakes.address);
+    this.validatorStakesWeb3 = new web3.eth.Contract(this.oracleStakeAccounting.abi, this.oracleStakeAccounting.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
     this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
   });
@@ -417,10 +417,10 @@ contract("ClaimManager", (accounts) => {
   describe('pipeline', () => {
     beforeEach(async function() {
       await this.claimManager.setNofM(3, 5, { from: coreTeam });
-      await this.validators.setApplicationTypeRoles(CLAIM_VALIDATORS, [CM_AUDITOR], [100], [''], {
+      await this.oracles.setApplicationTypeRoles(CLAIM_VALIDATORS, [CM_AUDITOR], [100], [''], {
         from: applicationTypeManager
       });
-      await this.validators.setApplicationTypeRoles(
+      await this.oracles.setApplicationTypeRoles(
         MY_APPLICATION,
         [PC_AUDITOR_ROLE, PC_CUSTODIAN_ROLE],
         [50, 50],
@@ -430,15 +430,15 @@ contract("ClaimManager", (accounts) => {
         }
       );
 
-      await this.validators.setRoleMinimalDeposit(CM_AUDITOR, ether(300), { from: applicationTypeManager });
-      await this.validators.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(200), { from: applicationTypeManager });
-      await this.validators.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(200), { from: applicationTypeManager });
+      await this.oracles.setRoleMinimalDeposit(CM_AUDITOR, ether(300), { from: applicationTypeManager });
+      await this.oracles.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(200), { from: applicationTypeManager });
+      await this.oracles.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(200), { from: applicationTypeManager });
 
-      await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
-      await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+      await this.oracles.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
 
       await this.auditors.setNofM(3, 5, { from: auditorManager });
       await this.auditors.addAuditor(bob, 280, { from: auditorManager });
@@ -448,12 +448,12 @@ contract("ClaimManager", (accounts) => {
       await this.auditors.addAuditor(frank, 300, { from: auditorManager });
       await this.auditors.pushAuditors([eve, charlie, frank, bob, dan], { from: auditorManager });
 
-      await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
-      await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
-      await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
-      await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
-      await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
-      await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
+      await this.oracleStakeAccounting.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+      await this.oracleStakeAccounting.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+      await this.oracleStakeAccounting.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+      await this.oracleStakeAccounting.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+      await this.oracleStakeAccounting.stake(frank, CM_AUDITOR, ether(300), { from: alice });
 
       const res = await this.claimManager.submit(
         alice,
@@ -612,7 +612,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.from.toLowerCase(), bob);
         assert.equal(res.message, 'good enough');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.validators.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [dan]);
         assert.sameMembers(res.roles.map(web3.utils.hexToString), [CM_AUDITOR]);
         assert.sameMembers(res.fines, [ether(20)]);
 
@@ -620,7 +620,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.from.toLowerCase(), dan);
         assert.equal(res.message, 'looks good');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.validators.map(a => a.toLowerCase()), [bob, eve]);
+        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [bob, eve]);
         assert.sameMembers(res.roles.map(web3.utils.hexToString), [CM_AUDITOR, CM_AUDITOR]);
         assert.sameMembers(res.fines, [ether(10), ether(20)]);
       });
@@ -766,7 +766,7 @@ contract("ClaimManager", (accounts) => {
         assert.sameMembers(res.votesFor, []);
       });
 
-      it('should deny validators with non-locked slots voting', async function() {
+      it('should deny oracles with non-locked slots voting', async function() {
         await assertRevert(this.claimManager.vote(this.cId, this.pId1, { from: eve }));
       });
 
@@ -849,15 +849,15 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsThreshold, 3);
         assert.equal(res.totalSlots, 5);
 
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE], { from: validatorManager });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ROLE], { from: validatorManager });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], [PC_AUDITOR_ROLE], { from: validatorManager });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(600), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(600), { from: alice });
 
-        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(200), { from: alice });
-        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(200), { from: alice });
-        await this.validatorStakes.stake(dan, PC_AUDITOR_ROLE, ether(200), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(200), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ROLE, ether(200), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, PC_AUDITOR_ROLE, ether(200), { from: alice });
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -894,18 +894,18 @@ contract("ClaimManager", (accounts) => {
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(200));
 
-        res = await this.validators.isValidatorActive(bob);
+        res = await this.oracles.isValidatorActive(bob);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, true);
 
-        res = await this.validators.isValidatorActive(eve);
+        res = await this.oracles.isValidatorActive(eve);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -919,18 +919,18 @@ contract("ClaimManager", (accounts) => {
         res = await this.validatorStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ROLE)).call();
         assert.equal(res, ether(180));
         //
-        res = await this.validators.isValidatorActive(bob);
+        res = await this.oracles.isValidatorActive(bob);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, false);
 
-        res = await this.validators.isValidatorActive(eve);
+        res = await this.oracles.isValidatorActive(eve);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, false);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
@@ -940,22 +940,22 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
         // staking back
-        await this.galtToken.approve(this.validatorStakes.address, ether(30), { from: alice });
-        await this.validatorStakes.stake(bob, PC_CUSTODIAN_ROLE, ether(10), { from: alice });
-        await this.validatorStakes.stake(eve, PC_AUDITOR_ROLE, ether(20), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(30), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ROLE, ether(10), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ROLE, ether(20), { from: alice });
 
-        res = await this.validators.isValidatorActive(bob);
+        res = await this.oracles.isValidatorActive(bob);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
+        res = await this.oracles.isValidatorRoleActive(bob, PC_CUSTODIAN_ROLE);
         assert.equal(res, true);
 
-        res = await this.validators.isValidatorActive(eve);
+        res = await this.oracles.isValidatorActive(eve);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleAssigned(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
-        res = await this.validators.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
+        res = await this.oracles.isValidatorRoleActive(eve, PC_AUDITOR_ROLE);
         assert.equal(res, true);
       });
 
@@ -1030,18 +1030,18 @@ contract("ClaimManager", (accounts) => {
         // override default which paid by ETH
         this.cId = res.logs[0].args.id;
 
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
-        await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(frank, CM_AUDITOR, ether(300), { from: alice });
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -1121,7 +1121,7 @@ contract("ClaimManager", (accounts) => {
             await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
           });
 
-          it('should allow validators claiming their rewards', async function() {
+          it('should allow oracles claiming their rewards', async function() {
             const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
             const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
             const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
@@ -1143,7 +1143,7 @@ contract("ClaimManager", (accounts) => {
             assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(10.2225));
           });
 
-          it('should deny validators claiming their rewards twice', async function() {
+          it('should deny oracles claiming their rewards twice', async function() {
             await this.claimManager.claimValidatorReward(this.cId, { from: bob });
             await this.claimManager.claimValidatorReward(this.cId, { from: dan });
             await this.claimManager.claimValidatorReward(this.cId, { from: charlie });
@@ -1171,7 +1171,7 @@ contract("ClaimManager", (accounts) => {
             assert.equal(res.totalSlots, '5');
           });
 
-          it('should allow validators claiming their rewards', async function() {
+          it('should allow oracles claiming their rewards', async function() {
             const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
             const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
             const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
@@ -1189,7 +1189,7 @@ contract("ClaimManager", (accounts) => {
             assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(13.63));
           });
 
-          it('should deny validators claiming their rewards twice', async function() {
+          it('should deny oracles claiming their rewards twice', async function() {
             await this.claimManager.claimValidatorReward(this.cId, { from: bob });
             await this.claimManager.claimValidatorReward(this.cId, { from: dan });
             await this.claimManager.claimValidatorReward(this.cId, { from: eve });
@@ -1199,7 +1199,7 @@ contract("ClaimManager", (accounts) => {
             await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
           });
 
-          it('should deny validators who dont locked application claiming revards', async function() {
+          it('should deny oracles who dont locked application claiming revards', async function() {
             await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: charlie }));
           });
         });
@@ -1221,7 +1221,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.totalSlots, '5');
         });
 
-        it('should allow validators claiming their rewards', async function() {
+        it('should allow oracles claiming their rewards', async function() {
           const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
           const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
           const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
@@ -1239,7 +1239,7 @@ contract("ClaimManager", (accounts) => {
           assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(13.63));
         });
 
-        it('should deny validators claiming their rewards twice', async function() {
+        it('should deny oracles claiming their rewards twice', async function() {
           await this.claimManager.claimValidatorReward(this.cId, { from: bob });
           await this.claimManager.claimValidatorReward(this.cId, { from: dan });
           await this.claimManager.claimValidatorReward(this.cId, { from: eve });
@@ -1249,7 +1249,7 @@ contract("ClaimManager", (accounts) => {
           await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: eve }));
         });
 
-        it('should deny validators who dont locked application claiming revards', async function() {
+        it('should deny oracles who dont locked application claiming revards', async function() {
           await assertRevert(this.claimManager.claimValidatorReward(this.cId, { from: charlie }));
         });
       });
@@ -1270,18 +1270,18 @@ contract("ClaimManager", (accounts) => {
         // override default which paid by ETH
         this.cId = res.logs[0].args.id;
 
-        await this.validators.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
-        await this.validators.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(bob, 'Bob', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(charlie, 'Charlie', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(dan, 'Dan', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(eve, 'Eve', 'MN', [], [], { from: validatorManager });
+        await this.oracles.addValidator(frank, 'Frank', 'MN', [], [], { from: validatorManager });
 
-        await this.galtToken.approve(this.validatorStakes.address, ether(1500), { from: alice });
-        await this.validatorStakes.stake(bob, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(dan, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(eve, CM_AUDITOR, ether(300), { from: alice });
-        await this.validatorStakes.stake(frank, CM_AUDITOR, ether(300), { from: alice });
+        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
+        await this.oracleStakeAccounting.stake(bob, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(charlie, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(dan, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(eve, CM_AUDITOR, ether(300), { from: alice });
+        await this.oracleStakeAccounting.stake(frank, CM_AUDITOR, ether(300), { from: alice });
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -1339,7 +1339,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.totalSlots, '5');
         });
 
-        it('should allow validators claiming their rewards', async function() {
+        it('should allow oracles claiming their rewards', async function() {
           const bobBalanceBefore = await web3.eth.getBalance(bob);
           const danBalanceBefore = await web3.eth.getBalance(dan);
           const eveBalanceBefore = await web3.eth.getBalance(eve);
@@ -1373,7 +1373,7 @@ contract("ClaimManager", (accounts) => {
           assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
         });
 
-        it('should deny validators claiming their rewards twice', async function() {
+        it('should deny oracles claiming their rewards twice', async function() {
           await this.claimManager.claimValidatorReward(this.cId, { from: bob });
           await this.claimManager.claimValidatorReward(this.cId, { from: dan });
           await this.claimManager.claimValidatorReward(this.cId, { from: eve });
@@ -1403,7 +1403,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.totalSlots, '5');
         });
 
-        it('should allow validators claiming their rewards', async function() {
+        it('should allow oracles claiming their rewards', async function() {
           const bobBalanceBefore = await web3.eth.getBalance(bob);
           const danBalanceBefore = await web3.eth.getBalance(dan);
           const eveBalanceBefore = await web3.eth.getBalance(eve);
@@ -1429,7 +1429,7 @@ contract("ClaimManager", (accounts) => {
           assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
         });
 
-        it('should deny validators claiming their rewards twice', async function() {
+        it('should deny oracles claiming their rewards twice', async function() {
           await this.claimManager.claimValidatorReward(this.cId, { from: bob });
           await this.claimManager.claimValidatorReward(this.cId, { from: dan });
           await this.claimManager.claimValidatorReward(this.cId, { from: eve });
