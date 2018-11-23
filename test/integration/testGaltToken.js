@@ -3,19 +3,20 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { ether, assertRevert } = require('../helpers');
+const { initHelperWeb3, ether, assertRevert } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+initHelperWeb3(web3);
 
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltToken', ([deployer, alice, bob]) => {
+contract.only('GaltToken', ([deployer, alice, bob]) => {
   beforeEach(async function() {
     this.galtTokenTruffle = await GaltToken.new({ from: deployer });
     this.galtToken = new web3.eth.Contract(this.galtTokenTruffle.abi, this.galtTokenTruffle.address);
