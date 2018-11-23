@@ -31,10 +31,6 @@ contract ClaimManager is AbstractApplication {
   // `ClaimManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
 
-  // `CM_JUROR` bytes32 representation hash
-  // TODO: rename to CM_AUDITOR_ORACLE_TYPE
-  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
-
   // `bytes4(keccak256('transfer(address,uint256)'))`
   bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
 
@@ -64,7 +60,6 @@ contract ClaimManager is AbstractApplication {
     uint256 amount;
     bytes32 chosenProposal;
     uint256 messageCount;
-    // TODO: replace m & n
     uint256 m;
     uint256 n;
 
@@ -97,7 +92,7 @@ contract ClaimManager is AbstractApplication {
     string message;
     uint256 amount;
     address[] oracles;
-    bytes32[] roles;
+    bytes32[] oracleTypes;
     uint256[] fines;
   }
 
@@ -111,10 +106,10 @@ contract ClaimManager is AbstractApplication {
   mapping(bytes32 => Claim) claims;
 
   // arbitrators count required to
-  uint256 public n;
+  uint256 public m;
 
   // total arbitrators count able to lock the claim
-  uint256 public m;
+  uint256 public n;
 
   Oracles oracles;
   OracleStakesAccounting oracleStakesAccounting;
@@ -123,19 +118,19 @@ contract ClaimManager is AbstractApplication {
   mapping(address => bytes32[]) applicationsByArbitrator;
 
   modifier onlyArbitrator() {
-    arbitratorsMultiSig.isOwner(msg.sender);
+    require(arbitratorsMultiSig.isOwner(msg.sender), "Invalid arbitrator");
 
     _;
   }
 
   constructor () public {}
 
-  function setNofM(uint256 _n, uint256 _m) external onlyRole(ROLE_GALT_SPACE) {
-    require(2 <= _n, "Should satisfy `2 <= n`");
-    require(_n <= _m, "Should satisfy `n <= m`");
+  function setMofN(uint256 _m, uint256 _n) external onlyRole(ROLE_GALT_SPACE) {
+    require(2 <= _m, "Should satisfy `2 <= n`");
+    require(_m <= _n, "Should satisfy `n <= m`");
 
-    n = _n;
     m = _m;
+    n = _n;
   }
 
   function initialize(
@@ -154,8 +149,8 @@ contract ClaimManager is AbstractApplication {
     arbitratorsMultiSig = _arbitratorsMultiSig;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
-    n = 3;
-    m = 5;
+    m = 3;
+    n = 5;
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
@@ -248,11 +243,11 @@ contract ClaimManager is AbstractApplication {
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(c.arbitrators.size() < m, "All arbitrator slots are locked");
+    require(c.arbitrators.size() < n, "All arbitrator slots are locked");
 
     c.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), m);
+    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n);
   }
 
   /**
@@ -292,7 +287,7 @@ contract ClaimManager is AbstractApplication {
     p.message = _msg;
     p.amount = _amount;
     p.oracles = _a;
-    p.roles = _r;
+    p.oracleTypes = _r;
     p.fines = _f;
 
     c.proposalDetails[id] = p;
@@ -352,13 +347,13 @@ contract ClaimManager is AbstractApplication {
 
     _voteFor(c, _pId);
 
-    if (p.votesFor.size() == c.n) {
+    if (p.votesFor.size() == c.m) {
       c.chosenProposal = _pId;
       calculateAndStoreAuditorRewards(c);
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        oracleStakesAccounting.slash(p.oracles, p.roles, p.fines);
+        oracleStakesAccounting.slash(p.oracles, p.oracleTypes, p.fines);
 
         arbitratorsMultiSig.proposeTransaction(
           galtToken,
@@ -508,8 +503,8 @@ contract ClaimManager is AbstractApplication {
       c.attachedDocuments,
       c.arbitrators.elements(),
       c.arbitrators.size(),
-      c.n,
-      m,
+      c.m,
+      n,
       c.messageCount,
       c.status
     );
@@ -584,7 +579,7 @@ contract ClaimManager is AbstractApplication {
       address[] votesFor,
       uint256 votesSize,
       address[] oracles,
-      bytes32[] roles,
+      bytes32[] oracleTypes,
       uint256[] fines
     )
   {
@@ -598,7 +593,7 @@ contract ClaimManager is AbstractApplication {
       p.votesFor.elements(),
       p.votesFor.size(),
       p.oracles,
-      p.roles,
+      p.oracleTypes,
       p.fines
     );
   }
