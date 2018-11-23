@@ -77,21 +77,36 @@ contract Oracles is Permissionable {
   address[] public oraclesArray;
   mapping(bytes32 => address[]) public oraclesByType;
 
-  modifier onlyOracleManager() {
-    require(hasRole(msg.sender, ROLE_ORACLE_TYPE_MANAGER), "No permissions for oracle management");
-    _;
-  }
+  // MODIFIERS
 
   modifier onlyApplicationTypeManager() {
     require(hasRole(msg.sender, ROLE_APPLICATION_TYPE_MANAGER), "No permissions for application type management");
     _;
   }
 
-  modifier onlyOracleStakes() {
-    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_NOTIFIER), "No permissions for this action");
+  modifier onlyOracleTypeManager() {
+    require(hasRole(msg.sender, ROLE_ORACLE_TYPE_MANAGER), "No permissions for oracle type management");
+    _;
+  }
+
+  modifier onlyOracleManager() {
+    require(hasRole(msg.sender, ROLE_ORACLE_TYPE_MANAGER), "No permissions for oracle management");
+    _;
+  }
+
+  modifier onlyOracleStakesManager() {
+    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_Manager), "No permissions for oracle stake management");
 
     _;
   }
+
+  modifier onlyOracleStakesNotifier() {
+    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_NOTIFIER), "No permissions for notifications");
+
+    _;
+  }
+
+  // CHANGERS
 
   // >>> OracleTypes Management
   /**
@@ -153,10 +168,6 @@ contract Oracles is Permissionable {
     oracleTypes[_oracleType].minimalDeposit = _newMinimalDeposit;
   }
 
-  function getOracleTypeMinimalDeposit(bytes32 _oracleType) external view returns (uint256) {
-    return oracleTypes[_oracleType].minimalDeposit;
-  }
-
   function deleteApplicationType(
     bytes32 _applicationType
   )
@@ -171,40 +182,6 @@ contract Oracles is Permissionable {
     }
 
     delete applicationTypeOracleTypes[_applicationType];
-  }
-
-  function isApplicationTypeReady(bytes32 _applicationType) external view returns (bool) {
-    return applicationTypeOracleTypes[_applicationType].length > 0;
-  }
-
-  function getApplicationTypeOracleTypes(
-    bytes32 _applicationType
-  )
-    external
-    view
-    returns (bytes32[])
-  {
-    return applicationTypeOracleTypes[_applicationType];
-  }
-
-  function getApplicationTypeOracleTypesCount(
-    bytes32 _applicationType
-  )
-    external
-    view
-    returns (uint256)
-  {
-    uint256 count = applicationTypeOracleTypes[_applicationType].length;
-    assert(count < ORACLE_TYPES_LIMIT);
-    return count;
-  }
-
-  function getOracleTypeRewardShare(bytes32 _oracleType) external view returns (uint256) {
-    return oracleTypes[_oracleType].rewardShare;
-  }
-
-  function getRoleApplicationType(bytes32 _oracleType) external view returns (bytes32) {
-    return oracleTypes[_oracleType].applicationType;
   }
 
   // >>> Oracles management
@@ -248,6 +225,26 @@ contract Oracles is Permissionable {
     oracles[_oracle].active = false;
   }
 
+  // NOTIFIERS
+
+  // TODO: array support
+  function onlyOracleStakesNotifier(
+    address _oracle,
+    bytes32 _oracleType,
+    int256 _newDepositValue
+  )
+    external
+    onlyOracleStakes
+  {
+    if (_newDepositValue >= int256(oracleTypes[_oracleType].minimalDeposit)) {
+      oracles[_oracle].activeOracleTypes.addSilent(_oracleType);
+    } else {
+      oracles[_oracle].activeOracleTypes.removeSilent(_oracleType);
+    }
+  }
+
+  // REQUIRES
+
   function requireOracleActive(address _oracle) external view {
     Oracle storage o = oracles[_oracle];
     require(o.active == true, "Oracle is not active");
@@ -275,6 +272,12 @@ contract Oracles is Permissionable {
     require(o.assignedOracleTypes.has(_oracleType), "Oracle Type not assigned");
   }
 
+  // CHECKERS
+
+  function isApplicationTypeReady(bytes32 _applicationType) external view returns (bool) {
+    return applicationTypeOracleTypes[_applicationType].length > 0;
+  }
+
   function isOracleActive(address _oracle) external view returns (bool) {
     Oracle storage o = oracles[_oracle];
     return o.active == true;
@@ -287,6 +290,8 @@ contract Oracles is Permissionable {
   function isOracleTypeActive(address _oracle, bytes32 _oracleType) external view returns (bool) {
     return oracles[_oracle].activeOracleTypes.has(_oracleType) == true;
   }
+
+  // GETTERS
 
   /**
    * @dev Multiple assigned oracle types check
@@ -302,20 +307,51 @@ contract Oracles is Permissionable {
     return true;
   }
 
-  // TODO: array support
-  function onStakeChanged(
-    address _oracle,
-    bytes32 _oracleType,
-    int256 _newDepositValue
+  function getApplicationTypeOracleTypes(
+    bytes32 _applicationType
   )
     external
-    onlyOracleStakes
+    view
+    returns (bytes32[])
   {
-    if (_newDepositValue >= int256(oracleTypes[_oracleType].minimalDeposit)) {
-      oracles[_oracle].activeOracleTypes.addSilent(_oracleType);
-    } else {
-      oracles[_oracle].activeOracleTypes.removeSilent(_oracleType);
-    }
+    return applicationTypeOracleTypes[_applicationType];
+  }
+
+  function getApplicationTypeOracleTypesCount(
+    bytes32 _applicationType
+  )
+    external
+    view
+    returns (uint256)
+  {
+    uint256 count = applicationTypeOracleTypes[_applicationType].length;
+    assert(count < ORACLE_TYPES_LIMIT);
+    return count;
+  }
+
+  function getOracleTypeMinimalDeposit(bytes32 _oracleType) external view returns (uint256) {
+    return oracleTypes[_oracleType].minimalDeposit;
+  }
+
+
+  function getOracleTypeRewardShare(bytes32 _oracleType) external view returns (uint256) {
+    return oracleTypes[_oracleType].rewardShare;
+  }
+
+  function getRoleApplicationType(bytes32 _oracleType) external view returns (bytes32) {
+    return oracleTypes[_oracleType].applicationType;
+  }
+
+  function getOracleTypes() external view returns (bytes32[]) {
+    return oracleTypesIndex;
+  }
+
+  function getOracles() external view returns (address[]) {
+    return oraclesArray;
+  }
+
+  function getOraclesByOracleType(bytes32 _oracleType) external view returns (address[]) {
+    return oraclesByType[_oracleType];
   }
 
   function getOracle(
@@ -335,24 +371,13 @@ contract Oracles is Permissionable {
     Oracle storage o = oracles[oracle];
 
     return (
-      o.name,
-      o.position,
-      o.descriptionHashes,
-      o.activeOracleTypes.elements(),
-      o.assignedOracleTypes.elements(),
-      o.active
+    o.name,
+    o.position,
+    o.descriptionHashes,
+    o.activeOracleTypes.elements(),
+    o.assignedOracleTypes.elements(),
+    o.active
     );
   }
 
-  function getOracleTypes() external view returns (bytes32[]) {
-    return oracleTypesIndex;
-  }
-
-  function getOracles() external view returns (address[]) {
-    return oraclesArray;
-  }
-
-  function getOraclesByOracleType(bytes32 _oracleType) external view returns (address[]) {
-    return oraclesByType[_oracleType];
-  }
 }
