@@ -29,10 +29,10 @@ contract PlotCustodianManager is AbstractOracleApplication {
   // `PlotCustodianManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6;
 
-  // `CUSTODIAN_ROLE` bytes32 representation hash
-  bytes32 public constant PC_CUSTODIAN_ROLE = 0x50435f435553544f4449414e5f524f4c45000000000000000000000000000000;
-  // `AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant PC_AUDITOR_ROLE = 0x50435f41554449544f525f524f4c450000000000000000000000000000000000;
+  // `PC_CUSTODIAN_ORACLE_TYPE` bytes32 representation hash
+  bytes32 public constant PC_CUSTODIAN_ORACLE_TYPE = 0x50435f435553544f4449414e5f4f5241434c455f545950450000000000000000;
+  // `PC_AUDITOR_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PC_AUDITOR_ORACLE_TYPE = 0x50435f41554449544f525f4f5241434c455f5459504500000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -257,7 +257,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
     );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ORACLE_TYPE);
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
@@ -305,7 +305,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
     require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
-    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ORACLE_TYPE);
 
     a.spaceTokenId = _spaceTokenId;
     a.action = _action;
@@ -320,13 +320,13 @@ contract PlotCustodianManager is AbstractOracleApplication {
    */
   function revertApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't revert a role not in PENDING status");
+    require(a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
+    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't revert a role not in PENDING status");
     require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
@@ -338,22 +338,22 @@ contract PlotCustodianManager is AbstractOracleApplication {
    */
   function acceptApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(a.roleAddresses[PC_CUSTODIAN_ROLE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.PENDING, "Can't accept a role not in PENDING status");
+    require(a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
+    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't accept a role not in PENDING status");
     require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
 
-    a.roleAddresses[PC_CUSTODIAN_ROLE] = msg.sender;
-    a.addressOracleTypes[msg.sender] = PC_CUSTODIAN_ROLE;
+    a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] = msg.sender;
+    a.addressOracleTypes[msg.sender] = PC_CUSTODIAN_ORACLE_TYPE;
     applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, PC_CUSTODIAN_ROLE, ValidationStatus.LOCKED);
+    changeValidationStatus(a, PC_CUSTODIAN_ORACLE_TYPE, ValidationStatus.LOCKED);
 
-    if (a.validationStatus[PC_AUDITOR_ROLE] == ValidationStatus.LOCKED) {
+    if (a.validationStatus[PC_AUDITOR_ORACLE_TYPE] == ValidationStatus.LOCKED) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -364,22 +364,22 @@ contract PlotCustodianManager is AbstractOracleApplication {
    */
   function lockApplication(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_AUDITOR_ORACLE_TYPE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED ||
       a.status == ApplicationStatus.REVIEW,
       "Application status should be SUBMITTED or REVIEW");
-    require(a.roleAddresses[PC_AUDITOR_ROLE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_AUDITOR_ROLE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+    require(a.roleAddresses[PC_AUDITOR_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
+    require(a.validationStatus[PC_AUDITOR_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
 
-    a.roleAddresses[PC_AUDITOR_ROLE] = msg.sender;
-    a.addressOracleTypes[msg.sender] = PC_AUDITOR_ROLE;
+    a.roleAddresses[PC_AUDITOR_ORACLE_TYPE] = msg.sender;
+    a.addressOracleTypes[msg.sender] = PC_AUDITOR_ORACLE_TYPE;
     applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, PC_AUDITOR_ROLE, ValidationStatus.LOCKED);
+    changeValidationStatus(a, PC_AUDITOR_ORACLE_TYPE, ValidationStatus.LOCKED);
 
-    if (a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED && a.status != ApplicationStatus.REVIEW) {
+    if (a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.LOCKED && a.status != ApplicationStatus.REVIEW) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -391,7 +391,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
   function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
-    require(a.validationStatus[PC_CUSTODIAN_ROLE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
+    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
 
     spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
 
@@ -407,7 +407,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
    */
   function attachDocuments(bytes32 _aId, bytes32[] _documents) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
     require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
@@ -425,9 +425,9 @@ contract PlotCustodianManager is AbstractOracleApplication {
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
 
-    if (msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE]) {
+    if (msg.sender == a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE]) {
       a.approveConfirmations = a.approveConfirmations + 1;
-    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ROLE]) {
+    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ORACLE_TYPE]) {
       a.approveConfirmations = a.approveConfirmations + 2;
     } else if (msg.sender == a.applicant) {
       a.approveConfirmations = a.approveConfirmations + 4;
@@ -454,9 +454,9 @@ contract PlotCustodianManager is AbstractOracleApplication {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
-    require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ROLE], "Only a custodian role is allowed to perform this action");
+    require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE], "Only a custodian role is allowed to perform this action");
 
-    a.roleMessages[PC_CUSTODIAN_ROLE] = _message;
+    a.roleMessages[PC_CUSTODIAN_ORACLE_TYPE] = _message;
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 

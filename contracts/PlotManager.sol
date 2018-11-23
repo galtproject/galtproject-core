@@ -91,13 +91,7 @@ contract PlotManager is AbstractOracleApplication {
   uint256 public submissionFeeRateEth;
 
   mapping(bytes32 => Application) public applications;
-  mapping(address => bytes32[]) public applicationsByAddresses;
   bytes32[] private applicationsArray;
-
-  // WARNING: we do not remove applications from oracle's list,
-  // so do not rely on this variable to verify whether oracle
-  // exists or not.
-  mapping(address => bytes32[]) public applicationsByOracle;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
