@@ -16,7 +16,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('GaltToken', ([deployer, alice, bob]) => {
+contract('GaltToken', ([deployer, alice, bob]) => {
   beforeEach(async function() {
     this.galtTokenTruffle = await GaltToken.new({ from: deployer });
     this.galtToken = new web3.eth.Contract(this.galtTokenTruffle.abi, this.galtTokenTruffle.address);

@@ -196,9 +196,9 @@ contract SpaceDex is Initializable, Ownable, Permissionable {
     spacePriceOnSaleSum = spacePriceOnSaleSum.sub(_spacePrice);
   }
 
-  function getSpaceTokensOnSale() public view returns (uint256[]) {
-    return spaceToken.tokensOfOwner(address(this));
-  }
+//  function getSpaceTokensOnSale() public view returns (uint256[]) {
+//    return spaceToken.tokensOfOwner(address(this));
+//  }
   
   function getSpaceTokenActualPrice(uint256 tokenId) public view returns (uint256) {
     if (spaceToken.ownerOf(tokenId) == address(this)) {

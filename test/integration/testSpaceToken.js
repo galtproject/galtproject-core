@@ -15,17 +15,18 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
+contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.spaceToken.initialize('Name', 'Symbol', { from: coreTeam });
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
+    await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
+    await this.spaceToken.addRoleTo(burner, 'burner', { from: coreTeam });
   });
 
   describe('#mint()', () => {
-    it('should allow owner mint some tokens if called by owner', async function() {
-      let res = await this.spaceToken.mint(alice, { from: coreTeam });
-      res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
+    it('should allow minter mint some tokens if called by owner', async function() {
+      await this.spaceToken.mint(alice, { from: minter });
+      const res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
     });
 
@@ -48,16 +49,16 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
   describe('#burn()', () => {
     beforeEach(async function() {
-      await this.spaceToken.mint(alice, { from: coreTeam });
+      await this.spaceToken.mint(alice, { from: minter });
       let res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 1);
     });
 
-    it('should allow owner burn tokens', async function() {
+    it('should allow burner role burn tokens', async function() {
       await this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
-        from: coreTeam
+        from: burner
       });
       let res = await this.spaceToken.exists('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(false, res);
@@ -102,7 +103,7 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
     beforeEach(async function() {
       this.tokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
       await this.spaceToken.mint(alice, {
-        from: coreTeam
+        from: minter
       });
       let res = await this.spaceToken.ownerOf(this.tokenId);
       assert.equal(res, alice);
@@ -122,42 +123,6 @@ contract('SpaceToken', ([coreTeam, alice, bob, charlie]) => {
 
     it('should deny non-owner set token uri', async function() {
       await assertRevert(this.spaceToken.setTokenURI(this.tokenId, 'foobar', { from: bob }));
-    });
-  });
-
-  describe('canTransfer modifier', () => {
-    beforeEach(async function() {
-      this.tokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
-      await this.spaceToken.mint(alice, { from: coreTeam });
-      let res = await this.spaceToken.ownerOf(this.tokenId);
-      assert.equal(res, alice);
-      res = await this.spaceToken.totalSupply();
-      assert.equal(res, 1);
-    });
-
-    it('should allow token owner to thransfer the token', async function() {
-      await this.spaceToken.transferFrom(alice, charlie, this.tokenId, { from: alice });
-      const res = await this.spaceToken.ownerOf(this.tokenId);
-      assert.equal(res, charlie);
-    });
-
-    it('should allow contract owner to thransfer the token', async function() {
-      await this.spaceToken.transferFrom(alice, charlie, this.tokenId, { from: coreTeam });
-      const res = await this.spaceToken.ownerOf(this.tokenId);
-      assert.equal(res, charlie);
-    });
-
-    it('should allow address with ROLE_OPERATOR transfer the token', async function() {
-      await this.spaceToken.addRoleTo(bob, 'operator', { from: coreTeam });
-      await this.spaceToken.transferFrom(alice, charlie, this.tokenId, { from: bob });
-      const res = await this.spaceToken.ownerOf(this.tokenId);
-      assert.equal(res, charlie);
-    });
-
-    it('should deny 3rd party transfer the token', async function() {
-      await assertRevert(this.spaceToken.transferFrom(alice, charlie, this.tokenId, { from: bob }));
-      const res = await this.spaceToken.ownerOf(this.tokenId);
-      assert.equal(res, alice);
     });
   });
 });

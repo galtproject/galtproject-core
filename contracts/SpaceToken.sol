@@ -32,12 +32,17 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
   uint256 packTokenIdCounter;
 
   modifier onlyMinter() {
-    require(hasRole(msg.sender, ROLE_MINTER));
+    require(hasRole(msg.sender, ROLE_MINTER), "Only minter allowed");
     _;
   }
 
   modifier onlyBurner() {
-    require(hasRole(msg.sender, ROLE_BURNER));
+    require(hasRole(msg.sender, ROLE_BURNER), "Only burner allowed");
+    _;
+  }
+
+  modifier onlyOwnerOf(uint256 _tokenId) {
+    require(ownerOf(_tokenId) == msg.sender);
     _;
   }
 
@@ -69,7 +74,7 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     super._burn(ownerOf(_tokenId), _tokenId);
   }
 
-  function exists(uint256 _tokenId) external returns (bool) {
+  function exists(uint256 _tokenId) external view returns (bool) {
     return _exists(_tokenId);
   }
 
@@ -78,15 +83,15 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     string _uri
   )
     external
-    // TODO: fix later
-//    onlyOwnerOf(_tokenId)
+    onlyOwnerOf(_tokenId)
   {
     super._setTokenURI(_tokenId, _uri);
   }
 
-  function tokensOfOwner(address _owner) external view returns (uint256[]) {
+  // https://github.com/OpenZeppelin/openzeppelin-solidity/issues/1512
+//  function tokensOfOwner(address _owner) external view returns (uint256[]) {
 //    return _ownedTokens[_owner];
-  }
+//  }
 
   function generateTokenId() internal returns (uint256) {
     return packTokenIdCounter++;
