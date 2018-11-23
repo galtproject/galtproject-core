@@ -8,7 +8,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SplitMerge = artifacts.require('./SplitMerge.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
-const Validators = artifacts.require('./Validators.sol');
+const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -27,7 +27,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
   const fee = 15;
   const baseExchangeRate = 1;
 
@@ -47,7 +47,7 @@ contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
-    this.oracles = await Validators.new({ from: coreTeam });
+    this.oracles = await Oracles.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
@@ -102,56 +102,62 @@ contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
     await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_VALIDATOR_MANAGER(), {
+    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(stakeManager, await this.oracles.ROLE_VALIDATOR_STAKES(), {
+    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_MANAGER(), {
       from: coreTeam
     });
-    const PV_APPRAISER_ROLE = await this.plotValuation.PV_APPRAISER_ROLE.call();
-    const PV_APPRAISER2_ROLE = await this.plotValuation.PV_APPRAISER2_ROLE.call();
-    const PV_AUDITOR_ROLE = await this.plotValuation.PV_AUDITOR_ROLE.call();
+    await this.oracles.addRoleTo(stakeManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
+      from: coreTeam
+    });
+    await this.oracles.addRoleTo(stakeNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+      from: coreTeam
+    });
+    const PV_APPRAISER_ORACLE_TYPE = await this.plotValuation.PV_APPRAISER_ORACLE_TYPE.call();
+    const PV_APPRAISER2_ORACLE_TYPE = await this.plotValuation.PV_APPRAISER2_ORACLE_TYPE.call();
+    const PV_AUDITOR_ORACLE_TYPE = await this.plotValuation.PV_AUDITOR_ORACLE_TYPE.call();
 
-    await this.oracles.setApplicationTypeRoles(
+    await this.oracles.setApplicationTypeOracleTypes(
       await this.plotValuation.APPLICATION_TYPE(),
-      [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
+      [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
       [50, 25, 25],
       ['', '', ''],
       { from: coreTeam }
     );
 
-    const PC_CUSTODIAN_ROLE = await this.plotCustodian.PC_CUSTODIAN_ROLE.call();
-    const PC_AUDITOR_ROLE = await this.plotCustodian.PC_AUDITOR_ROLE.call();
+    const PC_CUSTODIAN_ORACLE_TYPE = await this.plotCustodian.PC_CUSTODIAN_ORACLE_TYPE.call();
+    const PC_AUDITOR_ORACLE_TYPE = await this.plotCustodian.PC_AUDITOR_ORACLE_TYPE.call();
 
-    await this.oracles.setApplicationTypeRoles(
+    await this.oracles.setApplicationTypeOracleTypes(
       await this.plotCustodian.APPLICATION_TYPE(),
-      [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+      [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [60, 40],
       ['', ''],
       { from: coreTeam }
     );
 
-    await this.oracles.setRoleMinimalDeposit(PV_APPRAISER_ROLE, ether(30), { from: coreTeam });
-    await this.oracles.setRoleMinimalDeposit(PV_APPRAISER2_ROLE, ether(30), { from: coreTeam });
-    await this.oracles.setRoleMinimalDeposit(PV_AUDITOR_ROLE, ether(30), { from: coreTeam });
-    await this.oracles.setRoleMinimalDeposit(PC_CUSTODIAN_ROLE, ether(30), { from: coreTeam });
-    await this.oracles.setRoleMinimalDeposit(PC_AUDITOR_ROLE, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(PV_APPRAISER_ORACLE_TYPE, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(PV_AUDITOR_ORACLE_TYPE, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: coreTeam });
 
-    await this.oracles.addValidator(bob, 'Bob', 'MN', [], [PV_APPRAISER_ROLE, PC_CUSTODIAN_ROLE], {
+    await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE], {
       from: coreTeam
     });
-    await this.oracles.addValidator(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ROLE, PC_AUDITOR_ROLE], {
+    await this.oracles.addOracle(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
-    await this.oracles.addValidator(eve, 'Eve', 'MN', [], [PV_AUDITOR_ROLE], {
+    await this.oracles.addOracle(eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
 
-    await this.oracles.onStakeChanged(bob, PV_APPRAISER_ROLE, ether(30), { from: stakeManager });
-    await this.oracles.onStakeChanged(bob, PC_CUSTODIAN_ROLE, ether(30), { from: stakeManager });
-    await this.oracles.onStakeChanged(dan, PV_APPRAISER2_ROLE, ether(30), { from: stakeManager });
-    await this.oracles.onStakeChanged(dan, PC_AUDITOR_ROLE, ether(30), { from: stakeManager });
-    await this.oracles.onStakeChanged(eve, PV_AUDITOR_ROLE, ether(30), { from: stakeManager });
+    await this.oracles.onStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
 
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
 
@@ -203,12 +209,12 @@ contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
         value: ether(1)
       });
       const aId = res.logs[0].args.id;
-      await this.plotValuation.lockApplication(aId, PV_APPRAISER_ROLE, { from: bob });
-      await this.plotValuation.lockApplication(aId, PV_APPRAISER2_ROLE, { from: dan });
+      await this.plotValuation.lockApplication(aId, PV_APPRAISER_ORACLE_TYPE, { from: bob });
+      await this.plotValuation.lockApplication(aId, PV_APPRAISER2_ORACLE_TYPE, { from: dan });
       await this.plotValuation.valuatePlot(aId, price, { from: bob });
       await this.plotValuation.valuatePlot2(aId, price, { from: dan });
 
-      await this.plotValuation.lockApplication(aId, PV_AUDITOR_ROLE, { from: eve });
+      await this.plotValuation.lockApplication(aId, PV_AUDITOR_ORACLE_TYPE, { from: eve });
       await this.plotValuation.approveValuation(aId, { from: eve });
     };
 
