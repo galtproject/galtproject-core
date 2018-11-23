@@ -105,20 +105,20 @@ contract("ClaimManager", (accounts) => {
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.oracleStakeAccounting = await ValidatorStakes.new({ from: coreTeam });
     // auditors should be explicitly reassigned in order to synchronize MultiSig, Auditors and Validators contract
-    this.vsMultiSig = await ValidatorStakesMultiSig.new(coreTeam, [bob, charlie, dan], 2, { from: coreTeam });
-    this.auditors = await Auditors.new(coreTeam, this.vsMultiSig.address, this.oracles.address, { from: coreTeam });
+    this.abMultiSig = await ValidatorStakesMultiSig.new(coreTeam, [bob, charlie, dan], 2, { from: coreTeam });
+    this.auditors = await Auditors.new(coreTeam, this.abMultiSig.address, this.oracles.address, { from: coreTeam });
 
     await this.claimManager.initialize(
       this.oracles.address,
       this.galtToken.address,
       this.oracleStakeAccounting.address,
-      this.vsMultiSig.address,
+      this.abMultiSig.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, this.vsMultiSig.address, {
+    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, this.abMultiSig.address, {
       from: coreTeam
     });
 
@@ -130,10 +130,10 @@ contract("ClaimManager", (accounts) => {
     await this.auditors.addRoleTo(auditorManager, await this.auditors.ROLE_AUDITOR_MANAGER(), {
       from: coreTeam
     });
-    await this.vsMultiSig.addRoleTo(this.auditors.address, await this.vsMultiSig.ROLE_AUDITORS_MANAGER(), {
+    await this.abMultiSig.addRoleTo(this.auditors.address, await this.abMultiSig.ROLE_AUDITORS_MANAGER(), {
       from: coreTeam
     });
-    await this.vsMultiSig.addRoleTo(this.claimManager.address, await this.vsMultiSig.ROLE_PROPOSER(), {
+    await this.abMultiSig.addRoleTo(this.claimManager.address, await this.abMultiSig.ROLE_PROPOSER(), {
       from: coreTeam
     });
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -164,7 +164,7 @@ contract("ClaimManager", (accounts) => {
     this.claimManagerWeb3 = new web3.eth.Contract(this.claimManager.abi, this.claimManager.address);
     this.validatorStakesWeb3 = new web3.eth.Contract(this.oracleStakeAccounting.abi, this.oracleStakeAccounting.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
-    this.vsMultiSigWeb3 = new web3.eth.Contract(this.vsMultiSig.abi, this.vsMultiSig.address);
+    this.abMultiSigWeb3 = new web3.eth.Contract(this.abMultiSig.abi, this.abMultiSig.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -960,7 +960,7 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should create transfer claim value to a beneficiary', async function() {
-        let res = await this.vsMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        let res = await this.abMultiSigWeb3.methods.getTransactionCount(true, false).call();
         assert.equal(res, 0);
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
@@ -968,11 +968,11 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.vsMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        res = await this.abMultiSigWeb3.methods.getTransactionCount(true, false).call();
         assert.equal(res, 1);
 
         const txId = '0';
-        res = await this.vsMultiSigWeb3.methods.transactions(txId).call();
+        res = await this.abMultiSigWeb3.methods.transactions(txId).call();
         assert.equal(res.destination.toLowerCase(), this.galtToken.address);
         assert.equal(res.value, 0);
         assert.equal(
@@ -982,20 +982,20 @@ contract("ClaimManager", (accounts) => {
             .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
-        const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.vsMultiSig.address).call();
+        const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.abMultiSig.address).call();
         assert(multiSigBalance > ether(20));
-        res = await this.vsMultiSigWeb3.methods.required().call();
+        res = await this.abMultiSigWeb3.methods.required().call();
         assert.equal(res, 3);
-        res = await this.vsMultiSigWeb3.methods.getConfirmationCount(txId).call();
+        res = await this.abMultiSigWeb3.methods.getConfirmationCount(txId).call();
         assert.equal(res, 0);
-        res = await this.vsMultiSigWeb3.methods.getOwners().call();
+        res = await this.abMultiSigWeb3.methods.getOwners().call();
         assert.sameMembers(res.map(a => a.toLowerCase()), [bob, charlie, dan, eve, frank]);
 
         const aliceInitialBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 
-        await this.vsMultiSig.confirmTransaction(txId, { from: bob });
-        res = await this.vsMultiSig.confirmTransaction(txId, { from: dan });
-        await this.vsMultiSig.confirmTransaction(txId, { from: frank });
+        await this.abMultiSig.confirmTransaction(txId, { from: bob });
+        res = await this.abMultiSig.confirmTransaction(txId, { from: dan });
+        await this.abMultiSig.confirmTransaction(txId, { from: frank });
 
         const aliceFinalBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 

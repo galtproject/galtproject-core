@@ -21,11 +21,10 @@ import "./traits/Permissionable.sol";
 contract Arbitrators is Permissionable {
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant ROLE_MANAGER= "role_manager";
-  string public constant ROLE_AUDITOR_MANAGER= "auditor_manager";
+  string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
 
-  ArraySet.AddressSet auditors;
-  mapping(address => uint256) public auditorWeight;
+  ArraySet.AddressSet arbitrators;
+  mapping(address => uint256) public arbitratorWeight;
 
   uint256 public n;
   uint256 public m;
@@ -33,86 +32,84 @@ contract Arbitrators is Permissionable {
   ArbitratorsMultiSig arbitratorsMultiSig;
 
   constructor(
-    address _roleManager,
     ArbitratorsMultiSig _arbitratorsMultiSig
   )
     public
   {
-    _addRoleTo(_roleManager, ROLE_ROLE_MANAGER);
     arbitratorsMultiSig = _arbitratorsMultiSig;
   }
 
-  function addAuditor(
-    address _auditor,
+  function addArbitrator(
+    address _arbitrator,
     uint256 _weight
   )
     external
-    onlyRole(ROLE_AUDITOR_MANAGER)
+    onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    auditors.add(_auditor);
-    auditorWeight[_auditor] = _weight;
+    arbitrators.add(_arbitrator);
+    arbitratorWeight[_arbitrator] = _weight;
   }
 
-  function removeAuditor(
-    address _auditor
+  function removeArbitrator(
+    address _arbitrator
   )
     external
-    onlyRole(ROLE_AUDITOR_MANAGER)
+    onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    auditors.remove(_auditor);
-    auditorWeight[_auditor] = 0;
+    arbitrators.remove(_arbitrator);
+    arbitratorWeight[_arbitrator] = 0;
   }
 
-  function setAuditorWeight(
-    address _auditor,
+  function setArbitratorWeight(
+    address _arbitrator,
     uint256 _weight
   )
     external
-    onlyRole(ROLE_AUDITOR_MANAGER)
+    onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    require(auditors.has(_auditor), "Auditor doesn't exist");
+    require(arbitrators.has(_arbitrator), "Arbitrator doesn't exist");
 
-    auditorWeight[_auditor] = _weight;
+    arbitratorWeight[_arbitrator] = _weight;
   }
 
-  function setNofM(
-    uint256 _n,
-    uint256 _m
+  function setMofN(
+    uint256 _m,
+    uint256 _n
   )
     external
-    onlyRole(ROLE_AUDITOR_MANAGER)
+    onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    require(2 <= _n, "Should satisfy `2 <= n`");
-    require(_n <= _m, "Should satisfy `n <= m`");
+    require(2 <= _m, "Should satisfy `2 <= m`");
+    require(_m <= _n, "Should satisfy `n <= n`");
 
-    n = _n;
     m = _m;
+    n = _n;
   }
 
-  function pushAuditors(address[] descSortedAuditors) external {
-    require(descSortedAuditors.length == auditors.size(), "Sorted auditors list should be equal to the stored one");
+  function pushArbitrators(address[] descSortedArbitrators) external {
+    require(descSortedArbitrators.length == arbitrators.size(), "Sorted arbitrators list should be equal to the stored one");
 
-    uint256 len = descSortedAuditors.length;
-    uint256 previousWeight = auditorWeight[descSortedAuditors[0]];
-    require(previousWeight > 0, "Could not accept auditors with 0 weight");
+    uint256 len = descSortedArbitrators.length;
+    uint256 previousWeight = arbitratorWeight[descSortedArbitrators[0]];
+    require(previousWeight > 0, "Could not accept arbitrators with 0 weight");
 
     for (uint256 i = 0; i < len; i++) {
-      uint256 currentWeight = auditorWeight[descSortedAuditors[i]];
-      require(currentWeight > 0, "Could not accept auditors with 0 weight");
+      uint256 currentWeight = arbitratorWeight[descSortedArbitrators[i]];
+      require(currentWeight > 0, "Could not accept arbitrators with 0 weight");
 
       require(currentWeight <= previousWeight, "Invalid sorting");
       previousWeight = currentWeight;
     }
 
-    arbitratorsMultiSig.setAuditors(n, m, descSortedAuditors);
+    arbitratorsMultiSig.setArbitrators(m, n, descSortedArbitrators);
   }
 
   // Getters
-  function getAuditors() public view returns (address[]) {
-    return auditors.elements();
+  function getArbitrators() public view returns (address[]) {
+    return arbitrators.elements();
   }
 
   function getSize() public view returns (uint256 size) {
-    return auditors.size();
+    return arbitrators.size();
   }
 }

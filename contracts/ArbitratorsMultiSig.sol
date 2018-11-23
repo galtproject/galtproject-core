@@ -20,9 +20,8 @@ import "./traits/Permissionable.sol";
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
 
-  string public constant ROLE_MANAGER = "role_manager";
   string public constant ROLE_PROPOSER = "proposer";
-  string public constant ROLE_AUDITORS_MANAGER = "auditors_manager";
+  string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
 
   modifier forbidden() {
     assert(false);
@@ -30,14 +29,12 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   }
 
   constructor(
-    address _roleManager,
     address[] _initialOwners,
     uint256 _required
   )
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    _addRoleTo(_roleManager, ROLE_ROLE_MANAGER);
   }
 
   function addOwner(address owner) public forbidden {}
@@ -62,26 +59,32 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     transactionId = addTransaction(destination, value, data);
   }
 
-  function setAuditors(
-    uint256 n,
+  /**
+   * @dev Set a new arbitrators list with (N-of-M multisig)
+   * @param m required number of signatures
+   * @param n number of validators to slice for a new list
+   * @param descArbitrators list of all arbitrators from voting
+   */
+  function setArbitrators(
     uint256 m,
-    address[] descAuditors
+    uint256 n,
+    address[] descArbitrators
   )
     external
-    onlyRole(ROLE_AUDITORS_MANAGER)
+    onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    require(descAuditors.length >= m, "Auditors array size less than required");
-    required = n;
+    require(descArbitrators.length >= n, "Arbitrators array size less than required");
+    required = m;
 
     delete owners;
 
-    for (uint8 i = 0; i < m; i++) {
-      address o = descAuditors[i];
+    for (uint8 i = 0; i < n; i++) {
+      address o = descArbitrators[i];
 
       isOwner[o] = true;
       owners.push(o);
       emit OwnerAddition(o);
     }
-    emit NewAuditorsSet(owners, n, m);
+    emit NewAuditorsSet(owners, m, n);
   }
 }
