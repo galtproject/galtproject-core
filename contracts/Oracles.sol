@@ -39,14 +39,14 @@ contract Oracles is Permissionable {
   uint256 public constant ORACLE_TYPES_LIMIT = 50;
   bytes32 public constant ORACLE_TYPE_NOT_EXISTS = 0x0;
 
-  // ApplicationType => RoleName. Currently required oracle types for
+  // ApplicationType => OracleType. Currently required oracle types for
   // the given type of an application.
   mapping(bytes32 => bytes32[]) public applicationTypeOracleTypes;
 
-  // RoleName => RoleDetails
+  // OracleTypeName => OracleType details
   mapping(bytes32 => OracleType) public oracleTypes;
 
-  // Oracle Role details
+  // Oracle details
   mapping(address => Oracle) oracles;
 
   struct Oracle {
@@ -61,7 +61,7 @@ contract Oracles is Permissionable {
   struct OracleType {
     uint256 index;
     uint256 rewardShare;
-    // role exists if applicationType != ORACLE_TYPE_NOT_EXISTS
+    // oracle type exists if applicationType != ORACLE_TYPE_NOT_EXISTS
     bytes32 applicationType;
     uint256 minimalDeposit;
     bytes32 descriptionHash;
@@ -90,12 +90,12 @@ contract Oracles is Permissionable {
   }
 
   modifier onlyOracleManager() {
-    require(hasRole(msg.sender, ROLE_ORACLE_TYPE_MANAGER), "No permissions for oracle management");
+    require(hasRole(msg.sender, ROLE_ORACLE_MANAGER), "No permissions for oracle management");
     _;
   }
 
   modifier onlyOracleStakesManager() {
-    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_Manager), "No permissions for oracle stake management");
+    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_MANAGER), "No permissions for oracle stake management");
 
     _;
   }
@@ -228,13 +228,13 @@ contract Oracles is Permissionable {
   // NOTIFIERS
 
   // TODO: array support
-  function onlyOracleStakesNotifier(
+  function onOracleStakeChanged(
     address _oracle,
     bytes32 _oracleType,
     int256 _newDepositValue
   )
     external
-    onlyOracleStakes
+    onlyOracleStakesNotifier
   {
     if (_newDepositValue >= int256(oracleTypes[_oracleType].minimalDeposit)) {
       oracles[_oracle].activeOracleTypes.addSilent(_oracleType);
@@ -338,7 +338,7 @@ contract Oracles is Permissionable {
     return oracleTypes[_oracleType].rewardShare;
   }
 
-  function getRoleApplicationType(bytes32 _oracleType) external view returns (bytes32) {
+  function getOracleTypeApplicationType(bytes32 _oracleType) external view returns (bytes32) {
     return oracleTypes[_oracleType].applicationType;
   }
 

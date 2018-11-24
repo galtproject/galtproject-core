@@ -80,7 +80,7 @@ contract OracleStakesAccounting is Permissionable, Initializable {
 
     assert(finalBalance < initialBalance);
 
-    oracles.onStakeChanged(_oracle, _oracleType, finalBalance);
+    oracles.onOracleStakeChanged(_oracle, _oracleType, finalBalance);
   }
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
@@ -93,7 +93,7 @@ contract OracleStakesAccounting is Permissionable, Initializable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalValue;
     assert(oracleTypes[_oracle].oracleTypeStakes[_oracleType] > initialValue);
 
-    oracles.onStakeChanged(_oracle, _oracleType, finalValue);
+    oracles.onOracleStakeChanged(_oracle, _oracleType, finalValue);
   }
 
   function stakeOf(address _oracle, bytes32 _oracleType) external view returns (int256) {
