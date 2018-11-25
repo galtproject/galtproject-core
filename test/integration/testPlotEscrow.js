@@ -104,7 +104,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only("PlotEscrow", (accounts) => {
+contract("PlotEscrow", (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -367,7 +367,7 @@ contract.only("PlotEscrow", (accounts) => {
     });
   });
 
-  describeg('pipeline', () => {
+  describe('pipeline', () => {
     beforeEach(async function() {
       await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
