@@ -239,7 +239,7 @@ contract('PlotCustodianManager', (accounts) => {
     );
   });
 
-  it('should be initialized successfully', async () => {
+  it('should be initialized successfully', async function() {
     (await this.plotValuation.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
   });
 

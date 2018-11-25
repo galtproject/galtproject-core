@@ -153,11 +153,11 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
       from: coreTeam
     });
 
-    await this.oracles.onStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
 
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
 

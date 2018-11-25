@@ -29,7 +29,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contractg('SpaceDex', ([coreTeam, stakeNotifier, alice, bob, dan, eve]) => {
+contract('SpaceDex', ([coreTeam, stakeNotifier, alice, bob, dan, eve]) => {
   const feePercent = 5;
   const plotPriceGalt = 150;
 
@@ -130,11 +130,11 @@ contractg('SpaceDex', ([coreTeam, stakeNotifier, alice, bob, dan, eve]) => {
     await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: coreTeam });
 
-    await this.oracles.onStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
 
     await this.galtDex.initialize(szabo(1), szabo(5), szabo(5), this.galtToken.address, {
       from: coreTeam

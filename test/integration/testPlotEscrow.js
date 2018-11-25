@@ -2158,6 +2158,7 @@ contract("PlotEscrow", (accounts) => {
         let len = await this.plotEscrowWeb3.methods.getOpenSaleOrdersLength().call();
         assert.equal(len, 0);
 
+        await this.spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
         await this.spaceToken.mint(alice, { from: coreTeam });
         await this.spaceToken.mint(alice, { from: coreTeam });
 

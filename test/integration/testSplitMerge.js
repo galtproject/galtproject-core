@@ -41,7 +41,6 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.splitMerge = await SplitMerge.new({ from: coreTeam });
 
     this.splitMerge.initialize(this.spaceToken.address, zeroAddress, { from: coreTeam });
-    this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
 
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
