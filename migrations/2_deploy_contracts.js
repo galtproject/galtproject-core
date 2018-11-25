@@ -11,11 +11,11 @@ const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const ClaimManager = artifacts.require('./ClaimManager');
-const ValidatorStakes = artifacts.require('./ValidatorStakes');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
-const Validators = artifacts.require('./Validators');
+const Oracles = artifacts.require('./Oracles');
 const Web3 = require('web3');
 
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
@@ -50,7 +50,7 @@ module.exports = async function(deployer, network, accounts) {
     const galtDex = await GaltDex.new({ from: coreTeam });
     const spaceDex = await SpaceDex.new({ from: coreTeam });
 
-    const validators = await Validators.new({ from: coreTeam });
+    const oracles = await Oracles.new({ from: coreTeam });
 
     PlotManagerLib.link('LandUtils', landUtils.address);
 
@@ -67,7 +67,7 @@ module.exports = async function(deployer, network, accounts) {
     const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
     const claimManager = await ClaimManager.new({ from: coreTeam });
-    const validatorStakes = await ValidatorStakes.new({ from: coreTeam });
+    const oracleStakesAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
 
     // Setup proxies...
@@ -90,16 +90,9 @@ module.exports = async function(deployer, network, accounts) {
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
 
-    await plotManager.initialize(
-      spaceToken.address,
-      splitMerge.address,
-      oracles.address,
-      galtToken.address,
-      coreTeam,
-      {
-        from: coreTeam
-      }
-    );
+    await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
+      from: coreTeam
+    });
 
     await plotClarification.initialize(
       spaceToken.address,
@@ -160,10 +153,10 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await claimManager.initialize(oracles.address, galtToken.address, oracleStakeAccounting.address, coreTeam, {
+    await claimManager.initialize(oracles.address, galtToken.address, oracleStakesAccounting.address, coreTeam, {
       from: coreTeam
     });
-    await oracleStakeAccounting.initialize(oracles.address, galtToken.address, coreTeam, {
+    await oracleStakesAccounting.initialize(oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
     });
 
@@ -180,19 +173,22 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
-    await oracles.addRoleTo(coreTeam, await oracles.ROLE_VALIDATOR_MANAGER(), { from: coreTeam });
     await oracles.addRoleTo(coreTeam, await oracles.ROLE_APPLICATION_TYPE_MANAGER(), { from: coreTeam });
-    await oracles.addRoleTo(oracleStakeAccounting.address, await oracles.ROLE_VALIDATOR_STAKES(), { from: coreTeam });
-    await oracleStakeAccounting.addRoleTo(claimManager.address, await oracleStakeAccounting.ROLE_SLASH_MANAGER(), {
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_TYPES_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_STAKES_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(oracleStakesAccounting.address, await oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+      from: coreTeam
+    });
+    await oracleStakesAccounting.addRoleTo(claimManager.address, await oracleStakesAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
 
-    await plotManager.setFeeManager(coreTeam, true, { from: coreTeam });
-    await plotValuation.setFeeManager(coreTeam, true, { from: coreTeam });
-    await plotCustodian.setFeeManager(coreTeam, true, { from: coreTeam });
-    await claimManager.setFeeManager(coreTeam, true, { from: coreTeam });
-    await plotClarification.setFeeManager(coreTeam, true, { from: coreTeam });
-    await plotEscrow.setFeeManager(coreTeam, true, { from: coreTeam });
+    await plotManager.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await plotCustodian.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await claimManager.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await plotClarification.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await plotEscrow.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
 
     console.log('Set fees of contracts...');
     await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
@@ -260,10 +256,10 @@ module.exports = async function(deployer, network, accounts) {
             spaceDexAbi: spaceDex.abi,
             claimManagerAddress: claimManager.address,
             claimManagerAbi: claimManager.abi,
-            validatorsAddress: oracles.address,
-            validatorsAbi: oracles.abi,
-            validatorStakesAddress: oracleStakeAccounting.address,
-            validatorStakesAbi: oracleStakeAccounting.abi
+            oraclesAddress: oracles.address,
+            oraclesAbi: oracles.abi,
+            oracleStakesAccountingAddress: oracleStakesAccounting.address,
+            oracleStakesAccountingAbi: oracleStakesAccounting.abi
           },
           null,
           2

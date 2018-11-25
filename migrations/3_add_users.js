@@ -7,8 +7,8 @@ const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
-const Validators = artifacts.require('./Validators');
-const ValidatorStakes = artifacts.require('./ValidatorStakes');
+const Oracles = artifacts.require('./Oracles');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
@@ -43,8 +43,8 @@ module.exports = async function(deployer, network, accounts) {
     const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const spaceDex = await SpaceDex.at(data.spaceDexAddress);
-    const validators = await Validators.at(data.validatorsAddress);
-    const validatorStakes = await ValidatorStakes.at(data.validatorStakesAddress);
+    const oracles = await Oracles.at(data.oraclesAddress);
+    const oracleStakeAccounting = await OracleStakesAccounting.at(data.oracleStakesAccountingAddress);
     const claimManager = await ClaimManager.at(data.claimManagerAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
@@ -58,13 +58,13 @@ module.exports = async function(deployer, network, accounts) {
       production: 0
     };
 
-    const PM_CADASTRAL_ROLE = 'pm_cadastral';
-    const PM_AUDITOR_ROLE = 'pm_auditor';
+    const PM_CADASTRAL_ORACLE_TYPE = 'pm_cadastral';
+    const PM_AUDITOR_ORACLE_TYPE = 'pm_auditor';
 
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(
+    await oracles.setApplicationTypeOracleTypes(
       PLOT_MANAGER_APPLICATION_TYPE,
-      [PM_CADASTRAL_ROLE, PM_AUDITOR_ROLE],
+      [PM_CADASTRAL_ORACLE_TYPE, PM_AUDITOR_ORACLE_TYPE],
       [75, 25],
       ['', ''],
       {
@@ -72,13 +72,13 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    const PCL_CADASTRAL_ROLE = 'pcl_cadastral';
-    const PCL_AUDITOR_ROLE = 'pcl_auditor';
+    const PCL_CADASTRAL_ORACLE_TYPE = 'pcl_cadastral';
+    const PCL_AUDITOR_ORACLE_TYPE = 'pcl_auditor';
 
     const PLOT_CLARIFICATION_APPLICATION_TYPE = await plotClarification.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(
+    await oracles.setApplicationTypeOracleTypes(
       PLOT_CLARIFICATION_APPLICATION_TYPE,
-      [PCL_CADASTRAL_ROLE, PCL_AUDITOR_ROLE],
+      [PCL_CADASTRAL_ORACLE_TYPE, PCL_AUDITOR_ORACLE_TYPE],
       [75, 25],
       ['', ''],
       {
@@ -86,14 +86,14 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    const PV_APPRAISER_ROLE = await plotValuation.PV_APPRAISER_ROLE.call();
-    const PV_APPRAISER2_ROLE = await plotValuation.PV_APPRAISER2_ROLE.call();
-    const PV_AUDITOR_ROLE = await plotValuation.PV_AUDITOR_ROLE.call();
+    const PV_APPRAISER_ORACLE_TYPE = await plotValuation.PV_APPRAISER_ORACLE_TYPE.call();
+    const PV_APPRAISER2_ORACLE_TYPE = await plotValuation.PV_APPRAISER2_ORACLE_TYPE.call();
+    const PV_AUDITOR_ORACLE_TYPE = await plotValuation.PV_AUDITOR_ORACLE_TYPE.call();
 
     const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(
+    await oracles.setApplicationTypeOracleTypes(
       PLOT_VALUATION_APPLICATION_TYPE,
-      [PV_APPRAISER_ROLE, PV_APPRAISER2_ROLE, PV_AUDITOR_ROLE],
+      [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
       [35, 35, 30],
       ['', '', ''],
       {
@@ -101,13 +101,13 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    const PC_CUSTODIAN_ROLE = await plotCustodian.PC_CUSTODIAN_ROLE.call();
-    const PC_AUDITOR_ROLE = await plotCustodian.PC_AUDITOR_ROLE.call();
+    const PC_CUSTODIAN_ORACLE_TYPE = await plotCustodian.PC_CUSTODIAN_ORACLE_TYPE.call();
+    const PC_AUDITOR_ORACLE_TYPE = await plotCustodian.PC_AUDITOR_ORACLE_TYPE.call();
 
     const PLOT_CUSTODIAN_APPLICATION_TYPE = await plotCustodian.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(
+    await oracles.setApplicationTypeOracleTypes(
       PLOT_CUSTODIAN_APPLICATION_TYPE,
-      [PC_CUSTODIAN_ROLE, PC_AUDITOR_ROLE],
+      [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [75, 25],
       ['', ''],
       {
@@ -115,9 +115,8 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
     const CLAIM_MANAGER_APPLICATION_TYPE = await claimManager.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
+    await oracles.setApplicationTypeOracleTypes(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
       from: coreTeam
     });
 
@@ -154,16 +153,15 @@ module.exports = async function(deployer, network, accounts) {
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin', 'DevNik', 'DevNik2', 'DevNickAdmin'];
 
     const allRoles = [
-      PM_CADASTRAL_ROLE,
-      PM_AUDITOR_ROLE,
-      PCL_CADASTRAL_ROLE,
-      PCL_AUDITOR_ROLE,
-      PV_APPRAISER_ROLE,
-      PV_APPRAISER2_ROLE,
-      PV_AUDITOR_ROLE,
-      PC_CUSTODIAN_ROLE,
-      PC_AUDITOR_ROLE,
-      CM_AUDITOR_ROLE
+      PM_CADASTRAL_ORACLE_TYPE,
+      PM_AUDITOR_ORACLE_TYPE,
+      PCL_CADASTRAL_ORACLE_TYPE,
+      PCL_AUDITOR_ORACLE_TYPE,
+      PV_APPRAISER_ORACLE_TYPE,
+      PV_APPRAISER2_ORACLE_TYPE,
+      PV_AUDITOR_ORACLE_TYPE,
+      PC_CUSTODIAN_ORACLE_TYPE,
+      PC_AUDITOR_ORACLE_TYPE
     ];
 
     const validatorsSpecificRoles = {
@@ -177,33 +175,32 @@ module.exports = async function(deployer, network, accounts) {
       Nik: allRoles,
       Nik2: allRoles,
       NickValidator: allRoles,
-      Nik3: [PV_APPRAISER_ROLE],
-      Nik4: [PV_APPRAISER2_ROLE],
-      Nik5: [PV_AUDITOR_ROLE],
+      Nik3: [PV_APPRAISER_ORACLE_TYPE],
+      Nik4: [PV_APPRAISER2_ORACLE_TYPE],
+      Nik5: [PV_AUDITOR_ORACLE_TYPE],
       DevNik: allRoles,
       DevNik2: allRoles,
       DevNickValidator: allRoles,
       DevNickValidator2: allRoles,
       DevNickValidator3: allRoles,
-      DevNik3: [PV_APPRAISER_ROLE],
-      DevNik4: [PV_APPRAISER2_ROLE],
-      DevNik5: [PV_AUDITOR_ROLE]
+      DevNik3: [PV_APPRAISER_ORACLE_TYPE],
+      DevNik4: [PV_APPRAISER2_ORACLE_TYPE],
+      DevNik5: [PV_AUDITOR_ORACLE_TYPE]
     };
 
     const minDepositForValidator = 500; // 10k $
     const minDepositForAuditor = 2500; // 50k $
 
     const minDepositGalt = {};
-    minDepositGalt[PM_CADASTRAL_ROLE] = minDepositForValidator;
-    minDepositGalt[PM_AUDITOR_ROLE] = minDepositForValidator;
-    minDepositGalt[PCL_CADASTRAL_ROLE] = minDepositForValidator;
-    minDepositGalt[PCL_AUDITOR_ROLE] = minDepositForValidator;
-    minDepositGalt[PV_APPRAISER_ROLE] = minDepositForValidator;
-    minDepositGalt[PV_APPRAISER2_ROLE] = minDepositForValidator;
-    minDepositGalt[PV_AUDITOR_ROLE] = minDepositForAuditor;
-    minDepositGalt[PC_CUSTODIAN_ROLE] = minDepositForAuditor;
-    minDepositGalt[PC_AUDITOR_ROLE] = minDepositForAuditor;
-    minDepositGalt[CM_AUDITOR_ROLE] = minDepositForAuditor;
+    minDepositGalt[PM_CADASTRAL_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PM_AUDITOR_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PCL_CADASTRAL_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PCL_AUDITOR_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PV_APPRAISER_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PV_APPRAISER2_ORACLE_TYPE] = minDepositForValidator;
+    minDepositGalt[PV_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
+    minDepositGalt[PC_CUSTODIAN_ORACLE_TYPE] = minDepositForAuditor;
+    minDepositGalt[PC_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
     _.forEach(validatorsSpecificRoles, validatorRoles => {
@@ -248,10 +245,10 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
         // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(plotManager.setFeeManager(address, true, { from: coreTeam }));
-        promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
-        promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
-        promises.push(plotClarification.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(plotValuation.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(plotClarification.addRoleTo(address, 'fee_manager', { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
