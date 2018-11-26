@@ -221,6 +221,8 @@ module.exports = async function(deployer, network, accounts) {
 
     await galtToken.approve(validatorStakes.address, ether(needGaltForDeposits), { from: coreTeam });
 
+    console.log('add validators...');
+
     const rolesPromises = [];
     _.forEach(allRoles, roleName => {
       const minDeposit = ether(minDepositGalt[roleName]);
@@ -233,8 +235,16 @@ module.exports = async function(deployer, network, accounts) {
       if (validatorsSpecificRoles[name]) {
         promises.push(
           new Promise(async resolve => {
-            await validators.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam });
+            console.log('addValidator', name);
 
+            await validators
+              .addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
+              .catch(e => {
+                console.error(e);
+                resolve(e);
+              });
+
+            console.log('validator added, validator stakes', name);
             const validatorPromises = validatorsSpecificRoles[name].map(roleName =>
               validatorStakes.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
             );
@@ -267,6 +277,8 @@ module.exports = async function(deployer, network, accounts) {
       const sendWei = web3.utils.toWei(sendEthByNetwork[network].toString(), 'ether').toString(10);
       promises.push(web3.eth.sendTransaction({ from: rewarder, to: address, value: sendWei }).catch(() => {}));
     });
+
+    await Promise.all(promises);
 
     console.log('create space tokens...');
 
@@ -344,7 +356,5 @@ module.exports = async function(deployer, network, accounts) {
       await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
       await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
     });
-
-    await Promise.all(promises);
   });
 };
