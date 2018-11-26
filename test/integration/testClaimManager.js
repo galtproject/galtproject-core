@@ -338,7 +338,7 @@ contract("ClaimManager", (accounts) => {
           );
         });
 
-        it('should calculate corresponding oracle and galtspace rewards', async function() {
+        it('should calculate corresponding arbitrators and galtspace rewards', async function() {
           await this.galtToken.approve(this.claimManager.address, ether(53), { from: alice });
           let res = await this.claimManager.submit(
             alice,
