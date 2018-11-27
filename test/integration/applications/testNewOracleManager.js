@@ -26,13 +26,9 @@ chai.should();
 const ApplicationStatus = {
   NOT_EXISTS: 0,
   SUBMITTED: 1,
-  REVERTED: 2,
-  LOCKED: 3,
-  REVIEW: 4,
-  APPROVED: 5,
-  COMPLETED: 6,
-  REJECTED: 7,
-  CLOSED: 8
+  APPROVED: 2,
+  REJECTED: 3,
+  REVERTED: 4,
 };
 
 const ValidationStatus = {
@@ -465,7 +461,7 @@ contract('NewOracleManager', (accounts) => {
       this.aId = res.logs[0].args.applicationId;
     });
 
-    describe.only('#lock()', () => {
+    describe('#lock()', () => {
       it('should allow a valid arbitrator locking an application', async function() {
         await this.newOracle.lock(this.aId, { from: bob });
 
@@ -487,6 +483,91 @@ contract('NewOracleManager', (accounts) => {
 
       it('should deny non-arbitrator locking an application', async function() {
         await assertRevert(this.newOracle.lock(this.aId, { from: alice }));
+      });
+    });
+
+    describe.only('voting (#aye()/#nay()', () => {
+      it('should allow voting to arbitrators who locked application', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.aye(this.aId, { from: bob });
+
+        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.ayeCount, 1);
+        assert.equal(res.nayCount, 0);
+      });
+
+      it('should deny voting to arbitrators who dont locked application', async function() {
+        await assertRevert(this.newOracle.aye(this.aId, { from: bob }));
+      });
+
+      it('should deny voting to non-arbitrator', async function() {
+        await assertRevert(this.newOracle.aye(this.aId, { from: coreTeam}));
+      });
+
+      it('should deny voting for approved applications', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.lock(this.aId, { from: charlie });
+        await this.newOracle.lock(this.aId, { from: dan });
+        await this.newOracle.lock(this.aId, { from: frank });
+        await this.newOracle.lock(this.aId, { from: george });
+
+        await this.newOracle.aye(this.aId, { from: bob });
+        await this.newOracle.nay(this.aId, { from: charlie });
+        await this.newOracle.aye(this.aId, { from: dan });
+        await this.newOracle.aye(this.aId, { from: frank });
+
+        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+        assert.equal(res.ayeCount, 3);
+        assert.equal(res.nayCount, 1);
+
+        await assertRevert(this.newOracle.aye(this.aId, { from: george }));
+        await assertRevert(this.newOracle.nay(this.aId, { from: george }));
+      });
+
+      it('should deny voting for rejected applications', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.lock(this.aId, { from: charlie });
+        await this.newOracle.lock(this.aId, { from: dan });
+        await this.newOracle.lock(this.aId, { from: frank });
+        await this.newOracle.lock(this.aId, { from: george });
+
+        await this.newOracle.aye(this.aId, { from: bob });
+        await this.newOracle.nay(this.aId, { from: charlie });
+        await this.newOracle.nay(this.aId, { from: dan });
+        await this.newOracle.aye(this.aId, { from: frank });
+        await this.newOracle.nay(this.aId, { from: george });
+
+        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.REJECTED);
+        assert.equal(res.ayeCount, 2);
+        assert.equal(res.nayCount, 3);
+
+        await assertRevert(this.newOracle.aye(this.aId, { from: george }));
+        await assertRevert(this.newOracle.nay(this.aId, { from: george }));
+      });
+
+      it('should allow changing decision if voting is still active', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.lock(this.aId, { from: charlie });
+        await this.newOracle.lock(this.aId, { from: dan });
+        await this.newOracle.lock(this.aId, { from: frank });
+
+        await this.newOracle.aye(this.aId, { from: bob });
+        await this.newOracle.nay(this.aId, { from: charlie });
+        await this.newOracle.aye(this.aId, { from: dan });
+
+        let res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.ayeCount, 2);
+        assert.equal(res.nayCount, 1);
+
+        await this.newOracle.nay(this.aId, { from: dan });
+
+        res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(res.ayeCount, 1);
+        assert.equal(res.nayCount, 2);
       });
     });
   });

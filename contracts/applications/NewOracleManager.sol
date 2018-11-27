@@ -28,6 +28,8 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
   event NewApplication(bytes32 applicationId, address applicant);
   event ApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event ArbitratorSlotTaken(bytes32 applicationId, uint256 slotsTaken, uint256 totalSlots);
+  event Aye(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
+  event Nay(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
 
   struct Application {
     address applicant;
@@ -57,8 +59,8 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
 
   struct OracleDetails {
     address addr;
-    string name;
-    string position;
+    bytes32 name;
+    bytes32 position;
     bytes32[] descriptionHashes;
     bytes32[] oracleTypes;
   }
@@ -121,8 +123,8 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
 
   function submit(
     address _oracleAddress,
-    string _name,
-    string _position,
+    bytes32 _name,
+    bytes32 _position,
     bytes32[] _descriptionHashes,
     bytes32[] _oracleTypes,
     uint256 _applicationFeeInGalt
@@ -199,6 +201,52 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
     emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n);
   }
 
+  function aye(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
+    require(a.votes[msg.sender] != Choice.AYE, "Already AYE vote");
+    // should validator still be active in multisig?
+
+    if (a.votes[msg.sender] == Choice.NAY) {
+      a.nayCount--;
+    }
+
+    a.votes[msg.sender] = Choice.AYE;
+    a.ayeCount++;
+
+    emit Aye(_aId, a.ayeCount, a.nayCount, a.m);
+
+    if (a.ayeCount == a.m) {
+      OracleDetails storage d = a.oracleDetails;
+      oracles.addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+      a.status = ApplicationStatus.APPROVED;
+    }
+  }
+
+  function nay(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
+    require(a.votes[msg.sender] != Choice.NAY, "Already NAY vote");
+    // should validator still be active in multisig?
+
+    if (a.votes[msg.sender] == Choice.AYE) {
+      a.ayeCount--;
+    }
+
+    a.votes[msg.sender] = Choice.NAY;
+    a.nayCount++;
+
+    emit Nay(_aId, a.ayeCount, a.nayCount, a.m);
+
+    if (a.nayCount == a.m) {
+      a.status = ApplicationStatus.REJECTED;
+    }
+  }
+
   function claimArbitratorReward(bytes32 _aId) external {
 
   }
@@ -269,8 +317,8 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
     view
     returns (
       address addr,
-      string name,
-      string position,
+      bytes32 name,
+      bytes32 position,
       bytes32[] descriptionHashes,
       bytes32[] oracleTypes
     )
