@@ -27,6 +27,7 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
 
   event NewApplication(bytes32 applicationId, address applicant);
   event ApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
+  event ArbitratorSlotTaken(bytes32 applicationId, uint256 slotsTaken, uint256 totalSlots);
 
   struct Application {
     address applicant;
@@ -182,11 +183,27 @@ contract NewOracleManager is AbstractArbitratorApplication, Statusable {
     emit ApplicationStatusChanged(id, ApplicationStatus.SUBMITTED);
   }
 
-  function claimArbitratorReward(bytes32 _cId) external {
+  /**
+   * @dev Any arbitrator locks an application if an empty slots available
+   * @param _aId Application ID
+   */
+  function lock(bytes32 _aId) external anyArbitrator {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
+    require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
+    require(a.arbitrators.size() < n, "All arbitrator slots are locked");
+
+    a.arbitrators.add(msg.sender);
+
+    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n);
+  }
+
+  function claimArbitratorReward(bytes32 _aId) external {
 
   }
 
-  function claimGaltSpaceReward(bytes32 _cId) external {
+  function claimGaltSpaceReward(bytes32 _aId) external {
 
   }
 

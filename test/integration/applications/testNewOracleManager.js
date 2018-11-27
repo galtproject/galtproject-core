@@ -74,7 +74,11 @@ contract('NewOracleManager', (accounts) => {
     bob,
     charlie,
     dan,
-    eve
+    eve,
+    frank,
+    george,
+    henrey,
+    ivan
   ] = accounts;
 
   beforeEach(async function() {
@@ -89,7 +93,9 @@ contract('NewOracleManager', (accounts) => {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.oracleStakeAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
-    this.abMultiSig = await ArbitratorsMultiSig.new([bob, charlie, dan], 2, { from: coreTeam });
+    this.abMultiSig = await ArbitratorsMultiSig.new([bob, charlie, dan, frank, george, henrey, ivan], 3, {
+      from: coreTeam
+    });
 
     await this.newOracle.initialize(
       this.oracles.address,
@@ -427,6 +433,60 @@ contract('NewOracleManager', (accounts) => {
           assert.equal(res.currency, Currency.ETH);
           assert.equal(res.galtSpaceRewardPaidOut, false);
         });
+      });
+    });
+  });
+
+  describe('pipeline', () => {
+    beforeEach(async function() {
+      await this.newOracle.setMofN(3, 5, { from: galtSpaceOrg });
+
+      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
+        CUSTODIAN_APPLICATION,
+        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        [60, 40],
+        ['', ''],
+        { from: applicationTypeManager }
+      );
+
+      const res = await this.newOracle.submit(
+        eve,
+        'Eve',
+        'MN',
+        this.attachedDocumentsBytes32,
+        [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+        0,
+        {
+          from: alice,
+          value: ether(13)
+        }
+      );
+
+      this.aId = res.logs[0].args.applicationId;
+    });
+
+    describe.only('#lock()', () => {
+      it('should allow a valid arbitrator locking an application', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+
+        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob]);
+      });
+
+      it('should deny locking more slots than n', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.lock(this.aId, { from: charlie });
+        await this.newOracle.lock(this.aId, { from: dan });
+        await this.newOracle.lock(this.aId, { from: frank });
+        await this.newOracle.lock(this.aId, { from: george });
+        await assertRevert(this.newOracle.lock(this.aId, { from: henrey }));
+
+        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob, charlie, dan, frank, george]);
+      });
+
+      it('should deny non-arbitrator locking an application', async function() {
+        await assertRevert(this.newOracle.lock(this.aId, { from: alice }));
       });
     });
   });
