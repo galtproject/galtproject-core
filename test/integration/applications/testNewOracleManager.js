@@ -11,7 +11,7 @@ const galt = require('@galtproject/utils');
 const { initHelperWeb3, ether, assertEqualBN, assertRevert } = require('../../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
-const { BN, utf8ToHex } = Web3.utils;
+const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
 // TODO: move to helpers
@@ -28,7 +28,7 @@ const ApplicationStatus = {
   SUBMITTED: 1,
   APPROVED: 2,
   REJECTED: 3,
-  REVERTED: 4,
+  REVERTED: 4
 };
 
 const ValidationStatus = {
@@ -145,6 +145,7 @@ contract('NewOracleManager', (accounts) => {
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     this.newOracleWeb3 = new web3.eth.Contract(this.newOracle.abi, this.newOracle.address);
+    this.oraclesWeb3 = new web3.eth.Contract(this.oracles.abi, this.oracles.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -486,7 +487,7 @@ contract('NewOracleManager', (accounts) => {
       });
     });
 
-    describe.only('voting (#aye()/#nay()', () => {
+    describe('voting (#aye()/#nay()', () => {
       it('should allow voting to arbitrators who locked application', async function() {
         await this.newOracle.lock(this.aId, { from: bob });
         await this.newOracle.aye(this.aId, { from: bob });
@@ -501,7 +502,7 @@ contract('NewOracleManager', (accounts) => {
       });
 
       it('should deny voting to non-arbitrator', async function() {
-        await assertRevert(this.newOracle.aye(this.aId, { from: coreTeam}));
+        await assertRevert(this.newOracle.aye(this.aId, { from: coreTeam }));
       });
 
       it('should deny voting for approved applications', async function() {
@@ -568,6 +569,32 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.ayeCount, 1);
         assert.equal(res.nayCount, 2);
+      });
+    });
+
+    describe('success execution', () => {
+      it('should add oracle to oracles registry', async function() {
+        await this.newOracle.lock(this.aId, { from: bob });
+        await this.newOracle.lock(this.aId, { from: charlie });
+        await this.newOracle.lock(this.aId, { from: dan });
+        await this.newOracle.lock(this.aId, { from: frank });
+        await this.newOracle.lock(this.aId, { from: george });
+
+        await this.newOracle.aye(this.aId, { from: bob });
+        await this.newOracle.nay(this.aId, { from: charlie });
+        await this.newOracle.aye(this.aId, { from: dan });
+        await this.newOracle.aye(this.aId, { from: frank });
+
+        const res = await this.oraclesWeb3.methods.getOracle(eve).call();
+        assert.equal(hexToUtf8(res.name), 'Eve');
+        assert.equal(hexToUtf8(res.position), 'MN');
+        assert.equal(res.active, true);
+        assert.sameMembers(res.assignedOracleTypes.map(web3.utils.hexToUtf8), [
+          PC_AUDITOR_ORACLE_TYPE,
+          PC_CUSTODIAN_ORACLE_TYPE
+        ]);
+        assert.sameMembers(res.descriptionHashes, this.attachedDocumentsBytes32);
+        assert.sameMembers(res.activeOracleTypes, []);
       });
     });
   });
