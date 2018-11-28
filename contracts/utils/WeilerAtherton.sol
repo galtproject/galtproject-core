@@ -14,7 +14,7 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "./BentleyOttman.sol";
+import "./MartinezRueda.sol";
 import "./PolygonUtils.sol";
 //import "./SegmentUtils.sol";
 //import "./VectorUtils.sol";

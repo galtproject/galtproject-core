@@ -21,8 +21,10 @@ import "../collections/PointRedBlackTree.sol";
 import "./MathUtils.sol";
 import "./SegmentUtils.sol";
 import "./VectorUtils.sol";
+import "./PolygonUtils.sol";
+import "../collections/SweepEventRedBlackTree.sol";
 
-library BentleyOttman {
+library MartinezRueda {
   int256 internal constant EPS = 1000000000;
 
   using RedBlackTree for RedBlackTree.Tree;
@@ -47,7 +49,11 @@ library BentleyOttman {
   struct State {
     uint8 maxHandleQueuePointsPerCall;
 
-    SegmentRedBlackTree.SegmentsTree status;
+    PolygonUtils.CoorsPolygon subject;
+    PolygonUtils.CoorsPolygon clipping;
+
+    SweepEventRedBlackTree.SweepEventTree eventQueue;
+    SweepEventRedBlackTree.SweepEventTree sweepLineTree;
     PointRedBlackTree.PointsTree queue;
     OutputPoint[] output;
     int256[2][2][] segments;
@@ -59,22 +65,6 @@ library BentleyOttman {
     mapping(bytes32 => uint256) segmentHashToStatusId;
     mapping(bytes32 => uint256) pointHashToQueueId;
   }
-
-  event LogPoint(int256[2] point);
-  event LogSegment(int256[2][2] segment);
-  event LogString(string s);
-  event LogUpPush(int256[2] point, int256[2][2] segment);
-  event LogSegmentSort(int256[2][2] segment);
-  event LogStatusInsert(string name, int256[2] point, int256[2][2] segment);
-  event LogStatusRemove(string name, int256[2] point, uint256 id, int256[2][2] segment);
-  event LogFindNewEvent(string name, int256[2][2] leftSegment, int256[2][2] rightSegment);
-  event LogSortUcp(string name, int256[2][2] segment, int8 compareResult);
-  event LogUCp(string name, int256[2][2] UCp);
-  event LogFindNewEventOutputInsert(int256[2] point);
-  event LogHandleEventPointStage1If(uint256 UpLength, uint256 LpLength, uint256 CpLength);
-  event LogHandleEventPointStage1OutputInsert(int256[2] point);
-  event LogHandleEventPointStage3If(int256[2] point);
-  event LogHandleEventPointStage3Else(uint256 position, int256 x, int256[2] point, int256[2][2] UCpmin, int256[2][2] UCpmax);
 
   function initBentleyOttman(State storage state) internal {
     //transaction reverted on maxHandleQueuePointsPerCall = 16 
