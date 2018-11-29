@@ -25,13 +25,13 @@ contract MockWeilerAtherton {
   }
   
   function initBasePolygon() public {
-    weilerAtherton.basePolygonInput = basePolygon;
-    weilerAtherton.initPolygon(basePolygon, weilerAtherton.basePolygon);
+    weilerAtherton.martinezRueda.subject = basePolygon;
+    weilerAtherton.initPolygon(basePolygon, weilerAtherton.martinezRueda.subject);
   }
 
   function initCropPolygon() public {
-    weilerAtherton.cropPolygonInput = cropPolygon;
-    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.cropPolygon);
+    weilerAtherton.martinezRueda.clipping = cropPolygon;
+    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.martinezRueda.clipping);
   }
   
   function initAllPolygons() public {
@@ -40,11 +40,11 @@ contract MockWeilerAtherton {
   }
 
   function addBasePolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.basePolygon);
+    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.subject);
   }
 
   function addCropPolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.cropPolygon);
+    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.clipping);
   }
   
   function processBentleyOttman() public {

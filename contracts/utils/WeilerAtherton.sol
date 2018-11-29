@@ -54,11 +54,9 @@ library WeilerAtherton {
   }
 
   struct State {
-    PolygonUtils.CoorsPolygon basePolygonInput;
-    PolygonUtils.CoorsPolygon cropPolygonInput;
     Polygon basePolygon;
     Polygon cropPolygon;
-    BentleyOttman.State bentleyOttman;
+    MartinezRueda.State martinezRueda;
     PolygonUtils.CoorsPolygon[] resultPolygons;
     PolygonUtils.CoorsPolygon basePolygonOutput;
   }
@@ -77,8 +75,8 @@ library WeilerAtherton {
   }
 
   function initAllPolygons(State storage state) public {
-    initPolygon(state, state.basePolygonInput, state.basePolygon);
-    initPolygon(state, state.cropPolygonInput, state.cropPolygon);
+    initPolygon(state, state.martinezRueda.subject, state.basePolygon);
+    initPolygon(state, state.martinezRueda.clipping, state.cropPolygon);
   }
 
   function initPolygon(State storage state, PolygonUtils.CoorsPolygon storage input, Polygon storage polygon) public {
@@ -101,25 +99,9 @@ library WeilerAtherton {
     polygon.pointsByHash[pointHash].nextPoint = polygon.startPoint;
     polygon.pointsByHash[polygon.startPoint].prevPoint = pointHash;
   }
-
-  function addPolygonSegments(State storage state, Polygon storage polygon) public {
-    bytes32 currentPoint;
-    if (polygon.currentPointForAddSegment == bytes32(0)) {
-      currentPoint = polygon.startPoint;
-    } else {
-      currentPoint = polygon.currentPointForAddSegment;
-    }
-
-    //TODO: find max possible iterations count and break on it
-    while (true) {
-      state.bentleyOttman.addSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
-      currentPoint = polygon.pointsByHash[currentPoint].nextPoint;
-      emit LogAddSegment([polygon.pointsByHash[currentPoint].latLon, polygon.pointsByHash[polygon.pointsByHash[currentPoint].nextPoint].latLon]);
-      if (currentPoint == polygon.startPoint) {
-        polygon.segmentsAdded = true;
-        break;
-      }
-    }
+  
+  function prepareAllPolygons(State storage state) {
+    state.bentleyOttman.processAllPolygons();
   }
 
   function processBentleyOttman(State storage state) public {
@@ -280,10 +262,10 @@ library WeilerAtherton {
 
     // find direction and next point
     //TODO: need to add OR intersection point?
-    if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].nextPoint].latLon, state.cropPolygonInput)) {
+    if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].nextPoint].latLon, state.martinezRueda.clipping)) {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].nextPoint;
       baseDirection = Direction.FORWARD;
-    } else if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].prevPoint].latLon, state.cropPolygonInput)) {
+    } else if (PolygonUtils.isInsideCoors(state.basePolygon.pointsByHash[state.basePolygon.pointsByHash[curPointHash].prevPoint].latLon, state.martinezRueda.clipping)) {
       nextPointHash = state.basePolygon.pointsByHash[curPointHash].prevPoint;
       baseDirection = Direction.BACKWARD;
     } else {
@@ -334,10 +316,10 @@ library WeilerAtherton {
 
     // find direction and next point
     //TODO: need to add OR intersection point?
-    if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].nextPoint].latLon, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].nextPoint != prevPointHash) {
+    if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].nextPoint].latLon, state.martinezRueda.subject) && state.cropPolygon.pointsByHash[curPointHash].nextPoint != prevPointHash) {
       nextPointHash = state.cropPolygon.pointsByHash[curPointHash].nextPoint;
       cropDirection = Direction.FORWARD;
-    } else if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].prevPoint].latLon, state.basePolygonInput) && state.cropPolygon.pointsByHash[curPointHash].prevPoint != prevPointHash) {
+    } else if (PolygonUtils.isInsideCoors(state.cropPolygon.pointsByHash[state.cropPolygon.pointsByHash[curPointHash].prevPoint].latLon, state.martinezRueda.subject) && state.cropPolygon.pointsByHash[curPointHash].prevPoint != prevPointHash) {
       nextPointHash = state.cropPolygon.pointsByHash[curPointHash].prevPoint;
       cropDirection = Direction.BACKWARD;
     } else {

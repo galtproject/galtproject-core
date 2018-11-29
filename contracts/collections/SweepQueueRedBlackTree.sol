@@ -19,7 +19,7 @@ import "../structs/SweepEvent.sol";
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-library SweepEventRedBlackTree {
+library SweepQueueRedBlackTree {
   using RedBlackTree for RedBlackTree.Tree;
   
   uint internal constant ZERO = 0;
@@ -27,7 +27,7 @@ library SweepEventRedBlackTree {
   function find(SweepEvent.Tree storage sweepEvents, SweepEvent.Item value) public returns (uint) {
     uint _key = sweepEvents.tree.root;
     while (_key != ZERO) {
-      int8 compareResult = SweepEventUtils.compareEvents(value, sweepEvents.values[_key], sweepEvents);
+      int8 compareResult = SweepEventUtils.compareEvents(sweepEvents, value, sweepEvents.values[_key]);
       if (compareResult == 0) {
         return _key;
       }
@@ -45,7 +45,7 @@ library SweepEventRedBlackTree {
     uint x = sweepEvents.tree.root;
     while (x != ZERO) {
       y = x;
-      int8 compareResult = SweepEventUtils.compareEvents(value, sweepEvents.values[_key], sweepEvents);
+      int8 compareResult = SweepEventUtils.compareEvents(sweepEvents, value, sweepEvents.values[_key]);
       if (compareResult < 0) {
         x = sweepEvents.tree.items[x].left;
       } else {
@@ -60,7 +60,7 @@ library SweepEventRedBlackTree {
 
     if (y == ZERO) {
       sweepEvents.tree.root = key;
-    } else if (SweepEventUtils.compareEvents(sweepEvents.values[key], sweepEvents.values[y], sweepEvents) < 0) {
+    } else if (SweepEventUtils.compareEvents(sweepEvents, sweepEvents.values[key], sweepEvents.values[y]) < 0) {
       sweepEvents.tree.items[y].left = key;
     } else {
       sweepEvents.tree.items[y].right = key;
@@ -81,8 +81,8 @@ library SweepEventRedBlackTree {
     return sweepEvents.tree.inserted + 1;
   }
 
-  function pop(SweepEvent.Tree storage sweepEvents) public returns(uint256 id, SweepEvent.Item value) {
-    id = sweepEvents.tree.pop();
+  function pop(SweepEvent.Tree storage sweepEvents) public returns(SweepEvent.Item value) {
+    uint256 id = sweepEvents.tree.pop();
     value = sweepEvents.values[id];
   }
 }

@@ -21,7 +21,7 @@ library SweepEventUtils {
 
   int256 internal constant EPS = 1000000000;
 
-  function compareEvents(SweepEvent.Item storage e1, SweepEvent.Item storage e2, SweepEvent.Tree storage tree) internal pure returns (int8) {
+  function compareEvents(SweepEvent.Tree storage tree, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal pure returns (int8) {
     // Different x-coordinate
     if (e1.point[0] > e2.point[0])
       return 1;
@@ -68,7 +68,7 @@ library SweepEventUtils {
     : (p1[0] - p[0]) * (p0[1] - p[1]) - (p0[0] - p[0]) * (p1[1] - p[1]) > 0;
   }
 
-  function compareSegments(SweepEvent.Item storage le1, SweepEvent.Item storage le2, SweepEvent.Tree storage tree) {
+  function compareSegments(SweepEvent.Tree storage tree, SweepEvent.Item storage le1, SweepEvent.Item storage le2) {
     if (le1.id == le2.id) {
       return 0;
     }
@@ -85,7 +85,7 @@ library SweepEventUtils {
         return le1.point[1] < le2.point[1] ? - 1 : 1;
       // has the line segment associated to e1 been inserted
       // into S after the line segment associated to e2 ?
-      if (compareEvents(le1, le2) == 1)
+      if (compareEvents(tree, le1, le2) == 1)
         return le2.isAbove(le1.point) ? - 1 : 1;
       // The line segment associated to e2 has been inserted
       // into S after the line segment associated to e1
@@ -109,6 +109,6 @@ library SweepEventUtils {
       return le1.isSubject ? - 1 : 1;
     }
 
-    return compareEvents(le1, le2, tree) == 1 ? 1 : - 1;
+    return compareEvents(tree, le1, le2) == 1 ? 1 : - 1;
   }
 }
