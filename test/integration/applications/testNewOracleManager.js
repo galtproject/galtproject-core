@@ -341,6 +341,81 @@ contract('NewOracleManager', (accounts) => {
           assert.equal(res.galtSpaceRewardPaidOut, false);
         });
       });
+
+      describe('claim rewards', () => {
+        beforeEach(async function() {
+          await this.galtToken.approve(this.newOracle.address, ether(47), { from: alice });
+          const res = await this.newOracle.submit(
+            bob,
+            'Bob',
+            'MN',
+            this.attachedDocumentsBytes32,
+            [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+            ether(47),
+            {
+              from: alice
+            }
+          );
+          this.aId = res.logs[0].args.applicationId;
+
+          await this.newOracle.lock(this.aId, { from: bob });
+          await this.newOracle.lock(this.aId, { from: charlie });
+          await this.newOracle.lock(this.aId, { from: dan });
+          await this.newOracle.lock(this.aId, { from: frank });
+
+          await this.newOracle.aye(this.aId, { from: bob });
+          await this.newOracle.nay(this.aId, { from: charlie });
+          await this.newOracle.aye(this.aId, { from: dan });
+          await this.newOracle.aye(this.aId, { from: frank });
+        });
+
+        it('should allow galt space withdrawal only once', async function() {
+          const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+
+          assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
+        });
+
+        it('should deny galt space double claim a reward', async function() {
+          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await assertRevert(this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
+        });
+
+        it('should allow oracles claiming their rewards', async function() {
+          const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+          const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+          const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+          const frankBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+
+          await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
+
+          const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+          const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+          const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+          const frankBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+
+          assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
+          assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
+          assertGaltBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(10.2225));
+          assertGaltBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(10.2225));
+        });
+
+        it('should deny oracles claiming their rewards twice', async function() {
+          await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
+
+          await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: bob }));
+          await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: dan }));
+          await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: charlie }));
+          await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: frank }));
+        });
+      });
     });
 
     describe('with ETH payment', () => {
@@ -413,7 +488,6 @@ contract('NewOracleManager', (accounts) => {
         });
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
-          await this.galtToken.approve(this.newOracle.address, ether(53), { from: alice });
           let res = await this.newOracle.submit(
             bob,
             'Bob',
@@ -441,16 +515,16 @@ contract('NewOracleManager', (accounts) => {
 
       describe('claim rewards', () => {
         beforeEach(async function() {
-          await this.galtToken.approve(this.newOracle.address, ether(47), { from: alice });
           const res = await this.newOracle.submit(
             bob,
             'Bob',
             'MN',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
-            ether(47),
+            0,
             {
-              from: alice
+              from: alice,
+              value: ether(9)
             }
           );
           this.aId = res.logs[0].args.applicationId;
@@ -459,19 +533,21 @@ contract('NewOracleManager', (accounts) => {
           await this.newOracle.lock(this.aId, { from: charlie });
           await this.newOracle.lock(this.aId, { from: dan });
           await this.newOracle.lock(this.aId, { from: frank });
+          await this.newOracle.lock(this.aId, { from: george });
 
           await this.newOracle.aye(this.aId, { from: bob });
           await this.newOracle.nay(this.aId, { from: charlie });
-          await this.newOracle.aye(this.aId, { from: dan });
+          await this.newOracle.nay(this.aId, { from: dan });
           await this.newOracle.aye(this.aId, { from: frank });
+          await this.newOracle.aye(this.aId, { from: george });
         });
 
         it('should allow galt space withdrawal only once', async function() {
-          const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
           await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-          const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
 
-          assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
+          assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
         });
 
         it('should deny galt space double claim a reward', async function() {
@@ -480,25 +556,29 @@ contract('NewOracleManager', (accounts) => {
         });
 
         it('should allow oracles claiming their rewards', async function() {
-          const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-          const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-          const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-          const frankBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+          const bobBalanceBefore = await web3.eth.getBalance(bob);
+          const danBalanceBefore = await web3.eth.getBalance(dan);
+          const charlieBalanceBefore = await web3.eth.getBalance(charlie);
+          const frankBalanceBefore = await web3.eth.getBalance(frank);
+          const georgeBalanceBefore = await web3.eth.getBalance(george);
 
           await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
-          await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
           await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
           await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
+          await this.newOracle.claimArbitratorReward(this.aId, { from: george });
 
-          const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-          const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-          const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-          const frankBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+          const bobBalanceAfter = await web3.eth.getBalance(bob);
+          const charlieBalanceAfter = await web3.eth.getBalance(charlie);
+          const danBalanceAfter = await web3.eth.getBalance(dan);
+          const frankBalanceAfter = await web3.eth.getBalance(frank);
+          const georgeBalanceAfter = await web3.eth.getBalance(george);
 
-          assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
-          assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
-          assertGaltBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(10.2225));
-          assertGaltBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(10.2225));
+          assertEthBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(danBalanceBefore, danBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(1.206));
+          assertEthBalanceChanged(georgeBalanceBefore, georgeBalanceAfter, ether(1.206));
         });
 
         it('should deny oracles claiming their rewards twice', async function() {
@@ -677,86 +757,6 @@ contract('NewOracleManager', (accounts) => {
         ]);
         assert.sameMembers(res.descriptionHashes, this.attachedDocumentsBytes32);
         assert.sameMembers(res.activeOracleTypes, []);
-      });
-    });
-
-    describe('claim rewards', () => {
-      beforeEach(async function() {
-        const res = await this.newOracle.submit(
-          bob,
-          'Bob',
-          'MN',
-          this.attachedDocumentsBytes32,
-          [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
-          0,
-          {
-            from: alice,
-            value: ether(9)
-          }
-        );
-        this.aId = res.logs[0].args.applicationId;
-
-        await this.newOracle.lock(this.aId, { from: bob });
-        await this.newOracle.lock(this.aId, { from: charlie });
-        await this.newOracle.lock(this.aId, { from: dan });
-        await this.newOracle.lock(this.aId, { from: frank });
-        await this.newOracle.lock(this.aId, { from: george });
-
-        await this.newOracle.aye(this.aId, { from: bob });
-        await this.newOracle.nay(this.aId, { from: charlie });
-        await this.newOracle.aye(this.aId, { from: dan });
-        await this.newOracle.aye(this.aId, { from: frank });
-      });
-
-      it('should allow galt space withdrawal only once', async function() {
-        const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
-        await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-        const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
-
-        assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
-      });
-
-      it('should deny galt space double claim a reward', async function() {
-        await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-        await assertRevert(this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
-      });
-
-      it('should allow oracles claiming their rewards', async function() {
-        const bobBalanceBefore = await web3.eth.getBalance(bob);
-        const danBalanceBefore = await web3.eth.getBalance(dan);
-        const charlieBalanceBefore = await web3.eth.getBalance(charlie);
-        const frankBalanceBefore = await web3.eth.getBalance(frank);
-        const georgeBalanceBefore = await web3.eth.getBalance(george);
-
-        await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: george });
-
-        const bobBalanceAfter = await web3.eth.getBalance(bob);
-        const charlieBalanceAfter = await web3.eth.getBalance(charlie);
-        const danBalanceAfter = await web3.eth.getBalance(dan);
-        const frankBalanceAfter = await web3.eth.getBalance(frank);
-        const georgeBalanceAfter = await web3.eth.getBalance(george);
-
-        assertEthBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(1.206));
-        assertEthBalanceChanged(danBalanceBefore, danBalanceAfter, ether(1.206));
-        assertEthBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(1.206));
-        assertEthBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(1.206));
-        assertEthBalanceChanged(georgeBalanceBefore, georgeBalanceAfter, ether(1.206));
-      });
-
-      it('should deny oracles claiming their rewards twice', async function() {
-        await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
-        await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
-
-        await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: bob }));
-        await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: dan }));
-        await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: charlie }));
-        await assertRevert(this.newOracle.claimArbitratorReward(this.aId, { from: frank }));
       });
     });
   });

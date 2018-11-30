@@ -61,6 +61,9 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     payable
     returns (bytes32)
   {
+    require(_descriptionHashes.length > 0, "Description hashes required");
+    require(_descriptionHashes.length > 0, "Oracle Types required");
+
     bytes32 id = keccak256(
       abi.encodePacked(
         msg.sender,
