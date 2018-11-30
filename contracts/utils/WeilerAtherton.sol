@@ -71,7 +71,7 @@ library WeilerAtherton {
   event LogIncludeIntersectionInResult(string polygon, int256[2] point, uint256 handledPoints);
 
   function initWeilerAtherton(State storage state) internal {
-    state.bentleyOttman.initBentleyOttman();
+    state.martinezRueda.initMartinezRueda();
   }
 
   function initAllPolygons(State storage state) public {
@@ -100,9 +100,9 @@ library WeilerAtherton {
     polygon.pointsByHash[polygon.startPoint].prevPoint = pointHash;
   }
   
-  function prepareAllPolygons(State storage state) {
-    state.bentleyOttman.processAllPolygons();
-  }
+//  function prepareAllPolygons(State storage state) public {
+//    state.bentleyOttman.processAllPolygons();
+//  }
 
 //  function processBentleyOttman(State storage state) public {
 //    state.bentleyOttman.handleQueuePoints();

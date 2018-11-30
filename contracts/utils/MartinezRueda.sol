@@ -64,7 +64,7 @@ library MartinezRueda {
     SweepEvent.Tree sweepLineTree;
     uint256[] sortedEvents;
     uint256[] resultEvents;
-    mapping(bool => uint256) sweepProcessed;
+    mapping(uint256 => bool) sweepProcessed;
     int256[2][][] resultContours;
 
     Operation operation;
@@ -89,7 +89,7 @@ library MartinezRueda {
     state.clippingBbox = [MathUtils.INT256_MAX(), MathUtils.INT256_MAX(), MathUtils.INT256_MIN(), MathUtils.INT256_MIN()];
   }
 
-  function processPolygon(State storage state, PolygonUtils.CoorsPolygon storage contourOrHole, bool isSubject, uint8 contourId, int256[4] storage bbox, bool isExteriorRing) {
+  function processPolygon(State storage state, PolygonUtils.CoorsPolygon storage contourOrHole, bool isSubject, uint8 contourId, int256[4] storage bbox, bool isExteriorRing) public {
     int256[2] memory p1;
     int256[2] memory p2;
 
@@ -108,14 +108,12 @@ library MartinezRueda {
       }
 
       SweepEvent.Item memory e1;
-      e1.qId = state.eventQueue.tree.inserted + 1;
-      e1.id = e1.qId;
+      e1.id = state.eventQueue.tree.inserted + 1;
       e1.point = p1;
       e1.isSubject = isSubject;
 
       SweepEvent.Item memory e2;
-      e2.qId = state.eventQueue.tree.inserted + 2;
-      e2.id = e2.qId;
+      e2.id = state.eventQueue.tree.inserted + 2;
       e2.point = p2;
       e2.isSubject = isSubject;
 
@@ -143,20 +141,28 @@ library MartinezRueda {
 
       // Pushing it so the queue is sorted from left to right,
       // with object on the left having the highest priority.
-      SweepQueueRedBlackTree.insert(state.eventQueue, state.store, e1.qId, e1);
-      SweepQueueRedBlackTree.insert(state.eventQueue, state.store, e2.qId, e2);
-
+      SweepQueueRedBlackTree.insert(state.eventQueue, state.store, e1.id);
+      SweepQueueRedBlackTree.insert(state.eventQueue, state.store, e2.id);
+//
       state.store.sweepById[e1.id] = e1;
       state.store.sweepById[e2.id] = e2;
     }
   }
-
-  function processAllPolygons(State storage state) {
+  
+  function processSubjectPolygon(State storage state) public {
     processPolygon(state, state.subject, true, 1, state.subjectBbox, true);
+  }
+
+  function processClippingPolygon(State storage state) public {
     processPolygon(state, state.clipping, false, 2, state.clippingBbox, true);
   }
 
-  function subdivideSegments(State storage state) {
+  function processAllPolygons(State storage state) public {
+    processPolygon(state, state.subject, true, 1, state.subjectBbox, true);
+    processPolygon(state, state.clipping, false, 2, state.clippingBbox, true);
+  }
+  
+  function subdivideSegments(State storage state) public {
     int256 rightbound = MathUtils.minInt(state.subjectBbox[2], state.clippingBbox[2]);
 
     uint256 prev;
@@ -167,7 +173,7 @@ library MartinezRueda {
     uint8 i = 0;
 
     while (state.eventQueue.tree.inserted != state.eventQueue.tree.removed) {
-      SweepEvent.Item storage sweepEvent = state.store.sweepById[SweepQueueRedBlackTree.pop(state.eventQueue).id];
+      SweepEvent.Item storage sweepEvent = state.store.sweepById[RedBlackTree.pop(state.eventQueue.tree)];
       state.sortedEvents.push(sweepEvent.id);
       // optimization by bboxes for intersection and difference goes here
       if (state.operation == Operation.INTERSECTION && sweepEvent.point[0] > rightbound
@@ -175,10 +181,10 @@ library MartinezRueda {
         break;
       }
       if (sweepEvent.left) {
-        prev = state.sweepLineTree.tree.inserted + 1;
-        next = state.sweepLineTree.tree.inserted + 1;
+        prev = sweepEvent.id;
+        next = sweepEvent.id;
 
-        SweepLineRedBlackTree.insert(state.sweepLineTree, state.store, state.sweepLineTree.tree.inserted + 1, sweepEvent);
+        SweepLineRedBlackTree.insert(state.sweepLineTree, state.store, sweepEvent.id);
         begin = RedBlackTree.first(state.sweepLineTree.tree);
 
         if (prev == begin)
@@ -188,25 +194,25 @@ library MartinezRueda {
 
         next = RedBlackTree.next(state.sweepLineTree.tree, next);
 
-        computeFields(sweepEvent, state.store.sweepById[state.sweepLineTree.values[prev].id], state.operation);
-        if (next != 0 && possibleIntersection(state, sweepEvent, state.store.sweepById[state.sweepLineTree.values[next].id]) == 2) {
-          computeFields(sweepEvent, state.store.sweepById[state.sweepLineTree.values[prev].id], state.operation);
-          computeFields(sweepEvent, next.key, state.operation);
+        computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
+        if (next != 0 && possibleIntersection(state, sweepEvent, state.store.sweepById[next]) == 2) {
+          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
+          computeFields(state, sweepEvent, state.store.sweepById[next], state.operation);
         }
 
-        if (prev != 0 && possibleIntersection(state, state.store.sweepById[state.sweepLineTree.values[prev].id], sweepEvent) == 2) {
+        if (prev != 0 && possibleIntersection(state, state.store.sweepById[prev], sweepEvent) == 2) {
           if (prevPrev == begin)
             prevPrev = 0;
           else
             prevPrev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
 
-          computeFields(state.store.sweepById[state.sweepLineTree.values[prev].id], state.store.sweepById[state.sweepLineTree.values[prevPrev].id], state.operation);
-          computeFields(sweepEvent, state.store.sweepById[state.sweepLineTree.values[prev].id], state.operation);
+          computeFields(state, state.store.sweepById[prev], state.store.sweepById[prevPrev], state.operation);
+          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
         }
       } else {
         sweepEvent = state.store.sweepById[sweepEvent.otherEvent];
-        next = sweepEvent.lId;
-        prev = sweepEvent.lId;
+        next = sweepEvent.id;
+        prev = sweepEvent.id;
 
         if (prev != 0 && next != 0) {
           if (prev == begin)
@@ -215,10 +221,10 @@ library MartinezRueda {
             prev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
 
           next = RedBlackTree.next(state.sweepLineTree.tree, next);
-          RedBlackTree.remove(state.sweepLineTree.tree, sweepEvent.lId);
+          RedBlackTree.remove(state.sweepLineTree.tree, sweepEvent.id);
 
           if (next != 0 && prev != 0) {
-            possibleIntersection(state, state.store.sweepById[state.sweepLineTree.values[prev].id], state.store.sweepById[state.sweepLineTree.values[next].id]);
+            possibleIntersection(state, state.store.sweepById[prev], state.store.sweepById[next]);
           }
         }
       }
@@ -230,9 +236,9 @@ library MartinezRueda {
     }
   }
 
-  function computeFields(SweepEvent.Item storage sweepEvent, SweepEvent.Item storage prev, Operation operation) {
+  function computeFields(State storage state, SweepEvent.Item storage sweepEvent, SweepEvent.Item storage prev, Operation operation) private {
     // compute inOut and otherInOut fields
-    if (prev.lId == 0) {
+    if (prev.id == 0) {
       sweepEvent.inOut = false;
       sweepEvent.otherInOut = true;
 
@@ -245,13 +251,13 @@ library MartinezRueda {
         // previous line segment in sweepline belongs to the clipping polygon
       } else {
         sweepEvent.inOut = !prev.otherInOut;
-        sweepEvent.otherInOut = prev.isVertical() ? !prev.inOut : prev.inOut;
+        sweepEvent.otherInOut = SweepEventUtils.isVertical(state.store, prev) ? !prev.inOut : prev.inOut;
       }
 
       // compute prevInResult field
-      if (prev.lId != 0) {
-        sweepEvent.prevInResult = (!inResult(prev, operation) || prev.isVertical())
-        ? prev.prevInResult : prev;
+      if (prev.id != 0) {
+        sweepEvent.prevInResult = (!inResult(prev, operation) || SweepEventUtils.isVertical(state.store, prev))
+        ? prev.prevInResult : prev.id;
       }
     }
 
@@ -280,7 +286,7 @@ library MartinezRueda {
     return false;
   }
 
-  function possibleIntersection(State storage state, SweepEvent.Item storage se1, SweepEvent.Item storage se2) {
+  function possibleIntersection(State storage state, SweepEvent.Item storage se1, SweepEvent.Item storage se2) private returns(int8) {
     // that disallows self-intersecting polygons,
     // did cost us half a day, so I'll leave it
     // out of respect
@@ -323,7 +329,7 @@ library MartinezRueda {
       if (!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])) {
         divideSegment(state, se2.id, inter[0]);
       }
-      return 1;
+      return int8(1);
     }
 
     // The line segments associated to se1 and se2 overlap
@@ -342,7 +348,7 @@ library MartinezRueda {
       events[1] = se2.id;
     }
 
-    if (SweepEventUtils.equals(se1.otherEvent.point, se2.otherEvent.point)) {
+    if (SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, state.store.sweepById[se2.otherEvent].point)) {
       rightCoincide = true;
     } else if (SweepEventUtils.compareEvents(state.store, state.store.sweepById[se1.otherEvent], state.store.sweepById[se2.otherEvent]) == 1) {
       if (leftCoincide) {
@@ -382,33 +388,31 @@ library MartinezRueda {
     }
 
     // no line segment includes totally the other one
-    if (events[0] != events[3].otherEvent) {
+    if (events[0] != state.store.sweepById[events[3]].otherEvent) {
       divideSegment(state, events[0], state.store.sweepById[events[1]].point);
       divideSegment(state, events[1], state.store.sweepById[events[2]].point);
       return 3;
     }
 
     // one line segment includes the other one
-    divideSegment(state, events[0], events[1].point);
+    divideSegment(state, events[0], state.store.sweepById[events[1]].point);
     divideSegment(state, state.store.sweepById[events[3]].otherEvent, state.store.sweepById[events[2]].point);
 
     return 3;
   }
 
-  function divideSegment(State storage state, uint256 seId, int256[2] p) {
+  function divideSegment(State storage state, uint256 seId, int256[2] p) private {
     SweepEvent.Item storage se = state.store.sweepById[seId];
 
     SweepEvent.Item memory r;
-    r.qId = state.eventQueue.tree.inserted + 1;
-    r.id = r.qId;
+    r.id = state.eventQueue.tree.inserted + 1;
     r.point = p;
     r.otherEvent = se.id;
     r.isSubject = se.isSubject;
     r.contourId = se.contourId;
 
     SweepEvent.Item memory l;
-    l.qId = state.eventQueue.tree.inserted + 2;
-    l.id = l.qId;
+    l.id = state.eventQueue.tree.inserted + 2;
     l.point = p;
     l.left = true;
     l.otherEvent = se.otherEvent;
@@ -416,7 +420,7 @@ library MartinezRueda {
     l.contourId = se.contourId;
 
     /* eslint-disable no-console */
-    if (SweepEventUtils.equals(se.point, se.otherEvent.point)) {
+    if (SweepEventUtils.equals(se.point, state.store.sweepById[se.otherEvent].point)) {
       require(false, "Possibly collapsed segment");
       //      console.warn('what is that, a collapsed segment?', se);
     }
@@ -434,15 +438,15 @@ library MartinezRueda {
     state.store.sweepById[se.otherEvent].otherEvent = l.id;
     se.otherEvent = r.id;
 
-    SweepQueueRedBlackTree.insert(state.eventQueue, state.store, r.qId, r);
-    SweepQueueRedBlackTree.insert(state.eventQueue, state.store, l.qId, l);
+    SweepQueueRedBlackTree.insert(state.eventQueue, state.store, r.id);
+    SweepQueueRedBlackTree.insert(state.eventQueue, state.store, l.id);
 
     state.store.sweepById[r.id] = r;
     state.store.sweepById[l.id] = l;
   }
 
   //function to convert back to regular point form:
-  function toPoint(int256[2] p, int256 s, int256[2] d) returns (int256[2])  {
+  function toPoint(int256[2] p, int256 s, int256[2] d) private returns (int256[2]) {
     return [
       p[0] + s * d[0],
       p[1] + s * d[1]
@@ -452,14 +456,14 @@ library MartinezRueda {
    * Finds the magnitude of the cross product of two vectors (if we pretend
    * they're in three dimensions)
    */
-  function crossProduct(int256[2] a, int256[2] b) returns (int256) {
+  function crossProduct(int256[2] a, int256[2] b) private returns (int256) {
     return (a[0] * b[1]) - (a[1] * b[0]);
   }
 
   /**
  * Finds the dot product of two vectors.
  */
-  function dotProduct(int256[2] a, int256[2] b) returns (int256) {
+  function dotProduct(int256[2] a, int256[2] b) private returns (int256) {
     return (a[0] * b[0]) + (a[1] * b[1]);
   }
 
@@ -472,11 +476,10 @@ library MartinezRueda {
    * Page 244.
    *
    * noEndpointTouch whether to skip single touchpoints (meaning connected segments) as intersections
-   * @returns {Array.<Array.<Number>>|Null} If the lines intersect, the point of
-   * intersection. If they overlap, the two end points of the overlapping segment.
+   * Return if the lines intersect, the point of intersection. If they overlap, the two end points of the overlapping segment.
    * Otherwise, null.
    */
-  function segmentIntersection(int256[2] a1, int256[2] a2, int256[2] b1, int256[2] b2, bool noEndpointTouch) returns (int256[2][2] result) {
+  function segmentIntersection(int256[2] a1, int256[2] a2, int256[2] b1, int256[2] b2) private returns (int256[2][2] result) {
     // The algorithm expects our lines in the form P + sd, where P is a point,
     // s is on the interval [0, 1], and d is a vector.
     // We are passed two points. P can be the first point of each pair. The
@@ -514,19 +517,19 @@ library MartinezRueda {
       }
       if (s == 0 || s == 1) {
         // on an endpoint of line segment a
-        if (!noEndpointTouch) {
+//        if (!noEndpointTouch) {
           result[0] = toPoint(a1, s, va);
-        }
+//        }
         return;
       }
       if (t == 0 || t == 1) {
         // on an endpoint of line segment b
-        if (!noEndpointTouch) {
+//        if (!noEndpointTouch) {
           result[0] = toPoint(b1, t, vb);
-        }
+//        }
         return;
       }
-      result[0] = [toPoint(a1, s, va)];
+      result[0] = toPoint(a1, s, va);
       return;
     }
 
@@ -545,6 +548,10 @@ library MartinezRueda {
       return;
     }
 
+    return segmentIntersectionStage2(a1, va, vb, e, sqrLenA);
+  }
+  
+  function segmentIntersectionStage2(int256[2] a1, int256[2] memory va, int256[2] memory vb, int256[2] memory e, int256 sqrLenA) private returns (int256[2][2] result) {
     int256 sa = dotProduct(va, e) / sqrLenA;
     int256 sb = sa + dotProduct(va, vb) / sqrLenA;
     int256 smin = MathUtils.minInt(sa, sb);
@@ -556,39 +563,39 @@ library MartinezRueda {
 
       // overlap on an end point
       if (smin == 1) {
-        if (!noEndpointTouch) {
-          result[0] = toPoint(a1, smin > 0 ? smin : 0, va);
-        }
+        //        if (!noEndpointTouch) {
+        result[0] = toPoint(a1, smin > 0 ? smin : 0, va);
+        //        }
         return;
       }
 
       if (smax == 0) {
-        if (!noEndpointTouch) {
-          result[0] = toPoint(a1, smax < 1 ? smax : 1, va);
-        }
+        //        if (!noEndpointTouch) {
+        result[0] = toPoint(a1, smax < 1 ? smax : 1, va);
+        //        }
         return;
       }
 
-      if (noEndpointTouch && smin == 0 && smax == 1) {
-        return;
-      }
+      //      if (noEndpointTouch && smin == 0 && smax == 1) {
+      //        return;
+      //      }
 
       // There's overlap on a segment -- two points of intersection. Return both.
       return [
-        toPoint(a1, smin > 0 ? smin : 0, va),
-        toPoint(a1, smax < 1 ? smax : 1, va)
+      toPoint(a1, smin > 0 ? smin : 0, va),
+      toPoint(a1, smax < 1 ? smax : 1, va)
       ];
     }
 
     return;
   }
 
-  function orderEvents(State storage state) {
+  function orderEvents(State storage state) public {
     //    let sweepEvent, i, len, tmp;
     SweepEvent.Item memory sweepEvent;
     // Due to overlapping edges the resultEvents array can be not wholly sorted
     bool sorted = false;
-    uint tmp;
+    int tmp;
     uint i;
 
     for (i = 0; i < state.sortedEvents.length; i++) {
@@ -603,16 +610,16 @@ library MartinezRueda {
       for (i = 0; i < state.resultEvents.length; i++) {
         if ((i + 1) < state.resultEvents.length
             && SweepEventUtils.compareEvents(state.store, state.store.sweepById[state.resultEvents[i]], state.store.sweepById[state.resultEvents[i + 1]]) == 1) {
-          tmp = state.resultEvents[i];
+          tmp = int256(state.resultEvents[i]);
           state.resultEvents[i] = state.resultEvents[i + 1];
-          state.resultEvents[i + 1] = tmp;
+          state.resultEvents[i + 1] = uint256(tmp);
           sorted = false;
         }
       }
     }
     for (i = 0; i < state.resultEvents.length; i++) {
       sweepEvent = state.store.sweepById[state.resultEvents[i]];
-      sweepEvent.pos = i;
+      sweepEvent.pos = int256(i);
     }
 
     // imagine, the right sweepEvent is found in the beginning of the queue,
@@ -622,46 +629,41 @@ library MartinezRueda {
       if (!sweepEvent.left) {
         tmp = sweepEvent.pos;
         sweepEvent.pos = state.store.sweepById[sweepEvent.otherEvent].pos;
-        sweepEvent.otherEvent.pos = tmp;
+        state.store.sweepById[sweepEvent.otherEvent].pos = tmp;
       }
     }
   }
 
+  function nextPos(State storage state, int256 pos, uint256 origIndex) private returns(int256) {
+    int256 newPos = pos + 1;
 
-  /**
-   * @param  {Number} pos
-   * @param  {Array.<SweepEvent>} resultEvents
-   * @param  {Object>}    processed
-   * @return {Number}
-   */
-  function nextPos(State storage state, uint256 pos, uint256 origIndex) returns(uint256) {
-    uint256 newPos = pos + 1;
+    int256[2] memory p = state.store.sweepById[state.resultEvents[uint256(pos)]].point;
+    int256[2] memory p1;
 
-    int256[2] memory p = state.resultEvents[pos].point;
-
-    if (newPos < state.resultEvents.length)
-      int256[2] memory p1 = state.resultEvents[newPos].point;
+    if (uint256(newPos) < state.resultEvents.length) {
+      p1 = state.store.sweepById[state.resultEvents[uint256(newPos)]].point;
+    }
 
     // while in range and not the current one by value
-    while (newPos < state.resultEvents.length && p1[0] == p[0] && p1[1] == p[1]) {
-      if (!state.sweepProcessed[newPos]) {
+    while (uint256(newPos) < state.resultEvents.length && p1[0] == p[0] && p1[1] == p[1]) {
+      if (!state.sweepProcessed[uint256(newPos)]) {
         return newPos;
       } else {
         newPos++;
       }
-      p1 = state.resultEvents[newPos].point;
+      p1 = state.store.sweepById[state.resultEvents[uint256(newPos)]].point;
     }
 
     newPos = pos - 1;
 
-    while (state.sweepProcessed[newPos] && newPos >= origIndex) {
+    while (state.sweepProcessed[uint256(newPos)] && uint256(newPos) >= origIndex) {
       newPos--;
     }
     return newPos;
   }
 
 
-  function connectEdges(State storage state) {
+  function connectEdges(State storage state) public {
     orderEvents(state);
 
     // "false"-filled array
@@ -688,36 +690,36 @@ library MartinezRueda {
       //      result.push(contour);
       //    }
 
-      uint256 pos = i;
+      int256 pos = int256(i);
 
-      int256[2] memory initial = state.resultEvents[i].point;
+      int256[2] memory initial = state.store.sweepById[state.resultEvents[i]].point;
       state.resultContours[contourIndex].push(initial);
 
-      while (pos >= i) {
-        sweepEvent = state.resultEvents[pos];
-        state.sweepProcessed[pos] = true;
+      while (uint256(pos) >= i) {
+        sweepEvent = state.store.sweepById[state.resultEvents[uint256(pos)]];
+        state.sweepProcessed[uint256(pos)] = true;
 
         if (sweepEvent.left) {
           sweepEvent.resultInOut = false;
           sweepEvent.contourId = contourIndex;
         } else {
-          sweepEvent.otherEvent.resultInOut = true;
-          sweepEvent.otherEvent.contourId = contourIndex;
+          state.store.sweepById[sweepEvent.otherEvent].resultInOut = true;
+          state.store.sweepById[sweepEvent.otherEvent].contourId = contourIndex;
         }
 
         pos = sweepEvent.pos;
-        state.sweepProcessed[pos] = true;
-        state.resultContours[contourIndex].push(state.resultEvents[pos].point);
+        state.sweepProcessed[uint256(pos)] = true;
+        state.resultContours[contourIndex].push(state.store.sweepById[state.resultEvents[uint256(pos)]].point);
         pos = nextPos(state, pos, i);
       }
 
-      pos = pos == - 1 ? i : pos;
+      pos = pos == -1 ? int256(i) : pos;
 
-      sweepEvent = state.resultEvents[pos];
-      state.sweepProcessed[pos] = true;
-      state.sweepProcessed[sweepEvent.pos] = true;
-      sweepEvent.otherEvent.resultInOut = true;
-      sweepEvent.otherEvent.contourId = contourIndex;
+      sweepEvent = state.store.sweepById[state.resultEvents[uint256(pos)]];
+      state.sweepProcessed[uint256(pos)] = true;
+      state.sweepProcessed[uint256(sweepEvent.pos)] = true;
+      state.store.sweepById[sweepEvent.otherEvent].resultInOut = true;
+      state.store.sweepById[sweepEvent.otherEvent].contourId = contourIndex;
     }
 
     // Handle if the result is a polygon (eg not multipoly)
@@ -728,6 +730,6 @@ library MartinezRueda {
 
 
   function isSubdivideSegmentsOver(State storage state) public returns (bool) {
-    return state.eventQueue.isEmpty();
+    return state.eventQueue.tree.inserted == state.eventQueue.tree.removed;
   }
 }

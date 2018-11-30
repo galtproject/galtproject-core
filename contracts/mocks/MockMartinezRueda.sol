@@ -16,15 +16,23 @@ contract MockMartinezRueda {
   }
   
   function addPointToSubject(int256[2] point) public {
-    martinezRueda.subject.push(point);
+    martinezRueda.subject.points.push(point);
   }
 
   function addPointToClipping(int256[2] point) public {
-    martinezRueda.clipping.push(point);
+    martinezRueda.clipping.points.push(point);
   }
   
   function processAllPolygons() public {
     martinezRueda.processAllPolygons();
+  }
+
+  function processSubjectPolygon() public {
+    martinezRueda.processSubjectPolygon();
+  }
+
+  function processClippingPolygon() public {
+    martinezRueda.processClippingPolygon();
   }
 
   function subdivideSegments() public {

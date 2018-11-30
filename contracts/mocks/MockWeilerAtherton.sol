@@ -24,28 +24,28 @@ contract MockWeilerAtherton {
     cropPolygon.points.push(point);
   }
   
-  function initBasePolygon() public {
-    weilerAtherton.martinezRueda.subject = basePolygon;
-    weilerAtherton.initPolygon(basePolygon, weilerAtherton.martinezRueda.subject);
-  }
+//  function initBasePolygon() public {
+//    weilerAtherton.martinezRueda.subject = basePolygon;
+//    weilerAtherton.initPolygon(basePolygon, weilerAtherton.martinezRueda.subject);
+//  }
+//
+//  function initCropPolygon() public {
+//    weilerAtherton.martinezRueda.clipping = cropPolygon;
+//    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.martinezRueda.clipping);
+//  }
+//  
+//  function initAllPolygons() public {
+//    initBasePolygon();
+//    initCropPolygon();
+//  }
 
-  function initCropPolygon() public {
-    weilerAtherton.martinezRueda.clipping = cropPolygon;
-    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.martinezRueda.clipping);
-  }
-  
-  function initAllPolygons() public {
-    initBasePolygon();
-    initCropPolygon();
-  }
-
-  function addBasePolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.subject);
-  }
-
-  function addCropPolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.clipping);
-  }
+//  function addBasePolygonSegments() public {
+//    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.subject);
+//  }
+//
+//  function addCropPolygonSegments() public {
+//    weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.clipping);
+//  }
   
 //  function processBentleyOttman() public {
 //    weilerAtherton.processBentleyOttman();

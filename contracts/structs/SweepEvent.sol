@@ -27,9 +27,11 @@ library SweepEvent {
   struct Item {
     uint256 id;
     uint256 otherEvent;
+    
+    int256 pos;
 
-    uint256 qId; // Id of SweepQueueRedBlackTree
-    uint256 lId; // Id of SweepLineRedBlackTree
+//    uint256 qId; // Id of SweepQueueRedBlackTree
+//    uint256 lId; // Id of SweepLineRedBlackTree
     
     uint256 contourId;
     
@@ -41,6 +43,7 @@ library SweepEvent {
     uint prevInResult;
     bool inResult;
     bool resultInOut; // possibly no needed
+    bool otherInOut;
     bool isExteriorRing;
   }
 

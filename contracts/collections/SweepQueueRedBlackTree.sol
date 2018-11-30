@@ -24,28 +24,28 @@ library SweepQueueRedBlackTree {
   
   uint internal constant ZERO = 0;
 
-  function find(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, SweepEvent.Item value) public returns (uint) {
-    uint _key = sweepEvents.tree.root;
-    while (_key != ZERO) {
-      int8 compareResult = SweepEventUtils.compareEvents(store, value, sweepEvents.values[_key]);
-      if (compareResult == 0) {
-        return _key;
-      }
-      if (compareResult < 0) {
-        _key = sweepEvents.tree.items[_key].left;
-      } else {
-        _key = sweepEvents.tree.items[_key].right;
-      }
-    }
-    return ZERO;
-  }
+//  function find(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, SweepEvent.Item value) public returns (uint) {
+//    uint _key = sweepEvents.tree.root;
+//    while (_key != ZERO) {
+//      int8 compareResult = SweepEventUtils.compareEvents(store, value, sweepEvents.values[_key]);
+//      if (compareResult == 0) {
+//        return _key;
+//      }
+//      if (compareResult < 0) {
+//        _key = sweepEvents.tree.items[_key].left;
+//      } else {
+//        _key = sweepEvents.tree.items[_key].right;
+//      }
+//    }
+//    return ZERO;
+//  }
   
-  function insert(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, uint key, SweepEvent.Item value) public {
+  function insert(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, uint key) internal {
     uint y = ZERO;
     uint x = sweepEvents.tree.root;
     while (x != ZERO) {
       y = x;
-      int8 compareResult = SweepEventUtils.compareEvents(store, value, sweepEvents.values[key]);
+      int8 compareResult = SweepEventUtils.compareEvents(store, store.sweepById[key], store.sweepById[x]);
       if (compareResult < 0) {
         x = sweepEvents.tree.items[x].left;
       } else {
@@ -56,11 +56,11 @@ library SweepQueueRedBlackTree {
       }
     }
     sweepEvents.tree.items[key] = RedBlackTree.Item(y, ZERO, ZERO, true);
-    sweepEvents.values[key] = value;
+//    sweepEvents.values[key] = value;
 
     if (y == ZERO) {
       sweepEvents.tree.root = key;
-    } else if (SweepEventUtils.compareEvents(store, sweepEvents.values[key], sweepEvents.values[y]) < 0) {
+    } else if (SweepEventUtils.compareEvents(store, store.sweepById[key], store.sweepById[y]) < 0) {
       sweepEvents.tree.items[y].left = key;
     } else {
       sweepEvents.tree.items[y].right = key;
@@ -71,10 +71,5 @@ library SweepQueueRedBlackTree {
 
   function getNewId(SweepEvent.Tree storage sweepEvents) public returns(uint256) {
     return sweepEvents.tree.inserted + 1;
-  }
-
-  function pop(SweepEvent.Tree storage sweepEvents) public returns(SweepEvent.Item value) {
-    uint256 id = sweepEvents.tree.pop();
-    value = sweepEvents.values[id];
   }
 }
