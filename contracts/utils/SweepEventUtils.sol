@@ -21,7 +21,7 @@ library SweepEventUtils {
 
   int256 internal constant EPS = 1000000000;
 
-  function compareEvents(SweepEvent.Tree storage tree, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal pure returns (int8) {
+  function compareEvents(SweepEvent.Store storage store, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal returns (int8) {
     // Different x-coordinate
     if (e1.point[0] > e2.point[0])
       return 1;
@@ -45,9 +45,9 @@ library SweepEventUtils {
     // Same coordinates, both events
     // are left endpoints or right endpoints.
     // not collinear
-    if (signedArea(e1.point, tree.values[e1.otherEvent].point, tree.values[e2.otherEvent].point) != 0) {
+    if (signedArea(e1.point, store.sweepById[e1.otherEvent].point, store.sweepById[e2.otherEvent].point) != 0) {
       // the event associate to the bottom segment is processed first
-      return (!isBelow(e1, tree, tree.values[e2.otherEvent].point)) ? 1 : - 1;
+      return (!isBelow(store, e1, store.sweepById[e2.otherEvent].point)) ? 1 : - 1;
     }
 
     return (!e1.isSubject && e2.isSubject) ? 1 : - 1;
@@ -56,49 +56,53 @@ library SweepEventUtils {
   /**
  * Signed area of the triangle (p0, p1, p2)
  */
-  function signedArea(int256[2] p0, int256[2] p1, int256[2] p2) {
+  function signedArea(int256[2] p0, int256[2] p1, int256[2] p2) internal returns(int256) {
     return (p0[0] - p2[0]) * (p1[1] - p2[1]) - (p1[0] - p2[0]) * (p0[1] - p2[1]);
   }
 
-  function isBelow(SweepEvent.Item storage self, SweepEvent.Tree storage tree, int256[2] p) {
-    int256[2] p0 = self.point;
-    int256[2] p1 = tree.values[self.otherEvent].point;
+  function isBelow(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
+    int256[2] memory p0 = self.point;
+    int256[2] memory p1 = store.sweepById[self.otherEvent].point;
     return self.left
     ? (p0[0] - p[0]) * (p1[1] - p[1]) - (p1[0] - p[0]) * (p0[1] - p[1]) > 0
     : (p1[0] - p[0]) * (p0[1] - p[1]) - (p0[0] - p[0]) * (p1[1] - p[1]) > 0;
   }
+  
+  function isAbove(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
+    return !isBelow(store, self, p);
+  }
 
-  function compareSegments(SweepEvent.Tree storage tree, SweepEvent.Item storage le1, SweepEvent.Item storage le2) {
+  function compareSegments(SweepEvent.Store storage store, SweepEvent.Item storage le1, SweepEvent.Item storage le2) internal returns(int8) {
     if (le1.id == le2.id) {
       return 0;
     }
 
     // Segments are not collinear
-    if (signedArea(le1.point, tree.values[le1.otherEvent].point, le2.point) != 0 ||
-    signedArea(le1.point, tree.values[le1.otherEvent].point, tree.values[le2.otherEvent].point) != 0) {
+    if (signedArea(le1.point, store.sweepById[le1.otherEvent].point, le2.point) != 0 ||
+    signedArea(le1.point, store.sweepById[le1.otherEvent].point, store.sweepById[le2.otherEvent].point) != 0) {
 
       // If they share their left endpoint use the right endpoint to sort
       if (equals(le1.point, le2.point))
-        return isBelow(le1, tree, tree.values[le2.otherEvent].point) ? - 1 : 1;
+        return isBelow(store, le1, store.sweepById[le2.otherEvent].point) ? -1 : int8(1);
       // Different left endpoint: use the left endpoint to sort
       if (le1.point[0] == le2.point[0])
-        return le1.point[1] < le2.point[1] ? - 1 : 1;
+        return le1.point[1] < le2.point[1] ? - 1 : int8(1);
       // has the line segment associated to e1 been inserted
       // into S after the line segment associated to e2 ?
-      if (compareEvents(tree, le1, le2) == 1)
-        return le2.isAbove(le1.point) ? - 1 : 1;
+      if (compareEvents(store, le1, le2) == 1)
+        return isAbove(store, le2, le1.point) ? - 1 : int8(1);
       // The line segment associated to e2 has been inserted
       // into S after the line segment associated to e1
-      return isBelow(le1, tree, le2.point) ? - 1 : 1;
+      return isBelow(store, le1, le2.point) ? - 1 : int8(1);
     }
 
     if (le1.isSubject == le2.isSubject) {// same polygon
-      int256[2] p1 = le1.point;
-      int256[2] p2 = le2.point;
+      int256[2] memory p1 = le1.point;
+      int256[2] memory p2 = le2.point;
 
       if (p1[0] == p2[0] && p1[1] == p2[1]/*equals(le1.point, le2.point)*/) {
-        p1 = tree.values[le1.otherEvent].point;
-        p2 = tree.values[le2.otherEvent].point;
+        p1 = store.sweepById[le1.otherEvent].point;
+        p2 = store.sweepById[le2.otherEvent].point;
         if (p1[0] == p2[0] && p1[1] == p2[1]) {
           return 0;
         } else {
@@ -109,6 +113,13 @@ library SweepEventUtils {
       return le1.isSubject ? - 1 : 1;
     }
 
-    return compareEvents(tree, le1, le2) == 1 ? 1 : - 1;
+    return compareEvents(store, le1, le2) == 1 ? 1 : - 1;
+  }
+
+  function equals(int256[2] p1, int256[2] p2) internal returns (bool) {
+    if (p1[0] == p2[0] && p1[1] == p2[1]) {
+      return true;
+    }
+    return false;
   }
 }

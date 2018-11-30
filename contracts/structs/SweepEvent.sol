@@ -26,11 +26,17 @@ library SweepEvent {
 
   struct Item {
     uint256 id;
+    uint256 otherEvent;
+
+    uint256 qId; // Id of SweepQueueRedBlackTree
+    uint256 lId; // Id of SweepLineRedBlackTree
+    
+    uint256 contourId;
+    
     int256[2] point;
     bool left;
-    uint otherEvent;
     bool isSubject;
-    Type type;
+    Type eventType;
     bool inOut;
     uint prevInResult;
     bool inResult;
@@ -41,5 +47,9 @@ library SweepEvent {
   struct Tree {
     RedBlackTree.Tree tree;
     mapping(uint => SweepEvent.Item) values;
+  }
+  
+  struct Store {
+    mapping(uint => SweepEvent.Item) sweepById;
   }
 }

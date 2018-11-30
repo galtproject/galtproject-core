@@ -24,10 +24,10 @@ library SweepLineRedBlackTree {
   
   uint internal constant ZERO = 0;
 
-  function find(SweepEvent.Tree storage sweepEvents, SweepEvent.Item memory value) public returns (uint) {
+  function find(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, SweepEvent.Item memory value) public returns (uint) {
     uint _key = sweepEvents.tree.root;
     while (_key != ZERO) {
-      int8 compareResult = SweepEventUtils.compareSegments(sweepEvents, value, sweepEvents.values[_key]);
+      int8 compareResult = SweepEventUtils.compareSegments(store, value, sweepEvents.values[_key]);
       if (compareResult == 0) {
         return _key;
       }
@@ -40,12 +40,12 @@ library SweepLineRedBlackTree {
     return ZERO;
   }
   
-  function insert(SweepEvent.Tree storage sweepEvents, uint key, SweepEvent.Item memory value) public {
+  function insert(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, uint key, SweepEvent.Item memory value) public {
     uint y = ZERO;
     uint x = sweepEvents.tree.root;
     while (x != ZERO) {
       y = x;
-      int8 compareResult = SweepEventUtils.compareSegments(sweepEvents, value, sweepEvents.values[_key]);
+      int8 compareResult = SweepEventUtils.compareSegments(store, value, sweepEvents.values[key]);
       if (compareResult < 0) {
         x = sweepEvents.tree.items[x].left;
       } else {
@@ -60,7 +60,7 @@ library SweepLineRedBlackTree {
 
     if (y == ZERO) {
       sweepEvents.tree.root = key;
-    } else if (SweepEventUtils.compareSegments(sweepEvents, sweepEvents.values[key], sweepEvents.values[y]) < 0) {
+    } else if (SweepEventUtils.compareSegments(store, sweepEvents.values[key], sweepEvents.values[y]) < 0) {
       sweepEvents.tree.items[y].left = key;
     } else {
       sweepEvents.tree.items[y].right = key;
@@ -69,13 +69,6 @@ library SweepLineRedBlackTree {
     sweepEvents.tree.inserted++;
   }
   
-  function setSweeplineX(SweepEvent.Tree storage sweepEvents, int256 x) public {
-    sweepEvents.sweepline.x = x;
-  }
-
-  function setSweeplinePosition(SweepEvent.Tree storage sweepEvents, SegmentUtils.Position position) public {
-    sweepEvents.sweepline.position = position;
-  }
 
   function getNewId(SweepEvent.Tree storage sweepEvents) public returns(uint256) {
     return sweepEvents.tree.inserted + 1;

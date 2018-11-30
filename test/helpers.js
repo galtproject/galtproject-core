@@ -189,11 +189,19 @@ const Helpers = {
     libCache.PolygonUtils = await PolygonUtils.new();
     return libCache.PolygonUtils;
   },
+  async getRedBlackTreeLib() {
+    if (libCache.RedBlackTree) {
+      return libCache.RedBlackTree;
+    }
+    const RedBlackTree = Helpers.requireContract('./collections/RedBlackTree.sol');
+    libCache.RedBlackTree = await RedBlackTree.new();
+    return libCache.RedBlackTree;
+  },
   async getPointRedBlackTreeLib() {
     if (libCache.PointRedBlackTree) {
       return libCache.PointRedBlackTree;
     }
-    const PointRedBlackTree = Helpers.requireContract('./utils/PointRedBlackTree.sol');
+    const PointRedBlackTree = Helpers.requireContract('./collections/PointRedBlackTree.sol');
     libCache.PointRedBlackTree = await PointRedBlackTree.new();
     return libCache.PointRedBlackTree;
   },
@@ -201,19 +209,36 @@ const Helpers = {
     if (libCache.SegmentRedBlackTree) {
       return libCache.SegmentRedBlackTree;
     }
-    const SegmentRedBlackTree = Helpers.requireContract('./utils/SegmentRedBlackTree.sol');
+    const SegmentRedBlackTree = Helpers.requireContract('./collections/SegmentRedBlackTree.sol');
     libCache.SegmentRedBlackTree = await SegmentRedBlackTree.new();
     return libCache.SegmentRedBlackTree;
   },
-  async getBentleyOttmanLib() {
-    if (libCache.BentleyOttman) {
-      return libCache.BentleyOttman;
+  async getSweepLineRedBlackTreeLib() {
+    if (libCache.SweepLineRedBlackTree) {
+      return libCache.SweepLineRedBlackTree;
     }
-    const BentleyOttman = Helpers.requireContract('./utils/BentleyOttman.sol');
-    BentleyOttman.link('PointRedBlackTree', (await Helpers.getPointRedBlackTreeLib()).address);
-    BentleyOttman.link('SegmentRedBlackTree', (await Helpers.getSegmentRedBlackTreeLib()).address);
-    libCache.BentleyOttman = await BentleyOttman.new();
-    return libCache.BentleyOttman;
+    const SweepLineRedBlackTree = Helpers.requireContract('./collections/SweepLineRedBlackTree.sol');
+    libCache.SweepLineRedBlackTree = await SweepLineRedBlackTree.new();
+    return libCache.SweepLineRedBlackTree;
+  },
+  async getSweepQueueRedBlackTreeLib() {
+    if (libCache.SweepQueueRedBlackTree) {
+      return libCache.SweepQueueRedBlackTree;
+    }
+    const SweepQueueRedBlackTree = Helpers.requireContract('./collections/SweepQueueRedBlackTree.sol');
+    libCache.SweepQueueRedBlackTree = await SweepQueueRedBlackTree.new();
+    return libCache.SweepQueueRedBlackTree;
+  },
+  async getMartinezRuedaLib() {
+    if (libCache.MartinezRueda) {
+      return libCache.MartinezRueda;
+    }
+    const MartinezRueda = Helpers.requireContract('./utils/MartinezRueda.sol');
+    MartinezRueda.link('RedBlackTree', (await Helpers.getRedBlackTreeLib()).address);
+    MartinezRueda.link('SweepLineRedBlackTree', (await Helpers.getSweepLineRedBlackTreeLib()).address);
+    MartinezRueda.link('SweepQueueRedBlackTree', (await Helpers.getSweepQueueRedBlackTreeLib()).address);
+    libCache.MartinezRueda = await MartinezRueda.new();
+    return libCache.MartinezRueda;
   },
   async getWeilerAthertonLib() {
     if (libCache.WeilerAtherton) {

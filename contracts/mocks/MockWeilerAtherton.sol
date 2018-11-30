@@ -47,43 +47,43 @@ contract MockWeilerAtherton {
     weilerAtherton.addPolygonSegments(weilerAtherton.martinezRueda.clipping);
   }
   
-  function processBentleyOttman() public {
-    weilerAtherton.processBentleyOttman();
-  }
-
-  function isBentleyOttmanFinished() public returns(bool) {
-    return weilerAtherton.isBentleyOttmanFinished();
-  }
-  
-  function addIntersectedPoints() public {
-    weilerAtherton.addIntersectedPoints();
-  }
-
-  function buildResultPolygon() public {
-    weilerAtherton.buildResultPolygon();
-  }
-
-  function getResultPolygonsCount() public returns(uint256) {
-    return weilerAtherton.resultPolygons.length;
-  }
-
-  function getResultPolygonLength(uint256 polygonIndex) public returns(uint256) {
-    return weilerAtherton.resultPolygons[polygonIndex].points.length;
-  }
-
-  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public returns(int256[2]) {
-    return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
-  }
-
-  function buildBasePolygonOutput() public {
-    weilerAtherton.buildBasePolygonOutput();
-  }
-
-  function getBasePolygonOutputLength() public returns(uint256) {
-    return weilerAtherton.basePolygonOutput.points.length;
-  }
-
-  function getBasePolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
-    return weilerAtherton.basePolygonOutput.points[pointIndex];
-  }
+//  function processBentleyOttman() public {
+//    weilerAtherton.processBentleyOttman();
+//  }
+//
+//  function isBentleyOttmanFinished() public returns(bool) {
+//    return weilerAtherton.isBentleyOttmanFinished();
+//  }
+//  
+//  function addIntersectedPoints() public {
+//    weilerAtherton.addIntersectedPoints();
+//  }
+//
+//  function buildResultPolygon() public {
+//    weilerAtherton.buildResultPolygon();
+//  }
+//
+//  function getResultPolygonsCount() public returns(uint256) {
+//    return weilerAtherton.resultPolygons.length;
+//  }
+//
+//  function getResultPolygonLength(uint256 polygonIndex) public returns(uint256) {
+//    return weilerAtherton.resultPolygons[polygonIndex].points.length;
+//  }
+//
+//  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public returns(int256[2]) {
+//    return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
+//  }
+//
+//  function buildBasePolygonOutput() public {
+//    weilerAtherton.buildBasePolygonOutput();
+//  }
+//
+//  function getBasePolygonOutputLength() public returns(uint256) {
+//    return weilerAtherton.basePolygonOutput.points.length;
+//  }
+//
+//  function getBasePolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
+//    return weilerAtherton.basePolygonOutput.points[pointIndex];
+//  }
 }

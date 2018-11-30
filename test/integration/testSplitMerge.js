@@ -257,7 +257,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    it.only('should correctly split 4, 4 => 4, 4, 4', async function() {
+    it('should correctly split 4, 4 => 4, 4, 4', async function() {
       const baseSpaceTokenId = await this.mintSpaceTokenId([
         'w24r1bj7mnrd',
         'w24r48n3kyq7',
@@ -292,7 +292,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    it.only('should correctly split 4, 4 => 5, 4', async function() {
+    it('should correctly split 4, 4 => 5, 4', async function() {
       const baseSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfxzt2yqh',
         'w24r40j43nkg',
