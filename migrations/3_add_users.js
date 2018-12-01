@@ -12,7 +12,7 @@ const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
 
-const Auditors = artifacts.require('./Auditors');
+const Auditors = artifacts.require('./Arbitrators');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
