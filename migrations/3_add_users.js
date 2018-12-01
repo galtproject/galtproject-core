@@ -11,6 +11,8 @@ const Oracles = artifacts.require('./Oracles');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
+
+const Auditors = artifacts.require('./Auditors');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -44,6 +46,7 @@ module.exports = async function(deployer, network, accounts) {
     const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const oracles = await Oracles.at(data.oraclesAddress);
     const oracleStakeAccounting = await OracleStakesAccounting.at(data.oracleStakesAccountingAddress);
+    const arbitrators = await Auditors.at(data.arbitratorsAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -208,6 +211,8 @@ module.exports = async function(deployer, network, accounts) {
 
     await galtToken.approve(oracleStakeAccounting.address, ether(needGaltForDeposits), { from: coreTeam });
 
+    console.log('add validators...');
+
     const rolesPromises = [];
     _.forEach(allRoles, roleName => {
       const minDeposit = ether(minDepositGalt[roleName]);
@@ -220,8 +225,14 @@ module.exports = async function(deployer, network, accounts) {
       if (validatorsSpecificRoles[name]) {
         promises.push(
           new Promise(async resolve => {
-            await oracles.addValidator(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam });
+            await oracles
+              .addOracle(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
+              .catch(e => {
+                console.error(e);
+                resolve(e);
+              });
 
+            console.log('validator added, validator stakes', name);
             const validatorPromises = validatorsSpecificRoles[name].map(roleName =>
               oracleStakeAccounting.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
             );
@@ -242,6 +253,9 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotValuation.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotClarification.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+
+        promises.push(arbitrators.addRoleTo(address, 'role_manager', { from: coreTeam }));
+        promises.push(arbitrators.addRoleTo(address, 'arbitrator_manager', { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
@@ -251,6 +265,8 @@ module.exports = async function(deployer, network, accounts) {
       const sendWei = web3.utils.toWei(sendEthByNetwork[network].toString(), 'ether').toString(10);
       promises.push(web3.eth.sendTransaction({ from: rewarder, to: address, value: sendWei }).catch(() => {}));
     });
+
+    await Promise.all(promises);
 
     console.log('create space tokens...');
 
@@ -328,7 +344,5 @@ module.exports = async function(deployer, network, accounts) {
       await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
       await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
     });
-
-    await Promise.all(promises);
   });
 };

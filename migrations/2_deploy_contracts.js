@@ -16,6 +16,8 @@ const SplitMerge = artifacts.require('./SplitMerge');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
 const Oracles = artifacts.require('./Oracles');
+const Arbitrators = artifacts.require('./Arbitrators');
+const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
 
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
@@ -69,6 +71,8 @@ module.exports = async function(deployer, network, accounts) {
     const claimManager = await ClaimManager.new({ from: coreTeam });
     const oracleStakesAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
+    const abMultiSig = await ArbitratorsMultiSig.new(coreTeam, [coreTeam], 1, { from: coreTeam });
+    const arbitrators = await Arbitrators.new(abMultiSig.address, { from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -153,10 +157,17 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    await claimManager.initialize(oracles.address, galtToken.address, oracleStakesAccounting.address, coreTeam, {
-      from: coreTeam
-    });
-    await oracleStakesAccounting.initialize(oracles.address, galtToken.address, coreTeam, {
+    await claimManager.initialize(
+      oracles.address,
+      galtToken.address,
+      oracleStakesAccounting.address,
+      abMultiSig.address,
+      coreTeam,
+      {
+        from: coreTeam
+      }
+    );
+    await oracleStakesAccounting.initialize(oracles.address, galtToken.address, abMultiSig.address, {
       from: coreTeam
     });
 
@@ -183,6 +194,8 @@ module.exports = async function(deployer, network, accounts) {
     await oracleStakesAccounting.addRoleTo(claimManager.address, await oracleStakesAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
+    await abMultiSig.addRoleTo(arbitrators.address, await abMultiSig.ROLE_ARBITRATOR_MANAGER(), { from: coreTeam });
+    await abMultiSig.addRoleTo(claimManager.address, await abMultiSig.ROLE_PROPOSER(), { from: coreTeam });
 
     await plotManager.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await plotCustodian.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
@@ -259,7 +272,11 @@ module.exports = async function(deployer, network, accounts) {
             oraclesAddress: oracles.address,
             oraclesAbi: oracles.abi,
             oracleStakesAccountingAddress: oracleStakesAccounting.address,
-            oracleStakesAccountingAbi: oracleStakesAccounting.abi
+            oracleStakesAccountingAbi: oracleStakesAccounting.abi,
+            arbitratorsAddress: arbitrators.address,
+            arbitratorsAbi: arbitrators.abi,
+            arbitratorsMultiSigAddress: abMultiSig.address,
+            arbitratorsMultiSigAbi: abMultiSig.abi
           },
           null,
           2
