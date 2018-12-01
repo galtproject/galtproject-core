@@ -147,16 +147,9 @@ contract('OracleStakesAccounting', accounts => {
 
   describe('#slash()', () => {
     beforeEach(async function() {
-      await this.oracles.addOracle(
-        bob,
-        'Bob',
-        'MN',
-        [],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'],
-        {
-          from: oracleManager
-        }
-      );
+      await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, 'foo'], {
+        from: oracleManager
+      });
 
       await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1000), { from: alice });
       await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
