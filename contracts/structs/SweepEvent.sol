@@ -49,7 +49,7 @@ library SweepEvent {
 
   struct Tree {
     RedBlackTree.Tree tree;
-    mapping(uint => SweepEvent.Item) values;
+//    mapping(uint => bool) exists;
   }
   
   struct Store {

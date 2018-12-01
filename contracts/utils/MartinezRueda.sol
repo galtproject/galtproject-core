@@ -181,18 +181,15 @@ library MartinezRueda {
         break;
       }
       if (sweepEvent.left) {
-        prev = sweepEvent.id;
-        next = sweepEvent.id;
-
         SweepLineRedBlackTree.insert(state.sweepLineTree, state.store, sweepEvent.id);
         begin = RedBlackTree.first(state.sweepLineTree.tree);
 
-        if (prev == begin)
+        if (sweepEvent.id == begin)
           prev = 0;
         else
-          prev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
+          prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
 
-        next = RedBlackTree.next(state.sweepLineTree.tree, next);
+        next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
 
         computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
         if (next != 0 && possibleIntersection(state, sweepEvent, state.store.sweepById[next]) == 2) {
@@ -211,16 +208,15 @@ library MartinezRueda {
         }
       } else {
         sweepEvent = state.store.sweepById[sweepEvent.otherEvent];
-        next = sweepEvent.id;
-        prev = sweepEvent.id;
 
-        if (prev != 0 && next != 0) {
-          if (prev == begin)
+        // is item exists in tree
+        if (sweepEvent.id == state.sweepLineTree.tree.root || (sweepEvent.id !=  state.sweepLineTree.tree.root &&  state.sweepLineTree.tree.items[sweepEvent.id].parent != 0)) {
+          if (sweepEvent.id == begin)
             prev = 0;
           else
-            prev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
+            prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
 
-          next = RedBlackTree.next(state.sweepLineTree.tree, next);
+          next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
           RedBlackTree.remove(state.sweepLineTree.tree, sweepEvent.id);
 
           if (next != 0 && prev != 0) {

@@ -56,7 +56,7 @@ library SweepLineRedBlackTree {
       }
     }
     sweepEvents.tree.items[key] = RedBlackTree.Item(y, ZERO, ZERO, true);
-//    sweepEvents.values[key] = value;
+//    sweepEvents.exists[key] = true;
 
     if (y == ZERO) {
       sweepEvents.tree.root = key;
