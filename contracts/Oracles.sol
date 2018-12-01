@@ -199,20 +199,19 @@ contract Oracles is Permissionable {
     require(_position != 0x0, "Missing position");
     require(_oracleTypes.length <= ORACLE_TYPES_LIMIT, "Oracle Types count should be <= 50");
 
-    Oracle memory o;
+    Oracle storage o = oracles[_oracle];
 
     o.name = _name;
     o.descriptionHashes = _descriptionHashes;
     o.position = _position;
     o.active = true;
 
-    oracles[_oracle] = o;
-    oracles[_oracle].assignedOracleTypes.clear();
+    o.assignedOracleTypes.clear();
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
       require(oracleTypes[_oracleType].applicationType != 0x0, "Oracle Type doesn't exist");
-      oracles[_oracle].assignedOracleTypes.addSilent(_oracleType);
+      o.assignedOracleTypes.add(_oracleType);
       oraclesByType[_oracleType].push(_oracle);
     }
 
