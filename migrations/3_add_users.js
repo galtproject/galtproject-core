@@ -9,7 +9,6 @@ const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
 const Oracles = artifacts.require('./Oracles');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
-const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
@@ -45,7 +44,6 @@ module.exports = async function(deployer, network, accounts) {
     const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const oracles = await Oracles.at(data.oraclesAddress);
     const oracleStakeAccounting = await OracleStakesAccounting.at(data.oracleStakesAccountingAddress);
-    const claimManager = await ClaimManager.at(data.claimManagerAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -114,11 +112,6 @@ module.exports = async function(deployer, network, accounts) {
         from: coreTeam
       }
     );
-
-    const CLAIM_MANAGER_APPLICATION_TYPE = await claimManager.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeOracleTypes(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
-      from: coreTeam
-    });
 
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',

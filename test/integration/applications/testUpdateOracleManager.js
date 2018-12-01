@@ -9,11 +9,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const {
-  initHelperWeb3,
-  ether,
-  assertRevert
-} = require('../../helpers');
+const { initHelperWeb3, ether, assertRevert } = require('../../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8 } = Web3.utils;
