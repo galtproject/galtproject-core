@@ -43,15 +43,31 @@ contract MockMartinezRueda {
     return martinezRueda.isSubdivideSegmentsOver();
   }
 
-  function getResultContoursLength() public returns(uint256) {
+  function getResultEventsLength() public view returns(uint256) {
+    return martinezRueda.resultEvents.length;
+  }
+
+  function getResultResultEventPoint(uint256 eventIndex) public view returns(int256[2]) {
+    return martinezRueda.store.sweepById[martinezRueda.resultEvents[eventIndex]].point;
+  }
+
+  function orderEvents() public {
+    martinezRueda.orderEvents();
+  }
+
+  function connectEdges() public {
+    martinezRueda.connectEdges();
+  }
+
+  function getResultContoursLength() public view returns(uint256) {
     return martinezRueda.resultContours.length;
   }
 
-  function getResultContourItemLength(uint256 contourIndex) public returns(uint256) {
+  function getResultContourItemLength(uint256 contourIndex) public view returns(uint256) {
     return martinezRueda.resultContours[contourIndex].length;
   }
   
-  function getResultContourPoint(uint256 contourIndex, uint256 pointIndex) public returns(int256[2]) {
+  function getResultContourPoint(uint256 contourIndex, uint256 pointIndex) public view returns(int256[2]) {
     return martinezRueda.resultContours[contourIndex][pointIndex];
   }
 }

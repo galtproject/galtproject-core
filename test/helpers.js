@@ -229,11 +229,30 @@ const Helpers = {
     libCache.SweepQueueRedBlackTree = await SweepQueueRedBlackTree.new();
     return libCache.SweepQueueRedBlackTree;
   },
+  async getLinkedListLib() {
+    if (libCache.LinkedList) {
+      return libCache.LinkedList;
+    }
+    const LinkedList = Helpers.requireContract('./collections/LinkedList.sol');
+    libCache.LinkedList = await LinkedList.new();
+    return libCache.LinkedList;
+  },
+  async getSweepQueueLinkedListLib() {
+    if (libCache.SweepQueueLinkedList) {
+      return libCache.SweepQueueLinkedList;
+    }
+    const SweepQueueLinkedList = Helpers.requireContract('./collections/SweepQueueLinkedList.sol');
+    SweepQueueLinkedList.link('LinkedList', (await Helpers.getLinkedListLib()).address);
+    libCache.SweepQueueLinkedList = await SweepQueueLinkedList.new();
+    return libCache.SweepQueueLinkedList;
+  },
   async getMartinezRuedaLib() {
     if (libCache.MartinezRueda) {
       return libCache.MartinezRueda;
     }
     const MartinezRueda = Helpers.requireContract('./utils/MartinezRueda.sol');
+    MartinezRueda.link('LinkedList', (await Helpers.getLinkedListLib()).address);
+    MartinezRueda.link('SweepQueueLinkedList', (await Helpers.getSweepQueueLinkedListLib()).address);
     MartinezRueda.link('RedBlackTree', (await Helpers.getRedBlackTreeLib()).address);
     MartinezRueda.link('SweepLineRedBlackTree', (await Helpers.getSweepLineRedBlackTreeLib()).address);
     MartinezRueda.link('SweepQueueRedBlackTree', (await Helpers.getSweepQueueRedBlackTreeLib()).address);

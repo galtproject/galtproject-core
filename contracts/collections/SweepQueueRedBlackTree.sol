@@ -39,6 +39,8 @@ library SweepQueueRedBlackTree {
 //    }
 //    return ZERO;
 //  }
+
+  event LogCompareEvents(int256[2] point1, int256[2] point2, int8 compareResult);
   
   function insert(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, uint key) internal {
     uint y = ZERO;
@@ -46,6 +48,9 @@ library SweepQueueRedBlackTree {
     while (x != ZERO) {
       y = x;
       int8 compareResult = SweepEventUtils.compareEvents(store, store.sweepById[key], store.sweepById[x]);
+      
+//      emit LogCompareEvents(store.sweepById[key].point, store.sweepById[x].point, compareResult);
+      
       if (compareResult < 0) {
         x = sweepEvents.tree.items[x].left;
       } else {
