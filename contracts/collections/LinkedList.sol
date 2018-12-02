@@ -28,6 +28,8 @@ library LinkedList {
 
   function insertByFoundAndComparator(Data storage data, uint256 newId, uint256 foundId, int8 compareResult) public {
     if (data.headId == 0) {
+      data.count += 1;
+      
       data.headId = newId;
       data.nodesByIds[newId] = Node({
         nextId : 0,
@@ -53,6 +55,7 @@ library LinkedList {
         data.nodesByIds[data.headId].prevId = newId;
         // console.log('insert head', newId, nodesByIds);
         data.headId = newId;
+        return;
       }
       // console.log('headId', headId, nodesByIds[headId]);
       // console.log('foundLeft', foundLeft, nodesByIds[foundLeft]);
@@ -68,7 +71,7 @@ library LinkedList {
     data.nodesByIds[newId] = Node({
       nextId : data.nodesByIds[prevId].nextId,
       prevId : prevId
-      });
+    });
 
     // console.log('insertAfter', newId, nodesByIds[newId]);
 
@@ -163,6 +166,8 @@ library LinkedList {
     while (true);
   }
 
+  event LogPop(uint256 popId, uint256 headId, uint256 count);
+  
   function pop(Data storage data) public returns (uint256) {
     uint256 popId = data.headId;
     //    Node storage lastNode = data.nodesByIds[popId];
@@ -175,6 +180,8 @@ library LinkedList {
     }
 
     delete data.nodesByIds[popId];
+    
+    emit LogPop(popId, data.headId, data.count);
 
     return popId;
   }

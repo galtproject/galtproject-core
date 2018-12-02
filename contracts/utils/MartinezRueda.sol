@@ -63,6 +63,7 @@ library MartinezRueda {
 
     LinkedList.Data eventQueue;
     SweepEvent.Tree sweepLineTree;
+    bool subdivideSegmentsOver;
     uint256[] sortedEvents;
     uint256[] resultEvents;
     mapping(uint256 => bool) sweepProcessed;
@@ -132,10 +133,13 @@ library MartinezRueda {
         e2.isExteriorRing = false;
       }
 
+      state.store.sweepById[e1.id] = e1;
+      state.store.sweepById[e2.id] = e2;
+
       if (SweepEventUtils.compareEvents(state.store, e1, e2) > 0) {
-        e2.left = true;
+        state.store.sweepById[e2.id].left = true;
       } else {
-        e1.left = true;
+        state.store.sweepById[e1.id].left = true;
       }
 
       bbox[0] = MathUtils.minInt(bbox[0], p1[0]);
@@ -145,14 +149,12 @@ library MartinezRueda {
 
       // Pushing it so the queue is sorted from left to right,
       // with object on the left having the highest priority.
-      state.store.sweepById[e1.id] = e1;
-      state.store.sweepById[e2.id] = e2;
-      
-      emit LogProcessPolygonInsert(e1.point);
-      emit LogProcessPolygonInsert(e2.point);
-//      SweepQueueLinkedList.insert(state.eventQueue, state.store, e1.id);
-//      SweepQueueLinkedList.insert(state.eventQueue, state.store, e2.id);
-      emit LogProcessPolygonInsertHeadId(state.eventQueue.headId);
+//      
+//      emit LogProcessPolygonInsert(e1.point);
+//      emit LogProcessPolygonInsert(e2.point);
+      SweepQueueLinkedList.insert(state.eventQueue, state.store, e1.id);
+      SweepQueueLinkedList.insert(state.eventQueue, state.store, e2.id);
+//      emit LogProcessPolygonInsertHeadId(state.eventQueue.headId);
     }
   }
   
@@ -177,8 +179,13 @@ library MartinezRueda {
 
   event LogSubdivideSegmentsPop(int256[2] point);
   event LogSubdivideSegmentsPopId(uint256 popId);
+  event LogSubdivideSegmentsRightbound(int256 r, uint256 operation);
+  event LogSubdivideSegmentsBreak(int256 r, uint256 operation);
+  event LogSubdivideSegmentsWhileEnd(uint256 headId, uint256 operation);
   
   function subdivideSegments(State storage state) public {
+    require(!state.subdivideSegmentsOver, "subdivideSegments is over");
+    
     int256 rightbound = MathUtils.minInt(state.subjectBbox[2], state.clippingBbox[2]);
 
     uint256 prev;
@@ -188,71 +195,75 @@ library MartinezRueda {
 
     uint8 i = 0;
 
-    emit LogSubdivideSegmentsPopId(0);
+    emit LogSubdivideSegmentsRightbound(rightbound, uint256(state.operation));
     
     while (state.eventQueue.headId != 0) {
-      uint256 popId = 1;
-      emit LogSubdivideSegmentsPopId(popId);
-//      SweepEvent.Item storage sweepEvent = state.store.sweepById[LinkedList.pop(state.eventQueue)];
-//      
-//      emit LogSubdivideSegmentsPop(sweepEvent.point);
-//      
-//      state.sortedEvents.push(sweepEvent.id);
-//      // optimization by bboxes for intersection and difference goes here
-//      if (state.operation == Operation.INTERSECTION && sweepEvent.point[0] > rightbound
-//      || (state.operation == Operation.DIFFERENCE && sweepEvent.point[0] > state.subjectBbox[2])) {
-//        break;
-//      }
-//      if (sweepEvent.left) {
-//        SweepLineRedBlackTree.insert(state.sweepLineTree, state.store, sweepEvent.id);
-//        begin = RedBlackTree.first(state.sweepLineTree.tree);
-//
-//        if (sweepEvent.id == begin)
-//          prev = 0;
-//        else
-//          prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
-//
-//        next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
-//
-//        computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
-//        if (next != 0 && possibleIntersection(state, sweepEvent, state.store.sweepById[next]) == 2) {
-//          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
-//          computeFields(state, sweepEvent, state.store.sweepById[next], state.operation);
-//        }
-//
-//        if (prev != 0 && possibleIntersection(state, state.store.sweepById[prev], sweepEvent) == 2) {
-//          if (prevPrev == begin)
-//            prevPrev = 0;
-//          else
-//            prevPrev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
-//
-//          computeFields(state, state.store.sweepById[prev], state.store.sweepById[prevPrev], state.operation);
-//          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
-//        }
-//      } else {
-//        sweepEvent = state.store.sweepById[sweepEvent.otherEvent];
-//
-//        // is item exists in tree
-//        if (sweepEvent.id == state.sweepLineTree.tree.root || (sweepEvent.id !=  state.sweepLineTree.tree.root && state.sweepLineTree.tree.items[sweepEvent.id].parent != 0)) {
-//          if (sweepEvent.id == begin)
-//            prev = 0;
-//          else
-//            prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
-//
-//          next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
-//          RedBlackTree.remove(state.sweepLineTree.tree, sweepEvent.id);
-//
-//          if (next != 0 && prev != 0) {
-//            possibleIntersection(state, state.store.sweepById[prev], state.store.sweepById[next]);
-//          }
-//        }
-//      }
+//      uint256 popId = LinkedList.pop(state.eventQueue);
+//      emit LogSubdivideSegmentsPopId(popId);
+      SweepEvent.Item storage sweepEvent = state.store.sweepById[LinkedList.pop(state.eventQueue)];
+
+      emit LogSubdivideSegmentsPop(sweepEvent.point);
+
+      state.sortedEvents.push(sweepEvent.id);
+      // optimization by bboxes for intersection and difference goes here
+      if ((state.operation == Operation.INTERSECTION && sweepEvent.point[0] > rightbound)
+      || (state.operation == Operation.DIFFERENCE && sweepEvent.point[0] > state.subjectBbox[2])) {
+        state.subdivideSegmentsOver = true;
+        emit LogSubdivideSegmentsBreak(rightbound, uint256(state.operation));
+        return;
+      }
+      if (sweepEvent.left) {
+        SweepLineRedBlackTree.insert(state.sweepLineTree, state.store, sweepEvent.id);
+        begin = RedBlackTree.first(state.sweepLineTree.tree);
+
+        if (sweepEvent.id == begin)
+          prev = 0;
+        else
+          prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
+
+        next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
+
+        computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
+        if (next != 0 && possibleIntersection(state, sweepEvent, state.store.sweepById[next]) == 2) {
+          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
+          computeFields(state, sweepEvent, state.store.sweepById[next], state.operation);
+        }
+
+        if (prev != 0 && possibleIntersection(state, state.store.sweepById[prev], sweepEvent) == 2) {
+          if (prevPrev == begin)
+            prevPrev = 0;
+          else
+            prevPrev = RedBlackTree.prev(state.sweepLineTree.tree, prev);
+
+          computeFields(state, state.store.sweepById[prev], state.store.sweepById[prevPrev], state.operation);
+          computeFields(state, sweepEvent, state.store.sweepById[prev], state.operation);
+        }
+      } else {
+        sweepEvent = state.store.sweepById[sweepEvent.otherEvent];
+
+        // is item exists in tree
+        if (sweepEvent.id == state.sweepLineTree.tree.root || (sweepEvent.id !=  state.sweepLineTree.tree.root && state.sweepLineTree.tree.items[sweepEvent.id].parent != 0)) {
+          if (sweepEvent.id == begin)
+            prev = 0;
+          else
+            prev = RedBlackTree.prev(state.sweepLineTree.tree, sweepEvent.id);
+
+          next = RedBlackTree.next(state.sweepLineTree.tree, sweepEvent.id);
+          RedBlackTree.remove(state.sweepLineTree.tree, sweepEvent.id);
+
+          if (next != 0 && prev != 0) {
+            possibleIntersection(state, state.store.sweepById[prev], state.store.sweepById[next]);
+          }
+        }
+      }
 
       i += 1;
       if (i >= state.maxHandleQueuePointsPerCall) {
-        break;
+        return;
       }
     }
+    emit LogSubdivideSegmentsWhileEnd(state.eventQueue.headId, uint256(state.operation));
+    state.subdivideSegmentsOver = true;
   }
 
   function computeFields(State storage state, SweepEvent.Item storage sweepEvent, SweepEvent.Item storage prev, Operation operation) private {
@@ -304,6 +315,9 @@ library MartinezRueda {
     }
     return false;
   }
+  
+  event IntersectionWay(string way);
+  event IntersectionInput(uint256 nintersections, int256[2] inter0, int256[2] inter1, int256[2] se1Point, int256[2] se1OtherPoint, int256[2] se2Point, int256[2] se2OtherPoint);
 
   function possibleIntersection(State storage state, SweepEvent.Item storage se1, SweepEvent.Item storage se2) private returns(int8) {
     // that disallows self-intersecting polygons,
@@ -323,11 +337,13 @@ library MartinezRueda {
         nintersections = 1;
       }
     }
+//    emit IntersectionInput(nintersections, inter[0], inter[1], se1.point, state.store.sweepById[se1.otherEvent].point, se2.point, state.store.sweepById[se2.otherEvent].point);
+
     if (nintersections == 0) {
       return 0;
       // no intersection
     }
-
+    
     // the line segments intersect at an endpoint of both line segments
     if ((nintersections == 1) && (SweepEventUtils.equals(se1.point, se2.point)
       || SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, state.store.sweepById[se2.otherEvent].point))) {
@@ -342,10 +358,12 @@ library MartinezRueda {
     if (nintersections == 1) {
       // if the intersection point is not an endpoint of se1
       if (!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])) {
+        emit IntersectionWay("!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])");
         divideSegment(state, se1.id, inter[0]);
       }
       // if the intersection point is not an endpoint of se2
       if (!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])) {
+        emit IntersectionWay("!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])");
         divideSegment(state, se2.id, inter[0]);
       }
       return int8(1);
@@ -395,6 +413,7 @@ library MartinezRueda {
       if (leftCoincide && !rightCoincide) {
         // honestly no idea, but changing events selection from [2, 1]
         // to [0, 1] fixes the overlapping self-intersecting polygons issue
+        emit IntersectionWay("leftCoincide && !rightCoincide");
         divideSegment(state, state.store.sweepById[events[1]].otherEvent, state.store.sweepById[events[0]].point);
       }
       return 2;
@@ -402,18 +421,21 @@ library MartinezRueda {
 
     // the line segments share the right endpoint
     if (rightCoincide) {
+      emit IntersectionWay("rightCoincide");
       divideSegment(state, events[0], state.store.sweepById[events[1]].point);
       return 3;
     }
 
     // no line segment includes totally the other one
     if (events[0] != state.store.sweepById[events[3]].otherEvent) {
+      emit IntersectionWay("events[0] != state.store.sweepById[events[3]].otherEvent");
       divideSegment(state, events[0], state.store.sweepById[events[1]].point);
       divideSegment(state, events[1], state.store.sweepById[events[2]].point);
       return 3;
     }
 
     // one line segment includes the other one
+    emit IntersectionWay("one line segment includes the other one");
     divideSegment(state, events[0], state.store.sweepById[events[1]].point);
     divideSegment(state, state.store.sweepById[events[3]].otherEvent, state.store.sweepById[events[2]].point);
 
@@ -444,11 +466,14 @@ library MartinezRueda {
       //      console.warn('what is that, a collapsed segment?', se);
     }
     /* eslint-enable no-console */
-
+    
+    state.store.sweepById[r.id] = r;
+    state.store.sweepById[l.id] = l;
+    
     // avoid a rounding error. The left event would be processed after the right event
     if (SweepEventUtils.compareEvents(state.store, l, state.store.sweepById[se.otherEvent]) > 0) {
       state.store.sweepById[se.otherEvent].left = true;
-      l.left = false;
+      state.store.sweepById[l.id].left = false;
     }
 
     // avoid a rounding error. The left event would be processed after the right event
@@ -457,18 +482,15 @@ library MartinezRueda {
     state.store.sweepById[se.otherEvent].otherEvent = l.id;
     se.otherEvent = r.id;
 
-    state.store.sweepById[r.id] = r;
-    state.store.sweepById[l.id] = l;
-
-    SweepQueueLinkedList.insert(state.eventQueue, state.store, r.id);
     SweepQueueLinkedList.insert(state.eventQueue, state.store, l.id);
+    SweepQueueLinkedList.insert(state.eventQueue, state.store, r.id);
   }
 
   //function to convert back to regular point form:
   function toPoint(int256[2] p, int256 s, int256[2] d) private returns (int256[2]) {
     return [
-      p[0] + s * d[0],
-      p[1] + s * d[1]
+      p[0] + s * d[0] / 10 ** 12,
+      p[1] + s * d[1] / 10 ** 12
     ];
   }
   /**
@@ -485,6 +507,10 @@ library MartinezRueda {
   function dotProduct(int256[2] a, int256[2] b) private returns (int256) {
     return (a[0] * b[0]) + (a[1] * b[1]);
   }
+  
+  function divideToSzabo(int256 a, int256 b) private returns (int256) {
+    return (a * 10 ** 12) / b;
+  }
 
   /**
    * Finds the intersection (if any) between two line segments a and b, given the
@@ -498,6 +524,10 @@ library MartinezRueda {
    * Return if the lines intersect, the point of intersection. If they overlap, the two end points of the overlapping segment.
    * Otherwise, null.
    */
+  event SegmentIntersectionInput(int256[2] va, int256[2] vb, int256[2] e, int256 kross, int256 sqrKross, int256 sqrLenA);
+  event SegmentIntersectionWay(string way, int256 input);
+  event SegmentIntersectionSqrKross(int256 c, int256 toProductVb, int256 s, int256 toProductVa, int256 t);
+  
   function segmentIntersection(int256[2] a1, int256[2] a2, int256[2] b1, int256[2] b2) private returns (int256[2][2] result) {
     // The algorithm expects our lines in the form P + sd, where P is a point,
     // s is on the interval [0, 1], and d is a vector.
@@ -514,6 +544,8 @@ library MartinezRueda {
     int256 sqrKross = kross * kross;
     int256 sqrLenA = dotProduct(va, va);
     //const sqrLenB  = dotProduct(vb, vb);
+    
+//    emit SegmentIntersectionInput(va, vb, e, kross, sqrKross, sqrLenA);
 
     // Check for line intersection. This works because of the properties of the
     // cross product -- specifically, two vectors are parallel if and only if the
@@ -524,30 +556,34 @@ library MartinezRueda {
       // If they're not parallel, then (because these are line segments) they
       // still might not actually intersect. This code checks that the
       // intersection point of the lines is actually on both line segments.
-      int256 s = crossProduct(e, vb) / kross;
-      if (s < 0 || s > 1) {
+//      emit SegmentIntersectionSqrKross(sqrKross, crossProduct(e, vb), divideToSzabo(crossProduct(e, vb), kross), crossProduct(e, va), divideToSzabo(crossProduct(e, va), kross));
+      int256 s = divideToSzabo(crossProduct(e, vb), kross);
+      if (s < 0 || s > 1 szabo) {
         // not on line segment a
         return;
       }
-      int256 t = crossProduct(e, va) / kross;
-      if (t < 0 || t > 1) {
+      int256 t = divideToSzabo(crossProduct(e, va), kross);
+      if (t < 0 || t > 1 szabo) {
         // not on line segment b
         return;
       }
-      if (s == 0 || s == 1) {
+      if (s == 0 || s == 1 szabo) {
+        emit SegmentIntersectionWay("s == 0 || s == 1", s);
         // on an endpoint of line segment a
 //        if (!noEndpointTouch) {
           result[0] = toPoint(a1, s, va);
 //        }
         return;
       }
-      if (t == 0 || t == 1) {
+      if (t == 0 || t == 1 szabo) {
+        emit SegmentIntersectionWay("t == 0 || t == 1", t);
         // on an endpoint of line segment b
 //        if (!noEndpointTouch) {
           result[0] = toPoint(b1, t, vb);
 //        }
         return;
       }
+      emit SegmentIntersectionWay("sqrKross > 0", sqrKross);
       result[0] = toPoint(a1, s, va);
       return;
     }
@@ -571,18 +607,19 @@ library MartinezRueda {
   }
   
   function segmentIntersectionStage2(int256[2] a1, int256[2] memory va, int256[2] memory vb, int256[2] memory e, int256 sqrLenA) private returns (int256[2][2] result) {
-    int256 sa = dotProduct(va, e) / sqrLenA;
-    int256 sb = sa + dotProduct(va, vb) / sqrLenA;
+    int256 sa = divideToSzabo(dotProduct(va, e), sqrLenA);
+    int256 sb = divideToSzabo(sa + dotProduct(va, vb), sqrLenA);
     int256 smin = MathUtils.minInt(sa, sb);
     int256 smax = MathUtils.maxInt(sa, sb);
 
     // this is, essentially, the FindIntersection acting on floats from
     // Schneider & Eberly, just inlined into this function.
-    if (smin <= 1 && smax >= 0) {
+    if (smin <= 1 szabo && smax >= 0) {
 
       // overlap on an end point
-      if (smin == 1) {
+      if (smin == 1 szabo) {
         //        if (!noEndpointTouch) {
+        emit SegmentIntersectionWay("smin == 1", smax);
         result[0] = toPoint(a1, smin > 0 ? smin : 0, va);
         //        }
         return;
@@ -590,7 +627,8 @@ library MartinezRueda {
 
       if (smax == 0) {
         //        if (!noEndpointTouch) {
-        result[0] = toPoint(a1, smax < 1 ? smax : 1, va);
+        emit SegmentIntersectionWay("smax == 0", smin);
+        result[0] = toPoint(a1, smax < 1 szabo ? smax : 1 szabo, va);
         //        }
         return;
       }
@@ -599,10 +637,11 @@ library MartinezRueda {
       //        return;
       //      }
 
+      emit SegmentIntersectionWay("There's overlap on a segment -- two points of intersection. Return both.", smin);
       // There's overlap on a segment -- two points of intersection. Return both.
       return [
         toPoint(a1, smin > 0 ? smin : 0, va),
-        toPoint(a1, smax < 1 ? smax : 1, va)
+        toPoint(a1, smax < 1 szabo ? smax : 1 szabo, va)
       ];
     }
 
@@ -756,6 +795,6 @@ library MartinezRueda {
 
 
   function isSubdivideSegmentsOver(State storage state) public returns (bool) {
-    return state.eventQueue.headId == 0;
+    return state.subdivideSegmentsOver;
   }
 }

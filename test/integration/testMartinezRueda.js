@@ -84,47 +84,47 @@ contract('MartinezRueda', ([coreTeam]) => {
       await this.mockMartinezRueda.processClippingPolygon();
 
       await this.subdivideSegments();
-      //
-      // await this.mockMartinezRueda.orderEvents();
 
-      // const eventsLength = await this.mockMartinezRueda.getResultEventsLength();
-      // console.log('eventsLength', eventsLength.toString(10));
-      //
-      // let eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(0);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(1);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(2);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(3);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(4);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(5);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(6);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(7);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(8);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(9);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(10);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
-      //
-      // eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(11);
-      // console.log(eventPoint.map(coor => coor.toString(10)));
+      await this.mockMartinezRueda.orderEvents();
+
+      const eventsLength = await this.mockMartinezRueda.getResultEventsLength();
+      console.log('eventsLength', eventsLength.toString(10));
+
+      let eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(0);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(1);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(2);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(3);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(4);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(5);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(6);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(7);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(8);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(9);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(10);
+      console.log(eventPoint.map(coor => coor.toString(10)));
+
+      eventPoint = await this.mockMartinezRueda.getResultResultEventPoint(11);
+      console.log(eventPoint.map(coor => coor.toString(10)));
       
       assert.equal(true, false);
 
