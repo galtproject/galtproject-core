@@ -28,7 +28,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('WeilerAtherton', ([coreTeam]) => {
+contract.only('WeilerAtherton', ([coreTeam]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -41,14 +41,14 @@ contract('WeilerAtherton', ([coreTeam]) => {
 
     this.mockWeilerAthertonWeb3 = new web3.eth.Contract(this.mockWeilerAtherton.abi, this.mockWeilerAtherton.address);
 
-    this.processBentleyOttman = async function() {
-      const isBentleyOttmanFinished = await this.mockWeilerAthertonWeb3.methods.isBentleyOttmanFinished().call();
-      if (isBentleyOttmanFinished) {
+    this.processMartinezRueda = async function() {
+      const isMartinezRuedaFinished = await this.mockWeilerAthertonWeb3.methods.isMartinezRuedaFinished().call();
+      if (isMartinezRuedaFinished) {
         return;
       }
-      await this.mockWeilerAtherton.processBentleyOttman();
+      await this.mockWeilerAtherton.processMartinezRueda();
 
-      await this.processBentleyOttman();
+      await this.processMartinezRueda();
     };
   });
 
@@ -88,7 +88,7 @@ contract('WeilerAtherton', ([coreTeam]) => {
 
       await this.mockWeilerAtherton.addCropPolygonSegments();
 
-      await this.processBentleyOttman();
+      await this.processMartinezRueda();
       await this.mockWeilerAtherton.addIntersectedPoints();
       await this.mockWeilerAtherton.buildResultPolygon();
       await this.mockWeilerAtherton.buildBasePolygonOutput();

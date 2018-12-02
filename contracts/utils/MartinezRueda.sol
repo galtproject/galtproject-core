@@ -69,6 +69,9 @@ library MartinezRueda {
     mapping(uint256 => bool) sweepProcessed;
     int256[2][][] resultContours;
 
+    mapping(bytes32 => bytes32[4]) intersectionPointToSegments;
+    mapping(bytes32 => int256[2]) pointByHash;
+
     Operation operation;
 
     //    PointRedBlackTree.PointsTree queue;
@@ -162,14 +165,14 @@ library MartinezRueda {
   
   function processSubjectPolygon(State storage state) public {
     processPolygon(state, state.subject, true, 1, state.subjectBbox, true);
-//    emit LogProcessSubjectPolygon(state.subjectBbox);
+    emit LogProcessSubjectPolygon(state.subjectBbox);
   }
   
   event LogProcessClippingPolygon(int256[4] clippingBbox);
 
   function processClippingPolygon(State storage state) public {
     processPolygon(state, state.clipping, false, 2, state.clippingBbox, true);
-//    emit LogProcessClippingPolygon(state.clippingBbox);
+    emit LogProcessClippingPolygon(state.clippingBbox);
   }
 
   function processAllPolygons(State storage state) public {
@@ -202,7 +205,7 @@ library MartinezRueda {
 //      emit LogSubdivideSegmentsPopId(popId);
       SweepEvent.Item storage sweepEvent = state.store.sweepById[LinkedList.pop(state.eventQueue)];
 
-//      emit LogSubdivideSegmentsPop(sweepEvent.point);
+      emit LogSubdivideSegmentsPop(sweepEvent.point);
 
       state.sortedEvents.push(sweepEvent.id);
       // optimization by bboxes for intersection and difference goes here
@@ -354,17 +357,45 @@ library MartinezRueda {
       return 0;
     }
 
+    bytes32 newPointHash;
+    
     // The line segments associated to se1 and se2 intersect
     if (nintersections == 1) {
       // if the intersection point is not an endpoint of se1
       if (!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])) {
 //        emit IntersectionWay("!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])");
         divideSegment(state, se1.id, inter[0]);
+
+        newPointHash = keccak256(abi.encode(inter[0]));
+        state.intersectionPointToSegments[newPointHash] = [
+          keccak256(abi.encode(se1.point)),
+          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
+          keccak256(abi.encode(se2.point)),
+          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
+        ];
+        
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = state.store.sweepById[se2.otherEvent].point;
       }
       // if the intersection point is not an endpoint of se2
       if (!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])) {
 //        emit IntersectionWay("!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])");
         divideSegment(state, se2.id, inter[0]);
+
+        newPointHash = keccak256(abi.encode(inter[0]));
+        state.intersectionPointToSegments[newPointHash] = [
+          keccak256(abi.encode(se1.point)),
+          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
+          keccak256(abi.encode(se2.point)),
+          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
+        ];
+
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
+//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = state.store.sweepById[se2.otherEvent].point;
       }
       return int8(1);
     }
@@ -648,50 +679,52 @@ library MartinezRueda {
     return;
   }
 
-//  event ResultPush(uint256 sweepId);
+  event ResultPush(uint256 sweepId, int256[2] point, bool left, bool inResult, bool isSubject, uint256 contourId);
+  
   function orderEvents(State storage state) public {
+    require(state.resultEvents.length == 0, "Events already ordered");
     //    let sweepEvent, i, len, tmp;
     SweepEvent.Item memory sweepEvent;
     // Due to overlapping edges the resultEvents array can be not wholly sorted
-    bool sorted = false;
-    int tmp;
+//    bool sorted = false;
+//    int tmp;
     uint i;
 
     for (i = 0; i < state.sortedEvents.length; i++) {
       sweepEvent = state.store.sweepById[state.sortedEvents[i]];
-      if ((sweepEvent.left && sweepEvent.inResult) || (!sweepEvent.left && state.store.sweepById[sweepEvent.otherEvent].inResult)) {
+      if (((sweepEvent.left && sweepEvent.inResult) || (!sweepEvent.left && state.store.sweepById[sweepEvent.otherEvent].inResult))) {//sweepEvent.isSubject && 
         state.resultEvents.push(sweepEvent.id);
-//        emit ResultPush(sweepEvent.id);
+        emit ResultPush(sweepEvent.id, sweepEvent.point, sweepEvent.left, sweepEvent.inResult, sweepEvent.isSubject, sweepEvent.contourId);
       }
     }
     
-    while (!sorted) {
-      sorted = true;
-      for (i = 0; i < state.resultEvents.length; i++) {
-        if ((i + 1) < state.resultEvents.length
-            && SweepEventUtils.compareEvents(state.store, state.store.sweepById[state.resultEvents[i]], state.store.sweepById[state.resultEvents[i + 1]]) == 1) {
-          tmp = int256(state.resultEvents[i]);
-          state.resultEvents[i] = state.resultEvents[i + 1];
-          state.resultEvents[i + 1] = uint256(tmp);
-          sorted = false;
-        }
-      }
-    }
-    for (i = 0; i < state.resultEvents.length; i++) {
-      sweepEvent = state.store.sweepById[state.resultEvents[i]];
-      sweepEvent.pos = int256(i);
-    }
-
-    // imagine, the right sweepEvent is found in the beginning of the queue,
-    // when his left counterpart is not marked yet
-    for (i = 0; i < state.resultEvents.length; i++) {
-      sweepEvent = state.store.sweepById[state.resultEvents[i]];
-      if (!sweepEvent.left) {
-        tmp = sweepEvent.pos;
-        sweepEvent.pos = state.store.sweepById[sweepEvent.otherEvent].pos;
-        state.store.sweepById[sweepEvent.otherEvent].pos = tmp;
-      }
-    }
+//    while (!sorted) {
+//      sorted = true;
+//      for (i = 0; i < state.resultEvents.length; i++) {
+//        if ((i + 1) < state.resultEvents.length
+//            && SweepEventUtils.compareEvents(state.store, state.store.sweepById[state.resultEvents[i]], state.store.sweepById[state.resultEvents[i + 1]]) == 1) {
+//          tmp = int256(state.resultEvents[i]);
+//          state.resultEvents[i] = state.resultEvents[i + 1];
+//          state.resultEvents[i + 1] = uint256(tmp);
+//          sorted = false;
+//        }
+//      }
+//    }
+//    for (i = 0; i < state.resultEvents.length; i++) {
+//      sweepEvent = state.store.sweepById[state.resultEvents[i]];
+//      sweepEvent.pos = int256(i);
+//    }
+//
+//    // imagine, the right sweepEvent is found in the beginning of the queue,
+//    // when his left counterpart is not marked yet
+//    for (i = 0; i < state.resultEvents.length; i++) {
+//      sweepEvent = state.store.sweepById[state.resultEvents[i]];
+//      if (!sweepEvent.left) {
+//        tmp = sweepEvent.pos;
+//        sweepEvent.pos = state.store.sweepById[sweepEvent.otherEvent].pos;
+//        state.store.sweepById[sweepEvent.otherEvent].pos = tmp;
+//      }
+//    }
   }
 
   function nextPos(State storage state, int256 pos, uint256 origIndex) private returns(int256) {
