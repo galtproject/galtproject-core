@@ -162,14 +162,14 @@ library MartinezRueda {
   
   function processSubjectPolygon(State storage state) public {
     processPolygon(state, state.subject, true, 1, state.subjectBbox, true);
-    emit LogProcessSubjectPolygon(state.subjectBbox);
+//    emit LogProcessSubjectPolygon(state.subjectBbox);
   }
   
   event LogProcessClippingPolygon(int256[4] clippingBbox);
 
   function processClippingPolygon(State storage state) public {
     processPolygon(state, state.clipping, false, 2, state.clippingBbox, true);
-    emit LogProcessClippingPolygon(state.clippingBbox);
+//    emit LogProcessClippingPolygon(state.clippingBbox);
   }
 
   function processAllPolygons(State storage state) public {
@@ -195,21 +195,21 @@ library MartinezRueda {
 
     uint8 i = 0;
 
-    emit LogSubdivideSegmentsRightbound(rightbound, uint256(state.operation));
+//    emit LogSubdivideSegmentsRightbound(rightbound, uint256(state.operation));
     
     while (state.eventQueue.headId != 0) {
 //      uint256 popId = LinkedList.pop(state.eventQueue);
 //      emit LogSubdivideSegmentsPopId(popId);
       SweepEvent.Item storage sweepEvent = state.store.sweepById[LinkedList.pop(state.eventQueue)];
 
-      emit LogSubdivideSegmentsPop(sweepEvent.point);
+//      emit LogSubdivideSegmentsPop(sweepEvent.point);
 
       state.sortedEvents.push(sweepEvent.id);
       // optimization by bboxes for intersection and difference goes here
       if ((state.operation == Operation.INTERSECTION && sweepEvent.point[0] > rightbound)
       || (state.operation == Operation.DIFFERENCE && sweepEvent.point[0] > state.subjectBbox[2])) {
         state.subdivideSegmentsOver = true;
-        emit LogSubdivideSegmentsBreak(rightbound, uint256(state.operation));
+//        emit LogSubdivideSegmentsBreak(rightbound, uint256(state.operation));
         return;
       }
       if (sweepEvent.left) {
@@ -262,7 +262,7 @@ library MartinezRueda {
         return;
       }
     }
-    emit LogSubdivideSegmentsWhileEnd(state.eventQueue.headId, uint256(state.operation));
+//    emit LogSubdivideSegmentsWhileEnd(state.eventQueue.headId, uint256(state.operation));
     state.subdivideSegmentsOver = true;
   }
 
@@ -358,12 +358,12 @@ library MartinezRueda {
     if (nintersections == 1) {
       // if the intersection point is not an endpoint of se1
       if (!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])) {
-        emit IntersectionWay("!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])");
+//        emit IntersectionWay("!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])");
         divideSegment(state, se1.id, inter[0]);
       }
       // if the intersection point is not an endpoint of se2
       if (!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])) {
-        emit IntersectionWay("!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])");
+//        emit IntersectionWay("!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])");
         divideSegment(state, se2.id, inter[0]);
       }
       return int8(1);
@@ -413,7 +413,7 @@ library MartinezRueda {
       if (leftCoincide && !rightCoincide) {
         // honestly no idea, but changing events selection from [2, 1]
         // to [0, 1] fixes the overlapping self-intersecting polygons issue
-        emit IntersectionWay("leftCoincide && !rightCoincide");
+//        emit IntersectionWay("leftCoincide && !rightCoincide");
         divideSegment(state, state.store.sweepById[events[1]].otherEvent, state.store.sweepById[events[0]].point);
       }
       return 2;
@@ -421,21 +421,21 @@ library MartinezRueda {
 
     // the line segments share the right endpoint
     if (rightCoincide) {
-      emit IntersectionWay("rightCoincide");
+//      emit IntersectionWay("rightCoincide");
       divideSegment(state, events[0], state.store.sweepById[events[1]].point);
       return 3;
     }
 
     // no line segment includes totally the other one
     if (events[0] != state.store.sweepById[events[3]].otherEvent) {
-      emit IntersectionWay("events[0] != state.store.sweepById[events[3]].otherEvent");
+//      emit IntersectionWay("events[0] != state.store.sweepById[events[3]].otherEvent");
       divideSegment(state, events[0], state.store.sweepById[events[1]].point);
       divideSegment(state, events[1], state.store.sweepById[events[2]].point);
       return 3;
     }
 
     // one line segment includes the other one
-    emit IntersectionWay("one line segment includes the other one");
+//    emit IntersectionWay("one line segment includes the other one");
     divideSegment(state, events[0], state.store.sweepById[events[1]].point);
     divideSegment(state, state.store.sweepById[events[3]].otherEvent, state.store.sweepById[events[2]].point);
 
@@ -568,7 +568,7 @@ library MartinezRueda {
         return;
       }
       if (s == 0 || s == 1 szabo) {
-        emit SegmentIntersectionWay("s == 0 || s == 1", s);
+//        emit SegmentIntersectionWay("s == 0 || s == 1", s);
         // on an endpoint of line segment a
 //        if (!noEndpointTouch) {
           result[0] = toPoint(a1, s, va);
@@ -576,14 +576,14 @@ library MartinezRueda {
         return;
       }
       if (t == 0 || t == 1 szabo) {
-        emit SegmentIntersectionWay("t == 0 || t == 1", t);
+//        emit SegmentIntersectionWay("t == 0 || t == 1", t);
         // on an endpoint of line segment b
 //        if (!noEndpointTouch) {
           result[0] = toPoint(b1, t, vb);
 //        }
         return;
       }
-      emit SegmentIntersectionWay("sqrKross > 0", sqrKross);
+//      emit SegmentIntersectionWay("sqrKross > 0", sqrKross);
       result[0] = toPoint(a1, s, va);
       return;
     }
@@ -619,7 +619,7 @@ library MartinezRueda {
       // overlap on an end point
       if (smin == 1 szabo) {
         //        if (!noEndpointTouch) {
-        emit SegmentIntersectionWay("smin == 1", smax);
+//        emit SegmentIntersectionWay("smin == 1", smax);
         result[0] = toPoint(a1, smin > 0 ? smin : 0, va);
         //        }
         return;
@@ -627,7 +627,7 @@ library MartinezRueda {
 
       if (smax == 0) {
         //        if (!noEndpointTouch) {
-        emit SegmentIntersectionWay("smax == 0", smin);
+//        emit SegmentIntersectionWay("smax == 0", smin);
         result[0] = toPoint(a1, smax < 1 szabo ? smax : 1 szabo, va);
         //        }
         return;
@@ -637,7 +637,7 @@ library MartinezRueda {
       //        return;
       //      }
 
-      emit SegmentIntersectionWay("There's overlap on a segment -- two points of intersection. Return both.", smin);
+//      emit SegmentIntersectionWay("There's overlap on a segment -- two points of intersection. Return both.", smin);
       // There's overlap on a segment -- two points of intersection. Return both.
       return [
         toPoint(a1, smin > 0 ? smin : 0, va),
@@ -648,6 +648,7 @@ library MartinezRueda {
     return;
   }
 
+//  event ResultPush(uint256 sweepId);
   function orderEvents(State storage state) public {
     //    let sweepEvent, i, len, tmp;
     SweepEvent.Item memory sweepEvent;
@@ -660,6 +661,7 @@ library MartinezRueda {
       sweepEvent = state.store.sweepById[state.sortedEvents[i]];
       if ((sweepEvent.left && sweepEvent.inResult) || (!sweepEvent.left && state.store.sweepById[sweepEvent.otherEvent].inResult)) {
         state.resultEvents.push(sweepEvent.id);
+//        emit ResultPush(sweepEvent.id);
       }
     }
     
@@ -772,7 +774,7 @@ library MartinezRueda {
 //        state.resultContours[contourIndex].push(state.store.sweepById[state.resultEvents[uint256(pos)]].point);
 //        pos = nextPos(state, pos, i);
         n += 1;
-        emit LogConnectEdgesWhile(pos, n);
+//        emit LogConnectEdgesWhile(pos, n);
         if(n > 0) {
           return;
         }

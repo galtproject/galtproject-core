@@ -181,7 +181,7 @@ library LinkedList {
 
     delete data.nodesByIds[popId];
     
-    emit LogPop(popId, data.headId, data.count);
+//    emit LogPop(popId, data.headId, data.count);
 
     return popId;
   }

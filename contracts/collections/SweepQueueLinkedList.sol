@@ -46,9 +46,9 @@ library SweepQueueLinkedList {
     do {
       int8 compareResult = SweepEventUtils.compareEvents(store, store.sweepById[curId], store.sweepById[valueId]);
 //      if(store.sweepById[curId].point[0] == 1210809247568000000 && store.sweepById[valueId].point[0] == 1210809247568000000) {
-        emit CompareResult1(store.sweepById[curId].point);//, store.sweepById[curId].left, store.sweepById[curId].isSubject);
-        emit CompareResult2(store.sweepById[valueId].point);//, store.sweepById[valueId].left, store.sweepById[valueId].isSubject);
-        emit CompareResult3(compareResult);
+//        emit CompareResult1(store.sweepById[curId].point);//, store.sweepById[curId].left, store.sweepById[curId].isSubject);
+//        emit CompareResult2(store.sweepById[valueId].point);//, store.sweepById[valueId].left, store.sweepById[valueId].isSubject);
+//        emit CompareResult3(compareResult);
 //      }
 //      emit SearchIteration(i, curId, data.nodesByIds[curId].prevId, data.nodesByIds[curId].nextId, compareResult);
       // console.log('compareResult', compareResult, shortLine(valuesByIds[curId]));
