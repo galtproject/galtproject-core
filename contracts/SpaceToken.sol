@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./traits/Permissionable.sol";
 import "./utils/Initializable.sol";
+import "./SpaceReputationAccounting.sol";
 
 
 /*
@@ -28,6 +29,8 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
   string public constant ROLE_BURNER = "burner";
 
   event NewSpaceToken(uint256 tokenId, address owner);
+
+  SpaceReputationAccounting public spaceReputationAccounting;
 
   uint256 packTokenIdCounter;
 
@@ -46,6 +49,13 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     _;
   }
 
+  modifier onlyUnstaked(uint256 _tokenId) {
+    if (address(spaceReputationAccounting) != address(0)) {
+      spaceReputationAccounting.requireUnstaked(_tokenId);
+    }
+    _;
+  }
+
   constructor(
     string name,
     string symbol
@@ -55,6 +65,51 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
   {
   }
 
+  // OVERRIDDEN METHODS
+  function approve(address to, uint256 tokenId) public onlyUnstaked(tokenId) {
+    super.approve(to, tokenId);
+  }
+
+  function setApprovalForAll(address to, bool approved) public onlyUnstaked(packTokenIdCounter) {
+    super.setApprovalForAll(to, approved);
+  }
+
+  function transferFrom(
+    address from,
+    address to,
+    uint256 tokenId
+  )
+    public
+    onlyUnstaked(tokenId)
+  {
+    super.transferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(
+    address from,
+    address to,
+    uint256 tokenId
+  )
+    public
+    onlyUnstaked(tokenId)
+  {
+    super.safeTransferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(
+    address from,
+    address to,
+    uint256 tokenId,
+    bytes _data
+  )
+    public
+    onlyUnstaked(tokenId)
+  {
+    super.safeTransferFrom(from, to, tokenId, _data);
+  }
+
+  // MODIFIERS
+
   function mint(
     address _to
   )
@@ -62,7 +117,7 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     onlyMinter
     returns (uint256)
   {
-    uint256 _tokenId = generateTokenId();
+    uint256 _tokenId = _generateTokenId();
     super._mint(_to, _tokenId);
 
     emit NewSpaceToken(_tokenId, _to);
@@ -72,10 +127,6 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
 
   function burn(uint256 _tokenId) external onlyBurner {
     super._burn(ownerOf(_tokenId), _tokenId);
-  }
-
-  function exists(uint256 _tokenId) external view returns (bool) {
-    return _exists(_tokenId);
   }
 
   function setTokenURI(
@@ -88,12 +139,24 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     super._setTokenURI(_tokenId, _uri);
   }
 
+  function setSpaceReputationAccounting(SpaceReputationAccounting _address) external onlyRole(ROLE_ROLE_MANAGER) {
+    spaceReputationAccounting = _address;
+  }
+
   // https://github.com/OpenZeppelin/openzeppelin-solidity/issues/1512
 //  function tokensOfOwner(address _owner) external view returns (uint256[]) {
 //    return _ownedTokens[_owner];
 //  }
 
-  function generateTokenId() internal returns (uint256) {
+  function _generateTokenId() internal returns (uint256) {
     return packTokenIdCounter++;
   }
+
+
+  // GETTERS
+
+  function exists(uint256 _tokenId) external view returns (bool) {
+    return _exists(_tokenId);
+  }
+
 }
