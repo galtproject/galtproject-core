@@ -42,14 +42,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
 
-    this.processBentleyOttman = async splitOperation => {
+    this.processMartinezRueda = async splitOperation => {
       const doneStage = await splitOperation.doneStage();
       if (doneStage >= 5) {
         return;
       }
-      await splitOperation.processBentleyOttman();
+      await splitOperation.processMartinezRueda();
 
-      await this.processBentleyOttman(splitOperation);
+      await this.processMartinezRueda(splitOperation);
     };
 
     this.mintSpaceTokenId = async geohashContour => {
@@ -76,8 +76,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
       await splitOperation.prepareAndInitAllPolygons();
-      await splitOperation.addAllPolygonsSegments();
-      await this.processBentleyOttman(splitOperation);
+      await splitOperation.addBasePolygonSegments();
+      await splitOperation.addCropPolygonSegments();
+      await this.processMartinezRueda(splitOperation);
 
       // processWeilerAtherton
       await splitOperation.addIntersectedPoints();
@@ -119,7 +120,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     };
   });
 
-  describe('package', () => {
+  describe.only('package', () => {
     it('should creating correctly', async function() {
       let res;
 

@@ -28,7 +28,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('WeilerAtherton', ([coreTeam]) => {
+contract('WeilerAtherton', ([coreTeam]) => {
   before(clearLibCache);
 
   beforeEach(async function() {

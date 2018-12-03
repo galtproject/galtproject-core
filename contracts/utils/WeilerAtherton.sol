@@ -104,10 +104,12 @@ library WeilerAtherton {
   
   function prepareBasePolygon(State storage state) public {
     state.martinezRueda.processSubjectPolygon();
+    state.basePolygon.segmentsAdded = true;
   }
 
   function prepareCropPolygon(State storage state) public {
     state.martinezRueda.processClippingPolygon();
+    state.cropPolygon.segmentsAdded = true;
   }
 
   function processMartinezRueda(State storage state) public {

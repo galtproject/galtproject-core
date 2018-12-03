@@ -215,19 +215,19 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       }
     }
 
-//    packageToHeights[_spaceTokenId] = basePackageHeights;
-//    spaceToken.transferFrom(splitOperationAddress, baseTokenOwner, _spaceTokenId);
-//    for (uint j = 0; j < resultContoursLength; j++) {
-//      uint256 newPackageId = spaceToken.mint(baseTokenOwner);
-//      packageToContour[newPackageId] = splitOperation.getResultContour(j);
-//
-//      packageToHeights[newPackageId] = new int256[](packageToContour[newPackageId].length);
-//      for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
-//        packageToHeights[newPackageId][k] = minHeight;
-//      }
-//      packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
-//      emit NewSpaceToken(newPackageId);
-//    }
+    packageToHeights[_spaceTokenId] = basePackageHeights;
+    spaceToken.transferFrom(splitOperationAddress, baseTokenOwner, _spaceTokenId);
+    for (uint j = 0; j < resultContoursLength; j++) {
+      uint256 newPackageId = spaceToken.mint(baseTokenOwner);
+      packageToContour[newPackageId] = splitOperation.getResultContour(j);
+
+      packageToHeights[newPackageId] = new int256[](packageToContour[newPackageId].length);
+      for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
+        packageToHeights[newPackageId][k] = minHeight;
+      }
+      packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
+      emit NewSpaceToken(newPackageId);
+    }
 
     activeSplitOperations[splitOperationAddress] = false;
   }

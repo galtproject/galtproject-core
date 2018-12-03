@@ -32,7 +32,7 @@ contract SpaceSplitOperation {
     POLYGONS_PREPARE,
     POLYGONS_INIT,
     SEGMENTS_ADD,
-    BENTLEY_OTTMAN_PROCESS,
+    MARTINEZ_RUEDA_PROCESS,
     INTERSECT_POINTS_ADD,
     WEILER_ATHERTON_BUILD,
     POLYGONS_FINISH
@@ -74,7 +74,7 @@ contract SpaceSplitOperation {
 
     convertContourToPoints(baseContour, weilerAtherton.martinezRueda.subject);
 
-    if (weilerAtherton.martinezRueda.subject.points.length > 0) {
+    if (weilerAtherton.martinezRueda.clipping.points.length > 0) {
       doneStage = Stage.POLYGONS_PREPARE;
     }
   }
@@ -84,7 +84,7 @@ contract SpaceSplitOperation {
 
     convertContourToPoints(cropContour, weilerAtherton.martinezRueda.clipping);
 
-    if (weilerAtherton.martinezRueda.clipping.points.length > 0) {
+    if (weilerAtherton.martinezRueda.subject.points.length > 0) {
       doneStage = Stage.POLYGONS_PREPARE;
     }
   }
@@ -164,14 +164,14 @@ contract SpaceSplitOperation {
     require(doneStage == Stage.SEGMENTS_ADD, "doneStage should be SEGMENTS_ADD");
 
     weilerAtherton.processMartinezRueda();
-    // is Bentley Ottman finished
-    if (weilerAtherton.martinezRueda.subdivideSegmentsOver && weilerAtherton.martinezRueda.resultEvents.length == 0) {
-      doneStage = Stage.BENTLEY_OTTMAN_PROCESS;
+    // is Martinez Rueda finished
+    if (weilerAtherton.martinezRueda.subdivideSegmentsOver && weilerAtherton.martinezRueda.resultEvents.length != 0) {
+      doneStage = Stage.MARTINEZ_RUEDA_PROCESS;
     }
   }
 
   function addIntersectedPoints() public {
-    require(doneStage == Stage.BENTLEY_OTTMAN_PROCESS, "doneStage should be SEGMENTS_ADD");
+    require(doneStage == Stage.MARTINEZ_RUEDA_PROCESS, "doneStage should be SEGMENTS_ADD");
 
     weilerAtherton.addIntersectedPoints();
     doneStage = Stage.INTERSECT_POINTS_ADD;
