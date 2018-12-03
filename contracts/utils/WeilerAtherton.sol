@@ -63,8 +63,6 @@ library WeilerAtherton {
     PolygonUtils.CoorsPolygon basePolygonOutput;
   }
 
-  event LogBentleyOttmanOutput(int256[2] point);
-  event LogBentleyOttman(uint256 queueInserted, uint256 queueRemoved, uint256 outputLength);
   event LogAddPoint(int256[2] point, bytes32 pointHash, bytes32 nextPointHash);
   event LogAddSegment(int256[2][2] segment);
   event LogPlacePointBetween(string ifCase, int256[2] placePoint, int256[2] startPoint, int256[2] endPoint);
@@ -120,7 +118,6 @@ library WeilerAtherton {
     } else {
       require(false, "Martinez Rueda already finished");
     }
-    //    emit LogBentleyOttman(state.bentleyOttman.queue.tree.inserted, state.bentleyOttman.queue.tree.removed, state.bentleyOttman.output.length);
   }
 
   function isMartinezRuedaFinished(State storage state) public returns (bool) {

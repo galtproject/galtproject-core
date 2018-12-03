@@ -68,7 +68,7 @@ module.exports = async function(callback) {
     console.log('      addAllPolygonsSegments gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
-    totalGasUsed += await processBentleyOttman(splitOperation);
+    totalGasUsed += await processMartinezRueda(splitOperation);
 
     res = await splitOperation.processWeilerAtherton();
     console.log('      processWeilerAtherton gasUsed', res.receipt.gasUsed);
@@ -99,15 +99,15 @@ module.exports = async function(callback) {
     );
   }
 
-  async function processBentleyOttman(splitOperation) {
+  async function processMartinezRueda(splitOperation) {
     const doneStage = await splitOperation.doneStage();
     if (doneStage >= 5) {
       return 0;
     }
-    const res = await splitOperation.processBentleyOttman();
-    console.log('      processBentleyOttman gasUsed', res.receipt.gasUsed);
+    const res = await splitOperation.processMartinezRueda();
+    console.log('      processMartinezRueda gasUsed', res.receipt.gasUsed);
 
-    return res.receipt.gasUsed + (await processBentleyOttman(splitOperation));
+    return res.receipt.gasUsed + (await processMartinezRueda(splitOperation));
   }
 
   async function mintSpaceTokenId(geohashContour) {
