@@ -201,7 +201,9 @@ contract SpaceSplitOperation {
   }
   
   function isBuildResultFinished() public view returns(bool) {
-    return weilerAtherton.basePolygon.handledIntersectionPoints == weilerAtherton.basePolygon.intersectionPoints.length 
+    /* solium-disable-next-line */
+    return weilerAtherton.basePolygon.handledIntersectionPoints == weilerAtherton.basePolygon.intersectionPoints.length
+    /* solium-disable-next-line */
         && weilerAtherton.cropPolygon.handledIntersectionPoints == weilerAtherton.cropPolygon.intersectionPoints.length;
   }
 

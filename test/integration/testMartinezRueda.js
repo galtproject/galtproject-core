@@ -70,7 +70,6 @@ contract('MartinezRueda', ([coreTeam]) => {
 
     this.checkPointsByLength = async function(index, length, pointsShouldIncluded, foundPoints = {}) {
       const eventPoint = (await this.mockMartinezRueda.getResultResultEventPoint(index)).map(coor => coor.toString(10));
-      console.log(index, eventPoint);
 
       const foundIndex = _.findIndex(
         pointsShouldIncluded,
@@ -79,17 +78,18 @@ contract('MartinezRueda', ([coreTeam]) => {
 
       if (foundIndex > -1) {
         pointsShouldIncluded.splice(foundIndex, 1);
+        /* eslint-disable */
         foundPoints[JSON.stringify(eventPoint)] = true;
+        /* eslint-enable */
       } else {
         assert(foundPoints[JSON.stringify(eventPoint)], true);
       }
 
-      index += 1;
-      if (index >= length) {
+      if (index + 1 >= length) {
         return;
       }
 
-      await this.checkPointsByLength(index, length, pointsShouldIncluded, foundPoints);
+      await this.checkPointsByLength(index + 1, length, pointsShouldIncluded, foundPoints);
     };
   });
 

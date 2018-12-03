@@ -25,7 +25,6 @@ module.exports = async function(callback) {
   const coreTeam = accounts[0];
 
   const martinezRueda = await getMartinezRuedaLib();
-  console.log('MockMartinezRueda.link');
 
   MockMartinezRueda.link('MartinezRueda', martinezRueda.address);
   MockMartinezRueda.link('LinkedList', (await getLinkedListLib()).address);

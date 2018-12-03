@@ -110,12 +110,12 @@ contract('SegmentRedBlackTree', ([coreTeam]) => {
         [1200340250507000000, 104532680679113000000],
         [1209607785568000000, 104532165359706000000]
       ]);
-      
+
       const prev = await this.mockSegmentRedBlackTree.prev(4);
       assert.equal(prev, 2);
-      
-        const next = await this.mockSegmentRedBlackTree.next(4);
-        assert.equal(prev, 2);
+
+      const next = await this.mockSegmentRedBlackTree.next(4);
+      assert.equal(next, 2);
 
       await this.mockSegmentRedBlackTree.insert(6, [
         [1201198389754000000, 104507961440831000000],

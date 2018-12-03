@@ -6,14 +6,7 @@ const chai = require('chai');
 const pIteration = require('p-iteration');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const {
-  initHelperWeb3,
-  initHelperArtifacts,
-  ether,
-  getWeilerAthertonLib,
-  getPolygonUtilsLib,
-  clearLibCache
-} = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, getWeilerAthertonLib, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(MockWeilerAtherton.web3.currentProvider);
 
@@ -28,7 +21,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('WeilerAtherton', ([coreTeam]) => {
+contract('WeilerAtherton', ([coreTeam]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -110,20 +103,20 @@ contract.only('WeilerAtherton', ([coreTeam]) => {
       resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 3).call();
       assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1215271437541000000', '104522552657872000000']);
 
-        // dev.highlightContour([ 'w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80' ])
-        // const baseContour = [
-        //     [1.2291728239506483, 104.51007032766938],
-        //     [1.2037726398557425, 104.50989866629243],
-        //     [1.2036009784787893, 104.53199403360486],
-        //     [1.227113390341401, 104.53336732462049]
-        // ];
-        // // dev.highlightContour([ 'w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'])
-        // const cropContour = [
-        //     [1.2314039189368486, 104.52323930338025],
-        //     [1.2152714375406504, 104.52255265787244],
-        //     [1.2126970198005438, 104.54298002645373],
-        //     [1.2344931531697512, 104.54898850992322]
-        // ];
+      // dev.highlightContour([ 'w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80' ])
+      // const baseContour = [
+      //     [1.2291728239506483, 104.51007032766938],
+      //     [1.2037726398557425, 104.50989866629243],
+      //     [1.2036009784787893, 104.53199403360486],
+      //     [1.227113390341401, 104.53336732462049]
+      // ];
+      // // dev.highlightContour([ 'w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'])
+      // const cropContour = [
+      //     [1.2314039189368486, 104.52323930338025],
+      //     [1.2152714375406504, 104.52255265787244],
+      //     [1.2126970198005438, 104.54298002645373],
+      //     [1.2344931531697512, 104.54898850992322]
+      // ];
       // for (let i = 0; i < resultPolygonLength; i++) {
       //   console.log(await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call());
       //   const resultPolygonPoint = (await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call()).map(

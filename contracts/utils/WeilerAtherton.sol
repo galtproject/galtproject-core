@@ -39,7 +39,7 @@ library WeilerAtherton {
   struct Point {
     bytes32 nextPoint;
     bytes32 prevPoint;
-//    int256[2] latLon;
+    //    int256[2] latLon;
     bool intersectionPoint;
     bool includedInResult;
   }
@@ -58,7 +58,7 @@ library WeilerAtherton {
     Polygon cropPolygon;
     MartinezRueda.State martinezRueda;
     mapping(bytes32 => int256[2]) latLonByHash;
-//    mapping(bytes32 => bool) processedResultPoint;
+    //    mapping(bytes32 => bool) processedResultPoint;
     PolygonUtils.CoorsPolygon[] resultPolygons;
     PolygonUtils.CoorsPolygon basePolygonOutput;
   }
@@ -99,7 +99,7 @@ library WeilerAtherton {
     polygon.pointByHash[pointHash].nextPoint = polygon.startPoint;
     polygon.pointByHash[polygon.startPoint].prevPoint = pointHash;
   }
-  
+
   function prepareBasePolygon(State storage state) public {
     state.martinezRueda.processSubjectPolygon();
     state.basePolygon.segmentsAdded = true;
@@ -111,9 +111,9 @@ library WeilerAtherton {
   }
 
   function processMartinezRueda(State storage state) public {
-    if(!state.martinezRueda.subdivideSegmentsOver) {
+    if (!state.martinezRueda.subdivideSegmentsOver) {
       state.martinezRueda.subdivideSegments();
-    } else if(state.martinezRueda.resultEvents.length == 0) {
+    } else if (state.martinezRueda.resultEvents.length == 0) {
       state.martinezRueda.orderEvents();
     } else {
       require(false, "Martinez Rueda already finished");
@@ -127,26 +127,27 @@ library WeilerAtherton {
   event LogPoint(string name, int256[2] latLon);
   event LogMartinezRuedaResult(uint256 eventsLength);
   event LogFailed(string reason);
-  
+
   function addIntersectedPoints(State storage state) public {
     require(isMartinezRuedaFinished(state), "Martinez Rueda not finished");
 
     bytes32 newPointHash;
-//    SweepEvent.Item memory sweepEvent;
+    //    SweepEvent.Item memory sweepEvent;
 
     emit LogMartinezRuedaResult(state.martinezRueda.resultEvents.length);
-    
+
     for (uint j = 0; j < state.martinezRueda.resultEvents.length; j++) {
-//      sweepEvent = state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]];
+      //      sweepEvent = state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]];
 
       newPointHash = keccak256(abi.encode(state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point));
-//      emit LogPoint("newPointHash", sweepEvent.point);
-      
-      if (state.basePolygon.pointByHash[newPointHash].intersectionPoint 
-          || state.basePolygon.pointByHash[newPointHash].nextPoint != bytes32(0)
-          || state.basePolygon.pointByHash[newPointHash].prevPoint != bytes32(0)
-          || state.cropPolygon.pointByHash[newPointHash].nextPoint != bytes32(0)
-          || state.cropPolygon.pointByHash[newPointHash].prevPoint != bytes32(0)) {
+      //      emit LogPoint("newPointHash", sweepEvent.point);
+
+      /* solium-disable-next-line */
+      if (state.basePolygon.pointByHash[newPointHash].intersectionPoint
+      || state.basePolygon.pointByHash[newPointHash].nextPoint != bytes32(0)
+      || state.basePolygon.pointByHash[newPointHash].prevPoint != bytes32(0)
+      || state.cropPolygon.pointByHash[newPointHash].nextPoint != bytes32(0)
+      || state.cropPolygon.pointByHash[newPointHash].prevPoint != bytes32(0)) {
         continue;
       }
 
@@ -156,7 +157,7 @@ library WeilerAtherton {
           require(false, "Intersected point of base polygon not found in crop polygon");
         }
       } else {
-          emit LogFailed("Segments of intersection point not found in polygons");
+        emit LogFailed("Segments of intersection point not found in polygons");
         require(false, "Segments of intersection point not found in polygons");
       }
     }
@@ -168,11 +169,11 @@ library WeilerAtherton {
     bytes32 pointToReplace;
     bytes32 currentPoint = polygon.startPoint;
     while (true) {
-      if(SegmentUtils.pointOnSegment(point, state.latLonByHash[currentPoint], state.latLonByHash[polygon.pointByHash[currentPoint].nextPoint])) {
+      if (SegmentUtils.pointOnSegment(point, state.latLonByHash[currentPoint], state.latLonByHash[polygon.pointByHash[currentPoint].nextPoint])) {
         pointToReplace = polygon.pointByHash[currentPoint].nextPoint;
 
         emit LogPlacePointBetween("", point, state.latLonByHash[currentPoint], state.latLonByHash[polygon.pointByHash[currentPoint].nextPoint]);
-        
+
         polygon.pointByHash[pointToReplace].prevPoint = pointHash;
         polygon.pointByHash[currentPoint].nextPoint = pointHash;
         polygon.pointByHash[pointHash].prevPoint = currentPoint;
@@ -180,8 +181,8 @@ library WeilerAtherton {
 
         polygon.pointByHash[pointHash].intersectionPoint = true;
         polygon.intersectionPoints.push(pointHash);
-        
-        if(state.latLonByHash[pointHash][0] == 0 && state.latLonByHash[pointHash][1] == 0) {
+
+        if (state.latLonByHash[pointHash][0] == 0 && state.latLonByHash[pointHash][1] == 0) {
           state.latLonByHash[pointHash] = point;
         }
         return true;
@@ -191,95 +192,95 @@ library WeilerAtherton {
         break;
       }
     }
-    
+
     emit LogFailed("Found intersection point cant be placed in polygon");
     require(false, "Found intersection point cant be placed in polygon");
-    
-//    if (polygon.pointByHash[findStartPointHash].nextPoint != bytes32(0) || polygon.pointByHash[findEndPointHash].nextPoint != bytes32(0)) {
-//      // write new point coors to polygon by hash
-//      polygon.pointByHash[pointHash].intersectionPoint = true;
-//      polygon.intersectionPoints.push(pointHash);
-//      bytes32 pointToReplace;
-//
-//      emit LogPoint("polygon.pointByHash[findStartPointHash].nextPoint", state.latLonByHash[polygon.pointByHash[findStartPointHash].nextPoint]);
-//      emit LogPoint("polygon.pointByHash[findStartPointHash].prevPoint", state.latLonByHash[polygon.pointByHash[findStartPointHash].prevPoint]);
-//      
-//      if (polygon.pointByHash[findStartPointHash].nextPoint == findEndPointHash) {
-//        emit LogPlacePointBetween("1", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        // is end point hash - next of start point hash
-//        // place point between findStartPointHash and findEndPointHash
-//        polygon.pointByHash[findStartPointHash].nextPoint = pointHash;
-//        polygon.pointByHash[findEndPointHash].prevPoint = pointHash;
-//        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
-//        polygon.pointByHash[pointHash].nextPoint = findEndPointHash;
-//        //        emit LogPlacePointBetween(pointHash, findStartPointHash, findEndPointHash);
-//      } else if (polygon.pointByHash[findStartPointHash].prevPoint == findEndPointHash) {
-//        emit LogPlacePointBetween("2", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        // is start point hash - next of end point hash(vice versa)
-//        // place point between findEndPointHash and findStartPointHash
-//        polygon.pointByHash[findEndPointHash].nextPoint = pointHash;
-//        polygon.pointByHash[findStartPointHash].prevPoint = pointHash;
-//        polygon.pointByHash[pointHash].prevPoint = findEndPointHash;
-//        polygon.pointByHash[pointHash].nextPoint = findStartPointHash;
-//      } else if (polygon.pointByHash[polygon.pointByHash[findStartPointHash].nextPoint].intersectionPoint && 
-//        SegmentUtils.pointOnSegment(point, state.latLonByHash[findStartPointHash], state.latLonByHash[polygon.pointByHash[findStartPointHash].nextPoint]))
-//      {
-//        emit LogPlacePointBetween("3", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        pointToReplace = polygon.pointByHash[findStartPointHash].nextPoint;
-//
-//        polygon.pointByHash[pointToReplace].prevPoint = pointHash;
-//        polygon.pointByHash[findStartPointHash].nextPoint = pointHash;
-//        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
-//        polygon.pointByHash[pointHash].nextPoint = pointToReplace;
-//
-//      } else if (polygon.pointByHash[polygon.pointByHash[findStartPointHash].prevPoint].intersectionPoint && 
-//        SegmentUtils.pointOnSegment(point, state.latLonByHash[findStartPointHash], state.latLonByHash[polygon.pointByHash[findStartPointHash].prevPoint]))
-//      {
-//        emit LogPlacePointBetween("4", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        pointToReplace = polygon.pointByHash[findStartPointHash].prevPoint;
-//
-//        polygon.pointByHash[pointToReplace].nextPoint = pointHash;
-//        polygon.pointByHash[findStartPointHash].prevPoint = pointHash;
-//        polygon.pointByHash[pointHash].nextPoint = findStartPointHash;
-//        polygon.pointByHash[pointHash].prevPoint = pointToReplace;
-//
-//      } else if (polygon.pointByHash[polygon.pointByHash[findEndPointHash].nextPoint].intersectionPoint && 
-//        SegmentUtils.pointOnSegment(point, state.latLonByHash[findEndPointHash], state.latLonByHash[polygon.pointByHash[findEndPointHash].nextPoint]))
-//      {
-//        emit LogPlacePointBetween("5", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        pointToReplace = polygon.pointByHash[findEndPointHash].nextPoint;
-//
-//        polygon.pointByHash[pointToReplace].prevPoint = pointHash;
-//        polygon.pointByHash[findEndPointHash].nextPoint = pointHash;
-//        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
-//        polygon.pointByHash[pointHash].nextPoint = pointToReplace;
-//
-//      } else if (polygon.pointByHash[polygon.pointByHash[findEndPointHash].prevPoint].intersectionPoint && 
-//        SegmentUtils.pointOnSegment(point, state.latLonByHash[findEndPointHash], state.latLonByHash[polygon.pointByHash[findEndPointHash].prevPoint]))
-//      {
-//        emit LogPlacePointBetween("6", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
-//        pointToReplace = polygon.pointByHash[findEndPointHash].prevPoint;
-//
-//        polygon.pointByHash[pointToReplace].nextPoint = pointHash;
-//        polygon.pointByHash[findEndPointHash].prevPoint = pointHash;
-//        polygon.pointByHash[pointHash].nextPoint = findEndPointHash;
-//        polygon.pointByHash[pointHash].prevPoint = pointToReplace;
-//
-//      } else {
-//        emit LogFailed("Found intersection point cant be placed in polygon");
-////        emit LogPlacePointBetween(point, polygon.pointByHash[polygon.pointByHash[findStartPointHash].nextPoint].latLon, polygon.pointByHash[polygon.pointByHash[findStartPointHash].prevPoint].latLon);
-////        emit LogPlacePointBetween(point, polygon.pointByHash[polygon.pointByHash[findEndPointHash].nextPoint].latLon, polygon.pointByHash[polygon.pointByHash[findEndPointHash].prevPoint].latLon);
-////        require(false, "Found intersection point cant be placed in polygon");
-//      }
-//      return true;
-//    }
-//    return false;
+
+    //    if (polygon.pointByHash[findStartPointHash].nextPoint != bytes32(0) || polygon.pointByHash[findEndPointHash].nextPoint != bytes32(0)) {
+    //      // write new point coors to polygon by hash
+    //      polygon.pointByHash[pointHash].intersectionPoint = true;
+    //      polygon.intersectionPoints.push(pointHash);
+    //      bytes32 pointToReplace;
+    //
+    //      emit LogPoint("polygon.pointByHash[findStartPointHash].nextPoint", state.latLonByHash[polygon.pointByHash[findStartPointHash].nextPoint]);
+    //      emit LogPoint("polygon.pointByHash[findStartPointHash].prevPoint", state.latLonByHash[polygon.pointByHash[findStartPointHash].prevPoint]);
+    //      
+    //      if (polygon.pointByHash[findStartPointHash].nextPoint == findEndPointHash) {
+    //        emit LogPlacePointBetween("1", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        // is end point hash - next of start point hash
+    //        // place point between findStartPointHash and findEndPointHash
+    //        polygon.pointByHash[findStartPointHash].nextPoint = pointHash;
+    //        polygon.pointByHash[findEndPointHash].prevPoint = pointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = findEndPointHash;
+    //        //        emit LogPlacePointBetween(pointHash, findStartPointHash, findEndPointHash);
+    //      } else if (polygon.pointByHash[findStartPointHash].prevPoint == findEndPointHash) {
+    //        emit LogPlacePointBetween("2", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        // is start point hash - next of end point hash(vice versa)
+    //        // place point between findEndPointHash and findStartPointHash
+    //        polygon.pointByHash[findEndPointHash].nextPoint = pointHash;
+    //        polygon.pointByHash[findStartPointHash].prevPoint = pointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = findEndPointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = findStartPointHash;
+    //      } else if (polygon.pointByHash[polygon.pointByHash[findStartPointHash].nextPoint].intersectionPoint && 
+    //        SegmentUtils.pointOnSegment(point, state.latLonByHash[findStartPointHash], state.latLonByHash[polygon.pointByHash[findStartPointHash].nextPoint]))
+    //      {
+    //        emit LogPlacePointBetween("3", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        pointToReplace = polygon.pointByHash[findStartPointHash].nextPoint;
+    //
+    //        polygon.pointByHash[pointToReplace].prevPoint = pointHash;
+    //        polygon.pointByHash[findStartPointHash].nextPoint = pointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = pointToReplace;
+    //
+    //      } else if (polygon.pointByHash[polygon.pointByHash[findStartPointHash].prevPoint].intersectionPoint && 
+    //        SegmentUtils.pointOnSegment(point, state.latLonByHash[findStartPointHash], state.latLonByHash[polygon.pointByHash[findStartPointHash].prevPoint]))
+    //      {
+    //        emit LogPlacePointBetween("4", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        pointToReplace = polygon.pointByHash[findStartPointHash].prevPoint;
+    //
+    //        polygon.pointByHash[pointToReplace].nextPoint = pointHash;
+    //        polygon.pointByHash[findStartPointHash].prevPoint = pointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = findStartPointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = pointToReplace;
+    //
+    //      } else if (polygon.pointByHash[polygon.pointByHash[findEndPointHash].nextPoint].intersectionPoint && 
+    //        SegmentUtils.pointOnSegment(point, state.latLonByHash[findEndPointHash], state.latLonByHash[polygon.pointByHash[findEndPointHash].nextPoint]))
+    //      {
+    //        emit LogPlacePointBetween("5", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        pointToReplace = polygon.pointByHash[findEndPointHash].nextPoint;
+    //
+    //        polygon.pointByHash[pointToReplace].prevPoint = pointHash;
+    //        polygon.pointByHash[findEndPointHash].nextPoint = pointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = findStartPointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = pointToReplace;
+    //
+    //      } else if (polygon.pointByHash[polygon.pointByHash[findEndPointHash].prevPoint].intersectionPoint && 
+    //        SegmentUtils.pointOnSegment(point, state.latLonByHash[findEndPointHash], state.latLonByHash[polygon.pointByHash[findEndPointHash].prevPoint]))
+    //      {
+    //        emit LogPlacePointBetween("6", point, state.latLonByHash[findStartPointHash], state.latLonByHash[findEndPointHash]);
+    //        pointToReplace = polygon.pointByHash[findEndPointHash].prevPoint;
+    //
+    //        polygon.pointByHash[pointToReplace].nextPoint = pointHash;
+    //        polygon.pointByHash[findEndPointHash].prevPoint = pointHash;
+    //        polygon.pointByHash[pointHash].nextPoint = findEndPointHash;
+    //        polygon.pointByHash[pointHash].prevPoint = pointToReplace;
+    //
+    //      } else {
+    //        emit LogFailed("Found intersection point cant be placed in polygon");
+    ////        emit LogPlacePointBetween(point, polygon.pointByHash[polygon.pointByHash[findStartPointHash].nextPoint].latLon, polygon.pointByHash[polygon.pointByHash[findStartPointHash].prevPoint].latLon);
+    ////        emit LogPlacePointBetween(point, polygon.pointByHash[polygon.pointByHash[findEndPointHash].nextPoint].latLon, polygon.pointByHash[polygon.pointByHash[findEndPointHash].prevPoint].latLon);
+    ////        require(false, "Found intersection point cant be placed in polygon");
+    //      }
+    //      return true;
+    //    }
+    //    return false;
   }
-  
-//  function initResultPolygon() {
-//    
-//  }
-//  
+
+  //  function initResultPolygon() {
+  //    
+  //  }
+  //  
   event LogInsideCoors(int256[2] point, bool intersectionPoint);
   event LogPolygonCoors(int256[2] point);
 
@@ -305,9 +306,9 @@ library WeilerAtherton {
     // find direction and next point
     //TODO: need to add OR intersection point?
 
-//    for(uint i = 0; i < state.martinezRueda.clipping.points.length; i++){
-//      emit LogPolygonCoors(state.martinezRueda.clipping.points[i]);
-//    }
+    //    for(uint i = 0; i < state.martinezRueda.clipping.points.length; i++){
+    //      emit LogPolygonCoors(state.martinezRueda.clipping.points[i]);
+    //    }
 
     if (PolygonUtils.isInsideCoors(state.latLonByHash[state.basePolygon.pointByHash[curPointHash].nextPoint], state.martinezRueda.clipping)) {
       nextPointHash = state.basePolygon.pointByHash[curPointHash].nextPoint;
@@ -328,10 +329,9 @@ library WeilerAtherton {
         require(false, "Not found adjoining points inside crop polygon");
       }
     }
-    
-    
 
-//    PolygonUtils.CoorsPolygon memory newPolygon;
+
+    //    PolygonUtils.CoorsPolygon memory newPolygon;
     state.resultPolygons.length++;
 
     PolygonUtils.CoorsPolygon storage resultPolygon = state.resultPolygons[state.resultPolygons.length - 1];
@@ -341,10 +341,10 @@ library WeilerAtherton {
     // fill resultPolygon from basePolygon
     while (true) {
       if (state.basePolygon.pointByHash[curPointHash].intersectionPoint) {
-//        require(!state.basePolygon.pointByHash[curPointHash].includedInResult, "basePolygon intersectionPoint already included");
+        //        require(!state.basePolygon.pointByHash[curPointHash].includedInResult, "basePolygon intersectionPoint already included");
         state.basePolygon.handledIntersectionPoints++;
         emit LogIncludeIntersectionInResult("base", state.latLonByHash[curPointHash], state.basePolygon.handledIntersectionPoints);
-        if(state.basePolygon.pointByHash[curPointHash].includedInResult) {
+        if (state.basePolygon.pointByHash[curPointHash].includedInResult) {
           emit LogFailed("basePolygon intersectionPoint already included");
           return;
         }
@@ -376,24 +376,24 @@ library WeilerAtherton {
     }
 
     Direction cropDirection;
-//    
-//    emit LogPoint("prevPointHash", state.latLonByHash[prevPointHash]);
-//    emit LogPoint("curPointHash", state.latLonByHash[curPointHash]);
-//    emit LogInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint], state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint].intersectionPoint);
-//    emit LogInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint], state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint].intersectionPoint);
-    
-//    for(uint i = 0; i < state.martinezRueda.subject.points.length; i++){
-//      emit LogPolygonCoors(state.martinezRueda.subject.points[i]);
-//    }
-    
+    //    
+    //    emit LogPoint("prevPointHash", state.latLonByHash[prevPointHash]);
+    //    emit LogPoint("curPointHash", state.latLonByHash[curPointHash]);
+    //    emit LogInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint], state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint].intersectionPoint);
+    //    emit LogInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint], state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint].intersectionPoint);
+
+    //    for(uint i = 0; i < state.martinezRueda.subject.points.length; i++){
+    //      emit LogPolygonCoors(state.martinezRueda.subject.points[i]);
+    //    }
+
     // find direction and next point
     //TODO: need to add OR intersection point?
     if (state.cropPolygon.pointByHash[curPointHash].nextPoint != prevPointHash//!state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint].includedInResult && 
-        && (state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint], state.martinezRueda.subject))) {
+    && (state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].nextPoint], state.martinezRueda.subject))) {
       nextPointHash = state.cropPolygon.pointByHash[curPointHash].nextPoint;
       cropDirection = Direction.FORWARD;
     } else if (state.cropPolygon.pointByHash[curPointHash].prevPoint != prevPointHash//!state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint].includedInResult && 
-        && (state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint], state.martinezRueda.subject))) {
+    && (state.basePolygon.pointByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[state.cropPolygon.pointByHash[curPointHash].prevPoint], state.martinezRueda.subject))) {
       nextPointHash = state.cropPolygon.pointByHash[curPointHash].prevPoint;
       cropDirection = Direction.BACKWARD;
     } else {
@@ -447,11 +447,11 @@ library WeilerAtherton {
       }
     }
   }
-  
-//  function pointHashCanBeAddToPolygon(State storage state, bytes32 prevPointHash, bytes32 actualPointHash, Polygon storage prevPolygon, Polygon storage actualPolygon, PolygonUtils.CoorsPolygon storage prevLatLonPolygon) private returns(bool) {
-//    return !prevPolygon.pointByHash[actualPointHash].includedInResult && actualPointHash != prevPointHash
-//        && (prevPolygon.pointByHash[actualPointHash].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[actualPointHash], prevLatLonPolygon));
-//  }
+
+  //  function pointHashCanBeAddToPolygon(State storage state, bytes32 prevPointHash, bytes32 actualPointHash, Polygon storage prevPolygon, Polygon storage actualPolygon, PolygonUtils.CoorsPolygon storage prevLatLonPolygon) private returns(bool) {
+  //    return !prevPolygon.pointByHash[actualPointHash].includedInResult && actualPointHash != prevPointHash
+  //        && (prevPolygon.pointByHash[actualPointHash].intersectionPoint || PolygonUtils.isInsideCoors(state.latLonByHash[actualPointHash], prevLatLonPolygon));
+  //  }
 
   function buildBasePolygonOutput(State storage state) public returns (bool) {
     require(state.basePolygonOutput.points.length == 0, "basePolygonOutput already build");
