@@ -436,6 +436,8 @@ library WeilerAtherton {
           //successful finish
           return true;
         } else {
+          emit LogFailed("End point of result polygon not equals to start point");
+          return;
           require(false, "End point of result polygon not equals to start point");
         }
       }
