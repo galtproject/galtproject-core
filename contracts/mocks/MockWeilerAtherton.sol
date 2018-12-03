@@ -3,7 +3,6 @@ pragma experimental "v0.5.0";
 //pragma experimental ABIEncoderV2;
 
 import "../utils/WeilerAtherton.sol";
-import "../utils/PolygonUtils.sol";
 
 contract MockWeilerAtherton {
   using WeilerAtherton for WeilerAtherton.State;

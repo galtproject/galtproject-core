@@ -221,9 +221,8 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       uint256 newPackageId = spaceToken.mint(baseTokenOwner);
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
 
-      packageToHeights[newPackageId] = new int256[](packageToContour[newPackageId].length);
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
-        packageToHeights[newPackageId][k] = minHeight;
+        packageToHeights[newPackageId].push(minHeight);
       }
       packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
       emit NewSpaceToken(newPackageId);

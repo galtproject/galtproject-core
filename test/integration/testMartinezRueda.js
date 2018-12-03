@@ -6,7 +6,15 @@ const chai = require('chai');
 const pIteration = require('p-iteration');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, initHelperArtifacts, ether, getMartinezRuedaLib, clearLibCache } = require('../helpers');
+const {
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  getMartinezRuedaLib,
+  getLinkedListLib,
+  getSweepQueueLinkedListLib,
+  clearLibCache
+} = require('../helpers');
 
 const web3 = new Web3(MockMartinezRueda.web3.currentProvider);
 
@@ -28,6 +36,8 @@ contract('MartinezRueda', ([coreTeam]) => {
     this.martinezRueda = await getMartinezRuedaLib();
     MockMartinezRueda.link('MartinezRueda', this.martinezRueda.address);
 
+    MockMartinezRueda.link('LinkedList', (await getLinkedListLib()).address);
+    MockMartinezRueda.link('SweepQueueLinkedList', (await getSweepQueueLinkedListLib()).address);
     this.mockMartinezRueda = await MockMartinezRueda.new({ from: coreTeam });
 
     this.mockMartinezRuedaWeb3 = new web3.eth.Contract(this.mockMartinezRueda.abi, this.mockMartinezRueda.address);

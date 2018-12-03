@@ -10,12 +10,20 @@ const { BN } = Web3.utils;
 
 const web3 = new Web3(SpaceSplitOperation.web3.currentProvider);
 
-const { initHelperWeb3, initHelperArtifacts, zeroAddress, deploySplitMerge } = require('../test/helpers');
+const {
+  initHelperWeb3,
+  initHelperArtifacts,
+  zeroAddress,
+  deploySplitMerge,
+  clearLibCache
+} = require('../test/helpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
 module.exports = async function(callback) {
+  clearLibCache();
+
   const accounts = await web3.eth.getAccounts();
   const coreTeam = accounts[0];
 

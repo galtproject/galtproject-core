@@ -28,14 +28,12 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('WeilerAtherton', ([coreTeam]) => {
+contract.only('WeilerAtherton', ([coreTeam]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
     this.weilerAtherton = await getWeilerAthertonLib();
-    this.polygonUtils = await getPolygonUtilsLib();
     MockWeilerAtherton.link('WeilerAtherton', this.weilerAtherton.address);
-    MockWeilerAtherton.link('PolygonUtils', this.polygonUtils.address);
 
     this.mockWeilerAtherton = await MockWeilerAtherton.new({ from: coreTeam });
 

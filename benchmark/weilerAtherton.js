@@ -1,9 +1,3 @@
-const PointRedBlackTree = artifacts.require('../contracts/collections/PointRedBlackTree.sol');
-const SegmentRedBlackTree = artifacts.require('../contracts/collections/SegmentRedBlackTree.sol');
-const LandUtils = artifacts.require('../contracts/utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('../contracts/utils/PolygonUtils.sol');
-const BentleyOttman = artifacts.require('../contracts/utils/BentleyOttman.sol');
-const WeilerAtherton = artifacts.require('../contracts/utils/WeilerAtherton.sol');
 const MockWeilerAtherton = artifacts.require('../contracts/mocks/MockWeilerAtherton.sol');
 
 const pIteration = require('p-iteration');
@@ -11,31 +5,19 @@ const Web3 = require('web3');
 
 const web3 = new Web3(MockWeilerAtherton.web3.currentProvider);
 
-const { initHelperWeb3, ether } = require('../test/helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, getWeilerAthertonLib, clearLibCache } = require('../test/helpers');
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 module.exports = async function(callback) {
+  clearLibCache();
+
   const accounts = await web3.eth.getAccounts();
   const coreTeam = accounts[0];
-  const landUtils = await LandUtils.new({ from: coreTeam });
-  PolygonUtils.link('LandUtils', landUtils.address);
-  const polygonUtils = await PolygonUtils.new({ from: coreTeam });
 
-  const pointRedBlackTree = await PointRedBlackTree.new({ from: coreTeam });
-  BentleyOttman.link('PointRedBlackTree', pointRedBlackTree.address);
-
-  const segmentRedBlackTree = await SegmentRedBlackTree.new({ from: coreTeam });
-  BentleyOttman.link('SegmentRedBlackTree', segmentRedBlackTree.address);
-
-  const bentleyOttman = await BentleyOttman.new({ from: coreTeam });
-
-  WeilerAtherton.link('BentleyOttman', bentleyOttman.address);
-  WeilerAtherton.link('PolygonUtils', polygonUtils.address);
-
-  const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
+  const weilerAtherton = await getWeilerAthertonLib();
   MockWeilerAtherton.link('WeilerAtherton', weilerAtherton.address);
-  MockWeilerAtherton.link('PolygonUtils', polygonUtils.address);
 
   let mockWeilerAtherton = await MockWeilerAtherton.new({ from: coreTeam });
   let mockWeilerAthertonWeb3 = new web3.eth.Contract(mockWeilerAtherton.abi, mockWeilerAtherton.address);
@@ -93,7 +75,7 @@ module.exports = async function(callback) {
     console.log('      addCropPolygonSegments gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
-    totalGasUsed += await processBentleyOttman();
+    totalGasUsed += await processMartinezRueda();
 
     res = await mockWeilerAtherton.addIntersectedPoints();
     console.log('      addIntersectedPoints gasUsed', res.receipt.gasUsed);
@@ -108,15 +90,15 @@ module.exports = async function(callback) {
     console.log('      totalGasUsed', totalGasUsed);
   }
 
-  async function processBentleyOttman() {
-    const isOver = await mockWeilerAthertonWeb3.methods.isBentleyOttmanFinished().call();
+  async function processMartinezRueda() {
+    const isOver = await mockWeilerAthertonWeb3.methods.isMartinezRuedaFinished().call();
     if (isOver) {
       return 0;
     }
-    const res = await mockWeilerAtherton.processBentleyOttman();
-    console.log('      processBentleyOttman tx gasUsed', res.receipt.gasUsed);
+    const res = await mockWeilerAtherton.processMartinezRueda();
+    console.log('      processMartinezRueda tx gasUsed', res.receipt.gasUsed);
 
-    return res.receipt.gasUsed + (await processBentleyOttman());
+    return res.receipt.gasUsed + (await processMartinezRueda());
   }
 
   async function redeploy() {
