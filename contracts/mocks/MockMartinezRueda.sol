@@ -55,9 +55,9 @@ contract MockMartinezRueda {
     martinezRueda.orderEvents();
   }
 
-  function connectEdges() public {
-    martinezRueda.connectEdges();
-  }
+//  function connectEdges() public {
+//    martinezRueda.connectEdges();
+//  }
 
   function getResultContoursLength() public view returns(uint256) {
     return martinezRueda.resultContours.length;

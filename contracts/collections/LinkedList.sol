@@ -31,10 +31,6 @@ library LinkedList {
       data.count += 1;
       
       data.headId = newId;
-      data.nodesByIds[newId] = Node({
-        nextId : 0,
-        prevId : 0
-      });
       return;
     }
 
@@ -47,10 +43,7 @@ library LinkedList {
       if (foundId == data.headId) {
         data.count += 1;
 
-        data.nodesByIds[newId] = Node({
-          nextId : data.headId,
-          prevId : 0
-        });
+        data.nodesByIds[newId].nextId = data.headId;
 
         data.nodesByIds[data.headId].prevId = newId;
         // console.log('insert head', newId, nodesByIds);
@@ -68,12 +61,8 @@ library LinkedList {
   function insertAfter(Data storage data, uint256 newId, uint256 prevId) public {
     data.count += 1;
 
-    data.nodesByIds[newId] = Node({
-      nextId : data.nodesByIds[prevId].nextId,
-      prevId : prevId
-    });
-
-    // console.log('insertAfter', newId, nodesByIds[newId]);
+    data.nodesByIds[newId].nextId = data.nodesByIds[prevId].nextId;
+    data.nodesByIds[newId].prevId = prevId;
 
     data.nodesByIds[prevId].nextId = newId;
     if (data.nodesByIds[newId].nextId != 0) {

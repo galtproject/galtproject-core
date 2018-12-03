@@ -132,19 +132,15 @@ library WeilerAtherton {
     require(isMartinezRuedaFinished(state), "Martinez Rueda not finished");
 
     bytes32 newPointHash;
-    bytes32 leftStartPointHash;
-    bytes32 leftEndPointHash;
-    bytes32 rightStartPointHash;
-    bytes32 rightEndPointHash;
-    SweepEvent.Item memory sweepEvent;
+//    SweepEvent.Item memory sweepEvent;
 
     emit LogMartinezRuedaResult(state.martinezRueda.resultEvents.length);
     
     for (uint j = 0; j < state.martinezRueda.resultEvents.length; j++) {
-      sweepEvent = state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]];
+//      sweepEvent = state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]];
 
-      newPointHash = keccak256(abi.encode(sweepEvent.point));
-      emit LogPoint("newPointHash", sweepEvent.point);
+      newPointHash = keccak256(abi.encode(state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point));
+//      emit LogPoint("newPointHash", sweepEvent.point);
       
       if (state.basePolygon.pointByHash[newPointHash].intersectionPoint 
           || state.basePolygon.pointByHash[newPointHash].nextPoint != bytes32(0)
@@ -154,18 +150,8 @@ library WeilerAtherton {
         continue;
       }
 
-//      leftStartPointHash = state.martinezRueda.intersectionPointToSegments[newPointHash][0];
-//      leftEndPointHash = state.martinezRueda.intersectionPointToSegments[newPointHash][1];
-//      rightStartPointHash = state.martinezRueda.intersectionPointToSegments[newPointHash][2];
-//      rightEndPointHash = state.martinezRueda.intersectionPointToSegments[newPointHash][3];
-//
-//      emit LogPoint("leftStartPointHash", state.latLonByHash[leftStartPointHash]);
-//      emit LogPoint("leftEndPointHash", state.latLonByHash[leftEndPointHash]);
-//      emit LogPoint("rightStartPointHash", state.latLonByHash[rightStartPointHash]);
-//      emit LogPoint("rightEndPointHash", state.latLonByHash[rightEndPointHash]);
-
-      if (addIntersectedPointsToPolygon(state, state.basePolygon, sweepEvent.point, newPointHash)) {
-        if (!addIntersectedPointsToPolygon(state, state.cropPolygon, sweepEvent.point, newPointHash)) {
+      if (addIntersectedPointsToPolygon(state, state.basePolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
+        if (!addIntersectedPointsToPolygon(state, state.cropPolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
           emit LogFailed("Intersected point of base polygon not found in crop polygon");
           require(false, "Intersected point of base polygon not found in crop polygon");
         }
@@ -173,10 +159,6 @@ library WeilerAtherton {
           emit LogFailed("Segments of intersection point not found in polygons");
         require(false, "Segments of intersection point not found in polygons");
       }
-
-//      state.processedResultPoint[newPointHash] = true;
-//      emit LogPlacePointBetween(outputPoint.point, outputPoint.leftSegment[0], outputPoint.leftSegment[1]);
-//      emit LogPlacePointBetween(outputPoint.point, outputPoint.rightSegment[0], outputPoint.rightSegment[1]);
     }
   }
 

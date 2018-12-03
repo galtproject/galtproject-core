@@ -264,6 +264,8 @@ const Helpers = {
       return libCache.WeilerAtherton;
     }
     const WeilerAtherton = Helpers.requireContract('./utils/WeilerAtherton.sol');
+    WeilerAtherton.link('LinkedList', (await Helpers.getLinkedListLib()).address);
+    WeilerAtherton.link('SweepQueueLinkedList', (await Helpers.getSweepQueueLinkedListLib()).address);
     WeilerAtherton.link('MartinezRueda', (await Helpers.getMartinezRuedaLib()).address);
     WeilerAtherton.link('PolygonUtils', (await Helpers.getPolygonUtilsLib()).address);
     libCache.WeilerAtherton = await WeilerAtherton.new();

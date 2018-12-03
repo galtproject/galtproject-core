@@ -43,6 +43,7 @@ library SweepLineRedBlackTree {
   function insert(SweepEvent.Tree storage sweepEvents, SweepEvent.Store storage store, uint key) internal {
     uint y = ZERO;
     uint x = sweepEvents.tree.root;
+    
     while (x != ZERO) {
       y = x;
       int8 compareResult = SweepEventUtils.compareSegments(store, store.sweepById[key], store.sweepById[x]);
@@ -55,7 +56,9 @@ library SweepLineRedBlackTree {
         x = sweepEvents.tree.items[x].right;
       }
     }
-    sweepEvents.tree.items[key] = RedBlackTree.Item(y, ZERO, ZERO, true);
+    sweepEvents.tree.items[key].parent = y;
+    sweepEvents.tree.items[key].red = true;
+//    sweepEvents.tree.items[key] = RedBlackTree.Item(y, ZERO, ZERO, true);
 //    sweepEvents.exists[key] = true;
 
     if (y == ZERO) {

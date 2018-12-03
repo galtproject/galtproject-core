@@ -34,6 +34,7 @@ library SweepQueueLinkedList {
   event CompareResult2(int256[2] point2);//, bool left, bool isSubject);
   event CompareResult3(int8 compareResult);
   
+  //TODO: optimize
   function search(LinkedList.Data storage data, SweepEvent.Store storage store, uint256 valueId, bool returnLeft) public returns (uint256) {
     // console.log('binarySearch begin', returnLeft, headId, nodesByIds);
     if (data.headId == 0) {
@@ -42,7 +43,7 @@ library SweepQueueLinkedList {
 
     uint256 curId = data.headId;
     // let prevId = null;
-    uint256 i = 0;
+//    uint256 i = 0;
     do {
       int8 compareResult = SweepEventUtils.compareEvents(store, store.sweepById[curId], store.sweepById[valueId]);
 //      if(store.sweepById[curId].point[0] == 1210809247568000000 && store.sweepById[valueId].point[0] == 1210809247568000000) {
@@ -67,7 +68,7 @@ library SweepQueueLinkedList {
           return curId;
         }
       }
-      i++;
+//      i++;
 //      if(i >= 10) {
 //        return curId;
 //      }

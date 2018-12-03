@@ -21,7 +21,7 @@ library SweepEventUtils {
 
   int256 internal constant EPS = 1000000000;
 
-  function compareEvents(SweepEvent.Store storage store, SweepEvent.Item memory e1, SweepEvent.Item memory e2) internal returns (int8) {
+  function compareEvents(SweepEvent.Store storage store, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal returns (int8) {
     // Different x-coordinate
     if (e1.point[0] > e2.point[0])
       return int8(1);
@@ -60,7 +60,7 @@ library SweepEventUtils {
     return (p0[0] - p2[0]) * (p1[1] - p2[1]) - (p1[0] - p2[0]) * (p0[1] - p2[1]);
   }
 
-  function isBelow(SweepEvent.Store storage store, SweepEvent.Item memory self, int256[2] p) internal returns(bool) {
+  function isBelow(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
     int256[2] memory p0 = self.point;
     int256[2] memory p1 = store.sweepById[self.otherEvent].point;
     return self.left
@@ -68,11 +68,11 @@ library SweepEventUtils {
     : (p1[0] - p[0]) * (p0[1] - p[1]) - (p0[0] - p[0]) * (p1[1] - p[1]) > 0;
   }
   
-  function isAbove(SweepEvent.Store storage store, SweepEvent.Item memory self, int256[2] p) internal returns(bool) {
+  function isAbove(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
     return !isBelow(store, self, p);
   }
 
-  function compareSegments(SweepEvent.Store storage store, SweepEvent.Item memory le1, SweepEvent.Item memory le2) internal returns(int8) {
+  function compareSegments(SweepEvent.Store storage store, SweepEvent.Item storage le1, SweepEvent.Item storage le2) internal returns(int8) {
     if (le1.id == le2.id) {
       return 0;
     }
@@ -123,7 +123,7 @@ library SweepEventUtils {
     return false;
   }
 
-  function isVertical(SweepEvent.Store storage store, SweepEvent.Item memory self) internal returns(bool) {
+  function isVertical(SweepEvent.Store storage store, SweepEvent.Item storage self) internal returns(bool) {
     return self.point[0] == store.sweepById[self.otherEvent].point[0];
   }
 }
