@@ -199,6 +199,11 @@ contract SpaceSplitOperation {
 
     weilerAtherton.buildResultPolygon();
   }
+  
+  function isBuildResultFinished() public view returns(bool) {
+    return weilerAtherton.basePolygon.handledIntersectionPoints == weilerAtherton.basePolygon.intersectionPoints.length 
+        && weilerAtherton.cropPolygon.handledIntersectionPoints == weilerAtherton.cropPolygon.intersectionPoints.length;
+  }
 
   function buildBasePolygonOutput() public {
     require(doneStage == Stage.INTERSECT_POINTS_ADD, "doneStage should be SEGMENTS_ADD");

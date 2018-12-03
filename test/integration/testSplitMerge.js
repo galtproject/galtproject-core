@@ -52,6 +52,19 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       await this.processMartinezRueda(splitOperation);
     };
 
+    this.buildResultPolygon = async (splitOperation, n = 0) => {
+      const isFinished = await splitOperation.isBuildResultFinished();
+      if (isFinished) {
+        return;
+      }
+      if (n > 3) {
+        assert(false, 'Too many buildResultPolygon calls');
+      }
+      await splitOperation.buildResultPolygon();
+
+      await this.buildResultPolygon(splitOperation, n + 1);
+    };
+
     this.mintSpaceTokenId = async geohashContour => {
       const res = await this.splitMerge.initPackage(alice);
       const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
@@ -82,7 +95,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       // processWeilerAtherton
       await splitOperation.addIntersectedPoints();
-      await splitOperation.buildResultPolygon();
+      await this.buildResultPolygon(splitOperation);
       await splitOperation.buildBasePolygonOutput();
 
       await splitOperation.finishAllPolygons();
@@ -120,7 +133,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     };
   });
 
-  describe.only('package', () => {
+  describe('package', () => {
     it('should creating correctly', async function() {
       let res;
 
@@ -258,7 +271,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    it('should correctly split 4, 4 => 4, 4, 4', async function() {
+    it.only('should correctly split 4, 4 => 4, 4, 4', async function() {
       const baseSpaceTokenId = await this.mintSpaceTokenId([
         'w24r1bj7mnrd',
         'w24r48n3kyq7',
@@ -293,7 +306,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    it('should correctly split 4, 4 => 5, 4', async function() {
+    it.only('should correctly split 4, 4 => 5, 4', async function() {
       const baseSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfxzt2yqh',
         'w24r40j43nkg',
