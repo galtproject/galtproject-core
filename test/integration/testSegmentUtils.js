@@ -123,5 +123,36 @@ contract('SegmentUtils', ([coreTeam]) => {
       await this.compareSegments(segments[0], segments[1], -1);
       await this.compareSegments(segments[1], segments[0], 1);
     });
+
+    describe('#pointOnSegment', () => {
+      it('should correctly detect pointOnSegment', async function() {
+        // Helpers
+        this.pointOnSegment = async function(point, segment) {
+          // console.log('      compareSegments number', number);
+          const etherPoint = point.map(coor => ether(coor));
+          const etherSegment = segment.map(sPoint => sPoint.map(coor => ether(coor)));
+
+          return this.mockSegmentUtils.pointOnSegment(etherPoint, etherSegment[0], etherSegment[1]);
+          // number += 1;
+        };
+        // Helpers end
+
+        assert.equal(
+          await this.pointOnSegment(
+            [1.214004978082901197, 104.532601700706952753],
+            [[1.229172823951, 104.510070327669], [1.203772639856, 104.509898666292]]
+          ),
+          false
+        );
+
+        assert.equal(
+          await this.pointOnSegment(
+            [1.214004978082901197, 104.532601700706952753],
+            [[1.2036009784787893, 104.53199403360486], [1.227113390341401, 104.53336732462049]]
+          ),
+          true
+        );
+      });
+    });
   });
 });
