@@ -69,8 +69,7 @@ library MartinezRueda {
     mapping(uint256 => bool) sweepProcessed;
     int256[2][][] resultContours;
 
-    mapping(bytes32 => bytes32[4]) intersectionPointToSegments;
-    mapping(bytes32 => int256[2]) pointByHash;
+//    mapping(bytes32 => bytes32[4]) intersectionPointToSegments;
 
     Operation operation;
 
@@ -366,36 +365,52 @@ library MartinezRueda {
 //        emit IntersectionWay("!SweepEventUtils.equals(se1.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se1.otherEvent].point, inter[0])");
         divideSegment(state, se1.id, inter[0]);
 
-        newPointHash = keccak256(abi.encode(inter[0]));
-        state.intersectionPointToSegments[newPointHash] = [
-          keccak256(abi.encode(se1.point)),
-          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
-          keccak256(abi.encode(se2.point)),
-          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
-        ];
-        
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = state.store.sweepById[se2.otherEvent].point;
+//        newPointHash = keccak256(abi.encode(inter[0]));
+//        state.intersectionPointToSegments[newPointHash] = [
+//          keccak256(abi.encode(se1.point)),
+//          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
+//          keccak256(abi.encode(se2.point)),
+//          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
+//        ];
+//        
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][0]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][1]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][2]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][3]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][3]] = state.store.sweepById[se2.otherEvent].point;
+//        }
       }
       // if the intersection point is not an endpoint of se2
       if (!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])) {
 //        emit IntersectionWay("!SweepEventUtils.equals(se2.point, inter[0]) && !SweepEventUtils.equals(state.store.sweepById[se2.otherEvent].point, inter[0])");
         divideSegment(state, se2.id, inter[0]);
 
-        newPointHash = keccak256(abi.encode(inter[0]));
-        state.intersectionPointToSegments[newPointHash] = [
-          keccak256(abi.encode(se1.point)),
-          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
-          keccak256(abi.encode(se2.point)),
-          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
-        ];
-
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
-//        state.pointByHash[state.intersectionPointToSegments[newPointHash][2]] = state.store.sweepById[se2.otherEvent].point;
+//        newPointHash = keccak256(abi.encode(inter[0]));
+//        state.intersectionPointToSegments[newPointHash] = [
+//          keccak256(abi.encode(se1.point)),
+//          keccak256(abi.encode(state.store.sweepById[se1.otherEvent].point)),
+//          keccak256(abi.encode(se2.point)),
+//          keccak256(abi.encode(state.store.sweepById[se2.otherEvent].point))
+//        ];
+//
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][0]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][0]] = se1.point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][1]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][1]] = state.store.sweepById[se1.otherEvent].point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][2]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][2]] = se2.point;
+//        }
+//        if(state.latLonByHash[state.intersectionPointToSegments[newPointHash][3]][0] == 0) {
+//          state.latLonByHash[state.intersectionPointToSegments[newPointHash][3]] = state.store.sweepById[se2.otherEvent].point;
+//        }
       }
       return int8(1);
     }
