@@ -355,6 +355,80 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
+    // TODO: should revert
+    it.skip('should correctly split 4, x4 => ', async function() {
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
+        'w24qfj8rmnys',
+        'w24qft983nbn',
+        'w24qf6pr2p8n',
+        'w24qcfr4sh0n'
+      ]);
+
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
+        'w24qfpu7xbxy',
+        'w24qfrw580b5',
+        'w24qfjjp5tt2',
+        'w24qfm1uttt9'
+      ]);
+      //
+      // console.log(JSON.stringify(await this.getGeohashesContour(clippingSpaceTokensIds[0])));
+      // console.log(JSON.stringify(await this.getGeohashesContour(subjectSpaceTokenId)));
+
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
+        'w24qfm8gznfv',
+        'w24qfm1uttt9',
+        'w24qfjjp5tt2',
+        'w24qfjwsyu2p'
+      ]);
+
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
+        'w24qfj8rmnys',
+        'w24qfjwsyu2p',
+        'w24qfjjp5tt2',
+        'w24qfm1uttt9',
+        'w24qfm8gznfv',
+        'w24qft983nbn',
+        'w24qf6pr2p8n',
+        'w24qcfr4sh0n'
+      ]);
+    });
+
+    it('should correctly split 4, 4 => 4, 8', async function() {
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
+        'w24qfj8rmnys',
+        'w24qft983nbn',
+        'w24qf6pr2p8n',
+        'w24qcfr4sh0n'
+      ]);
+
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
+        'w24qfq8d6606',
+        'w24qfhen6688',
+        'w24qfkteb688',
+        'w24qfq4vhw94'
+      ]);
+
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
+        'w24qfmefgc0c',
+        'w24qfjtvhzhf',
+        'w24qfhen6688',
+        'w24qfkteb688'
+      ]);
+
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
+        'w24qfj8rmnys',
+        'w24qfjtvhzhf',
+        'w24qfhen6688',
+        'w24qfkteb688',
+        'w24qfmefgc0c',
+        'w24qft983nbn',
+        'w24qf6pr2p8n',
+        'w24qcfr4sh0n'
+      ]);
+    });
+
     it('should split and then merge correctly', async function() {
       const subjectContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
 

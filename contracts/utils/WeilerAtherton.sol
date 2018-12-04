@@ -341,13 +341,13 @@ library WeilerAtherton {
     // fill resultPolygon from subjectPolygon
     while (true) {
       if (state.subjectPolygon.pointByHash[curPointHash].intersectionPoint) {
-        //        require(!state.subjectPolygon.pointByHash[curPointHash].includedInResult, "subjectPolygon intersectionPoint already included");
+        require(!state.subjectPolygon.pointByHash[curPointHash].includedInResult, "subjectPolygon intersectionPoint already included");
         state.subjectPolygon.handledIntersectionPoints++;
         emit LogIncludeIntersectionInResult("subject", state.latLonByHash[curPointHash], state.subjectPolygon.handledIntersectionPoints);
-        if (state.subjectPolygon.pointByHash[curPointHash].includedInResult) {
-          emit LogFailed("subjectPolygon intersectionPoint already included");
-          return;
-        }
+//        if (state.subjectPolygon.pointByHash[curPointHash].includedInResult) {
+//          emit LogFailed("subjectPolygon intersectionPoint already included");
+//          return;
+//        }
         state.subjectPolygon.pointByHash[curPointHash].includedInResult = true;
       } else if (curPointHash == state.subjectPolygon.startPoint) {
         state.subjectPolygon.startPoint = nextPointHash;
@@ -413,16 +413,21 @@ library WeilerAtherton {
       }
 
       if (state.clippingPolygon.pointByHash[curPointHash].intersectionPoint) {
-        state.clippingPolygon.handledIntersectionPoints++;
+        require(state.subjectPolygon.pointByHash[curPointHash].intersectionPoint, "Self intersected clipping polygons not supported");
         require(!state.clippingPolygon.pointByHash[curPointHash].includedInResult, "clippingPolygon current intersectionPoint already included");
+        
+        state.clippingPolygon.handledIntersectionPoints++;
         state.clippingPolygon.pointByHash[curPointHash].includedInResult = true;
         emit LogIncludeIntersectionInResult("clipping cur", state.latLonByHash[curPointHash], state.clippingPolygon.handledIntersectionPoints);
       }
 
       if (state.clippingPolygon.pointByHash[nextPointHash].intersectionPoint) {
+        require(state.subjectPolygon.pointByHash[nextPointHash].intersectionPoint, "Self intersected clipping polygons not supported");
+        
         if (PointUtils.isEqual(state.latLonByHash[nextPointHash], resultPolygon.points[0])) {
-          state.clippingPolygon.handledIntersectionPoints++;
           require(!state.clippingPolygon.pointByHash[nextPointHash].includedInResult, "clippingPolygon next intersectionPoint already included");
+          
+          state.clippingPolygon.handledIntersectionPoints++;
           state.clippingPolygon.pointByHash[nextPointHash].includedInResult = true;
           emit LogIncludeIntersectionInResult("clipping next", state.latLonByHash[nextPointHash], state.clippingPolygon.handledIntersectionPoints);
           //successful finish

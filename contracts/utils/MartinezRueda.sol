@@ -402,6 +402,7 @@ library MartinezRueda {
       se1.eventType = (se2.inOut == se1.inOut) ? SweepEvent.Type.SAME_TRANSITION : SweepEvent.Type.DIFFERENT_TRANSITION;
 
       if (leftCoincide && !rightCoincide) {
+        require(false, "Self intersected clipping polygons not supported");
         // honestly no idea, but changing events selection from [2, 1]
         // to [0, 1] fixes the overlapping self-intersecting polygons issue
         //        emit IntersectionWay("leftCoincide && !rightCoincide");
