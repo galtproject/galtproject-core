@@ -13,33 +13,33 @@ contract MockWeilerAtherton {
     weilerAtherton.initWeilerAtherton();
   }
   
-  function addPointToBasePolygon(int256[2] point) public {
+  function addPointToSubjectPolygon(int256[2] point) public {
     weilerAtherton.martinezRueda.subject.points.push(point);
   }
 
-  function addPointToCropPolygon(int256[2] point) public {
+  function addPointToClippingPolygon(int256[2] point) public {
     weilerAtherton.martinezRueda.clipping.points.push(point);
   }
   
-  function initBasePolygon() public {
-    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.subject, weilerAtherton.basePolygon);
+  function initSubjectPolygon() public {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.subject, weilerAtherton.subjectPolygon);
   }
 
-  function initCropPolygon() public {
-    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.cropPolygon);
+  function initClippingPolygon() public {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.clippingPolygon);
   }
 
   function initAllPolygons() public {
-    initBasePolygon();
-    initCropPolygon();
+    initSubjectPolygon();
+    initClippingPolygon();
   }
 
-  function addBasePolygonSegments() public {
-    weilerAtherton.prepareBasePolygon();
+  function addSubjectPolygonSegments() public {
+    weilerAtherton.prepareSubjectPolygon();
   }
 
-  function addCropPolygonSegments() public {
-    weilerAtherton.prepareCropPolygon();
+  function addClippingPolygonSegments() public {
+    weilerAtherton.prepareClippingPolygon();
   }
   
   function processMartinezRueda() public {
@@ -70,15 +70,15 @@ contract MockWeilerAtherton {
     return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
   }
 
-  function buildBasePolygonOutput() public {
-    weilerAtherton.buildBasePolygonOutput();
+  function buildSubjectPolygonOutput() public {
+    weilerAtherton.buildSubjectPolygonOutput();
   }
 
-  function getBasePolygonOutputLength() public returns(uint256) {
-    return weilerAtherton.basePolygonOutput.points.length;
+  function getSubjectPolygonOutputLength() public returns(uint256) {
+    return weilerAtherton.subjectPolygonOutput.points.length;
   }
 
-  function getBasePolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
-    return weilerAtherton.basePolygonOutput.points[pointIndex];
+  function getSubjectPolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
+    return weilerAtherton.subjectPolygonOutput.points[pointIndex];
   }
 }

@@ -22,14 +22,14 @@ module.exports = async function(callback) {
   let mockWeilerAtherton = await MockWeilerAtherton.new({ from: coreTeam });
   let mockWeilerAthertonWeb3 = new web3.eth.Contract(mockWeilerAtherton.abi, mockWeilerAtherton.address);
 
-  await setBasePolygon([
+  await setSubjectPolygon([
     [1.2291728239506483, 104.51007032766938],
     [1.2037726398557425, 104.50989866629243],
     [1.2036009784787893, 104.53199403360486],
     [1.227113390341401, 104.53336732462049]
   ]);
 
-  await setCropPolygon([
+  await setClippingPolygon([
     [1.2314039189368486, 104.52323930338025],
     [1.2152714375406504, 104.52255265787244],
     [1.2126970198005438, 104.54298002645373],
@@ -43,36 +43,36 @@ module.exports = async function(callback) {
   callback();
 
   // Helpers
-  async function setBasePolygon(points) {
+  async function setSubjectPolygon(points) {
     const etherPoints = points.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
     await pIteration.forEachSeries(etherPoints, async point => {
-      await mockWeilerAtherton.addPointToBasePolygon(point);
+      await mockWeilerAtherton.addPointToSubjectPolygon(point);
     });
   }
 
-  async function setCropPolygon(points) {
+  async function setClippingPolygon(points) {
     const etherPoints = points.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
     await pIteration.forEachSeries(etherPoints, async point => {
-      await mockWeilerAtherton.addPointToCropPolygon(point);
+      await mockWeilerAtherton.addPointToClippingPolygon(point);
     });
   }
 
   async function executeWeilerAtherton() {
     let totalGasUsed = 0;
-    let res = await mockWeilerAtherton.initBasePolygon();
-    console.log('      initBasePolygon gasUsed', res.receipt.gasUsed);
+    let res = await mockWeilerAtherton.initSubjectPolygon();
+    console.log('      initSubjectPolygon gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
-    res = await mockWeilerAtherton.initCropPolygon();
-    console.log('      initCropPolygon gasUsed', res.receipt.gasUsed);
+    res = await mockWeilerAtherton.initClippingPolygon();
+    console.log('      initClippingPolygon gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
-    res = await mockWeilerAtherton.addBasePolygonSegments();
-    console.log('      addBasePolygonSegments gasUsed', res.receipt.gasUsed);
+    res = await mockWeilerAtherton.addSubjectPolygonSegments();
+    console.log('      addSubjectPolygonSegments gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
-    res = await mockWeilerAtherton.addCropPolygonSegments();
-    console.log('      addCropPolygonSegments gasUsed', res.receipt.gasUsed);
+    res = await mockWeilerAtherton.addClippingPolygonSegments();
+    console.log('      addClippingPolygonSegments gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
 
     totalGasUsed += await processMartinezRueda();
@@ -83,8 +83,8 @@ module.exports = async function(callback) {
     res = await mockWeilerAtherton.buildResultPolygon();
     console.log('      buildResultPolygon gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
-    res = await mockWeilerAtherton.buildBasePolygonOutput();
-    console.log('      buildBasePolygonOutput gasUsed', res.receipt.gasUsed);
+    res = await mockWeilerAtherton.buildSubjectPolygonOutput();
+    console.log('      buildSubjectPolygonOutput gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
     console.log('');
     console.log('      totalGasUsed', totalGasUsed);

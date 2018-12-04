@@ -22,11 +22,11 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.only('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
-    this.baseContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
+    this.subjectContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await deploySplitMerge();
@@ -81,26 +81,30 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         galt.numberToGeohash(geohash.toString(10))
       );
 
-    this.splitPackage = async (baseSpaceTokenId, cropContour) => {
+    this.splitPackage = async (subjectSpaceTokenId, clippingContour) => {
       let res;
-      res = await this.splitMerge.startSplitOperation(baseSpaceTokenId, cropContour.map(galt.geohashToGeohash5), {
-        from: alice
-      });
+      res = await this.splitMerge.startSplitOperation(
+        subjectSpaceTokenId,
+        clippingContour.map(galt.geohashToGeohash5),
+        {
+          from: alice
+        }
+      );
 
       const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
       await splitOperation.prepareAndInitAllPolygons();
-      await splitOperation.addBasePolygonSegments();
-      await splitOperation.addCropPolygonSegments();
+      await splitOperation.addSubjectPolygonSegments();
+      await splitOperation.addClippingPolygonSegments();
       await this.processMartinezRueda(splitOperation);
 
       // processWeilerAtherton
       await splitOperation.addIntersectedPoints();
       await this.buildResultPolygon(splitOperation);
-      await splitOperation.buildBasePolygonOutput();
+      await splitOperation.buildSubjectPolygonOutput();
 
       await splitOperation.finishAllPolygons();
 
-      res = await this.splitMerge.finishSplitOperation(baseSpaceTokenId, {
+      res = await this.splitMerge.finishSplitOperation(subjectSpaceTokenId, {
         from: alice
       });
 
@@ -144,11 +148,11 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      await this.splitMerge.setPackageContour(packageId, this.baseContour, { from: coreTeam });
+      await this.splitMerge.setPackageContour(packageId, this.subjectContour, { from: coreTeam });
 
       res = (await this.splitMerge.getPackageContour(packageId)).map(geohash => geohash.toString(10));
 
-      assert.deepEqual(res, this.baseContour.map(geohash => geohash.toString(10)));
+      assert.deepEqual(res, this.subjectContour.map(geohash => geohash.toString(10)));
     });
 
     it('should check merge correctly', async function() {
@@ -156,7 +160,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         galt.geohashToGeohash5
       );
       const mergeContour = ['w9cx6wbuuy', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
-      await this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.baseContour);
+      await this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.subjectContour);
     });
 
     it('should reject incorrect split by duplicate geohash of merge contour', async function() {
@@ -164,33 +168,33 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         galt.geohashToGeohash5
       );
       const mergeContour = ['w9cx6wbuuyu', 'w9cx63zs884', 'w9cx6wbuuyu', 'w9cx71gk90n'].map(galt.geohashToGeohash5);
-      await assertRevert(this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.baseContour));
+      await assertRevert(this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.subjectContour));
     });
 
     it('should correctly split 4, 4 => 6, 4', async function() {
-      const baseSpaceTokenId = await this.mintSpaceTokenId([
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfpvbmnkt',
         'w24qf5ju3pkx',
         'w24qfejgkp2p',
         'w24qfxqukn80'
       ]);
 
-      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
         'w24r42pt2n24',
         'w24qfmpp2p00',
         'w24qfuvb7zpg',
         'w24r50dr2n0n'
       ]);
 
-      assert.equal(croppedSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qftn244vj',
         'w24qfxqukn80',
         'w24qfrx3sxuc',
         'w24qfmpp2p00'
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
         'w24qfpvbmnkt',
         'w24qf5ju3pkx',
         'w24qfejgkp2p',
@@ -201,14 +205,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     it('should correctly split 4, 5 => 7, 5', async function() {
-      const baseSpaceTokenId = await this.mintSpaceTokenId([
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfpvrmnke',
         'w24qfxtrkyqv',
         'w24qfev5kp24',
         'w24qf5mkrzrv'
       ]);
 
-      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
         'w24qfq7pkn8p',
         'w24r42ec2n0p',
         'w24r4c9ekjbp',
@@ -216,8 +220,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qfmv92nbh'
       ]);
 
-      assert.equal(croppedSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qfwj73jy9',
         'w24qfxtrkyqv',
         'w24qfrgs3s5g',
@@ -225,7 +229,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qfmv92nbh'
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
         'w24qfpvrmnke',
         'w24qfrgs3s5g',
         'w24qfq7pkn8p',
@@ -237,7 +241,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     it('should correctly split 6, 4 => 4, 4, 6', async function() {
-      const baseSpaceTokenId = await this.mintSpaceTokenId([
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qcv6bkp00',
         'w24qfjpj2p00',
         'w24qf5rp2p2j',
@@ -246,22 +250,22 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qccsm2pb4'
       ]);
 
-      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
         'w24qf5xh8cgw',
         'w24qf1wf0zf1',
         'w24qf99npg84',
         'w24qfe8tpg05'
       ]);
 
-      assert.equal(croppedSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qf1yb198s',
         'w24qf3uc2pb1',
         'w24qf7kb2p2n',
         'w24qf5rp2ppu'
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
         'w24qcv6bkp00',
         'w24qfjpj2p00',
         'w24qf5rp2p2j',
@@ -273,29 +277,29 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     // TODO: make it work
     it.skip('should correctly split 4, 4 => 4, 4, 4', async function() {
-      const baseSpaceTokenId = await this.mintSpaceTokenId([
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24r1bj7mnrd',
         'w24r48n3kyq7',
         'w24qftqu2nbp',
         'w24qcvkt2nbn'
       ]);
 
-      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
         'w24r41svrvzz',
         'w24r43tj2jbp',
         'w24qf7q17zry',
         'w24qf57vrzrv'
       ]);
 
-      assert.equal(croppedSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qf1yb198s',
         'w24qf3uc2pb1',
         'w24qf7kb2p2n',
         'w24qf5rp2ppu'
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
         'w24qcv6bkp00',
         'w24qfjpj2p00',
         'w24qf5rp2p2j',
@@ -306,7 +310,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     it('should correctly split 8, 4 => 8, 4, 4', async function() {
-      const baseSpaceTokenId = await this.mintSpaceTokenId([
+      const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfxzt2yqh',
         'w24r40j43nkg',
         'w24qf4smkp85',
@@ -317,29 +321,29 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qfwqykn8p'
       ]);
 
-      const croppedSpaceTokensIds = await this.splitPackage(baseSpaceTokenId, [
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
         'w24r42r6qby9',
         'w24qf988qfqe',
         'w24qfct7qfqd',
         'w24r4bhjqbyd'
       ]);
 
-      assert.equal(croppedSpaceTokensIds.length, 2);
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[0]), [
+      assert.equal(clippingSpaceTokensIds.length, 2);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qfd8d0g8h', // 1200619217705582405,104524644854296247290
         'w24qfdw2kp8h', // 1200340250506997107,104532680679112672805
         'w24qfsjyrzpz', // 1209607785567641256,104532165359705686569
         'w24qfs24wq5y' // 1210331879095087062,104524199219555862637
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(croppedSpaceTokensIds[1]), [
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[1]), [
         'w24qfqrgfqs9', // 1221534521210230496,104523685221763649871
         'w24qfwqykn8p', // 1221964722499251363,104533367324620485305
         'w24qfxzt2yqh', // 1230030963197350500,104534265864640474318
         'w24qfrzx8gt5' // 1230402222620671413,104523278355338755424
       ]);
 
-      assert.deepEqual(await this.getGeohashesContour(baseSpaceTokenId), [
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
         'w24qfrzx8gt5', // 1230402222620671413,104523278355338755424
         'w24r40j43nkg', // 1230889102444052694,104508869033306837081
         'w24qf4smkp85', // 1201198389753699301,104507961440831422805
@@ -352,7 +356,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     it('should split and then merge correctly', async function() {
-      const baseContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
+      const subjectContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
 
       const newContourAfterSplit = [
         'w24mjr9xcudz',
@@ -363,23 +367,23 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24mjxbh2rw7'
       ];
 
-      let baseContour = galt.geohash.contour.mergeContours(baseContourAfterSplit, newContourAfterSplit, false);
+      let subjectContour = galt.geohash.contour.mergeContours(subjectContourAfterSplit, newContourAfterSplit, false);
 
-      baseContour = baseContour.map(galt.geohashToGeohash5);
-      // const contourToSplitForOldPackage = baseContourAfterSplit.map(galt.geohashToGeohash5);
+      subjectContour = subjectContour.map(galt.geohashToGeohash5);
+      // const contourToSplitForOldPackage = subjectContourAfterSplit.map(galt.geohashToGeohash5);
       // const contourToSplitForNewPackage = newContourAfterSplit.map(galt.geohashToGeohash5);
 
       const res = await this.splitMerge.initPackage(alice, { from: coreTeam });
 
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
-      await this.splitMerge.setPackageContour(packageId, baseContour, { from: coreTeam });
-      await this.splitMerge.setPackageHeights(packageId, baseContour.map((geohash, index) => index + 10), {
+      await this.splitMerge.setPackageContour(packageId, subjectContour, { from: coreTeam });
+      await this.splitMerge.setPackageHeights(packageId, subjectContour.map((geohash, index) => index + 10), {
         from: coreTeam
       });
 
       // CACHING
-      // await this.splitMerge.checkSplitContours(baseContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
+      // await this.splitMerge.checkSplitContours(subjectContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
 
       // res = await this.splitMerge.splitPackage(packageId, contourToSplitForOldPackage, contourToSplitForNewPackage, {
       //   from: alice
@@ -403,12 +407,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       // res = await this.splitMerge.getPackageContour.call(newPackageId);
       // assert.deepEqual(res.map(item => item.toString(10)), contourToSplitForNewPackage);
       //
-      // await this.splitMerge.mergePackage(newPackageId, newPackageId, baseContour, {
+      // await this.splitMerge.mergePackage(newPackageId, newPackageId, subjectContour, {
       //   from: alice
       // });
       //
       // res = await this.splitMerge.getPackageContour.call(newPackageId);
-      // assert.deepEqual(res.map(item => item.toString(10)), baseContour);
+      // assert.deepEqual(res.map(item => item.toString(10)), subjectContour);
       //
       // res = await this.spaceToken.exists.call(newPackageId);
       // assert.equal(res, false);

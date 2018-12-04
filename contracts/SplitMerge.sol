@@ -171,7 +171,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   // TODO: add SpaceSplitOperationFactory for migrations between versions
   function startSplitOperation(
     uint256 _spaceTokenId,
-    uint256[] _cropContour
+    uint256[] _clippingContour
   )
   public
   onlySpaceTokenOwner(_spaceTokenId)
@@ -179,7 +179,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
-    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(address(spaceToken), spaceTokenOwner, _spaceTokenId, getPackageContour(_spaceTokenId), _cropContour);
+    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(address(spaceToken), spaceTokenOwner, _spaceTokenId, getPackageContour(_spaceTokenId), _clippingContour);
     activeSplitOperations[address(newSplitOperation)] = true;
     tokenIdToSplitOperations[_spaceTokenId].push(address(newSplitOperation));
     allSplitOperations.push(newSplitOperation);
@@ -197,28 +197,28 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
 
-    (uint256[] memory baseContourOutput, address baseTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
+    (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
 
-    packageToContour[_spaceTokenId] = baseContourOutput;
+    packageToContour[_spaceTokenId] = subjectContourOutput;
 
     int256 minHeight = packageToHeights[_spaceTokenId][0];
 
-    int256[] memory basePackageHeights = new int256[](packageToContour[_spaceTokenId].length);
+    int256[] memory subjectPackageHeights = new int256[](packageToContour[_spaceTokenId].length);
     for (uint i = 0; i < packageToContour[_spaceTokenId].length; i++) {
       if (i + 1 > packageToHeights[_spaceTokenId].length) {
-        basePackageHeights[i] = minHeight;
+        subjectPackageHeights[i] = minHeight;
       } else {
         if (packageToHeights[_spaceTokenId][i] < minHeight) {
           minHeight = packageToHeights[_spaceTokenId][i];
         }
-        basePackageHeights[i] = packageToHeights[_spaceTokenId][i];
+        subjectPackageHeights[i] = packageToHeights[_spaceTokenId][i];
       }
     }
 
-    packageToHeights[_spaceTokenId] = basePackageHeights;
-    spaceToken.transferFrom(splitOperationAddress, baseTokenOwner, _spaceTokenId);
+    packageToHeights[_spaceTokenId] = subjectPackageHeights;
+    spaceToken.transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
     for (uint j = 0; j < resultContoursLength; j++) {
-      uint256 newPackageId = spaceToken.mint(baseTokenOwner);
+      uint256 newPackageId = spaceToken.mint(subjectTokenOwner);
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
 
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
@@ -237,7 +237,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
-    spaceToken.transferFrom(splitOperationAddress, splitOperation.baseTokenOwner(), _spaceTokenId);
+    spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }
 

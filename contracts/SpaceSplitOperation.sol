@@ -43,46 +43,46 @@ contract SpaceSplitOperation {
   SplitMerge private splitMerge;
   SpaceToken private spaceToken;
 
-  address public baseTokenOwner;
-  uint256 public baseTokenId;
-  uint256[] public baseContour;
-  uint256[] public cropContour;
+  address public subjectTokenOwner;
+  uint256 public subjectTokenId;
+  uint256[] public subjectContour;
+  uint256[] public clippingContour;
 
-  uint256[] public baseContourOutput;
+  uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
-  constructor(address _spaceToken, address _baseTokenOwner, uint256 _baseTokenId, uint256[] _baseContour, uint256[] _cropContour) public {
+  constructor(address _spaceToken, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] _subjectContour, uint256[] _clippingContour) public {
     splitMerge = SplitMerge(msg.sender);
     spaceToken = SpaceToken(_spaceToken);
 
-    baseTokenOwner = _baseTokenOwner;
-    baseTokenId = _baseTokenId;
-    baseContour = _baseContour;
-    cropContour = _cropContour;
+    subjectTokenOwner = _subjectTokenOwner;
+    subjectTokenId = _subjectTokenId;
+    subjectContour = _subjectContour;
+    clippingContour = _clippingContour;
   }
 
   function init() public {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
-    spaceToken.approve(address(splitMerge), baseTokenId);
+    spaceToken.approve(address(splitMerge), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
   }
 
-  function prepareBasePolygon() public {
+  function prepareSubjectPolygon() public {
     require(doneStage == Stage.CONTRACT_INIT, "doneStage should be CONTRACT_INIT");
 
-    convertContourToPoints(baseContour, weilerAtherton.martinezRueda.subject);
+    convertContourToPoints(subjectContour, weilerAtherton.martinezRueda.subject);
 
     if (weilerAtherton.martinezRueda.clipping.points.length > 0) {
       doneStage = Stage.POLYGONS_PREPARE;
     }
   }
 
-  function prepareCropPolygon() public {
+  function prepareClippingPolygon() public {
     require(doneStage == Stage.CONTRACT_INIT, "doneStage should be CONTRACT_INIT");
 
-    convertContourToPoints(cropContour, weilerAtherton.martinezRueda.clipping);
+    convertContourToPoints(clippingContour, weilerAtherton.martinezRueda.clipping);
 
     if (weilerAtherton.martinezRueda.subject.points.length > 0) {
       doneStage = Stage.POLYGONS_PREPARE;
@@ -90,8 +90,8 @@ contract SpaceSplitOperation {
   }
 
   function prepareAllPolygons() public {
-    prepareBasePolygon();
-    prepareCropPolygon();
+    prepareSubjectPolygon();
+    prepareClippingPolygon();
   }
 
   function convertContourToPoints(uint256[] storage geohashesContour, PolygonUtils.CoorsPolygon storage resultPolygon) private {
@@ -107,57 +107,57 @@ contract SpaceSplitOperation {
     }
   }
 
-  function initBasePolygon() public {
+  function initSubjectPolygon() public {
     require(doneStage == Stage.POLYGONS_PREPARE, "doneStage should be POLYGONS_PREPARE");
 
-    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.subject, weilerAtherton.basePolygon);
-    if (weilerAtherton.cropPolygon.startPoint != bytes32(0)) {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.subject, weilerAtherton.subjectPolygon);
+    if (weilerAtherton.clippingPolygon.startPoint != bytes32(0)) {
       doneStage = Stage.POLYGONS_INIT;
     }
   }
 
-  function initCropPolygon() public {
+  function initClippingPolygon() public {
     require(doneStage == Stage.POLYGONS_PREPARE, "doneStage should be POLYGONS_PREPARE");
 
-    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.cropPolygon);
-    if (weilerAtherton.basePolygon.startPoint != bytes32(0)) {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.clippingPolygon);
+    if (weilerAtherton.subjectPolygon.startPoint != bytes32(0)) {
       doneStage = Stage.POLYGONS_INIT;
     }
   }
 
   function initAllContours() public {
-    initBasePolygon();
-    initCropPolygon();
+    initSubjectPolygon();
+    initClippingPolygon();
   }
 
   function prepareAndInitAllPolygons() public {
-    prepareBasePolygon();
-    prepareCropPolygon();
-    initBasePolygon();
-    initCropPolygon();
+    prepareSubjectPolygon();
+    prepareClippingPolygon();
+    initSubjectPolygon();
+    initClippingPolygon();
   }
 
-  function addBasePolygonSegments() public {
+  function addSubjectPolygonSegments() public {
     require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
 
-    weilerAtherton.prepareBasePolygon();
-    if (weilerAtherton.cropPolygon.segmentsAdded) {
+    weilerAtherton.prepareSubjectPolygon();
+    if (weilerAtherton.clippingPolygon.segmentsAdded) {
       doneStage = Stage.SEGMENTS_ADD;
     }
   }
 
-  function addCropPolygonSegments() public {
+  function addClippingPolygonSegments() public {
     require(doneStage == Stage.POLYGONS_INIT, "doneStage should be POLYGONS_INIT");
 
-    weilerAtherton.prepareCropPolygon();
-    if (weilerAtherton.basePolygon.segmentsAdded) {
+    weilerAtherton.prepareClippingPolygon();
+    if (weilerAtherton.subjectPolygon.segmentsAdded) {
       doneStage = Stage.SEGMENTS_ADD;
     }
   }
 
   function addAllPolygonsSegments() public {
-    addBasePolygonSegments();
-    addCropPolygonSegments();
+    addSubjectPolygonSegments();
+    addClippingPolygonSegments();
   }
 
   function processMartinezRueda() public {
@@ -177,9 +177,9 @@ contract SpaceSplitOperation {
     doneStage = Stage.INTERSECT_POINTS_ADD;
   }
 
-  function getPolygonsLengths() public view returns (uint256 resultPolygonsLength, uint256 baseOutputPointsLength) {
+  function getPolygonsLengths() public view returns (uint256 resultPolygonsLength, uint256 subjectOutputPointsLength) {
     resultPolygonsLength = weilerAtherton.resultPolygons.length;
-    baseOutputPointsLength = weilerAtherton.basePolygonOutput.points.length;
+    subjectOutputPointsLength = weilerAtherton.subjectPolygonOutput.points.length;
   }
 
   function getResultPolygonLength(uint256 polygonIndex) public view returns (uint256) {
@@ -190,8 +190,8 @@ contract SpaceSplitOperation {
     return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
   }
 
-  function getBasePolygonOutputPoint(uint256 pointIndex) public view returns (int256[2]) {
-    return weilerAtherton.basePolygonOutput.points[pointIndex];
+  function getSubjectPolygonOutputPoint(uint256 pointIndex) public view returns (int256[2]) {
+    return weilerAtherton.subjectPolygonOutput.points[pointIndex];
   }
 
   function buildResultPolygon() public {
@@ -202,17 +202,17 @@ contract SpaceSplitOperation {
   
   function isBuildResultFinished() public view returns(bool) {
     /* solium-disable-next-line */
-    return weilerAtherton.basePolygon.handledIntersectionPoints == weilerAtherton.basePolygon.intersectionPoints.length
+    return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
     /* solium-disable-next-line */
-        && weilerAtherton.cropPolygon.handledIntersectionPoints == weilerAtherton.cropPolygon.intersectionPoints.length;
+        && weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length;
   }
 
-  function buildBasePolygonOutput() public {
+  function buildSubjectPolygonOutput() public {
     require(doneStage == Stage.INTERSECT_POINTS_ADD, "doneStage should be SEGMENTS_ADD");
-    require(weilerAtherton.basePolygon.handledIntersectionPoints == weilerAtherton.basePolygon.intersectionPoints.length, "buildResultPolygon not finished");
-    require(weilerAtherton.cropPolygon.handledIntersectionPoints == weilerAtherton.cropPolygon.intersectionPoints.length, "buildResultPolygon not finished");
+    require(weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length, "buildResultPolygon not finished");
+    require(weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length, "buildResultPolygon not finished");
 
-    weilerAtherton.buildBasePolygonOutput();
+    weilerAtherton.buildSubjectPolygonOutput();
 
     doneStage = Stage.WEILER_ATHERTON_BUILD;
   }
@@ -220,7 +220,7 @@ contract SpaceSplitOperation {
   function processWeilerAtherton() public {
     addIntersectedPoints();
     buildResultPolygon();
-    buildBasePolygonOutput();
+    buildSubjectPolygonOutput();
   }
 
   function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] geohashContour) {
@@ -237,41 +237,41 @@ contract SpaceSplitOperation {
     }
   }
 
-  function finishBasePolygon() public {
+  function finishSubjectPolygon() public {
     require(doneStage == Stage.WEILER_ATHERTON_BUILD, "doneStage should be WEILER_ATHERTON_BUILD");
-    require(baseContourOutput.length == 0, "Crop polygons already finished");
+    require(subjectContourOutput.length == 0, "Clipping polygons already finished");
 
-    baseContourOutput = convertPointsToContour(weilerAtherton.basePolygonOutput);
+    subjectContourOutput = convertPointsToContour(weilerAtherton.subjectPolygonOutput);
     if (resultContours.length > 0) {
       doneStage = Stage.POLYGONS_FINISH;
     }
   }
 
-  function finishCropPolygons() public {
+  function finishClippingPolygons() public {
     require(doneStage == Stage.WEILER_ATHERTON_BUILD, "doneStage should be WEILER_ATHERTON_BUILD");
-    require(resultContours.length == 0, "Crop polygons already finished");
+    require(resultContours.length == 0, "Clipping polygons already finished");
 
     for (uint i = 0; i < weilerAtherton.resultPolygons.length; i++) {
       resultContours.push(convertPointsToContour(weilerAtherton.resultPolygons[i]));
     }
-    if (baseContourOutput.length > 0) {
+    if (subjectContourOutput.length > 0) {
       doneStage = Stage.POLYGONS_FINISH;
     }
   }
 
   function finishAllPolygons() public {
-    finishBasePolygon();
-    finishCropPolygons();
+    finishSubjectPolygon();
+    finishClippingPolygons();
   }
 
   function getResultContour(uint256 contourIndex) public view returns (uint256[]) {
     return resultContours[contourIndex];
   }
 
-  function getFinishInfo() public view returns (uint256[] baseContourResult, address tokenOwner, uint256 resultContoursCount) {
+  function getFinishInfo() public view returns (uint256[] subjectContourResult, address tokenOwner, uint256 resultContoursCount) {
     require(doneStage == Stage.POLYGONS_FINISH, "SpaceSplitOperation not finished");
-    baseContourResult = baseContourOutput;
-    tokenOwner = baseTokenOwner;
+    subjectContourResult = subjectContourOutput;
+    tokenOwner = subjectTokenOwner;
     resultContoursCount = resultContours.length;
   }
 }

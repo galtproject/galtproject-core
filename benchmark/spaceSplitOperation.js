@@ -47,23 +47,23 @@ module.exports = async function(callback) {
   await splitMerge.addRoleTo(coreTeam, 'geo_data_manager');
 
   const spaceTokenId = await mintSpaceTokenId(['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80']);
-  await splitSpaceTokenByCrop(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'], true);
+  await splitSpaceTokenByClipping(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'], true);
 
   callback();
 
   // Helpers
 
-  async function splitSpaceTokenByCrop(_spaceTokenId, _cropGeohashContour, _cacheGeohashes = false) {
+  async function splitSpaceTokenByClipping(_spaceTokenId, _clippingGeohashContour, _cacheGeohashes = false) {
     const oldSpaceTokenContour = await getGeohashesContour(_spaceTokenId);
 
     if (_cacheGeohashes) {
-      const geohashesForCache = _.uniq(_cropGeohashContour.concat(oldSpaceTokenContour));
+      const geohashesForCache = _.uniq(_clippingGeohashContour.concat(oldSpaceTokenContour));
       const res = await splitMerge.cacheGeohashListToLatLon(geohashesForCache.map(galt.geohashToNumber));
       console.log('      geohashToLatLonCache gasUsed', res.receipt.gasUsed);
       console.log('');
     }
 
-    let res = await splitMerge.startSplitOperation(_spaceTokenId, _cropGeohashContour.map(galt.geohashToNumber));
+    let res = await splitMerge.startSplitOperation(_spaceTokenId, _clippingGeohashContour.map(galt.geohashToNumber));
     console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
 
     let totalGasUsed = res.receipt.gasUsed;
@@ -93,12 +93,12 @@ module.exports = async function(callback) {
     const newSpaceTokenContour = await getGeohashesContour(_spaceTokenId);
     console.log('      spaceToken changed:');
     console.log('      ', JSON.stringify(oldSpaceTokenContour), '=>', JSON.stringify(newSpaceTokenContour));
-    const croppedContours = await pIteration.mapSeries(res.logs, log => getGeohashesContour(log.args.id));
-    console.log('      cropped spaceTokens:');
-    croppedContours.forEach(croppedContour => {
-      console.log('      ', JSON.stringify(croppedContour));
+    const clippingpedContours = await pIteration.mapSeries(res.logs, log => getGeohashesContour(log.args.id));
+    console.log('      clippingped spaceTokens:');
+    clippingpedContours.forEach(clippingpedContour => {
+      console.log('      ', JSON.stringify(clippingpedContour));
     });
-    return croppedContours;
+    return clippingpedContours;
   }
 
   async function getGeohashesContour(_spaceTokenId) {
