@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SplitMerge', ([coreTeam, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
