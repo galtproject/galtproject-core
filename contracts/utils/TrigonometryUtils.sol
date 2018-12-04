@@ -47,7 +47,7 @@ library TrigonometryUtils {
     uint offset = (i + 1) * ENTRY_BYTES;
     uint16 trigintValue;
     assembly {
-      trigint_value := mload(add(table, offset))
+      trigintValue := mload(add(table, offset))
     }
 
     return trigintValue;
