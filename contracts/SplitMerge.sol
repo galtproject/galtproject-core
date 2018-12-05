@@ -56,7 +56,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
 
   LandUtils.LatLonData private latLonData;
 
-  event NewSpaceToken(uint256 id);
+  event NewSplitSpaceToken(uint256 id);
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
@@ -173,7 +173,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     uint256 _spaceTokenId,
     uint256[] _clippingContour
   )
-  public
+  external
   onlySpaceTokenOwner(_spaceTokenId)
   returns (address)
   {
@@ -191,7 +191,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     return newSplitOperation;
   }
 
-  function finishSplitOperation(uint256 _spaceTokenId) public {
+  function finishSplitOperation(uint256 _spaceTokenId) external {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
@@ -225,18 +225,19 @@ contract SplitMerge is Initializable, Ownable, RBAC {
         packageToHeights[newPackageId].push(minHeight);
       }
       packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
-      emit NewSpaceToken(newPackageId);
+      emit NewSplitSpaceToken(newPackageId);
     }
 
     activeSplitOperations[splitOperationAddress] = false;
   }
 
-  function cancelSplitPackage(uint256 _spaceTokenId) public {
+  function cancelSplitPackage(uint256 _spaceTokenId) external {
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
+    require(splitOperation.subjectTokenOwner() == msg.sender, "Sender not allowed for this action");
     spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -246,7 +247,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     uint256 _destinationPackageTokenId,
     uint256[] _destinationPackageContour
   )
-  public
+  external
   onlySpaceTokenOwner(_sourcePackageTokenId)
   onlySpaceTokenOwner(_destinationPackageTokenId)
   {

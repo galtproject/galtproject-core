@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.only('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -429,6 +429,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
+    // TODO: write test for cancelSplitPackage
+
+    // TODO: complete this test
     it('should split and then merge correctly', async function() {
       const subjectContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
 
