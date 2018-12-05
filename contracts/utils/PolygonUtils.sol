@@ -118,7 +118,7 @@ library PolygonUtils {
       emit AreaResult(area);
     }
 
-    area = area * RADIUS * RADIUS / 2 ether;
+    area = (area / 2 ether) * RADIUS * RADIUS;
 
     return uint(area > 0 ? area : area * -1);
   }
