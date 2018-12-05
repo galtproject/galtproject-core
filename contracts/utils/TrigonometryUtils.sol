@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 pragma experimental "v0.5.0";
 
 library TrigonometryUtils {
-  int constant ANGLE_CIRCLE_PARTS = 32767;
+  int constant ANGLE_CIRCLE_PARTS = 2147483647;
   uint32 constant ANGLES_COUNT = 1073741824;
   uint32 constant HIGH_MASK = 536870912;
   uint32 constant LOW_MASK = 268435456;
