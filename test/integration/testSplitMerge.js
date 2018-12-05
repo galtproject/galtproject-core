@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SplitMerge', ([coreTeam, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -370,7 +370,6 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
         'w24qfjjp5tt2',
         'w24qfm1uttt9'
       ]);
-      //
       // console.log(JSON.stringify(await this.getGeohashesContour(clippingSpaceTokensIds[0])));
       // console.log(JSON.stringify(await this.getGeohashesContour(subjectSpaceTokenId)));
 
@@ -431,68 +430,28 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
 
     // TODO: write test for cancelSplitPackage
 
-    // TODO: complete this test
-    it('should split and then merge correctly', async function() {
-      const subjectContourAfterSplit = ['w24mjr9xcudz', 'w24mjm2gzc84', 'w24mjmwc2gz8', 'w24mjxbh2rw7'];
+    it.only('should split and then merge correctly', async function() {
+      const subjectContour = ['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80'];
+      const subjectContourGeohash5 = subjectContour.map(galt.geohashToGeohash5);
+      const subjectSpaceTokenId = await this.mintSpaceTokenId(subjectContour);
 
-      const newContourAfterSplit = [
-        'w24mjr9xcudz',
-        'w24mjm2gzc84',
-        'w24mhugn2gzd',
-        'w24mkgbt2fzs',
-        'w24mmedp2fzt',
-        'w24mjxbh2rw7'
-      ];
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
+        'w24r42pt2n24',
+        'w24qfmpp2p00',
+        'w24qfuvb7zpg',
+        'w24r50dr2n0n'
+      ]);
 
-      let subjectContour = galt.geohash.contour.mergeContours(subjectContourAfterSplit, newContourAfterSplit, false);
+      assert.equal(await this.spaceToken.ownerOf(subjectSpaceTokenId), alice);
+      assert.equal(await this.spaceToken.ownerOf(clippingSpaceTokensIds[0]), alice);
 
-      subjectContour = subjectContour.map(galt.geohashToGeohash5);
-      // const contourToSplitForOldPackage = subjectContourAfterSplit.map(galt.geohashToGeohash5);
-      // const contourToSplitForNewPackage = newContourAfterSplit.map(galt.geohashToGeohash5);
-
-      const res = await this.splitMerge.initPackage(alice, { from: coreTeam });
-
-      const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-
-      await this.splitMerge.setPackageContour(packageId, subjectContour, { from: coreTeam });
-      await this.splitMerge.setPackageHeights(packageId, subjectContour.map((geohash, index) => index + 10), {
-        from: coreTeam
+      await this.splitMerge.mergePackage(clippingSpaceTokensIds[0], subjectSpaceTokenId, subjectContourGeohash5, {
+        from: alice
       });
 
-      // CACHING
-      // await this.splitMerge.checkSplitContours(subjectContour, contourToSplitForOldPackage, contourToSplitForNewPackage);
-
-      // res = await this.splitMerge.splitPackage(packageId, contourToSplitForOldPackage, contourToSplitForNewPackage, {
-      //   from: alice
-      // });
-      //
-      // const newPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      //
-      // res = await this.spaceToken.ownerOf.call(packageId);
-      // assert.equal(res, alice);
-      //
-      // const resContour = await this.splitMerge.getPackageContour.call(packageId);
-      // assert.deepEqual(resContour.map(item => item.toString(10)), contourToSplitForOldPackage);
-      //
-      // const resHeights = await this.splitMerge.getPackageHeights.call(packageId);
-      // assert.equal(resHeights.some(item => item.toString(10) === '0'), false);
-      // assert.equal(resHeights.length === resContour.length, true);
-      //
-      // res = await this.spaceToken.ownerOf.call(newPackageId);
-      // assert.equal(res, alice);
-      //
-      // res = await this.splitMerge.getPackageContour.call(newPackageId);
-      // assert.deepEqual(res.map(item => item.toString(10)), contourToSplitForNewPackage);
-      //
-      // await this.splitMerge.mergePackage(newPackageId, newPackageId, subjectContour, {
-      //   from: alice
-      // });
-      //
-      // res = await this.splitMerge.getPackageContour.call(newPackageId);
-      // assert.deepEqual(res.map(item => item.toString(10)), subjectContour);
-      //
-      // res = await this.spaceToken.exists.call(newPackageId);
-      // assert.equal(res, false);
+      assert.equal(await this.spaceToken.ownerOf(subjectSpaceTokenId), alice);
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), subjectContour);
+      assert.equal(await this.spaceToken.exists.call(clippingSpaceTokensIds[0]), false);
     });
   });
 });
