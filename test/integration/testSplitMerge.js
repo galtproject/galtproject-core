@@ -430,7 +430,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     // TODO: write test for cancelSplitPackage
 
-    it.only('should split and then merge correctly', async function() {
+    it('should split and then merge correctly', async function() {
       const subjectContour = ['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80'];
       const subjectContourGeohash5 = subjectContour.map(galt.geohashToGeohash5);
       const subjectSpaceTokenId = await this.mintSpaceTokenId(subjectContour);
