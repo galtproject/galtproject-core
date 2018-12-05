@@ -15,6 +15,7 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./LandUtils.sol";
+import "./TrigonometryUtils.sol";
 
 library PolygonUtils {
   struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
@@ -22,6 +23,9 @@ library PolygonUtils {
   struct CoorsPolygon {
     int256[2][] points;
   }
+  
+  int constant RADIUS = 6378137;
+  int constant PI = 3141592653589793300;
   
   event LogPoint(int256[2] point);
   event LogPolygonPoint(int256[2] point);
@@ -81,6 +85,51 @@ library PolygonUtils {
     return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) + 
       ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
+
+  function ringArea(CoorsPolygon _polygon) internal returns(uint) {
+    int[2] memory p1;
+    int[2] memory p2;
+    int[2] memory p3;
+    int area = 0;
+
+    if (_polygon.points.length <= 2) {
+      return 0;
+    }
+
+    for (uint i = 0; i < _polygon.points.length; i++) {
+      if (i == _polygon.points.length - 2) {// i = N-2
+        p1 = _polygon.points[_polygon.points.length - 2];
+        p2 = _polygon.points[_polygon.points.length -1];
+        p3 = _polygon.points[0];
+      } else if (i == _polygon.points.length - 1) {// i = N-1
+        p1 = _polygon.points[_polygon.points.length - 1];
+        p2 = _polygon.points[0];
+        p3 = _polygon.points[1];
+      } else { // i = 0 to N-3
+        p1 = _polygon.points[i];
+        p2 = _polygon.points[i+1];
+        p3 = _polygon.points[i+2];
+      }
+
+      emit RadResult(rad(p3[0]), rad(p1[0]), TrigonometryUtils.getTrueSinOfInt(p2[1]));
+      
+      area += (( rad(p3[0]) - rad(p1[0]) ) * TrigonometryUtils.getTrueSinOfInt(p2[1]));
+      
+      emit AreaResult(area);
+    }
+
+    area = area * RADIUS * RADIUS / 2 ether;
+
+    return uint(area > 0 ? area : area * -1);
+  }
+  
+  event RadResult(int radP3, int radP1, int sin);
+  event AreaResult(int area);
+
+  function rad(int angle) internal returns(int) {
+    return angle * PI / 180 / 1 ether;
+  }
+  
 
 //  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
 //    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) > 0 ? 1 : -1) == 
