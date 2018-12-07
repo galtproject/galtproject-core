@@ -25,10 +25,10 @@ library PolygonUtils {
   struct CoorsPolygon {
     int256[2][] points;
   }
-  
+
   int constant RADIUS = 6378137;
   int constant PI = 3141592653589793300;
-  
+
   event LogPoint(int256[2] point);
   event LogPolygonPoint(int256[2] point);
 
@@ -69,9 +69,9 @@ library PolygonUtils {
     bool inside = false;
     uint256 j = _polygon.points.length - 1;
 
-//    emit LogPoint(_point);
+    //    emit LogPoint(_point);
     for (uint256 i = 0; i < _polygon.points.length; i++) {
-//      emit LogPolygonPoint(_polygon.points[i]);
+      //      emit LogPolygonPoint(_polygon.points[i]);
       bool intersect = ((_polygon.points[i][1] > _point[1]) != (_polygon.points[j][1] > _point[1])) && (_point[0] < (_polygon.points[j][0] - _polygon.points[i][0]) * (_point[1] - _polygon.points[i][1]) / (_polygon.points[j][1] - _polygon.points[i][1]) + _polygon.points[i][0]);
       if (intersect) {
         inside = !inside;
@@ -81,14 +81,14 @@ library PolygonUtils {
 
     return inside;
   }
-  
+
   //TODO: test it
-  function isClockwise(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
-    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) + 
-      ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
+  function isClockwise(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns (bool) {
+    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) +
+    ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  function ringArea(CoorsPolygon storage _polygon) internal returns(uint) {
+  function ringArea(CoorsPolygon storage _polygon) internal returns (uint) {
     int[2] memory p1;
     int[2] memory p2;
     int[2] memory p3;
@@ -107,25 +107,25 @@ library PolygonUtils {
         p1 = _polygon.points[_polygon.points.length - 1];
         p2 = _polygon.points[0];
         p3 = _polygon.points[1];
-      } else { // i = 0 to N-3
+      } else {// i = 0 to N-3
         p1 = _polygon.points[i];
-        p2 = _polygon.points[i+1];
-        p3 = _polygon.points[i+2];
+        p2 = _polygon.points[i + 1];
+        p3 = _polygon.points[i + 2];
       }
-      
-      area += (( rad(p3[0]) - rad(p1[0]) ) * TrigonometryUtils.getTrueSinOfInt(p2[1]));
-      
+
+      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getTrueSinOfInt(p2[1]));
+
       emit RadResult(rad(p3[0]), rad(p1[0]), TrigonometryUtils.getTrueSinOfInt(p2[1]), area);
     }
 
     area = (area / 2 ether) * RADIUS * RADIUS;
 
-    return uint(area > 0 ? area : area * -1);
+    return uint(area > 0 ? area : area * - 1);
   }
-  
+
   event RadResult(int radP3, int radP1, int sin, int area);
 
-  function rad(int angle) internal returns(int) {
+  function rad(int angle) internal returns (int) {
     return angle * PI / 180 / 1 ether;
   }
 
@@ -141,11 +141,12 @@ library PolygonUtils {
         int256[2] storage kbPoint = _polygon.points[kbIndex];
 
         int256[2] memory intersectionPoint = SegmentUtils.findSegmentsIntersection([iaPoint, ibPoint], [kaPoint, kbPoint]);
-        if(intersectionPoint[0] == 0 && intersectionPoint[1] == 0) {
+        if (intersectionPoint[0] == 0 && intersectionPoint[1] == 0) {
           continue;
         }
-        if(PointUtils.isEqual(intersectionPoint, iaPoint) || PointUtils.isEqual(intersectionPoint, ibPoint) 
-          || PointUtils.isEqual(intersectionPoint, kaPoint) || PointUtils.isEqual(intersectionPoint, kbPoint)) {
+        /* solium-disable-next-line */
+        if (PointUtils.isEqual(intersectionPoint, iaPoint) || PointUtils.isEqual(intersectionPoint, ibPoint)
+        || PointUtils.isEqual(intersectionPoint, kaPoint) || PointUtils.isEqual(intersectionPoint, kbPoint)) {
           continue;
         }
         return true;
@@ -153,9 +154,9 @@ library PolygonUtils {
     }
     return false;
   }
-  
-//  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
-//    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) > 0 ? 1 : -1) == 
-//    ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]) > 0 ? 1 : -1);
-//  }
+
+  //  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
+  //    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) > 0 ? 1 : -1) == 
+  //    ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]) > 0 ? 1 : -1);
+  //  }
 }
