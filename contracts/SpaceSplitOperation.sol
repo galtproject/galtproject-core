@@ -61,7 +61,7 @@ contract SpaceSplitOperation {
     clippingContour = _clippingContour;
   }
 
-  function init() public {
+  function init() external {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
@@ -89,7 +89,7 @@ contract SpaceSplitOperation {
     }
   }
 
-  function prepareAllPolygons() public {
+  function prepareAllPolygons() external {
     prepareSubjectPolygon();
     prepareClippingPolygon();
   }
@@ -127,12 +127,12 @@ contract SpaceSplitOperation {
     }
   }
 
-  function initAllContours() public {
+  function initAllContours() external {
     initSubjectPolygon();
     initClippingPolygon();
   }
 
-  function prepareAndInitAllPolygons() public {
+  function prepareAndInitAllPolygons() external {
     prepareSubjectPolygon();
     prepareClippingPolygon();
     initSubjectPolygon();
@@ -157,12 +157,12 @@ contract SpaceSplitOperation {
     }
   }
 
-  function addAllPolygonsSegments() public {
+  function addAllPolygonsSegments() external {
     addSubjectPolygonSegments();
     addClippingPolygonSegments();
   }
 
-  function processMartinezRueda() public {
+  function processMartinezRueda() external {
     require(doneStage == Stage.SEGMENTS_ADD, "doneStage should be SEGMENTS_ADD");
 
     weilerAtherton.processMartinezRueda();
@@ -202,7 +202,7 @@ contract SpaceSplitOperation {
     weilerAtherton.buildResultPolygon();
   }
   
-  function isBuildResultFinished() public view returns(bool) {
+  function isBuildResultFinished() external view returns(bool) {
     /* solium-disable-next-line */
     return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
     /* solium-disable-next-line */
@@ -219,7 +219,7 @@ contract SpaceSplitOperation {
     doneStage = Stage.WEILER_ATHERTON_BUILD;
   }
 
-  function processWeilerAtherton() public {
+  function processWeilerAtherton() external {
     addIntersectedPoints();
     buildResultPolygon();
     buildSubjectPolygonOutput();
@@ -261,16 +261,16 @@ contract SpaceSplitOperation {
     }
   }
 
-  function finishAllPolygons() public {
+  function finishAllPolygons() external {
     finishSubjectPolygon();
     finishClippingPolygons();
   }
 
-  function getResultContour(uint256 contourIndex) public view returns (uint256[]) {
+  function getResultContour(uint256 contourIndex) external view returns (uint256[]) {
     return resultContours[contourIndex];
   }
 
-  function getFinishInfo() public view returns (uint256[] subjectContourResult, address tokenOwner, uint256 resultContoursCount) {
+  function getFinishInfo() external view returns (uint256[] subjectContourResult, address tokenOwner, uint256 resultContoursCount) {
     require(doneStage == Stage.POLYGONS_FINISH, "SpaceSplitOperation not finished");
     subjectContourResult = subjectContourOutput;
     tokenOwner = subjectTokenOwner;

@@ -141,6 +141,7 @@ const Helpers = {
       console.log(`slot #${i}`, results[i]);
     }
   },
+  // TODO: Move functions with deploy of contracts to builders.js
   initHelperArtifacts(_artifacts) {
     artifacts = _artifacts;
   },
