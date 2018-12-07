@@ -56,7 +56,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
 
   LandUtils.LatLonData private latLonData;
 
-  event NewSpaceToken(uint256 id);
+  event NewSplitSpaceToken(uint256 id);
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
     owner = msg.sender;
@@ -90,8 +90,8 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   }
 
   function initPackage(address spaceTokenOwner)
-  public onlyGeoDataManager()
-  returns (uint256)
+    public onlyGeoDataManager()
+    returns (uint256)
   {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
 
@@ -101,7 +101,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   }
 
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour)
-  public onlyGeoDataManager()
+    public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -121,7 +121,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
-  public onlyGeoDataManager()
+    public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
@@ -173,9 +173,9 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     uint256 _spaceTokenId,
     uint256[] _clippingContour
   )
-  public
-  onlySpaceTokenOwner(_spaceTokenId)
-  returns (address)
+    external
+    onlySpaceTokenOwner(_spaceTokenId)
+    returns (address)
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
@@ -191,7 +191,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     return newSplitOperation;
   }
 
-  function finishSplitOperation(uint256 _spaceTokenId) public {
+  function finishSplitOperation(uint256 _spaceTokenId) external {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
@@ -216,7 +216,9 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     }
 
     packageToHeights[_spaceTokenId] = subjectPackageHeights;
+    
     spaceToken.transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
+    
     for (uint j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken.mint(subjectTokenOwner);
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
@@ -225,18 +227,19 @@ contract SplitMerge is Initializable, Ownable, RBAC {
         packageToHeights[newPackageId].push(minHeight);
       }
       packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
-      emit NewSpaceToken(newPackageId);
+      emit NewSplitSpaceToken(newPackageId);
     }
 
     activeSplitOperations[splitOperationAddress] = false;
   }
 
-  function cancelSplitPackage(uint256 _spaceTokenId) public {
+  function cancelSplitPackage(uint256 _spaceTokenId) external {
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
+    require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted for msg.sender");
     spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -246,9 +249,9 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     uint256 _destinationPackageTokenId,
     uint256[] _destinationPackageContour
   )
-  public
-  onlySpaceTokenOwner(_sourcePackageTokenId)
-  onlySpaceTokenOwner(_destinationPackageTokenId)
+    external
+    onlySpaceTokenOwner(_sourcePackageTokenId)
+    onlySpaceTokenOwner(_destinationPackageTokenId)
   {
     require(
       getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
@@ -259,7 +262,8 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       getPackageContour(_destinationPackageTokenId),
       _destinationPackageContour
     );
-    setPackageContour(_destinationPackageTokenId, _destinationPackageContour);
+    
+    packageToContour[_destinationPackageTokenId] = _destinationPackageContour;
 
     int256[] memory sourcePackageHeights = getPackageHeights(_sourcePackageTokenId);
 
@@ -271,7 +275,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
         packageHeights[i] = sourcePackageHeights[i];
       }
     }
-    setPackageHeights(_destinationPackageTokenId, packageHeights);
+    packageToHeights[_destinationPackageTokenId] = packageHeights;
 
     spaceToken.burn(_sourcePackageTokenId);
   }
@@ -281,7 +285,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     uint256[] memory mergeContour,
     uint256[] memory resultContour
   )
-  public
+    public
   {
     for (uint i = 0; i < sourceContour.length; i++) {
       for (uint j = 0; j < mergeContour.length; j++) {
@@ -337,9 +341,9 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   )
   {
     return (
-    getPackageContour(_packageTokenId),
-    getPackageHeights(_packageTokenId),
-    getPackageLevel(_packageTokenId)
+      getPackageContour(_packageTokenId),
+      getPackageHeights(_packageTokenId),
+      getPackageLevel(_packageTokenId)
     );
   }
 

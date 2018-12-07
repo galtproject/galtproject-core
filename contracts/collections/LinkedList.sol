@@ -37,7 +37,6 @@ library LinkedList {
     if (compareResult == 0) {
       return;
     } else if (compareResult < 0) {
-      // console.log('insertAfter', foundLeft);
       insertAfter(data, newId, foundId);
     } else {
       if (foundId == data.headId) {
@@ -46,14 +45,10 @@ library LinkedList {
         data.nodesByIds[newId].nextId = data.headId;
 
         data.nodesByIds[data.headId].prevId = newId;
-        // console.log('insert head', newId, nodesByIds);
         data.headId = newId;
         return;
       }
-      // console.log('headId', headId, nodesByIds[headId]);
-      // console.log('foundLeft', foundLeft, nodesByIds[foundLeft]);
-
-      // console.log('insertBefore', foundLeft);
+      
       insertAfter(data, newId, data.nodesByIds[foundId].prevId);
     }
   }
@@ -75,7 +70,6 @@ library LinkedList {
       return;
     }
     Node storage node = data.nodesByIds[id];
-    // console.log('before remove', id, nodesByIds);
 
     if (node.prevId != 0) {
       data.nodesByIds[node.prevId].nextId = node.nextId;
@@ -89,8 +83,6 @@ library LinkedList {
     }
 
     delete data.nodesByIds[id];
-
-    // console.log('after remove', id, nodesByIds);
   }
 
   function swap(Data storage data, uint256 aId, uint256 bId) public {
@@ -100,8 +92,6 @@ library LinkedList {
     uint256 aNodeNextId = aNode.nextId;
     uint256 bNodePrevId = bNode.prevId;
     uint256 bNodeNextId = bNode.nextId;
-
-    // console.log('before swap', aId, bId, nodesByIds);
 
     if (aNodePrevId == bId) {
       aNode.prevId = aId;
@@ -124,9 +114,6 @@ library LinkedList {
       data.nodesByIds[bNodeNextId].prevId = aId;
     }
 
-    //a: { prevId: 3, nextId: b }
-    //b: { prevId: a, nextId: null }
-
     data.nodesByIds[aId] = bNode;
     data.nodesByIds[bId] = aNode;
 
@@ -136,7 +123,6 @@ library LinkedList {
     if (data.nodesByIds[bId].prevId == 0) {
       data.headId = bId;
     }
-    // console.log('after swap', aId, bId, nodesByIds);
   }
 
   function getIndex(Data storage data, uint256 id) public returns (uint256) {
@@ -159,7 +145,6 @@ library LinkedList {
   
   function pop(Data storage data) public returns (uint256) {
     uint256 popId = data.headId;
-    //    Node storage lastNode = data.nodesByIds[popId];
 
     if (data.nodesByIds[popId].nextId != 0) {
       data.nodesByIds[data.nodesByIds[popId].nextId].prevId = 0;
@@ -170,8 +155,6 @@ library LinkedList {
 
     delete data.nodesByIds[popId];
     
-//    emit LogPop(popId, data.headId, data.count);
-
     return popId;
   }
 }

@@ -103,31 +103,6 @@ contract('WeilerAtherton', ([coreTeam]) => {
       resultPoint = await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, 3).call();
       assert.deepEqual(resultPoint.map(c => c.toString(10)), ['1215271437541000000', '104522552657872000000']);
 
-      // dev.highlightContour([ 'w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80' ])
-      // const subjectContour = [
-      //     [1.2291728239506483, 104.51007032766938],
-      //     [1.2037726398557425, 104.50989866629243],
-      //     [1.2036009784787893, 104.53199403360486],
-      //     [1.227113390341401, 104.53336732462049]
-      // ];
-      // // dev.highlightContour([ 'w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'])
-      // const clippingContour = [
-      //     [1.2314039189368486, 104.52323930338025],
-      //     [1.2152714375406504, 104.52255265787244],
-      //     [1.2126970198005438, 104.54298002645373],
-      //     [1.2344931531697512, 104.54898850992322]
-      // ];
-      // for (let i = 0; i < resultPolygonLength; i++) {
-      //   console.log(await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call());
-      //   const resultPolygonPoint = (await this.mockWeilerAthertonWeb3.methods.getResultPolygonPoint(0, i).call()).map(
-      //     coor => web3.utils.fromWei(coor, 'ether')
-      //   );
-      //   console.log(
-      //     'resultPolygonPoint',
-      //     galt.geohash.extra.encodeFromLatLng(resultPolygonPoint[0], resultPolygonPoint[1], 12)
-      //   );
-      // }
-
       // dev.highlightContour([ 'w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qftn244vj', 'w24qfmpp2p00', 'w24qfrx3sxuc']);
       const subjectPolygonOutputLength = await this.mockWeilerAthertonWeb3.methods
         .getSubjectPolygonOutputLength()
@@ -151,17 +126,6 @@ contract('WeilerAtherton', ([coreTeam]) => {
 
       subjectPoint = await this.mockWeilerAthertonWeb3.methods.getSubjectPolygonOutputPoint(5).call();
       assert.deepEqual(subjectPoint.map(c => c.toString(10)), ['1228021425037782365', '104523095334564247262']);
-
-      // for (let i = 0; i < subjectPolygonOutputLength; i++) {
-      //   console.log(await this.mockWeilerAthertonWeb3.methods.getSubjectPolygonOutputPoint(i).call());
-      //   const subjectPolygonOutput = (await this.mockWeilerAthertonWeb3.methods.getSubjectPolygonOutputPoint(i).call()).map(
-      //     coor => web3.utils.fromWei(coor, 'ether')
-      //   );
-      //   console.log(
-      //     'subjectPolygonOutputPoint',
-      //     galt.geohash.extra.encodeFromLatLng(subjectPolygonOutput[0], subjectPolygonOutput[1], 12)
-      //   );
-      // }
     });
   });
 });
