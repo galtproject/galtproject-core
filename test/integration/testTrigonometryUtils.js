@@ -61,7 +61,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     });
   });
 
-  describe('#getTrueSinOfEther()', () => {
+  describe.skip('#getTrueSinOfEther()', () => {
     it('should correctly get sin', async function() {
       await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {
         const res = await this.mockTrigonometryUtils.getTrueSinOfEther(Web3.utils.toWei(angle.toString(), 'ether'));
