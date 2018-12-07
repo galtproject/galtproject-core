@@ -62,7 +62,7 @@ library TrigonometryUtils {
     return sin(angleToNumber(etherAngle));
   }
 
-  function getTrueSinOfInt(int256 a) internal returns(int256){
+  function getTrueSinOfInt(int256 a) internal returns(int256) {
     int256 sinResult = sin(angleToNumber(uint256(a))) * 1 ether / ANGLE_CIRCLE_PARTS;
     return a > 0 ? sinResult : sinResult * -1;
   }
