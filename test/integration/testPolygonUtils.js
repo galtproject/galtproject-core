@@ -33,7 +33,7 @@ contract('PolygonUtils', ([coreTeam]) => {
     this.mockPolygonUtils = await MockPolygonUtils.new({ from: coreTeam });
   });
 
-  describe.only('#getArea()', () => {
+  describe('#getArea()', () => {
     it.skip('should correctly get area', async function() {
       const contour = [
         [1.2291728239506483, 104.51007032766938],

@@ -99,7 +99,7 @@ library PolygonUtils {
     for (uint i = 0; i < _polygon.points.length; i++) {
       if (i == _polygon.points.length - 2) {// i = N-2
         p1 = _polygon.points[_polygon.points.length - 2];
-        p2 = _polygon.points[_polygon.points.length -1];
+        p2 = _polygon.points[_polygon.points.length - 1];
         p3 = _polygon.points[0];
       } else if (i == _polygon.points.length - 1) {// i = N-1
         p1 = _polygon.points[_polygon.points.length - 1];
