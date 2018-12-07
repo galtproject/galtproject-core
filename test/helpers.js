@@ -256,7 +256,6 @@ const Helpers = {
     MartinezRueda.link('SweepQueueLinkedList', (await Helpers.getSweepQueueLinkedListLib()).address);
     MartinezRueda.link('RedBlackTree', (await Helpers.getRedBlackTreeLib()).address);
     MartinezRueda.link('SweepLineRedBlackTree', (await Helpers.getSweepLineRedBlackTreeLib()).address);
-    MartinezRueda.link('SweepQueueRedBlackTree', (await Helpers.getSweepQueueRedBlackTreeLib()).address);
     libCache.MartinezRueda = await MartinezRueda.new();
     return libCache.MartinezRueda;
   },
