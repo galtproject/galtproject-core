@@ -16,6 +16,8 @@ pragma experimental "v0.5.0";
 
 import "./LandUtils.sol";
 import "./TrigonometryUtils.sol";
+import "./PointUtils.sol";
+import "./SegmentUtils.sol";
 
 library PolygonUtils {
   struct LatLonData {mapping(uint => int256[2]) latLonByGeohash;}
@@ -127,7 +129,7 @@ library PolygonUtils {
     return angle * PI / 180 / 1 ether;
   }
 
-  function isSelfIntersected(CoorsPolygon storage _polygon) internal returns (bool) {
+  function isSelfIntersected(CoorsPolygon storage _polygon) public returns (bool) {
     for (uint256 i = 0; i < _polygon.points.length; i++) {
       int256[2] storage iaPoint = _polygon.points[i];
       uint256 ibIndex = i == _polygon.points.length - 1 ? 0 : i + 1;
@@ -139,6 +141,9 @@ library PolygonUtils {
         int256[2] storage kbPoint = _polygon.points[kbIndex];
 
         int256[2] memory intersectionPoint = SegmentUtils.findSegmentsIntersection([iaPoint, ibPoint], [kaPoint, kbPoint]);
+        if(intersectionPoint[0] == 0 && intersectionPoint[1] == 0) {
+          continue;
+        }
         if(PointUtils.isEqual(intersectionPoint, iaPoint) || PointUtils.isEqual(intersectionPoint, ibPoint) 
           || PointUtils.isEqual(intersectionPoint, kaPoint) || PointUtils.isEqual(intersectionPoint, kbPoint)) {
           continue;

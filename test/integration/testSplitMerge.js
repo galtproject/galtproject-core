@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.only('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -355,8 +355,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    // TODO: should revert
-    it.only('should correctly split 4, x4 => ', async function() {
+    it('should revert split of self0intersected clipping polygon', async function() {
       const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfj8rmnys',
         'w24qft983nbn',
@@ -364,34 +363,18 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qcfr4sh0n'
       ]);
 
-      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
-        'w24qfpu7xbxy',
-        'w24qfrw580b5',
-        'w24qfjjp5tt2',
-        'w24qfm1uttt9'
-      ]);
-      //
-      // console.log(JSON.stringify(await this.getGeohashesContour(clippingSpaceTokensIds[0])));
-      // console.log(JSON.stringify(await this.getGeohashesContour(subjectSpaceTokenId)));
+      const clippingContour = ['w24qfpu7xbxy', 'w24qfrw580b5', 'w24qfjjp5tt2', 'w24qfm1uttt9'];
 
-      assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
-        'w24qfm8gznfv',
-        'w24qfm1uttt9',
-        'w24qfjjp5tt2',
-        'w24qfjwsyu2p'
-      ]);
+      const res = await this.splitMerge.startSplitOperation(
+        subjectSpaceTokenId,
+        clippingContour.map(galt.geohashToGeohash5),
+        {
+          from: alice
+        }
+      );
 
-      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
-        'w24qfj8rmnys',
-        'w24qfjwsyu2p',
-        'w24qfjjp5tt2',
-        'w24qfm1uttt9',
-        'w24qfm8gznfv',
-        'w24qft983nbn',
-        'w24qf6pr2p8n',
-        'w24qcfr4sh0n'
-      ]);
+      const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
+      await assertRevert(splitOperation.prepareAndInitAllPolygons());
     });
 
     it('should correctly split 4, 4 => 4, 8', async function() {
