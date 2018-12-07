@@ -20,6 +20,7 @@ const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const ClaimManager = artifacts.require('./ClaimManager');
 const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
@@ -289,6 +290,8 @@ module.exports = async function(deployer, network, accounts) {
             spaceTokenAbi: spaceToken.abi,
             splitMergeAddress: splitMerge.address,
             splitMergeAbi: splitMerge.abi,
+            // eslint-disable-next-line
+            spaceSplitOperationAbi: SpaceSplitOperation._json.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
             plotClarificationAddress: plotClarification.address,
