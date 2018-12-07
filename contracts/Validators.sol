@@ -260,7 +260,7 @@ contract Validators is Ownable, RBAC {
 
     for (uint8 i = 0; i < _roles.length; i++) {
       bytes32 role = _roles[i];
-      require(role != CM_AUDITOR, "Can't assign CM_AUDITOR role");
+//      require(role != CM_AUDITOR, "Can't assign CM_AUDITOR role");
       require(roles[role].applicationType != 0x0, "Role doesn't exist");
       validators[_validator].assignedRoles.addSilent(role);
       validatorsByRoles[role].push(_validator);
