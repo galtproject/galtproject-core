@@ -215,6 +215,7 @@ module.exports = async function(deployer, network, accounts) {
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
 
