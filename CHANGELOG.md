@@ -1,3 +1,17 @@
+## Galt Project Contracts [v0.4.0](https://github.com/galtspace/galtproject-contracts/tree/v0.4.0) (2018-11-18)
+
+The full list of included changes:
+
+- Add new Auditors, ClaimManager, ValidatorStakes, MultiSigWallet contracts
+- Merge PlotManager application and submition methods into a single one
+- Introduce 3 activity flags for Validator: validator exists, role assigned, role staked
+- Add benchmark scripts for gas used analyses
+- Add abstract RedBlackTree contract
+- Implement two children of RedBlackTree contract: PointRedBlackTree and SegmentRedBlackTree
+- Add BentleyOttman algorithm, that uses PointRedBlackTree and SegmentRedBlackTree
+- Add WeilerAtherton algorithm that uses BentleyOttman
+
+
 ## Galt Project Contracts [v0.3.0](https://github.com/galtspace/galtproject-contracts/tree/v0.3.0) (2018-10-17)
 
 The full list of included changes:
