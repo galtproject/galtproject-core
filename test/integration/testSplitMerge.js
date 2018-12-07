@@ -356,7 +356,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     });
 
     // TODO: should revert
-    it.skip('should correctly split 4, x4 => ', async function() {
+    it.only('should correctly split 4, x4 => ', async function() {
       const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24qfj8rmnys',
         'w24qft983nbn',

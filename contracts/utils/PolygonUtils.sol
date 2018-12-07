@@ -63,7 +63,7 @@ library PolygonUtils {
     return inside;
   }
 
-  function isInsideCoors(int256[2] _point, CoorsPolygon _polygon) internal returns (bool) {
+  function isInsideCoors(int256[2] _point, CoorsPolygon storage _polygon) internal returns (bool) {
     bool inside = false;
     uint256 j = _polygon.points.length - 1;
 
@@ -86,7 +86,7 @@ library PolygonUtils {
       ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  function ringArea(CoorsPolygon _polygon) internal returns(uint) {
+  function ringArea(CoorsPolygon storage _polygon) internal returns(uint) {
     int[2] memory p1;
     int[2] memory p2;
     int[2] memory p3;
@@ -126,8 +126,29 @@ library PolygonUtils {
   function rad(int angle) internal returns(int) {
     return angle * PI / 180 / 1 ether;
   }
-  
 
+  function isSelfIntersected(CoorsPolygon storage _polygon) internal returns (bool) {
+    for (uint256 i = 0; i < _polygon.points.length; i++) {
+      int256[2] storage iaPoint = _polygon.points[i];
+      uint256 ibIndex = i == _polygon.points.length - 1 ? 0 : i + 1;
+      int256[2] storage ibPoint = _polygon.points[ibIndex];
+
+      for (uint256 k = 0; k < _polygon.points.length; k++) {
+        int256[2] storage kaPoint = _polygon.points[k];
+        uint256 kbIndex = k == _polygon.points.length - 1 ? 0 : k + 1;
+        int256[2] storage kbPoint = _polygon.points[kbIndex];
+
+        int256[2] memory intersectionPoint = SegmentUtils.findSegmentsIntersection([iaPoint, ibPoint], [kaPoint, kbPoint]);
+        if(PointUtils.isEqual(intersectionPoint, iaPoint) || PointUtils.isEqual(intersectionPoint, ibPoint) 
+          || PointUtils.isEqual(intersectionPoint, kaPoint) || PointUtils.isEqual(intersectionPoint, kbPoint)) {
+          continue;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+  
 //  function inSameDirection(int[2] memory firstPoint, int[2] memory secondPoint, int[2] memory thirdPoint) internal returns(bool) {
 //    return (((secondPoint[0] - firstPoint[0]) * (secondPoint[1] + firstPoint[1])) > 0 ? 1 : -1) == 
 //    ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]) > 0 ? 1 : -1);
