@@ -23,6 +23,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
   struct OracleDetails {
+    address multiSig;
     address addr;
     bytes32 name;
     bytes32 position;
@@ -39,17 +40,17 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   function initialize(
     Oracles _oracles,
     ERC20 _galtToken,
-    ArbitratorsMultiSig _arbitratorsMultiSig,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    _initialize(_galtToken, _arbitratorsMultiSig, _galtSpaceRewardsAddress);
+    _initialize(_galtToken, _galtSpaceRewardsAddress);
     oracles = _oracles;
   }
 
   function submit(
+    address _multiSig,
     address _oracleAddress,
     bytes32 _name,
     bytes32 _position,
@@ -78,6 +79,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
     o.name = _name;
     o.position = _position;
+    o.multiSig = _multiSig;
     o.descriptionHashes = _descriptionHashes;
     o.oracleTypes = _oracleTypes;
 
@@ -88,7 +90,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
-    oracles.addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+    oracles.addOracle(d.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS

@@ -21,6 +21,7 @@ import "./traits/Permissionable.sol";
 
 contract Oracles is Permissionable {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Bytes32Set;
 
   event LogOracleTypeAdded(bytes32 oracleType, uint256 share);
@@ -51,6 +52,7 @@ contract Oracles is Permissionable {
 
   struct Oracle {
     bytes32 name;
+    address multiSig;
     bytes32[] descriptionHashes;
     ArraySet.Bytes32Set assignedOracleTypes;
     ArraySet.Bytes32Set activeOracleTypes;
@@ -185,7 +187,9 @@ contract Oracles is Permissionable {
   }
 
   // >>> Oracles management
+  // TODO: add to a specific multisig
   function addOracle(
+    address _multiSig,
     address _oracle,
     bytes32 _name,
     bytes32 _position,
@@ -198,6 +202,7 @@ contract Oracles is Permissionable {
     require(_oracle != address(0), "Oracle address is empty");
     require(_position != 0x0, "Missing position");
     require(_oracleTypes.length <= ORACLE_TYPES_LIMIT, "Oracle Types count should be <= 50");
+    // TODO: check registry multiSig is valid
 
     Oracle storage o = oracles[_oracle];
 
@@ -205,6 +210,7 @@ contract Oracles is Permissionable {
     o.descriptionHashes = _descriptionHashes;
     o.position = _position;
     o.active = true;
+    o.multiSig = _multiSig;
 
     o.assignedOracleTypes.clear();
 
@@ -218,6 +224,7 @@ contract Oracles is Permissionable {
     oraclesArray.push(_oracle);
   }
 
+  // TODO: only specific multisig allowed
   function removeOracle(address _oracle) external onlyOracleManager {
     require(_oracle != address(0), "Missing oracle");
     // TODO: use index (Set) to remove oracle
@@ -228,6 +235,7 @@ contract Oracles is Permissionable {
 
   // TODO: array support
   function onOracleStakeChanged(
+    address _multiSig,
     address _oracle,
     bytes32 _oracleType,
     int256 _newDepositValue

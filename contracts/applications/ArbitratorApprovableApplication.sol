@@ -23,8 +23,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
-
   event NewApplication(bytes32 applicationId, address applicant);
   event ApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event ArbitratorSlotTaken(bytes32 applicationId, uint256 slotsTaken, uint256 totalSlots);
@@ -198,13 +196,11 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   function _initialize(
     ERC20 _galtToken,
-    ArbitratorsMultiSig _arbitratorsMultiSig,
     address _galtSpaceRewardsAddress
   )
     internal
   {
     galtToken = _galtToken;
-    arbitratorsMultiSig = _arbitratorsMultiSig;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     m = 3;

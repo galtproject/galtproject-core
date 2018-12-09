@@ -14,25 +14,31 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "./AbstractApplication.sol";
+import "./collections/ArraySet.sol";
 import "./multisig/ArbitratorsMultiSig.sol";
+import "./traits/Permissionable.sol";
 
+contract ArbitratorsMultiSigRegistry {
 
-contract AbstractArbitratorApplication is AbstractApplication {
-  ArbitratorsMultiSig arbitratorsMultiSig;
+  event NewMultiSig(uint256 id, address addr);
 
-  mapping(address => bytes32[]) public applicationsByArbitrator;
-
-  modifier anyArbitrator() {
-    require(arbitratorsMultiSig.isOwner(msg.sender), "Not active arbitrator");
-    _;
-  }
+  address[] private multiSigs;
 
   constructor() public {}
 
-  function claimArbitratorReward(bytes32 _aId) external;
+  // MODIFIERS
+  function createMultiSig(address[] _initialOwners, uint256 _required) external returns(uint256 id) {
+    uint256 id = multiSigs.length;
+    address ms = new ArbitratorsMultiSig(_initialOwners, _required);
 
-  function getApplicationsByArbitrator(address _arbitrator) external view returns (bytes32[]) {
-    return applicationsByArbitrator[_arbitrator];
+    multiSigs.push(ms);
+    emit NewMultiSig(id, ms);
+
+    return id;
+  }
+
+  // GETTERS
+  function getMultiSig(uint256 _id) external returns (address) {
+    return multiSigs[_id];
   }
 }

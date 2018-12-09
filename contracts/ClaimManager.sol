@@ -20,8 +20,8 @@ import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
 import "./Oracles.sol";
 import "./collections/ArraySet.sol";
-import "./OracleStakesAccounting.sol";
-import "./ArbitratorsMultiSig.sol";
+import "./multisig/OracleStakesAccounting.sol";
+import "./multisig/ArbitratorsMultiSig.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -353,7 +353,7 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        oracleStakesAccounting.slash(p.oracles, p.oracleTypes, p.fines);
+        oracleStakesAccounting.slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
         arbitratorsMultiSig.proposeTransaction(
           galtToken,

@@ -38,7 +38,7 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
   });
 
   describe('transfer', () => {
-    it.only('should handle basic transfer case', async function() {
+    it('should handle basic transfer case', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
 

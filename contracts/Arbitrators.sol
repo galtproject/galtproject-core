@@ -15,7 +15,7 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./collections/ArraySet.sol";
-import "./ArbitratorsMultiSig.sol";
+import "./multisig/ArbitratorsMultiSig.sol";
 import "./traits/Permissionable.sol";
 
 contract Arbitrators is Permissionable {

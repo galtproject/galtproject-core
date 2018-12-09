@@ -66,6 +66,16 @@ library ArraySet {
     _set.map[lastElement] = currentElementIndex;
   }
 
+  function clear(AddressSet storage _set) internal {
+    for (uint256 i = 0; i < _set.array.length; i++) {
+      address v = _set.array[i];
+      delete _set.map[v];
+      _set.exists[v] = false;
+    }
+
+    delete _set.array;
+  }
+
   function has(AddressSet storage _set, address _v) internal view returns (bool) {
     return _set.exists[_v];
   }

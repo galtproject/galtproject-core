@@ -14,8 +14,8 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "./vendor/MultiSigWallet/MultiSigWallet.sol";
-import "./traits/Permissionable.sol";
+import "../vendor/MultiSigWallet/MultiSigWallet.sol";
+import "../traits/Permissionable.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
