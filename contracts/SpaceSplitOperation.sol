@@ -61,6 +61,14 @@ contract SpaceSplitOperation {
     clippingContour = _clippingContour;
   }
 
+  function getSubjectContour() external view returns (uint256[]) {
+    return subjectContour;
+  }
+
+  function getClippingContour() external view returns (uint256[]) {
+    return clippingContour;
+  }
+
   function init() external {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
@@ -118,6 +126,8 @@ contract SpaceSplitOperation {
 
   function initClippingPolygon() public {
     require(doneStage == Stage.POLYGONS_PREPARE, "doneStage should be POLYGONS_PREPARE");
+
+    require(!PolygonUtils.isSelfIntersected(weilerAtherton.martinezRueda.clipping), "Self-intersect polygons don't supporting");
 
     weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.clippingPolygon);
     if (weilerAtherton.subjectPolygon.startPoint != bytes32(0)) {

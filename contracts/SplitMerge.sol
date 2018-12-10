@@ -190,6 +190,14 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     emit SplitOperationStart(_spaceTokenId, address(newSplitOperation));
     return newSplitOperation;
   }
+  
+  function getCurrentSplitOperation(uint256 _spaceTokenId) external returns(address) {
+    return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+  }
+
+  function getSplitOperationsCount(uint256 _spaceTokenId) external returns(uint256) {
+    return tokenIdToSplitOperations[_spaceTokenId].length;
+  }
 
   function finishSplitOperation(uint256 _spaceTokenId) external {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");

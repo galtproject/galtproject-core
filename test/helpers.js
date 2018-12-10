@@ -256,7 +256,6 @@ const Helpers = {
     MartinezRueda.link('SweepQueueLinkedList', (await Helpers.getSweepQueueLinkedListLib()).address);
     MartinezRueda.link('RedBlackTree', (await Helpers.getRedBlackTreeLib()).address);
     MartinezRueda.link('SweepLineRedBlackTree', (await Helpers.getSweepLineRedBlackTreeLib()).address);
-    MartinezRueda.link('SweepQueueRedBlackTree', (await Helpers.getSweepQueueRedBlackTreeLib()).address);
     libCache.MartinezRueda = await MartinezRueda.new();
     return libCache.MartinezRueda;
   },
@@ -277,6 +276,7 @@ const Helpers = {
 
     const arrayUtils = await Helpers.getArrayUtilsLib();
     const landUtils = await Helpers.getLandUtilsLib();
+    const segmentUtils = await Helpers.getSegmentUtilsLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
 
@@ -284,6 +284,7 @@ const Helpers = {
     SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
+    SplitMerge.link('SegmentUtils', segmentUtils.address);
 
     const splitMerge = await SplitMerge.new();
     return splitMerge;
