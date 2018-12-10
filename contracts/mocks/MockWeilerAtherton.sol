@@ -3,53 +3,53 @@ pragma experimental "v0.5.0";
 //pragma experimental ABIEncoderV2;
 
 import "../utils/WeilerAtherton.sol";
-import "../utils/PolygonUtils.sol";
 
 contract MockWeilerAtherton {
   using WeilerAtherton for WeilerAtherton.State;
 
   WeilerAtherton.State private weilerAtherton;
-  PolygonUtils.CoorsPolygon private basePolygon;
-  PolygonUtils.CoorsPolygon private cropPolygon;
   
   constructor() public {
-    weilerAtherton.init();
+    weilerAtherton.initWeilerAtherton();
   }
   
-  function addPointToBasePolygon(int256[2] point) public {
-    basePolygon.points.push(point);
+  function addPointToSubjectPolygon(int256[2] point) public {
+    weilerAtherton.martinezRueda.subject.points.push(point);
   }
 
-  function addPointToCropPolygon(int256[2] point) public {
-    cropPolygon.points.push(point);
+  function addPointToClippingPolygon(int256[2] point) public {
+    weilerAtherton.martinezRueda.clipping.points.push(point);
   }
   
-  function initBasePolygon() public {
-    weilerAtherton.basePolygonInput = basePolygon;
-    weilerAtherton.initPolygon(basePolygon, weilerAtherton.basePolygon);
+  function initSubjectPolygon() public {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.subject, weilerAtherton.subjectPolygon);
   }
 
-  function initCropPolygon() public {
-    weilerAtherton.cropPolygonInput = cropPolygon;
-    weilerAtherton.initPolygon(cropPolygon, weilerAtherton.cropPolygon);
+  function initClippingPolygon() public {
+    weilerAtherton.initPolygon(weilerAtherton.martinezRueda.clipping, weilerAtherton.clippingPolygon);
   }
 
-  function addBasePolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.basePolygon);
+  function initAllPolygons() public {
+    initSubjectPolygon();
+    initClippingPolygon();
   }
 
-  function addCropPolygonSegments() public {
-    weilerAtherton.addPolygonSegments(weilerAtherton.cropPolygon);
+  function addSubjectPolygonSegments() public {
+    weilerAtherton.prepareSubjectPolygon();
+  }
+
+  function addClippingPolygonSegments() public {
+    weilerAtherton.prepareClippingPolygon();
   }
   
-  function processBentleyOttman() public {
-    weilerAtherton.processBentleyOttman();
+  function processMartinezRueda() public {
+    weilerAtherton.processMartinezRueda();
   }
 
-  function isBentleyOttmanFinished() public returns(bool) {
-    return weilerAtherton.isBentleyOttmanFinished();
+  function isMartinezRuedaFinished() public returns(bool) {
+    return weilerAtherton.isMartinezRuedaFinished();
   }
-  
+
   function addIntersectedPoints() public {
     weilerAtherton.addIntersectedPoints();
   }
@@ -70,15 +70,15 @@ contract MockWeilerAtherton {
     return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
   }
 
-  function buildBasePolygonOutput() public {
-    weilerAtherton.buildBasePolygonOutput();
+  function buildSubjectPolygonOutput() public {
+    weilerAtherton.buildSubjectPolygonOutput();
   }
 
-  function getBasePolygonOutputLength() public returns(uint256) {
-    return weilerAtherton.basePolygonOutput.points.length;
+  function getSubjectPolygonOutputLength() public returns(uint256) {
+    return weilerAtherton.subjectPolygonOutput.points.length;
   }
 
-  function getBasePolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
-    return weilerAtherton.basePolygonOutput.points[pointIndex];
+  function getSubjectPolygonOutputPoint(uint256 pointIndex) public returns(int256[2]) {
+    return weilerAtherton.subjectPolygonOutput.points[pointIndex];
   }
 }

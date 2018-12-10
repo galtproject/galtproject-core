@@ -1,18 +1,15 @@
-const PointUtils = artifacts.require('./utils/PointUtils.sol');
-const MathUtils = artifacts.require('./utils/MathUtils.sol');
-const VectorUtils = artifacts.require('./utils/VectorUtils.sol');
-const SegmentUtils = artifacts.require('./utils/SegmentUtils.sol');
 const MockSegmentUtils = artifacts.require('./mocks/MockSegmentUtils.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, ether } = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, getSegmentUtilsLib, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(MockSegmentUtils.web3.currentProvider);
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -23,18 +20,9 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('SegmentUtils', ([coreTeam]) => {
+  before(clearLibCache);
   beforeEach(async function() {
-    this.mathUtils = await MathUtils.new({ from: coreTeam });
-    PointUtils.link('MathUtils', this.mathUtils.address);
-    VectorUtils.link('MathUtils', this.mathUtils.address);
-
-    this.pointUtils = await PointUtils.new({ from: coreTeam });
-
-    this.vectorUtils = await VectorUtils.new({ from: coreTeam });
-    SegmentUtils.link('VectorUtils', this.vectorUtils.address);
-    SegmentUtils.link('MathUtils', this.mathUtils.address);
-
-    this.segmentUtils = await SegmentUtils.new({ from: coreTeam });
+    this.segmentUtils = await getSegmentUtilsLib();
     MockSegmentUtils.link('SegmentUtils', this.segmentUtils.address);
 
     this.mockSegmentUtils = await MockSegmentUtils.new({ from: coreTeam });
@@ -134,6 +122,37 @@ contract('SegmentUtils', ([coreTeam]) => {
 
       await this.compareSegments(segments[0], segments[1], -1);
       await this.compareSegments(segments[1], segments[0], 1);
+    });
+
+    describe('#pointOnSegment', () => {
+      it('should correctly detect pointOnSegment', async function() {
+        // Helpers
+        this.pointOnSegment = async function(point, segment) {
+          // console.log('      compareSegments number', number);
+          const etherPoint = point.map(coor => ether(coor));
+          const etherSegment = segment.map(sPoint => sPoint.map(coor => ether(coor)));
+
+          return this.mockSegmentUtils.pointOnSegment(etherPoint, etherSegment[0], etherSegment[1]);
+          // number += 1;
+        };
+        // Helpers end
+
+        assert.equal(
+          await this.pointOnSegment(
+            [1.214004978082901197, 104.532601700706952753],
+            [[1.229172823951, 104.510070327669], [1.203772639856, 104.509898666292]]
+          ),
+          false
+        );
+
+        assert.equal(
+          await this.pointOnSegment(
+            [1.214004978082901197, 104.532601700706952753],
+            [[1.2036009784787893, 104.53199403360486], [1.227113390341401, 104.53336732462049]]
+          ),
+          true
+        );
+      });
     });
   });
 });

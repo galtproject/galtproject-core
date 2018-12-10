@@ -232,7 +232,7 @@ contract PlotManager is AbstractApplication {
     a.id = _id;
     a.applicant = msg.sender;
     // TODO: should depend on plot area
-    a.spaceTokenId = splitMerge.initPackage();
+    a.spaceTokenId = splitMerge.initPackage(address(this));
 
     calculateAndStoreFee(a, fee);
 

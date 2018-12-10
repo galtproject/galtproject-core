@@ -1,10 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Validators = artifacts.require('./Validators.sol');
 const ValidatorStakes = artifacts.require('./ValidatorStakes.sol');
@@ -15,11 +11,14 @@ const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
+  initHelperArtifacts,
   ether,
   assertEthBalanceChanged,
   assertEqualBN,
   assertRevert,
-  zeroAddress
+  zeroAddress,
+  deploySplitMerge,
+  clearLibCache
 } = require('../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -32,6 +31,7 @@ Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
@@ -76,6 +76,7 @@ Object.freeze(Currency);
  * Bob is a validator
  */
 contract('PlotManager', accounts => {
+  before(clearLibCache);
   const [coreTeam, galtSpaceOrg, feeManager, multiSigWallet, alice, bob, charlie, dan, eve, frank] = accounts;
 
   beforeEach(async function() {
@@ -91,11 +92,6 @@ contract('PlotManager', accounts => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PlotManagerLib.link('LandUtils', this.landUtils.address);
-
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
@@ -105,14 +101,7 @@ contract('PlotManager', accounts => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
 
     await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
     await this.plotManager.initialize(
@@ -135,6 +124,8 @@ contract('PlotManager', accounts => {
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
+
+    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');

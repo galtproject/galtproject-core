@@ -1,8 +1,15 @@
 const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils');
+const LandUtils = artifacts.require('./utils/LandUtils');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils');
+const SegmentUtils = artifacts.require('./utils/SegmentUtils');
+const LinkedList = artifacts.require('./collections/LinkedList');
+const SweepQueueLinkedList = artifacts.require('./collections/SweepQueueLinkedList');
+const RedBlackTree = artifacts.require('./collections/RedBlackTree');
+const SweepLineRedBlackTree = artifacts.require('./collections/SweepLineRedBlackTree');
+const MartinezRueda = artifacts.require('./utils/MartinezRueda');
+const WeilerAtherton = artifacts.require('./utils/WeilerAtherton');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
@@ -13,6 +20,7 @@ const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const ClaimManager = artifacts.require('./ClaimManager');
 const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
@@ -45,8 +53,33 @@ module.exports = async function(deployer, network, accounts) {
     SplitMerge.link('LandUtils', landUtils.address);
     SplitMerge.link('ArrayUtils', arrayUtils.address);
 
+    const linkedList = await LinkedList.new({ from: coreTeam });
+    SweepQueueLinkedList.link('LinkedList', linkedList.address);
+    const sweepQueueLinkedList = await SweepQueueLinkedList.new({ from: coreTeam });
+
+    const redBlackTree = await RedBlackTree.new({ from: coreTeam });
+    SweepLineRedBlackTree.link('RedBlackTree', redBlackTree.address);
+    const sweepLineRedBlackTree = await SweepLineRedBlackTree.new({ from: coreTeam });
+
+    MartinezRueda.link('LinkedList', linkedList.address);
+    MartinezRueda.link('RedBlackTree', redBlackTree.address);
+    MartinezRueda.link('SweepQueueLinkedList', sweepQueueLinkedList.address);
+    MartinezRueda.link('SweepLineRedBlackTree', sweepLineRedBlackTree.address);
+    const martinezRueda = await MartinezRueda.new({ from: coreTeam });
+
     const polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    WeilerAtherton.link('LinkedList', linkedList.address);
+    WeilerAtherton.link('SweepQueueLinkedList', sweepQueueLinkedList.address);
+    WeilerAtherton.link('MartinezRueda', martinezRueda.address);
+    WeilerAtherton.link('PolygonUtils', polygonUtils.address);
+    const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
+
+    const segmentUtils = await SegmentUtils.new({ from: coreTeam });
+    SplitMerge.link('LandUtils', landUtils.address);
+    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
+    SplitMerge.link('WeilerAtherton', weilerAtherton.address);
+    SplitMerge.link('SegmentUtils', segmentUtils.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
@@ -183,6 +216,9 @@ module.exports = async function(deployer, network, accounts) {
     await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
 
@@ -256,6 +292,8 @@ module.exports = async function(deployer, network, accounts) {
             spaceTokenAbi: spaceToken.abi,
             splitMergeAddress: splitMerge.address,
             splitMergeAbi: splitMerge.abi,
+            // eslint-disable-next-line
+            spaceSplitOperationAbi: SpaceSplitOperation._json.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
             plotClarificationAddress: plotClarification.address,

@@ -144,13 +144,50 @@ library SegmentUtils {
     }
 
     if ((x - segment[0][0]) > (segment[1][0] - x)) {
-      //TODO: optimize?
       int ifac = 1 ether * (x - segment[0][0]) / (segment[1][0] - segment[0][0]);
       return ((segment[0][1] * (1 ether - ifac)) / 1 ether) + ((segment[1][1] * ifac) / 1 ether);
     } else {
-      //TODO: optimize?
       int fac = 1 ether * (segment[1][0] - x) / (segment[1][0] - segment[0][0]);
       return ((segment[0][1] * fac) / 1 ether) + ((segment[1][1] * (1 ether - fac)) / 1 ether);
     }
+  }
+
+  function pointOnSegment(int[2] point, int[2] sp1, int[2] sp2) internal view returns (bool) {
+    int deltax = sp2[0] - sp1[0];
+    int t;
+    bool liesInXDir;
+
+    if (deltax == 0) {
+      liesInXDir = (point[0] == sp1[0]);
+    } else {
+      t = (point[0] - sp1[0]) * 1 szabo / deltax;
+      liesInXDir = (t >= 0 && t <= 1 szabo);
+    }
+
+    if (liesInXDir) {
+      int deltay = sp2[1] - sp1[1];
+      if (deltay == 0) {
+        return (point[1] == sp1[1]);
+      } else {
+        t = (point[1] - sp1[1]) * 1 szabo / deltay;
+        return (t >= 0 && t <= 1 szabo);
+      }
+    } else {
+      return false;
+    }
+
+    //  else:
+    //  
+    //  else:
+    //  return False
+    //    return MathUtils.abs(((sp2[1] - sp1[1]) / (sp2[0] - sp1[0]) * (point[0] - sp1[0]) + sp1[1]) - point[1]) < 1000000000 // tolerance, rounding errors
+    //            && point[0] >= sp1[0] && point[0] <= sp2[0];      // are they also on this segment?
+    //  
+    //    int256 L2 = (((sp2[0] - sp1[0]) * (sp2[0] - sp1[0])) + ((sp2[1] - sp1[1]) * (sp2[1] - sp1[1])));
+    //    if (L2 == 0) {
+    //      return false;
+    //    }
+    //    int256 r = (((point[0] - sp1[0]) * (sp2[0] - sp1[0])) + ((point[1] - sp1[1]) * (sp2[1] - sp1[1]))) / L2;
+    //    return (0 <= r) && (r <= 1);
   }
 }

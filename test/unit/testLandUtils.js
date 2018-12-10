@@ -1,4 +1,6 @@
 const LandUtils = artifacts.require('./utils/LandUtils.sol');
+const MockLandUtils = artifacts.require('./mocks/MockLandUtils.sol');
+
 const Web3 = require('web3');
 const { assertRevert } = require('../helpers');
 
@@ -8,6 +10,9 @@ contract('LandUtils', ([deployer]) => {
   beforeEach(async function() {
     this.utils = await LandUtils.new({ from: deployer });
     this.utils3 = new web3.eth.Contract(this.utils.abi, this.utils.address);
+
+    MockLandUtils.link('LandUtils', this.utils.address);
+    this.mockLandUtils = await MockLandUtils.new({ from: deployer });
   });
 
   describe('#geohash5Precision()', () => {
@@ -39,17 +44,36 @@ contract('LandUtils', ([deployer]) => {
       assert.equal(await this.utils3.methods.geohash5Precision('1152921504606846975').call(), 12);
     });
 
-    it('should revert on 0 input', async function() {
-      await assertRevert(this.utils3.methods.geohash5Precision('0').call());
-    });
-
-    it('should revert on empty input', async function() {
-      await assertRevert(this.utils3.methods.geohash5Precision('0').call());
+    it('should return 0 on 0 input', async function() {
+      assert.equal(await this.utils3.methods.geohash5Precision('0').call(), 0);
     });
 
     it('should revert if a value is greater than max', async function() {
       // max is 1152921504606846975
       await assertRevert(this.utils3.methods.geohash5Precision('1152921504606846976').call());
+    });
+  });
+
+  describe('#geohash5ToLatLonArr()', () => {
+    it('should correctly convert geohash5 to lat lon', async function() {
+      const res = await this.mockLandUtils.geohash5ToLatLonArr(30136808136, {
+        from: deployer
+      });
+
+      assert.deepEqual(res.logs[0].args.result.map(coor => coor.toString(10)), [
+        '1178970336914062500',
+        '104513626098632812500'
+      ]);
+    });
+  });
+
+  describe('#latLonToGeohash5()', () => {
+    it('should correctly convert lat lon to geohash5', async function() {
+      const res = await this.mockLandUtils.latLonToGeohash5(['1178970336914062500', '104513626098632812500'], 7, {
+        from: deployer
+      });
+
+      assert.deepEqual(res.logs[0].args.result.toString(10), '30136808136');
     });
   });
 });

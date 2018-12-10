@@ -1,11 +1,7 @@
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceDex = artifacts.require('./SpaceDex.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Validators = artifacts.require('./Validators.sol');
@@ -13,10 +9,20 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { zeroAddress, assertGaltBalanceChanged, initHelperWeb3, ether, szabo } = require('../helpers');
+const {
+  zeroAddress,
+  assertGaltBalanceChanged,
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  szabo,
+  deploySplitMerge,
+  clearLibCache
+} = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 const { BN } = Web3.utils;
 
 // TODO: move to helpers
@@ -28,25 +34,17 @@ chai.use(chaiBigNumber);
 chai.should();
 
 contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+  before(clearLibCache);
   const fee = 15;
   const baseExchangeRate = 1;
 
   beforeEach(async function() {
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.spaceDex = await SpaceDex.new({ from: coreTeam });
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
     this.validators = await Validators.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
