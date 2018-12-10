@@ -344,17 +344,17 @@ module.exports = async function(deployer, network, accounts) {
       }
     ];
 
-    await pIteration.forEachSeries(spaceTokensToMint, async (spaceTokenItem, index) => {
-      await spaceToken.mint(coreTeam, { from: coreTeam });
-      const tokenId = `0x000000000000000000000000000000000000000000000000000000000000000${index}`;
+    await pIteration.forEachSeries(spaceTokensToMint, async spaceTokenItem => {
+      const res = await spaceToken.mint(coreTeam, { from: coreTeam });
+      const { _tokenId } = res.logs[0].args;
 
       const { contour, level } = spaceTokenItem;
       const height = level === 1 ? 0 : 2;
 
-      await splitMerge.setPackageContour(tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-      await splitMerge.setPackageHeights(tokenId, contour.map(() => ether(height)), { from: coreTeam });
-      await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
-      await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
+      await splitMerge.setPackageContour(_tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
+      await splitMerge.setPackageHeights(_tokenId, contour.map(() => ether(height)), { from: coreTeam });
+      await splitMerge.setPackageLevel(_tokenId, level, { from: coreTeam });
+      await spaceToken.transferFrom(coreTeam, users.DevNickUser, _tokenId, { from: coreTeam });
     });
   });
 };

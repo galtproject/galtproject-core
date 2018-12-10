@@ -61,6 +61,14 @@ contract SpaceSplitOperation {
     clippingContour = _clippingContour;
   }
 
+  function getSubjectContour() external view returns (uint256[]) {
+    return subjectContour;
+  }
+
+  function getClippingContour() external view returns (uint256[]) {
+    return clippingContour;
+  }
+
   function init() external {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
