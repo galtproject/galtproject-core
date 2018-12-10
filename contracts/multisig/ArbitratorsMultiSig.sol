@@ -23,6 +23,10 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
 
+  address public arbitratorVoting;
+  address public oracleStakesAccounting;
+  bool initialized;
+
   modifier forbidden() {
     assert(false);
     _;
@@ -86,5 +90,18 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
       emit OwnerAddition(o);
     }
     emit NewAuditorsSet(owners, m, n);
+  }
+
+  function initialize(
+    address _arbitratorVoting,
+    address _oracleStakesAccounting
+  )
+    external
+  {
+    require(initialized == false, "Already initialized");
+
+    arbitratorVoting = _arbitratorVoting;
+    oracleStakesAccounting = _oracleStakesAccounting;
+    initialized = true;
   }
 }

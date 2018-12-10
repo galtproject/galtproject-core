@@ -19,6 +19,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./collections/ArraySet.sol";
 import "./traits/Permissionable.sol";
 import "./SpaceToken.sol";
+import "./multisig/ArbitratorsMultiSig.sol";
+import "./multisig/ArbitratorVoting.sol";
 
 
 contract SpaceReputationAccounting is Permissionable {
@@ -30,10 +32,13 @@ contract SpaceReputationAccounting is Permissionable {
   SpaceToken spaceToken;
 
   // Delegate => balance
-  mapping (address => uint256) private _balances;
+  mapping(address => uint256) private _balances;
 
   // Reputation Owner => (Delegate => balance))
-  mapping (address => mapping (address => uint256)) private _delegations;
+  mapping(address => mapping(address => uint256)) private _delegations;
+
+  // Delegate => locked
+  mapping(address => mapping(address => uint256)) private _locks;
 
   // HACK: there is no token area accounting anywhere else yet
   mapping(uint256 => uint256) public tokenArea;
@@ -87,7 +92,7 @@ contract SpaceReputationAccounting is Permissionable {
   }
 
   // Transfer owned reputation
-  function transfer(address _to, address _owner, uint256 _amount) external {
+  function delegate(address _to, address _owner, uint256 _amount) external {
     require(_balances[msg.sender] >= _amount, "Not enough funds");
     require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
     // TODO: check space owner
@@ -116,6 +121,35 @@ contract SpaceReputationAccounting is Permissionable {
     _delegations[msg.sender][msg.sender] += _amount;
   }
 
+  function revokeLocked(address _multiSig, address _delegate, uint256 _amount) external {
+
+  }
+
+  function lockReputation(address _multiSig, uint256 _amount) external {
+    require(_balances[msg.sender] >= _amount, "Insufficient amount to lock");
+
+    _balances[msg.sender] -= _amount;
+    _locks[msg.sender][_multiSig] += _amount;
+
+    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
+    ArbitratorVoting(voting).onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
+  }
+
+  function unlockReputation(address _multiSig, uint256 _amount) external {
+    uint256 beforeUnlock = _locks[msg.sender][_multiSig];
+    uint256 afterUnlock = _locks[msg.sender][_multiSig] - _amount;
+
+    require(beforeUnlock >= _amount, "Insufficient amount to lock");
+    require(afterUnlock >= 0, "Insufficient amount to lock");
+    require(afterUnlock < _locks[msg.sender][_multiSig], "Insufficient amount to lock");
+
+    _locks[msg.sender][_multiSig] -= _amount;
+    _balances[msg.sender] += _amount;
+
+    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
+    ArbitratorVoting(voting).onDelegateReputationChanged(msg.sender, afterUnlock);
+  }
+
   function unstake(
     uint256 _spaceTokenId
   )
@@ -138,12 +172,16 @@ contract SpaceReputationAccounting is Permissionable {
     tokenStaked[_spaceTokenId] = false;
   }
 
-    // EVENTS (PERMISSION CHECKS)
+  // EVENTS (PERMISSION CHECKS)
   function requireUnstaked(uint256 _spaceTokenId) external {
     require(tokenStaked[_spaceTokenId] == false, "Token is staked and cannot be moved");
   }
 
   // GETTERS
+
+  function lockedBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
+    return _locks[_owner][_multiSig];
+  }
 
   // ERC20 compatible
   function balanceOf(address owner) public view returns (uint256) {

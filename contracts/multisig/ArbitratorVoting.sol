@@ -24,6 +24,10 @@ contract ArbitratorVoting is Permissionable {
 //  using Bytes32Set for ArraySet.Bytes32Set;
   using ArraySet for ArraySet.AddressSet;
 
+
+  event ReputationMint(address delegate, uint256 amount);
+  event ReputationBurn(address delegate, uint256 amount);
+
   event OracleStakeChanged(
     address oracle,
     address candidate,
@@ -31,6 +35,8 @@ contract ArbitratorVoting is Permissionable {
     uint256 newOracleWeight,
     uint256 newCandidateWeight
   );
+
+  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
 
   string public constant ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
   string public constant SPACE_REPUTATION_NOTIFIER = "space_reputation_notifier";
@@ -40,7 +46,6 @@ contract ArbitratorVoting is Permissionable {
 
   OracleStakesAccounting oracleStakesAccounting;
   SpaceReputationAccounting spaceReputationAccounting;
-  SpaceToken spaceToken; // Remove?
 //  mapping(address => uint256) private candidate;
 //  mapping(address => uint256) private stakeTotal;
 
@@ -48,10 +53,19 @@ contract ArbitratorVoting is Permissionable {
   mapping(address => Oracle) private oracles;
   // Candidate => totalWeights
   mapping(address => uint256) private oracleCandidateWeight;
+  // Delegate => Delegate details
+  mapping(address => Delegate) private delegates;
+  // Candidate/Delegate => balance
+  mapping(address => uint256) private balances;
 
   struct Oracle {
     address candidate;
     uint256 weight;
+  }
+
+  struct Delegate {
+    mapping(address => uint256) distributedWeight;
+    ArraySet.AddressSet candidates;
   }
 
   uint256 totalOracleStakes;
@@ -73,17 +87,6 @@ contract ArbitratorVoting is Permissionable {
     oracleStakesAccounting = _oracleStakesAccounting;
   }
 
-  //
-  function voteWithSpaceReputation(address _candidate, uint256 _weight) external {
-    // TODO: mint reputation
-    // TODO: check weither user has already voted for this candidate or not
-    // TODO: if yes, increment
-    // TODO: if not, check that set is < 5
-    // TODO: add candidate to set
-    // tODO: store weigt
-    // TODO: increment candidate weight
-  }
-
   // 'Oracle Stake Locking' accounting only inside this contract
   function voteWithOracleStake(address _candidate) external {
     // TODO: check oracle is activev
@@ -103,11 +106,68 @@ contract ArbitratorVoting is Permissionable {
     oracleCandidateWeight[_candidate] += newWeight;
   }
 
-  // @dev SpaceOwner balance changed
-  function spaceOwnersCallback() external {
+  function grantReputation(address _candidate, uint256 _amount) external {
+    require(balances[msg.sender] >= _amount, "Not enough reputation");
 
+    delegates[msg.sender].distributedWeight[_candidate] += _amount;
+    balances[msg.sender] -= _amount;
+    balances[_candidate] += _amount;
   }
 
+  function revokeReputation(address _candidate, uint256 _amount) external {
+    require(balances[_candidate] >= _amount, "Not enough reputation");
+    require(delegates[msg.sender].distributedWeight[_candidate] >= _amount, "Not enough reputation");
+
+    delegates[msg.sender].distributedWeight[_candidate] -= _amount;
+    balances[msg.sender] += _amount;
+    balances[_candidate] -= _amount;
+  }
+
+  // @dev SpaceOwner balance changed
+  // Handles SRA stakeReputation and revokeReputation calls
+  function onDelegateReputationChanged(
+    address _delegate,
+    uint256 _newWeight
+  )
+    external
+    onlyRole(SPACE_REPUTATION_NOTIFIER)
+  {
+    uint256 currentWeight = balances[_delegate];
+
+    if (_newWeight >= currentWeight) {
+      // mint
+      uint256 diff = _newWeight - currentWeight;
+      balances[_delegate] += diff;
+
+      emit ReputationMint(_delegate, diff);
+    } else {
+      // burn
+      uint256 diff = currentWeight - _newWeight;
+      assert(diff < currentWeight);
+
+      emit ReputationBurn(_delegate, diff);
+
+      uint256 remainder = diff;
+      balances[_delegate] -= diff;
+      address[] memory candidates = delegates[_delegate].candidates.elements();
+
+      for (uint256 i = 0; i < DELEGATE_CANDIDATES_LIMIT; i++) {
+        address candidate = candidates[i];
+        uint256 v = delegates[_delegate].distributedWeight[candidate];
+
+        if (v >= remainder) {
+          delegates[_delegate].distributedWeight[candidate] = 0;
+          assert(balances[candidate] >= v);
+
+          balances[candidate] -= v;
+        } else {
+          assert(delegates[_delegate].distributedWeight[candidate] > remainder);
+          delegates[_delegate].distributedWeight[candidate] -= remainder;
+          return;
+        }
+      }
+    }
+  }
 
   // @dev Oracle balance changed
   function onOracleStakeChanged(
@@ -126,7 +186,7 @@ contract ArbitratorVoting is Permissionable {
     }
 
     // Change candidate weight
-    oracleCandidateWeight[currentCandidate] += (_newWeight - currentWeight);
+    oracleCandidateWeight[currentCandidate] = oracleCandidateWeight[currentCandidate] - currentWeight + _newWeight;
 
     // Change oracle weight
     oracles[_oracle].weight = _newWeight;
@@ -190,6 +250,10 @@ contract ArbitratorVoting is Permissionable {
 
   function getOracleCandidateWeight(address _candidate) external view returns (uint256) {
     return oracleCandidateWeight[_candidate];
+  }
+
+  function getSpaceReputationBalance(address _delegate) external view returns (uint256) {
+    return balances[_delegate];
   }
 
   function getSize() external view returns (uint256 size) {
