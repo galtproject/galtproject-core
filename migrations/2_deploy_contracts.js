@@ -41,11 +41,13 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const coreTeam = accounts[0];
     // const proxiesAdmin = accounts[1];
+    const sandboxAdmin = '0x88C43B1a90360329B82876AE7237Dcb2B2282845';
 
     // Deploy contracts...
     console.log('Create contract instances...');
     const galtToken = await GaltToken.new({ from: coreTeam });
     const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    const spaceTokenSandbox = await SpaceToken.new('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     const landUtils = await LandUtils.new({ from: coreTeam });
     const arrayUtils = await ArrayUtils.new({ from: coreTeam });
@@ -81,6 +83,7 @@ module.exports = async function(deployer, network, accounts) {
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
+    const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
     const spaceDex = await SpaceDex.new({ from: coreTeam });
@@ -124,8 +127,10 @@ module.exports = async function(deployer, network, accounts) {
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
     await spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
+    await spaceTokenSandbox.initialize('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(
       spaceToken.address,
@@ -218,6 +223,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+    await splitMergeSandbox.addRoleTo(sandboxAdmin, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
@@ -226,6 +232,11 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
+
+    await spaceTokenSandbox.addRoleTo(sandboxAdmin, 'minter', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'minter', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'burner', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'operator', { from: coreTeam });
 
     await vsMultiSig.addRoleTo(auditors.address, await vsMultiSig.ROLE_AUDITORS_MANAGER(), { from: coreTeam });
     await vsMultiSig.addRoleTo(claimManager.address, await vsMultiSig.ROLE_PROPOSER(), { from: coreTeam });
@@ -319,7 +330,11 @@ module.exports = async function(deployer, network, accounts) {
             auditorsAddress: auditors.address,
             auditorsAbi: auditors.abi,
             validatorStakesMultiSigAddress: vsMultiSig.address,
-            validatorStakesMultiSigAbi: vsMultiSig.abi
+            validatorStakesMultiSigAbi: vsMultiSig.abi,
+            spaceTokenSandboxAddress: spaceTokenSandbox.address,
+            spaceTokenSandboxAbi: spaceTokenSandbox.address,
+            splitMergeSandboxAddress: splitMergeSandbox.address,
+            splitMergeSandboxAbi: splitMergeSandbox.address
           },
           null,
           2
