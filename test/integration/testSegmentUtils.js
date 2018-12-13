@@ -124,7 +124,7 @@ contract('SegmentUtils', ([coreTeam]) => {
       await this.compareSegments(segments[1], segments[0], 1);
     });
 
-    describe('#pointOnSegment', () => {
+    describe.only('#pointOnSegment', () => {
       it('should correctly detect pointOnSegment', async function() {
         // Helpers
         this.pointOnSegment = async function(point, segment) {
@@ -151,6 +151,15 @@ contract('SegmentUtils', ([coreTeam]) => {
             [[1.2036009784787893, 104.53199403360486], [1.227113390341401, 104.53336732462049]]
           ),
           true
+        );
+
+        // TODO: make it work
+        assert.equal(
+          await this.pointOnSegment(
+            [1.217695382181004489, 104.519599819276801756],
+            [[1.231060596182942388, 104.518523309379816054], [1.207720013335347173, 104.543261658400297163]]
+          ),
+          false
         );
       });
     });

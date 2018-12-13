@@ -275,7 +275,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    // TODO: make it work
+    // Not supported case
     it.skip('should correctly split 4, 4 => 4, 4, 4', async function() {
       const subjectSpaceTokenId = await this.mintSpaceTokenId([
         'w24r1bj7mnrd',
@@ -390,6 +390,36 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         'w24qfhen6688',
         'w24qfkteb688',
         'w24qfq4vhw94'
+      ]);
+
+      assert.equal(clippingSpaceTokensIds.length, 1);
+      assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
+        'w24qfmefgc0c',
+        'w24qfjtvhzhf',
+        'w24qfhen6688',
+        'w24qfkteb688'
+      ]);
+
+      assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
+        'w24qfj8rmnys',
+        'w24qfjtvhzhf',
+        'w24qfhen6688',
+        'w24qfkteb688',
+        'w24qfmefgc0c',
+        'w24qft983nbn',
+        'w24qf6pr2p8n',
+        'w24qcfr4sh0n'
+      ]);
+    });
+
+    // TODO: put correct output and make it work
+    it('should correctly split real case 1', async function() {
+      const subjectSpaceTokenId = await this.mintSpaceTokenId(['w24r42h56n7d', 'w24qfgy56x3f', 'w24qf6tv6pt5']);
+
+      const clippingSpaceTokensIds = await this.splitPackage(subjectSpaceTokenId, [
+        'w24r434v6n4d',
+        'w24r4c11qqn5',
+        'w24qfm7eqngr'
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
