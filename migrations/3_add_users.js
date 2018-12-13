@@ -41,7 +41,9 @@ module.exports = async function(deployer, network, accounts) {
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
+    const spaceTokenSandbox = await SpaceToken.at(data.spaceTokenSandboxAddress);
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
+    const splitMergeSandbox = await SplitMerge.at(data.splitMergeSandboxAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const spaceDex = await SpaceDex.at(data.spaceDexAddress);
@@ -60,6 +62,10 @@ module.exports = async function(deployer, network, accounts) {
       ganache: 20,
       production: 0
     };
+
+    const sandboxAdmin = '0x22c2e060b231ff2ba92459c85fee060d7f79c17a';
+    await splitMergeSandbox.addRoleTo(sandboxAdmin, 'geo_data_manager', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(sandboxAdmin, 'minter', { from: coreTeam });
 
     const PM_CADASTRAL_ROLE = 'pm_cadastral';
     const PM_AUDITOR_ROLE = 'pm_auditor';
@@ -151,7 +157,8 @@ module.exports = async function(deployer, network, accounts) {
       DevNickValidator: '0x3ff14ddd3da95f6f9ae7110c5197834e6167c8a3',
       DevNickValidator2: '0xa39b23e3befec6711f4c207c84604293f4409193',
       DevNickValidator3: '0xc25b780c31a93a95d0e0bca3ccc63645f7e7de6a',
-      DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7'
+      DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7',
+      sandboxAdmin
     };
 
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin', 'DevNik', 'DevNik2', 'DevNickAdmin'];

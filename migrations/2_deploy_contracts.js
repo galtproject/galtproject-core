@@ -41,7 +41,6 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const coreTeam = accounts[0];
     // const proxiesAdmin = accounts[1];
-    const sandboxAdmin = '0x88C43B1a90360329B82876AE7237Dcb2B2282845';
 
     // Deploy contracts...
     console.log('Create contract instances...');
@@ -223,7 +222,6 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
-    await splitMergeSandbox.addRoleTo(sandboxAdmin, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
@@ -233,7 +231,6 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'burner', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
-    await spaceTokenSandbox.addRoleTo(sandboxAdmin, 'minter', { from: coreTeam });
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'minter', { from: coreTeam });
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'burner', { from: coreTeam });
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'operator', { from: coreTeam });
@@ -332,9 +329,9 @@ module.exports = async function(deployer, network, accounts) {
             validatorStakesMultiSigAddress: vsMultiSig.address,
             validatorStakesMultiSigAbi: vsMultiSig.abi,
             spaceTokenSandboxAddress: spaceTokenSandbox.address,
-            spaceTokenSandboxAbi: spaceTokenSandbox.address,
+            spaceTokenSandboxAbi: spaceTokenSandbox.abi,
             splitMergeSandboxAddress: splitMergeSandbox.address,
-            splitMergeSandboxAbi: splitMergeSandbox.address
+            splitMergeSandboxAbi: splitMergeSandbox.abi
           },
           null,
           2
