@@ -19,7 +19,7 @@ pragma experimental "v0.5.0";
 
 library SegmentUtils {
 
-  int256 internal constant EPS = 1000000000;
+  int256 internal constant EPS = 1000000000000000;
 
   enum Position {
     BEFORE,
@@ -151,29 +151,43 @@ library SegmentUtils {
       return ((segment[0][1] * fac) / 1 ether) + ((segment[1][1] * (1 ether - fac)) / 1 ether);
     }
   }
+  
+  function cmp(int x, int y) internal view returns(int) {
+    if(x == y) {
+      return 0;
+    }
+    if(x < y) {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
 
-//  function distance(int[2] a, int[2] b) internal view returns (bool) {
-//    return MathUtils.sqrtInt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+  event LogPoint(string s, int[2] p);
+  // Return true iff point c intersects the line segment from a to b.
+//  function pointOnSegment(int[2] c, int[2] a, int[2] b) internal returns (bool) {
+//    emit LogPoint("c", c);
+//    emit LogPoint("a", a);
+//    emit LogPoint("b", b);
+//    return ((b[0] - a[0]) * (c[1] - a[1]) == (c[0] - a[0]) * (b[1] - a[1]))
+//            && MathUtils.abs(cmp(a[0], c[0]) + cmp(b[0], c[0])) <= 1
+//            && MathUtils.abs(cmp(a[1], c[1]) + cmp(b[1], c[1])) <= 1;
 //  }
 
-  // Return true iff a, b, and c all lie on the same line.
-  function collinear(int[2] a, int[2] b, int[2] c) internal view returns (bool) {
-    return (b[0] - a[0]) * (c[1] - a[1]) == (c[0] - a[0]) * (b[1] - a[1]);
-  }
-  // Return true iff q is between p and r (inclusive).
-  function within(int p, int q, int r) internal view returns (bool) {
-    return (p <= q && q <= r) || (r <= q && q <= p);
-  }
+  event LogDiff(int diff);
+  function pointOnSegment(int[2] point, int[2] sp1, int[2] sp2) internal returns (bool) {
+    emit LogPoint("c", point);
+    emit LogPoint("a", sp1);
+    emit LogPoint("b", sp2);
 
-  // Return true iff point c intersects the line segment from a to b.
-  function pointOnSegment(int[2] c, int[2] a, int[2] b) internal view returns (bool) {
-    if (!collinear(a, b, c)) {
-      return false;
-    }
-    if (a[0] != b[0]) {
-      return within(a[0], c[0], b[0]);
+    int a = (sp2[1] - sp1[1]) / (sp2[0] - sp1[0]);
+    int b = sp1[1] - a * sp1[0];
+    int diff = MathUtils.abs(point[1] - (a * point[0] + b));
+    emit LogDiff(diff);
+    if (diff < EPS) {
+      return true;
     } else {
-      return within(a[1], c[1], b[1]);
+      return false;
     }
   }
 }
