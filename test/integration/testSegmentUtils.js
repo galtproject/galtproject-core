@@ -156,7 +156,9 @@ contract('SegmentUtils', ([coreTeam]) => {
         // TODO: make it work
         assert.equal(
           await this.pointOnSegment(
+            // w24qfmsve4y7
             [1.217695382181004489, 104.519599819276801756],
+            // w24r42h56n7d                                    w24qfgy56x3f
             [[1.231060596182942388, 104.518523309379816054], [1.207720013335347173, 104.543261658400297163]]
           ),
           false

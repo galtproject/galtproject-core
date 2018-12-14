@@ -152,42 +152,28 @@ library SegmentUtils {
     }
   }
 
-  function pointOnSegment(int[2] point, int[2] sp1, int[2] sp2) internal view returns (bool) {
-    int deltax = sp2[0] - sp1[0];
-    int t;
-    bool liesInXDir;
+//  function distance(int[2] a, int[2] b) internal view returns (bool) {
+//    return MathUtils.sqrtInt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+//  }
 
-    if (deltax == 0) {
-      liesInXDir = (point[0] == sp1[0]);
-    } else {
-      t = (point[0] - sp1[0]) * 1 szabo / deltax;
-      liesInXDir = (t >= 0 && t <= 1 szabo);
-    }
+  // Return true iff a, b, and c all lie on the same line.
+  function collinear(int[2] a, int[2] b, int[2] c) internal view returns (bool) {
+    return (b[0] - a[0]) * (c[1] - a[1]) == (c[0] - a[0]) * (b[1] - a[1]);
+  }
+  // Return true iff q is between p and r (inclusive).
+  function within(int p, int q, int r) internal view returns (bool) {
+    return (p <= q && q <= r) || (r <= q && q <= p);
+  }
 
-    if (liesInXDir) {
-      int deltay = sp2[1] - sp1[1];
-      if (deltay == 0) {
-        return (point[1] == sp1[1]);
-      } else {
-        t = (point[1] - sp1[1]) * 1 szabo / deltay;
-        return (t >= 0 && t <= 1 szabo);
-      }
-    } else {
+  // Return true iff point c intersects the line segment from a to b.
+  function pointOnSegment(int[2] c, int[2] a, int[2] b) internal view returns (bool) {
+    if (!collinear(a, b, c)) {
       return false;
     }
-
-    //  else:
-    //  
-    //  else:
-    //  return False
-    //    return MathUtils.abs(((sp2[1] - sp1[1]) / (sp2[0] - sp1[0]) * (point[0] - sp1[0]) + sp1[1]) - point[1]) < 1000000000 // tolerance, rounding errors
-    //            && point[0] >= sp1[0] && point[0] <= sp2[0];      // are they also on this segment?
-    //  
-    //    int256 L2 = (((sp2[0] - sp1[0]) * (sp2[0] - sp1[0])) + ((sp2[1] - sp1[1]) * (sp2[1] - sp1[1])));
-    //    if (L2 == 0) {
-    //      return false;
-    //    }
-    //    int256 r = (((point[0] - sp1[0]) * (sp2[0] - sp1[0])) + ((point[1] - sp1[1]) * (sp2[1] - sp1[1]))) / L2;
-    //    return (0 <= r) && (r <= 1);
+    if (a[0] != b[0]) {
+      return within(a[0], c[0], b[0]);
+    } else {
+      return within(a[1], c[1], b[1]);
+    }
   }
 }
