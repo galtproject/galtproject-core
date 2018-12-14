@@ -422,8 +422,6 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      console.log(JSON.stringify(await this.getGeohashesContour(clippingSpaceTokensIds[0])));
-      console.log(JSON.stringify(await this.getGeohashesContour(subjectSpaceTokenId)));
       assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
         'w24qfmsve4y7',
         'w24r42h56n7d',

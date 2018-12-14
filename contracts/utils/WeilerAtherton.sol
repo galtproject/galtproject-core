@@ -150,7 +150,7 @@ library WeilerAtherton {
         continue;
       }
 
-            emit LogPoint("newPointHash", state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point);
+//      emit LogPoint("newPointHash", state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point);
       
       if (addIntersectedPointsToPolygon(state, state.subjectPolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
         if (!addIntersectedPointsToPolygon(state, state.clippingPolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
@@ -158,19 +158,14 @@ library WeilerAtherton {
           require(false, "Intersected point of subject polygon not found in clipping polygon");
         }
       } else {
-        emit LogFailed("Intersected point cant placed to subject polygon");
-//        require(false, "Intersected point cant placed to subject polygon");
+//        emit LogFailed("Intersected point cant placed to subject polygon");
+        require(false, "Intersected point cant placed to subject polygon");
       }
     }
   }
 
   function addIntersectedPointsToPolygon(State storage state, Polygon storage polygon, int256[2] point, bytes32 pointHash) private returns (bool) {
     // is segment points exists in polygon
-    
-    //1217695382181004489,104519599819276801756 - w24qfmsve4y7
-    //1231060596182942388,104518523309379816054 - w24r42h56n7d
-    //1207720013335347173,104543261658400297163 - w24qfgy56x3f
-    //
 
     bytes32 pointToReplace;
     bytes32 currentPoint = polygon.startPoint;
