@@ -151,7 +151,7 @@ library WeilerAtherton {
       }
 
 //      emit LogPoint("newPointHash", state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point);
-      
+      // TODO: reject if point on more then one segment in one polygon  
       if (addIntersectedPointsToPolygon(state, state.subjectPolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
         if (!addIntersectedPointsToPolygon(state, state.clippingPolygon, state.martinezRueda.store.sweepById[state.martinezRueda.resultEvents[j]].point, newPointHash)) {
           emit LogFailed("Intersected point of subject polygon not found in clipping polygon");
