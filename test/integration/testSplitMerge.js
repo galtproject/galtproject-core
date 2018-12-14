@@ -412,7 +412,6 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
     });
 
-    // TODO: put correct output and make it work
     it('should correctly split real case 1', async function() {
       const subjectSpaceTokenId = await this.mintSpaceTokenId(['w24r42h56n7d', 'w24qfgy56x3f', 'w24qf6tv6pt5']);
 
@@ -423,22 +422,19 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
+      console.log(JSON.stringify(await this.getGeohashesContour(clippingSpaceTokensIds[0])));
+      console.log(JSON.stringify(await this.getGeohashesContour(subjectSpaceTokenId)));
       assert.deepEqual(await this.getGeohashesContour(clippingSpaceTokensIds[0]), [
-        'w24qfmefgc0c',
-        'w24qfjtvhzhf',
-        'w24qfhen6688',
-        'w24qfkteb688'
+        'w24qfmsve4y7',
+        'w24r42h56n7d',
+        'w24qfwck0tek'
       ]);
 
       assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), [
-        'w24qfj8rmnys',
-        'w24qfjtvhzhf',
-        'w24qfhen6688',
-        'w24qfkteb688',
-        'w24qfmefgc0c',
-        'w24qft983nbn',
-        'w24qf6pr2p8n',
-        'w24qcfr4sh0n'
+        'w24qfwck0tek',
+        'w24qfgy56x3f',
+        'w24qf6tv6pt5',
+        'w24qfmsve4y7'
       ]);
     });
 
