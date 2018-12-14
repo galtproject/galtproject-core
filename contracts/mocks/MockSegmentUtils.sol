@@ -40,7 +40,9 @@ contract MockSegmentUtils {
     return result;
   }
 
-  function pointOnSegment(int[2] point, int[2] sp1, int[2] sp2) public view returns(bool) {
-    return SegmentUtils.pointOnSegment(point, sp1, sp2);
+  function pointOnSegment(int[2] point, int[2] sp1, int[2] sp2) public returns(bool) {
+    bool result = SegmentUtils.pointOnSegment(point, sp1, sp2);
+    emit BoolResult(result);
+    return result;
   }
 }
