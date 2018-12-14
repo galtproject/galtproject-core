@@ -6,7 +6,6 @@ const SpaceToken = artifacts.require('./SpaceToken');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
 const GaltDex = artifacts.require('./GaltDex');
-const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
 const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const ClaimManager = artifacts.require('./ClaimManager');
@@ -44,7 +43,6 @@ module.exports = async function(deployer, network, accounts) {
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
-    const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const validators = await Validators.at(data.validatorsAddress);
     const validatorStakes = await ValidatorStakes.at(data.validatorStakesAddress);
     const claimManager = await ClaimManager.at(data.claimManagerAddress);
@@ -256,7 +254,6 @@ module.exports = async function(deployer, network, accounts) {
 
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(spaceDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(validators.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(validators.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
