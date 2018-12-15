@@ -61,15 +61,17 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     });
   });
 
-  describe.only('#getTrueSinOfEther()', () => {
-    it('should correctly get sin', async function() {
-      await pIteration.forEachSeries([13], async angle => {//, 37, 76, 90, 93, 108, 137, 180, 189
+  describe('#getTrueSinOfEther()', () => {
+    it.only('should correctly get sin', async function() {
+      await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {//
         const res = await this.mockTrigonometryUtils.getTrueSinOfEther(Web3.utils.toWei(angle.toString(), 'ether'));
 
         console.log(`      Sin of ${angle}:`);
-        console.log(`      JavaScript:`, mySin(angle));
-        console.log(`      Solidity:  `, "0." + res.logs[0].args.result.toFixed());
+        console.log(`      JavaScript:`, Math.sin(angle));
+        console.log(`      mySin:`, mySin(angle));
+        console.log(`      Solidity:  `, res.logs[0].args.result.toFixed() / (10 ** 18));
         console.log(``);
+        console.log(`gasUsed: ${res.receipt.gasUsed}`);
       });
 
       assert.equal(true, false);
@@ -80,18 +82,12 @@ contract('TrigonometryUtils', ([coreTeam]) => {
 
 
 function mySin(x) {
-    var q;
-    var s = 0;
-    var N = 100;
-    //Индексная переменная:
-    var n;
-    q = x;
-    //Вычисление синуса:
-    for(n = 1; n <= N; n++){
-        s += q;
-        q *= (-1) * x * x / ((2 * n) * (2 * n + 1));
-        console.log(q, s);
-    }
-    //Результат:
-    return s;
+    const tp = 1./(2.*Math.PI);
+    x *= tp;
+    x -= 0.25 + Math.floor(x + 0.25);
+    x *= 16 * (Math.abs(x) - 0.5);
+    // #if EXTRA_PRECISION
+    x += 0.225 * x * (Math.abs(x) - 1.);
+    // #endif
+    return x;
 }

@@ -34,7 +34,7 @@ contract('PolygonUtils', ([coreTeam]) => {
   });
 
   describe('#getArea()', () => {
-    it.skip('should correctly get area', async function() {
+    it('should correctly get area', async function() {
       const contour = [
         [1.2291728239506483, 104.51007032766938],
         [1.2037726398557425, 104.50989866629243],

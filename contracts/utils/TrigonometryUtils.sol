@@ -70,8 +70,6 @@ library TrigonometryUtils {
     return sin(angleToNumber(etherAngle));
   }
 
-  event SinIteration(int256 q, int256 s);
-  event Divide(int256 qBefore, int256 qAfter);
   function getTrueSinOfInt(int256 x) internal returns(int256) {
     int q;
     int s = 0;
@@ -84,12 +82,10 @@ library TrigonometryUtils {
       s += q;
       
       q *= ((-1) * x * x) / ((2 * n) * (2 * n + 1) * 1 ether);
-//        emit Divide(q, q / 1 ether);
-        q /= 1 ether;
-        if(q == 0) {
-          q = 1;
-        }
-      emit SinIteration(q, s);
+      q /= 1 ether;
+      if(q == 0) {
+        return s;
+      }
     }
     //Результат:
     return s;
