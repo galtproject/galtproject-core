@@ -6,6 +6,7 @@ cleanup:
 compile: cleanup
 	truffle compile
 	node scripts/checkContractSize.js
+	tput bel
 
 validate:
 	npm run solium
