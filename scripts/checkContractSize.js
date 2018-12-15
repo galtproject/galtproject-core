@@ -20,7 +20,10 @@ checkSize('SplitMerge');
 checkSize('Validators');
 checkSize('ValidatorStakes');
 checkSize('ValidatorStakesMultiSig');
-checkSize('collections/ArraySet');
+checkSize('ArraySet');
+checkSize('ArbitratorMultiSig');
+checkSize('ArbitratorVoting');
+checkSize('OracleStakesAccounting');
 console.log('\n');
 
 function checkSize(contract) {
