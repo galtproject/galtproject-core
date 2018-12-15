@@ -38,13 +38,13 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     };
 
     this.sinNumber = function(angle) {
-      return Math.round(2147483647 * Math.sin(this.toRadians(angle)));
+      return Math.round(32768 * Math.sin(this.toRadians(angle)));
     };
   });
 
   describe('#getSin()', () => {
     it('should correctly get sin', async function() {
-      const res = await this.mockTrigonometryUtils.getSin(this.degreeToParam(76, 32));
+      const res = await this.mockTrigonometryUtils.getSin(this.degreeToParam(76, 16));
       console.log(res.logs[0].args.result.toFixed(), this.sinNumber(76));
 
       assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() - this.sinNumber(76)), 10000);
@@ -61,14 +61,14 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     });
   });
 
-  describe.skip('#getTrueSinOfEther()', () => {
+  describe.only('#getTrueSinOfEther()', () => {
     it('should correctly get sin', async function() {
-      await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {
+      await pIteration.forEachSeries([13], async angle => {//, 37, 76, 90, 93, 108, 137, 180, 189
         const res = await this.mockTrigonometryUtils.getTrueSinOfEther(Web3.utils.toWei(angle.toString(), 'ether'));
 
         console.log(`      Sin of ${angle}:`);
-        console.log(`      JavaScript:`, (Math.sin((angle * Math.PI) / 180) * 10 ** 18).toFixed());
-        console.log(`      Solidity:  `, res.logs[0].args.result.toFixed());
+        console.log(`      JavaScript:`, mySin(angle));
+        console.log(`      Solidity:  `, "0." + res.logs[0].args.result.toFixed());
         console.log(``);
       });
 
@@ -77,3 +77,21 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     });
   });
 });
+
+
+function mySin(x) {
+    var q;
+    var s = 0;
+    var N = 100;
+    //Индексная переменная:
+    var n;
+    q = x;
+    //Вычисление синуса:
+    for(n = 1; n <= N; n++){
+        s += q;
+        q *= (-1) * x * x / ((2 * n) * (2 * n + 1));
+        console.log(q, s);
+    }
+    //Результат:
+    return s;
+}

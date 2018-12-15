@@ -1,8 +1,11 @@
 pragma solidity ^0.4.24;
 pragma experimental "v0.5.0";
 
+import "./MathUtils.sol";
+
 library TrigonometryUtils {
-  int constant ANGLE_CIRCLE_PARTS = 2147483647;
+  int constant ANGLE_CIRCLE_PARTS = 32768;
+  
   uint32 constant ANGLES_COUNT = 1073741824;
   uint32 constant HIGH_MASK = 536870912;
   uint32 constant LOW_MASK = 268435456;
@@ -17,27 +20,32 @@ library TrigonometryUtils {
 
   uint8 constant ENTRY_BYTES = 4;
 
-  function sin(uint32 _angle) pure internal returns (int) {
-    uint index = getBits(WIDTH, OFFSET, _angle);
+  int256 constant qN = 13;
+  int256 constant qA = 12;
+  int256 constant B = 19900;
+  int256 constant C = 3516;
 
-    bool quadrantOdd = (_angle & LOW_MASK) == 0;
+  function sin(int256 x) pure internal returns (int) {
+    int256 c;
+    int256 x2;
+    int256 y;
 
-    if (!quadrantOdd) {
-      index = SIN_MASK_SIZE - 1 - index;
-    }
+    c = x << (30-qN);              // Semi-circle info into carry.
+    x -= 1 << qN;                 // sine -> cosine calc
 
-    uint x1 = getSinTableElByIndex(index);
-    uint x2 = getSinTableElByIndex(index + 1);
-    uint approximation = ((x2 - x1) * getBits(INTERP_WIDTH, INTERP_OFFSET, _angle)) / (2 ** INTERP_WIDTH);
+    x = x << (31-qN);              // Mask with PI
+    x = x >> (31-qN);              // Note: SIGNED shift! (to qN)
+    x = x * x >> (2*qN-14);          // x=x^2 To Q14
 
-    int sinResult = quadrantOdd ? int(x1) + int(approximation) : int(x2) - int(approximation);
+    y = B - (x*C >> 14);           // B - x^2*C
+    y = (1 << qA)-(x*y >> 16);       // A - x^2*(B-x^2*C)
 
-    return (_angle & HIGH_MASK) != 0 ? sinResult * -1 : sinResult;
+    return c >= 0 ? y : -y;
   }
 
-  function cos(uint32 _angle) pure internal returns (int) {
-    return sin(_angle > ANGLES_COUNT - LOW_MASK ?  LOW_MASK - ANGLES_COUNT - _angle : _angle + LOW_MASK);
-  }
+//  function cos(int32 _angle) pure internal returns (int) {
+//    return sin(_angle > ANGLES_COUNT - LOW_MASK ?  LOW_MASK - ANGLES_COUNT - _angle : _angle + LOW_MASK);
+//  }
 
   function getBits(uint _w, uint _o, uint _v) pure internal returns (uint) {
     return (_v / (2 ** _o)) & (((2 ** _w)) - 1);
@@ -54,16 +62,36 @@ library TrigonometryUtils {
     return trigintValue;
   }
 
-  function angleToNumber(uint256 etherAngle) pure internal returns (uint32) {
-    return uint32(etherAngle * (1 << 30) / 360 / 1 ether);
+  function angleToNumber(int256 etherAngle) pure internal returns (int256) {
+    return int256(etherAngle * (1 << 14) / 360 / 1 ether);
   }
 
-  function sin256(uint256 etherAngle) pure internal returns (int) {
+  function sin256(int256 etherAngle) pure internal returns (int) {
     return sin(angleToNumber(etherAngle));
   }
 
-  function getTrueSinOfInt(int256 a) internal returns(int256) {
-    int256 sinResult = sin(angleToNumber(uint256(a))) * 1 ether / ANGLE_CIRCLE_PARTS;
-    return a > 0 ? sinResult : sinResult * -1;
+  event SinIteration(int256 q, int256 s);
+  event Divide(int256 qBefore, int256 qAfter);
+  function getTrueSinOfInt(int256 x) internal returns(int256) {
+    int q;
+    int s = 0;
+    int N = 100;
+    //Индексная переменная:
+    int n;
+    q = x;
+    //Вычисление синуса:
+    for(n = 1; n <= N; n++){
+      s += q;
+      
+      q *= ((-1) * x * x) / ((2 * n) * (2 * n + 1) * 1 ether);
+//        emit Divide(q, q / 1 ether);
+        q /= 1 ether;
+        if(q == 0) {
+          q = 1;
+        }
+      emit SinIteration(q, s);
+    }
+    //Результат:
+    return s;
   }
 }
