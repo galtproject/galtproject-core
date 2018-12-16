@@ -21,12 +21,12 @@ import "./OracleStakesAccounting.sol";
 import "../SpaceReputationAccounting.sol";
 
 contract ArbitratorVoting is Permissionable {
-//  using Bytes32Set for ArraySet.Bytes32Set;
   using ArraySet for ArraySet.AddressSet;
 
   event LimitReached();
   event Update();
   event New();
+  event CutTail();
 
   event InsertHead();
   event InsertMiddle();
@@ -53,6 +53,7 @@ contract ArbitratorVoting is Permissionable {
     uint256 newCandidateWeight
   );
 
+  // limit for SpaceReputation delegation
   uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
   uint256 private constant DECIMALS = 10**6;
 
@@ -267,13 +268,14 @@ contract ArbitratorVoting is Permissionable {
     }
     // else do nothing
 
-    candidateCounter += 1;
-
-    if (candidateCounter > n) {
+    if (candidateCounter >= n) {
+      emit CutTail();
       address prev = candidates[candidatesTail].prev;
       delete candidates[prev].next;
       delete candidates[candidatesTail].prev;
       candidatesTail = prev;
+    } else {
+      candidateCounter += 1;
     }
   }
 
@@ -600,8 +602,10 @@ contract ArbitratorVoting is Permissionable {
   )
     external
   {
+    // NOTICE: n < 3 doesn't supported by recalculation logic
     require(2 <= _m, "Should satisfy `2 <= m`");
-    require(_m <= _n, "Should satisfy `n <= n`");
+    require(3 <= _n, "Should satisfy `3 <= n`");
+    require(_m <= _n, "Should satisfy `m <= n`");
 
     m = _m;
     n = _n;

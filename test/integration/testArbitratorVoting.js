@@ -2461,6 +2461,354 @@ contract.only('ArbitratorVoting', accounts => {
             });
           });
         });
+
+        describe('3-element list', () => {
+          beforeEach(async function() {
+            await voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
+            await voting.onDelegateReputationChanged(candidateB, 1200, { from: fakeSRA });
+            await voting.onDelegateReputationChanged(candidateC, 1500, { from: fakeSRA });
+
+            await voting.recalculate(candidateB);
+            await voting.recalculate(candidateC);
+            await voting.recalculate(candidateA);
+          });
+
+          describe('and the element is HEAD', () => {
+            describe('and its new weight E >= HEAD', () => {
+              it('should keep array after C => B => A recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE a
+                await voting.recalculate(candidateA);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // CHECK A
+                res = await votingWeb3.methods.isCandidateInList(candidateA).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateA).call();
+                assert.equal(res, 800);
+                res = await votingWeb3.methods.getWeight(candidateA).call();
+                assert.equal(res, 100000);
+
+                // CHECK B
+                res = await votingWeb3.methods.isCandidateInList(candidateB).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateB).call();
+                assert.equal(res, 1200);
+                res = await votingWeb3.methods.getWeight(candidateB).call();
+                assert.equal(res, 150000);
+
+                // CHECK C
+                res = await votingWeb3.methods.isCandidateInList(candidateC).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateC).call();
+                assert.equal(res, 2000);
+                res = await votingWeb3.methods.getWeight(candidateC).call();
+                assert.equal(res, 250000);
+              });
+
+              it('should keep array after A => B => C recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+              });
+
+              it('should keep array after B => A => C recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 4000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+              });
+            });
+            describe('and its new weight E >= (HEAD - 1)', () => {
+              it('should keep array after uncommon case', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 802, { from: fakeSRA });
+                await voting.onDelegateReputationChanged(candidateB, 801, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 2403);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 2403);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // CHECK A
+                res = await votingWeb3.methods.isCandidateInList(candidateA).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateA).call();
+                assert.equal(res, 800);
+                res = await votingWeb3.methods.getWeight(candidateA).call();
+                assert.equal(res, 114285);
+
+                // CHECK B
+                res = await votingWeb3.methods.isCandidateInList(candidateB).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateB).call();
+                assert.equal(res, 801);
+                res = await votingWeb3.methods.getWeight(candidateB).call();
+                assert.equal(res, 171428);
+
+                // CHECK C
+                res = await votingWeb3.methods.isCandidateInList(candidateC).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateC).call();
+                assert.equal(res, 802);
+                res = await votingWeb3.methods.getWeight(candidateC).call();
+                assert.equal(res, 166874);
+
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 2403);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // CHECK A
+                res = await votingWeb3.methods.isCandidateInList(candidateA).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateA).call();
+                assert.equal(res, 800);
+                res = await votingWeb3.methods.getWeight(candidateA).call();
+                assert.equal(res, 166458);
+
+                // CHECK B
+                res = await votingWeb3.methods.isCandidateInList(candidateB).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateB).call();
+                assert.equal(res, 801);
+                res = await votingWeb3.methods.getWeight(candidateB).call();
+                assert.equal(res, 171428);
+
+                // CHECK C
+                res = await votingWeb3.methods.isCandidateInList(candidateC).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateC).call();
+                assert.equal(res, 802);
+                res = await votingWeb3.methods.getWeight(candidateC).call();
+                assert.equal(res, 166874);
+
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation ().call();
+                assert.equal(res, 2403);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // CHECK A
+                res = await votingWeb3.methods.isCandidateInList(candidateA).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateA).call();
+                assert.equal(res, 800);
+                res = await votingWeb3.methods.getWeight(candidateA).call();
+                assert.equal(res, 166458);
+
+                // CHECK B
+                res = await votingWeb3.methods.isCandidateInList(candidateB).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateB).call();
+                assert.equal(res, 801);
+                res = await votingWeb3.methods.getWeight(candidateB).call();
+                assert.equal(res, 166666);
+
+                // CHECK C
+                res = await votingWeb3.methods.isCandidateInList(candidateC).call();
+                assert.equal(res, true);
+                res = await votingWeb3.methods.getSpaceReputation(candidateC).call();
+                assert.equal(res, 802);
+                res = await votingWeb3.methods.getWeight(candidateC).call();
+                assert.equal(res, 166874);
+              });
+            });
+
+            describe('and its new weight TAIL < E < HEAD', async function() {
+              it('should keep array after C => B => A recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+              });
+
+              it('should keep array after A => B => C recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+              });
+
+              it('should keep array after B => A => C recalculation', async function() {
+                await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
+
+                let res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+
+                // RECALCULATE B
+                await voting.recalculate(candidateB);
+                // RECALCULATE A
+                await voting.recalculate(candidateA);
+                // RECALCULATE C
+                await voting.recalculate(candidateC);
+
+                res = await votingWeb3.methods.getCandidates().call();
+                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                res = await votingWeb3.methods.totalSpaceReputation().call();
+                assert.equal(res, 3000);
+                res = await votingWeb3.methods.getSize().call();
+                assert.equal(res, 3);
+              });
+            });
+          });
+        });
+
+        describe('when limit is reached', () => {
+          beforeEach(async function() {
+            await voting.setMofN(2, 3, { from: fakeSRA });
+
+            await voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
+            await voting.onDelegateReputationChanged(candidateB, 1200, { from: fakeSRA });
+            await voting.onDelegateReputationChanged(candidateC, 1500, { from: fakeSRA });
+
+            await voting.recalculate(candidateB);
+            await voting.recalculate(candidateC);
+            await voting.recalculate(candidateA);
+          });
+
+          it('should remove last element when E > HEAD was pushed', async function() {
+            let res = await votingWeb3.methods.getCandidates().call();
+            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            res = await votingWeb3.methods.totalSpaceReputation().call();
+            assert.equal(res, 3500);
+            res = await votingWeb3.methods.getSize().call();
+            assert.equal(res, 3);
+
+            await voting.onDelegateReputationChanged(candidateD, 2000, { from: fakeSRA });
+
+            res = await votingWeb3.methods.getCandidates().call();
+            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            res = await votingWeb3.methods.totalSpaceReputation().call();
+            assert.equal(res, 5500);
+            res = await votingWeb3.methods.getSize().call();
+            assert.equal(res, 3);
+
+            await voting.recalculate(candidateD);
+
+            res = await votingWeb3.methods.getCandidates().call();
+            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateD, candidateB]);
+            res = await votingWeb3.methods.totalSpaceReputation().call();
+            assert.equal(res, 5500);
+            res = await votingWeb3.methods.getSize().call();
+            assert.equal(res, 3);
+          });
+        });
       });
     });
 
