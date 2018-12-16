@@ -104,4 +104,9 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     oracleStakesAccounting = _oracleStakesAccounting;
     initialized = true;
   }
+
+  // GETTERS
+  function getArbitrators() public returns (address[]) {
+    return owners;
+  }
 }

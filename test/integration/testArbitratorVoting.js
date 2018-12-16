@@ -10,7 +10,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const pIteration = require('p-iteration');
-const { ether, assertRevert, initHelperWeb3 } = require('../helpers');
+const { ether, assertRevert, assertInvalid, zeroAddress, initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
 const { utf8ToHex } = web3.utils;
@@ -31,7 +31,7 @@ async function buildMultiSigContracts(
   oraclesContract,
   galtTokenAddress,
   spaceReputationAccountingAddress,
-  initialOwners = ['0x1', '0x2', '0x3'],
+  initialOwners = [zeroAddress, zeroAddress, zeroAddress],
   required = 2
 ) {
   const multiSig = await ArbitratorsMultiSig.new(initialOwners, required, { from: roleManager });
@@ -88,6 +88,7 @@ contract.only('ArbitratorVoting', accounts => {
     candidateC,
     candidateD,
     candidateE,
+    candidateF,
     unauthorized
   ] = accounts;
 
@@ -2659,7 +2660,7 @@ contract.only('ArbitratorVoting', accounts => {
 
                 res = await votingWeb3.methods.getCandidates().call();
                 assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
-                res = await votingWeb3.methods.totalSpaceReputation ().call();
+                res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2403);
                 res = await votingWeb3.methods.getSize().call();
                 assert.equal(res, 3);
@@ -2840,88 +2841,97 @@ contract.only('ArbitratorVoting', accounts => {
     });
   });
 
-  describe.skip('#setMofN()', () => {
-    it('should allow correct values', async function() {
-      await this.abVotingX.setMofN(2, 5, { from: arbitratorManager });
-    });
+  describe('#pushArbitrators()', () => {
+    let voting;
+    let votingWeb3;
+    let multiSigWeb3;
 
-    it('should deny n < 2', async function() {
-      await assertRevert(this.abVotingX.setMofN(1, 5, { from: arbitratorManager }));
-    });
-
-    it('should deny n > m', async function() {
-      await assertRevert(this.abVotingX.setMofN(3, 2, { from: arbitratorManager }));
-    });
-
-    it('should deny non-arbitrator-manager setting values', async function() {
-      await assertRevert(this.abVotingX.setMofN(2, 5, { from: coreTeam }));
-    });
-  });
-
-  describe.skip('#pushArbitrators()', () => {
     beforeEach(async function() {
-      await this.abVotingX.addArbitrator(alice, 320, { from: arbitratorManager });
-      await this.abVotingX.addArbitrator(bob, 280, { from: arbitratorManager });
-      await this.abVotingX.addArbitrator(charlie, 560, { from: arbitratorManager });
-      await this.abVotingX.addArbitrator(dan, 120, { from: arbitratorManager });
-      await this.abVotingX.addArbitrator(eve, 700, { from: arbitratorManager });
-      await this.abVotingX.setMofN(2, 3, { from: arbitratorManager });
+      voting = this.abVotingX;
+      votingWeb3 = this.abVotingXWeb3;
+      multiSigWeb3 = this.abMultiSigXWeb3;
+
+      await voting.setMofN(3, 5, { from: arbitratorManager });
+
+      await voting.addRoleTo(fakeSRA, await voting.SPACE_REPUTATION_NOTIFIER(), {
+        from: coreTeam
+      });
+
+      await voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateB, 1200, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateC, 1500, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateD, 300, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateE, 600, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateF, 900, { from: fakeSRA });
+
+      await voting.recalculate(candidateA);
+      await voting.recalculate(candidateB);
+      await voting.recalculate(candidateC);
+      await voting.recalculate(candidateD);
+      await voting.recalculate(candidateE);
+      await voting.recalculate(candidateF);
+
+      let res = await votingWeb3.methods.getSpaceReputation(candidateA).call();
+      assert.equal(res, 800);
+      res = await votingWeb3.methods.getSpaceReputation(candidateB).call();
+      assert.equal(res, 1200);
+      res = await votingWeb3.methods.getSpaceReputation(candidateC).call();
+      assert.equal(res, 1500);
+      res = await votingWeb3.methods.getSpaceReputation(candidateD).call();
+      assert.equal(res, 300);
+      res = await votingWeb3.methods.getSpaceReputation(candidateE).call();
+      assert.equal(res, 600);
+      res = await votingWeb3.methods.getSpaceReputation(candidateF).call();
+      assert.equal(res, 900);
+
+      res = await votingWeb3.methods.getCandidates().call();
+      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [
+        candidateC,
+        candidateB,
+        candidateF,
+        candidateA,
+        candidateE
+      ]);
+      res = await votingWeb3.methods.totalSpaceReputation().call();
+      assert.equal(res, 5300);
+      res = await votingWeb3.methods.getSize().call();
+      assert.equal(res, 5);
     });
 
     it('should push arbitrators', async function() {
-      const initialArbitrators = [alice, bob, charlie, dan, eve];
-      let res = await this.abVotingXWeb3.methods.getArbitrators().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), initialArbitrators);
+      let res = await multiSigWeb3.methods.getArbitrators().call();
+      assert.sameMembers(res.map(a => a.toLowerCase()), [
+        '0x0000000000000000000000000000000000000001',
+        '0x0000000000000000000000000000000000000002',
+        '0x0000000000000000000000000000000000000003'
+      ]);
 
-      let toSort = [];
-      await pIteration.forEachSeries(initialArbitrators, async arbitrator => {
-        toSort.push({ arbitrator, weight: await this.abVotingXWeb3.methods.arbitratorWeight(arbitrator).call() });
-      });
+      await voting.pushArbitrators();
 
-      toSort.sort((a, b) => b.weight - a.weight);
-      let sortedArbitrators = toSort.map(o => o.arbitrator);
-
-      await this.abVotingX.pushArbitrators(sortedArbitrators);
-
-      res = await this.abMultiSigXWeb3.methods.getOwners().call();
-      assert.equal(res.length, 3);
-      assert.equal(res[0].toLowerCase(), eve);
-      assert.equal(res[1].toLowerCase(), charlie);
-      assert.equal(res[2].toLowerCase(), alice);
-
-      // change and recheck
-      await this.abVotingX.setArbitratorWeight(charlie, 510, { from: arbitratorManager });
-      await this.abVotingX.setArbitratorWeight(dan, 980, { from: arbitratorManager });
-
-      toSort = [];
-      await pIteration.forEachSeries(initialArbitrators, async arbitrator => {
-        toSort.push({ arbitrator, weight: await this.abVotingXWeb3.methods.arbitratorWeight(arbitrator).call() });
-      });
-
-      toSort.sort((a, b) => b.weight - a.weight);
-      sortedArbitrators = toSort.map(o => o.arbitrator);
-      await this.abVotingX.pushArbitrators(sortedArbitrators);
-
-      res = await this.abMultiSigXWeb3.methods.getOwners().call();
-      assert.equal(res.length, 3);
-      assert.equal(res[0].toLowerCase(), dan);
-      assert.equal(res[1].toLowerCase(), eve);
-      assert.equal(res[2].toLowerCase(), charlie);
+      res = await multiSigWeb3.methods.getArbitrators().call();
+      assert.equal(res.length, 5);
+      assert.equal(res[0].toLowerCase(), candidateC);
+      assert.equal(res[1].toLowerCase(), candidateB);
+      assert.equal(res[2].toLowerCase(), candidateF);
+      assert.equal(res[3].toLowerCase(), candidateA);
+      assert.equal(res[4].toLowerCase(), candidateE);
     });
 
-    it('should deny non-sorted arbitrators list', async function() {
-      const initialArbitrators = [alice, bob, charlie, dan, eve];
-      const res = await this.abVotingXWeb3.methods.getArbitrators().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), initialArbitrators);
+    it('should deny pushing list with < 3 elements', async function() {
+      await voting.onDelegateReputationChanged(candidateA, 0, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateB, 0, { from: fakeSRA });
+      await voting.onDelegateReputationChanged(candidateC, 0, { from: fakeSRA });
 
-      const toSort = [];
-      await pIteration.forEachSeries(initialArbitrators, async arbitrator => {
-        toSort.push({ arbitrator, weight: await this.abVotingXWeb3.methods.arbitratorWeight(arbitrator).call() });
-      });
+      await voting.recalculate(candidateA);
+      await voting.recalculate(candidateB);
+      await voting.recalculate(candidateC);
 
-      const sortedArbitrators = toSort.map(o => o.arbitrator);
-
-      await assertRevert(this.abVotingX.pushArbitrators(sortedArbitrators));
+      const res = await votingWeb3.methods.getCandidates().call();
+      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [
+        candidateF,
+        candidateE
+      ]);
+      await assertRevert(voting.pushArbitrators());
     });
   });
 });

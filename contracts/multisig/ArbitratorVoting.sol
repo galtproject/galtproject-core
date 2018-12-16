@@ -611,26 +611,17 @@ contract ArbitratorVoting is Permissionable {
     n = _n;
   }
 
-//  function pushArbitrators(address[] descSortedArbitrators) external {
-//    require(descSortedArbitrators.length == arbitrators.size(), "Sorted arbitrators list should be equal to the stored one");
-//
-//    uint256 len = descSortedArbitrators.length;
-//    uint256 previousWeight = arbitratorWeight[descSortedArbitrators[0]];
-//    require(previousWeight > 0, "Could not accept arbitrators with 0 weight");
-//
-//    for (uint256 i = 0; i < len; i++) {
-//      uint256 currentWeight = arbitratorWeight[descSortedArbitrators[i]];
-//      require(currentWeight > 0, "Could not accept arbitrators with 0 weight");
-//
-//      require(currentWeight <= previousWeight, "Invalid sorting");
-//      previousWeight = currentWeight;
-//    }
-//
-//    arbitratorsMultiSig.setArbitrators(m, n, descSortedArbitrators);
-//  }
+  function pushArbitrators() external {
+    address[] memory c = getCandidates();
+
+    require(c.length >= 3, "List should be L >= 3");
+    assert(c.length >= m);
+
+    arbitratorsMultiSig.setArbitrators(m, n, c);
+  }
 
   // Getters
-  function getCandidates() external view returns (address[]) {
+  function getCandidates() public view returns (address[]) {
     if (candidateCounter == 0) {
       return;
     }
