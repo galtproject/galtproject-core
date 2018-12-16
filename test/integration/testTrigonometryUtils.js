@@ -41,7 +41,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
   });
 
   describe('#getSinOfRad()', () => {
-    it.only('should correctly get sin', async function() {
+    it('should correctly get sin', async function() {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const radians = this.toRadians(angle);
         const res = await this.mockTrigonometryUtils.getSinOfRad(Web3.utils.toWei(radians.toString(), 'ether'));
@@ -52,7 +52,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
   });
 
   describe('#getSinOfDegree()', () => {
-    it.only('should correctly get sin', async function() {
+    it('should correctly get sin', async function() {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const res = await this.mockTrigonometryUtils.getSinOfDegree(Web3.utils.toWei(angle.toString(), 'ether'));
         const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
