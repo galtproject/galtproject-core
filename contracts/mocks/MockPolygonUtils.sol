@@ -19,7 +19,7 @@ contract MockPolygonUtils {
   }
   
   function getArea() public returns(uint256 area) {
-    area = PolygonUtils.ringArea(polygon);
+    area = PolygonUtils.getArea(polygon);
     emit LogAreaResult(area);
   }
 }
