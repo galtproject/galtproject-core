@@ -202,7 +202,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   function finishSplitOperation(uint256 _spaceTokenId) external {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
-    require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
+    require(activeSplitOperations[splitOperationAddress], "Method should be called for active SpaceSplitOperation contract");
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
 
     (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
