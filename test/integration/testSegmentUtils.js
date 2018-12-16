@@ -132,7 +132,8 @@ contract('SegmentUtils', ([coreTeam]) => {
           const etherPoint = point.map(coor => ether(coor));
           const etherSegment = segment.map(sPoint => sPoint.map(coor => ether(coor)));
 
-          return this.mockSegmentUtils.pointOnSegment(etherPoint, etherSegment[0], etherSegment[1]);
+          const result = await this.mockSegmentUtils.pointOnSegment(etherPoint, etherSegment[0], etherSegment[1]);
+          return result.logs[0].args.result;
           // number += 1;
         };
         // Helpers end
@@ -151,6 +152,59 @@ contract('SegmentUtils', ([coreTeam]) => {
             [[1.2036009784787893, 104.53199403360486], [1.227113390341401, 104.53336732462049]]
           ),
           true
+        );
+
+        assert.equal(
+          await this.pointOnSegment(
+            // w24qf67z3peh
+            [1.200168589130044, 104.51813640072942],
+            // w24r42h56n7d                                    w24qfgy56x3f
+            [[1.231060596182942388, 104.518523309379816054], [1.207720013335347173, 104.543261658400297163]]
+          ),
+          false
+        );
+
+        // TODO: make it work
+        assert.equal(
+          await this.pointOnSegment(
+            // w24qfsg5mp05
+            [1.2132120039314032, 104.52826039865613],
+            // w24r42h56n7d                                    w24qfgy56x3f
+            [[1.231060596182942388, 104.518523309379816054], [1.207720013335347173, 104.543261658400297163]]
+          ),
+          false
+        );
+
+        // TODO: make it work
+        assert.equal(
+          await this.pointOnSegment(
+            // w24qfmsve4y7
+            [1.217695382181004489, 104.519599819276801756],
+            // w24r42h56n7d                                    w24qfgy56x3f
+            [[1.231060596182942388, 104.518523309379816054], [1.207720013335347173, 104.543261658400297163]]
+          ),
+          false
+        );
+
+        // 20 m
+        assert.equal(
+          await this.pointOnSegment(
+            // w24qgpndpt0z
+            [1.225346988067031, 104.5551478676498],
+            // w24qgpnehynz                             w24qgpnb8efb
+            [[1.2255240138620138, 104.55503789708018], [1.22508161701262, 104.55519346520305]]
+          ),
+          false
+        );
+        // 3 m
+        assert.equal(
+          await this.pointOnSegment(
+            // w24qgpndpt0z
+            [1.225346988067031, 104.5551478676498],
+            // w24qgpndqszh                             w24qgpnb8efb
+            [[1.2253880593925714, 104.55511333420873], [1.22508161701262, 104.55519346520305]]
+          ),
+          false
         );
       });
     });

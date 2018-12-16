@@ -51,4 +51,13 @@ library MathUtils {
   function maxInt(int a, int b) internal pure returns (int) {
     return a > b ? a : b;
   }
+
+  function sqrtInt(int x) internal pure returns (int y) {
+    int z = (x + 1) / 2;
+    y = x;
+    while (abs(z) < abs(y)) {
+      y = z;
+      z = (x / z + z) / 2;
+    }
+  }
 }
