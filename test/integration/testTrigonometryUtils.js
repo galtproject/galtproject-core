@@ -29,35 +29,35 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     this.toRadians = function(angle) {
       return angle * (Math.PI / 180);
     };
+
+    this.degreesToCheck = [
+      1.2291728239506483,
+      104.51007032766938,
+      1.2037726398557425,
+      104.50989866629243,
+      1.2036009784787893,
+      104.53199403360486
+    ];
   });
 
-  describe.only('#getSinOfRad()', () => {
-    it('should correctly get sin', async function() {
-      await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {
+  describe('#getSinOfRad()', () => {
+    it.only('should correctly get sin', async function() {
+      await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const radians = this.toRadians(angle);
         const res = await this.mockTrigonometryUtils.getSinOfRad(Web3.utils.toWei(radians.toString(), 'ether'));
-
-        console.log(`      Sin of ${angle}:`);
-        console.log(`      JavaScript:`, Math.sin(radians));
-        // console.log(`      mySin:`, mySin(radians));
-        console.log(`      Solidity:  `, res.logs[0].args.result.toFixed() / 10 ** 18);
-        console.log(``);
-        console.log(`gasUsed: ${res.receipt.gasUsed}`);
+        const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        assert.isBelow(Math.abs(sinResult - Math.sin(radians)), 0.000000000001);
       });
+    });
+  });
 
-      assert.equal(true, false);
-      // assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() - this.sinNumber(76)), 50);
+  describe('#getSinOfDegree()', () => {
+    it.only('should correctly get sin', async function() {
+      await pIteration.forEachSeries(this.degreesToCheck, async angle => {
+        const res = await this.mockTrigonometryUtils.getSinOfDegree(Web3.utils.toWei(angle.toString(), 'ether'));
+        const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        assert.isBelow(Math.abs(sinResult - Math.sin(this.toRadians(angle))), 0.000000000001);
+      });
     });
   });
 });
-
-function mySin(x) {
-  const tp = 1 / (2 * Math.PI);
-  x *= tp;
-  x -= 0.25 + Math.floor(x + 0.25);
-  x *= 16 * (Math.abs(x) - 0.5);
-  // #if EXTRA_PRECISION
-  x += 0.225 * x * (Math.abs(x) - 1);
-  // #endif
-  return x;
-}

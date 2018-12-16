@@ -113,18 +113,14 @@ library PolygonUtils {
         p3 = _polygon.points[i + 2];
       }
 
-      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getSinOfAngle(p2[1]));
-
-      emit RadResult(rad(p3[0]), rad(p1[0]), TrigonometryUtils.getSinOfAngle(p2[1]), area);
+      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getSinOfDegree(p2[1]));
     }
 
     area = (area / 2 ether) * RADIUS * RADIUS;
 
     return uint(area > 0 ? area : area * - 1);
   }
-
-  event RadResult(int radP3, int radP1, int sin, int area);
-
+  
   function rad(int angle) internal returns (int) {
     return angle * PI / 180 / 1 ether;
   }

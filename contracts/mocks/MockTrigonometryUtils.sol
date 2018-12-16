@@ -17,8 +17,8 @@ contract MockTrigonometryUtils {
     emit LogSinResult(result);
   }
 
-  function getSinOfAngle(int256 etherAngle) public returns(int result) {
-    result = TrigonometryUtils.getSinOfAngle(etherAngle);
+  function getSinOfDegree(int256 etherDegree) public returns(int result) {
+    result = TrigonometryUtils.getSinOfDegree(etherDegree);
     emit LogSinResult(result);
   }
 }
