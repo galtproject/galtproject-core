@@ -105,7 +105,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract("PlotEscrow", (accounts) => {
+contract.only("PlotEscrow", (accounts) => {
   before(clearLibCache);
   const [
     coreTeam,
