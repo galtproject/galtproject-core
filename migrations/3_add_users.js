@@ -2,6 +2,7 @@ const PlotManager = artifacts.require('./PlotManager');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
+const PlotEscrow = artifacts.require('./PlotEscrow');
 const SpaceToken = artifacts.require('./SpaceToken');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
@@ -40,6 +41,7 @@ module.exports = async function(deployer, network, accounts) {
     const plotClarification = await PlotClarificationManager.at(data.plotClarificationAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
+    const plotEscrow = await PlotEscrow.at(data.plotEscrowAddress);
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
@@ -118,6 +120,12 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PE_AUDITOR_ROLE = await plotEscrow.PE_AUDITOR_ROLE.call();
+    const PLOT_ESCROW_APPLICATION_TYPE = await plotEscrow.APPLICATION_TYPE.call();
+    await validators.setApplicationTypeRoles(PLOT_ESCROW_APPLICATION_TYPE, [PE_AUDITOR_ROLE], [100], [''], {
+      from: coreTeam
+    });
+
     const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
     const CLAIM_MANAGER_APPLICATION_TYPE = await claimManager.APPLICATION_TYPE.call();
     await validators.setApplicationTypeRoles(CLAIM_MANAGER_APPLICATION_TYPE, [CM_AUDITOR_ROLE], [100], [''], {
@@ -166,6 +174,7 @@ module.exports = async function(deployer, network, accounts) {
       PV_AUDITOR_ROLE,
       PC_CUSTODIAN_ROLE,
       PC_AUDITOR_ROLE,
+      PE_AUDITOR_ROLE,
       CM_AUDITOR_ROLE
     ];
 
@@ -206,6 +215,7 @@ module.exports = async function(deployer, network, accounts) {
     minDepositGalt[PV_AUDITOR_ROLE] = minDepositForAuditor;
     minDepositGalt[PC_CUSTODIAN_ROLE] = minDepositForAuditor;
     minDepositGalt[PC_AUDITOR_ROLE] = minDepositForAuditor;
+    minDepositGalt[PE_AUDITOR_ROLE] = minDepositForAuditor;
     minDepositGalt[CM_AUDITOR_ROLE] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
@@ -265,6 +275,7 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotValuation.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotCustodian.setFeeManager(address, true, { from: coreTeam }));
         promises.push(plotClarification.setFeeManager(address, true, { from: coreTeam }));
+        promises.push(plotEscrow.setFeeManager(address, true, { from: coreTeam }));
 
         promises.push(auditors.addRoleTo(address, 'role_manager', { from: coreTeam }));
         promises.push(auditors.addRoleTo(address, 'auditor_manager', { from: coreTeam }));
