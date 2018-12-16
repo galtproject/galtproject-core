@@ -9,11 +9,9 @@ const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol')
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
-const pIteration = require('p-iteration');
-const { ether, assertRevert, assertInvalid, zeroAddress, initHelperWeb3 } = require('../helpers');
+const { ether, assertRevert, zeroAddress, initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
-const { utf8ToHex } = web3.utils;
 
 initHelperWeb3(web3);
 
