@@ -26,50 +26,21 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     MockTrigonometryUtils.link('TrigonometryUtils', this.trigonometryUtils.address);
     this.mockTrigonometryUtils = await MockTrigonometryUtils.new({ from: coreTeam });
 
-    this.degreeToParam = function(degrees, numberOfBits) {
-      /* eslint-disable */
-      const anglesPerCycle = 1 << (numberOfBits - 2);
-      /* eslint-enable */
-      return parseInt((degrees * anglesPerCycle) / 360.0, 10).toString();
-    };
-
     this.toRadians = function(angle) {
       return angle * (Math.PI / 180);
     };
-
-    this.sinNumber = function(angle) {
-      return Math.round(32768 * Math.sin(this.toRadians(angle)));
-    };
   });
 
-  describe('#getSin()', () => {
+  describe.only('#getSinOfRad()', () => {
     it('should correctly get sin', async function() {
-      const res = await this.mockTrigonometryUtils.getSin(this.degreeToParam(76, 16));
-      console.log(res.logs[0].args.result.toFixed(), this.sinNumber(76));
-
-      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() - this.sinNumber(76)), 10000);
-    });
-  });
-
-  describe.skip('#getSinOfEther()', () => {
-    it('should correctly get sin of ether', async function() {
-      const res = await this.mockTrigonometryUtils.getSinOfEther(Web3.utils.toWei('76', 'ether'));
-
-      console.log(this.degreeToParam(76, 16), res.logs[0].args.result.toFixed());
-
-      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() - this.sinNumber(76)), 10000);
-    });
-  });
-
-  describe('#getTrueSinOfEther()', () => {
-    it.only('should correctly get sin', async function() {
-      await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {//
-        const res = await this.mockTrigonometryUtils.getTrueSinOfEther(Web3.utils.toWei(angle.toString(), 'ether'));
+      await pIteration.forEachSeries([13, 37, 76, 90, 93, 108, 137, 180, 189], async angle => {
+        const radians = this.toRadians(angle);
+        const res = await this.mockTrigonometryUtils.getSinOfRad(Web3.utils.toWei(radians.toString(), 'ether'));
 
         console.log(`      Sin of ${angle}:`);
-        console.log(`      JavaScript:`, Math.sin(angle));
-        console.log(`      mySin:`, mySin(angle));
-        console.log(`      Solidity:  `, res.logs[0].args.result.toFixed() / (10 ** 18));
+        console.log(`      JavaScript:`, Math.sin(radians));
+        // console.log(`      mySin:`, mySin(radians));
+        console.log(`      Solidity:  `, res.logs[0].args.result.toFixed() / 10 ** 18);
         console.log(``);
         console.log(`gasUsed: ${res.receipt.gasUsed}`);
       });
@@ -80,14 +51,13 @@ contract('TrigonometryUtils', ([coreTeam]) => {
   });
 });
 
-
 function mySin(x) {
-    const tp = 1./(2.*Math.PI);
-    x *= tp;
-    x -= 0.25 + Math.floor(x + 0.25);
-    x *= 16 * (Math.abs(x) - 0.5);
-    // #if EXTRA_PRECISION
-    x += 0.225 * x * (Math.abs(x) - 1.);
-    // #endif
-    return x;
+  const tp = 1 / (2 * Math.PI);
+  x *= tp;
+  x -= 0.25 + Math.floor(x + 0.25);
+  x *= 16 * (Math.abs(x) - 0.5);
+  // #if EXTRA_PRECISION
+  x += 0.225 * x * (Math.abs(x) - 1);
+  // #endif
+  return x;
 }

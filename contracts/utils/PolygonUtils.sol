@@ -113,9 +113,9 @@ library PolygonUtils {
         p3 = _polygon.points[i + 2];
       }
 
-      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getTrueSinOfInt(p2[1]));
+      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getSinOfAngle(p2[1]));
 
-      emit RadResult(rad(p3[0]), rad(p1[0]), TrigonometryUtils.getTrueSinOfInt(p2[1]), area);
+      emit RadResult(rad(p3[0]), rad(p1[0]), TrigonometryUtils.getSinOfAngle(p2[1]), area);
     }
 
     area = (area / 2 ether) * RADIUS * RADIUS;
