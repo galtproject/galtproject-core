@@ -19,7 +19,6 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
-import "./SpaceDex.sol";
 
 contract GaltDex is Initializable, Ownable, RBAC {
   using SafeMath for uint256;
@@ -27,7 +26,6 @@ contract GaltDex is Initializable, Ownable, RBAC {
   string public constant FEE_MANAGER = "fee_manager";
 
   GaltToken galtToken;
-  SpaceDex spaceDex;
 
   uint256 public constant exchangeRatePrecision = 1 szabo;
   uint256 public constant feePrecision = 1 szabo;
@@ -70,10 +68,6 @@ contract GaltDex is Initializable, Ownable, RBAC {
     baseExchangeRate = _baseExchangeRate;
     galtFee = _galtFee;
     ethFee = _ethFee;
-  }
-
-  function setSpaceDex(SpaceDex _spaceDex) public onlyOwner {
-    spaceDex = _spaceDex;
   }
 
   modifier onlyFeeManager() {
@@ -144,9 +138,9 @@ contract GaltDex is Initializable, Ownable, RBAC {
     if (ethToGaltSum > 0 && address(this).balance > 0) {
       uint256 galtSum = galtToken.totalSupply().sub(galtToken.balanceOf(address(this))).add(galtFeePayout);
       
-      if (spaceDex != address(0)) {
-        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum()).sub(spaceDex.feePayout());
-      }
+//      if (spaceDex != address(0)) {
+//        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum()).sub(spaceDex.feePayout());
+//      }
       
       uint256 ethSum = address(this).balance.sub(ethFeePayout).sub(minusBalance);
       

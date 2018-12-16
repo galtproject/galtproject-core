@@ -22,7 +22,6 @@ const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const SplitMerge = artifacts.require('./SplitMerge');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
-const SpaceDex = artifacts.require('./SpaceDex');
 const Validators = artifacts.require('./Validators');
 const Auditors = artifacts.require('./Auditors');
 const ValidatorStakesMultiSig = artifacts.require('./ValidatorStakesMultiSig.sol');
@@ -83,7 +82,6 @@ module.exports = async function(deployer, network, accounts) {
     const splitMerge = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
-    const spaceDex = await SpaceDex.new({ from: coreTeam });
 
     const validators = await Validators.new({ from: coreTeam });
 
@@ -191,12 +189,6 @@ module.exports = async function(deployer, network, accounts) {
       { from: coreTeam }
     );
 
-    await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
-
-    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, plotCustodian.address, {
-      from: coreTeam
-    });
-
     await claimManager.initialize(
       validators.address,
       galtToken.address,
@@ -213,14 +205,12 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Mint GALT to dex contracts..');
     await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
-    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000000', 'ether'));
 
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
-    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
@@ -261,9 +251,6 @@ module.exports = async function(deployer, network, accounts) {
     await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotClarification.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotEscrow.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.05', 'ether'), { from: coreTeam });
-
-    await spaceDex.setFee('0', '0', { from: coreTeam });
-    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
 
     await claimManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('6', 'ether'), { from: coreTeam });
     await claimManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('45', 'ether'), { from: coreTeam });
@@ -308,8 +295,6 @@ module.exports = async function(deployer, network, accounts) {
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
-            spaceDexAddress: spaceDex.address,
-            spaceDexAbi: spaceDex.abi,
             claimManagerAddress: claimManager.address,
             claimManagerAbi: claimManager.abi,
             validatorsAddress: validators.address,
