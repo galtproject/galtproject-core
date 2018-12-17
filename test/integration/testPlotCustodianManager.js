@@ -2,11 +2,7 @@ const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
@@ -15,7 +11,16 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
-const { initHelperWeb3, ether, assertEqualBN, assertRevert, zeroAddress } = require('../helpers');
+const {
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  assertEqualBN,
+  assertRevert,
+  zeroAddress,
+  deploySplitMerge,
+  clearLibCache
+} = require('../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;
@@ -34,6 +39,7 @@ Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
@@ -80,6 +86,7 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotCustodianManager', (accounts) => {
+  before(clearLibCache);
   const [
     coreTeam,
     galtSpaceOrg,
@@ -108,11 +115,6 @@ contract('PlotCustodianManager', (accounts) => {
     this.heights = [1, 2, 3];
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PlotManagerLib.link('LandUtils', this.landUtils.address);
-
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
@@ -124,13 +126,7 @@ contract('PlotCustodianManager', (accounts) => {
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
 
     await this.plotManager.initialize(
       this.spaceToken.address,
@@ -195,6 +191,10 @@ contract('PlotCustodianManager', (accounts) => {
       from: coreTeam
     });
     await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+      from: coreTeam
+    });
+
+    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER(), {
       from: coreTeam
     });
 

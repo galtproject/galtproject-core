@@ -27,10 +27,6 @@ library SegmentRedBlackTree {
   }
   
   uint internal constant ZERO = 0;
-  
-  function init(SegmentsTree storage segments) public {
-    segments.tree.init();
-  }
 
   function find(SegmentsTree storage segments, int256[2][2] value) public returns (uint) {
     uint _key = segments.tree.root;

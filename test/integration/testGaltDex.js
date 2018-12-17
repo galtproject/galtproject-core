@@ -1,11 +1,6 @@
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
-const SpaceDex = artifacts.require('./SpaceDex.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SplitMerge = artifacts.require('./SplitMerge.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
 const Oracles = artifacts.require('./Oracles.sol');
@@ -13,10 +8,19 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { zeroAddress, assertGaltBalanceChanged, initHelperWeb3, ether, szabo } = require('../helpers');
+const {
+  zeroAddress,
+  initHelperWeb3,
+  initHelperArtifacts,
+  ether,
+  szabo,
+  deploySplitMerge,
+  clearLibCache
+} = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
 const { BN } = Web3.utils;
 
 // TODO: move to helpers
@@ -27,27 +31,18 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
+contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+  before(clearLibCache);
   const fee = 15;
   const baseExchangeRate = 1;
 
   beforeEach(async function() {
-    this.arrayUtils = await ArrayUtils.new({ from: coreTeam });
-    this.landUtils = await LandUtils.new({ from: coreTeam });
-    PolygonUtils.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('LandUtils', this.landUtils.address);
-    SplitMerge.link('ArrayUtils', this.arrayUtils.address);
-
-    this.polygonUtils = await PolygonUtils.new({ from: coreTeam });
-    SplitMerge.link('PolygonUtils', this.polygonUtils.address);
-
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
-    this.spaceDex = await SpaceDex.new({ from: coreTeam });
-    this.splitMerge = await SplitMerge.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
@@ -55,24 +50,9 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
       from: coreTeam
     });
 
-    this.spaceDex.initialize(
-      this.galtToken.address,
-      this.spaceToken.address,
-      this.plotValuation.address,
-      this.plotCustodian.address,
-      {
-        from: coreTeam
-      }
-    );
-
-    await this.spaceDex.addRoleTo(coreTeam, 'fee_manager');
-    await this.spaceDex.setFee(szabo(fee), '0');
-    await this.spaceDex.setFee(szabo(fee), '1');
-
     await this.spaceToken.addRoleTo(coreTeam, 'minter');
 
     await this.galtDex.addRoleTo(coreTeam, 'fee_manager');
-    await this.galtDex.setSpaceDex(this.spaceDex.address);
 
     await this.galtToken.mint(this.galtDex.address, ether(100));
 
@@ -165,8 +145,8 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
     this.showGaltDexStatus = async function() {
       const totalSupply = (await this.galtToken.totalSupply()) / 10 ** 18;
       const galtBalanceOfGaltDex = (await this.galtToken.balanceOf(this.galtDex.address)) / 10 ** 18;
-      const galtBalanceOfSpaceDex = (await this.galtToken.balanceOf(this.spaceDex.address)) / 10 ** 18;
-      const spacePriceOnSaleSum = (await this.spaceDex.spacePriceOnSaleSum()) / 10 ** 18;
+      // const galtBalanceOfSpaceDex = (await this.galtToken.balanceOf(this.spaceDex.address)) / 10 ** 18;
+      // const spacePriceOnSaleSum = (await this.spaceDex.spacePriceOnSaleSum()) / 10 ** 18;
       const totalSupplyMinusGaltBalance = totalSupply - galtBalanceOfGaltDex;
       const ethBalanceOfGaltDex = (await web3.eth.getBalance(this.galtDex.address)) / 10 ** 18;
       const exchangeRate = (await this.galtDex.exchangeRate('0')) / 10 ** 12;
@@ -182,12 +162,6 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
         ethBalanceOfGaltDex.toString(10),
         'exchangeRate',
         exchangeRate.toString(10)
-      );
-      console.log(
-        'galtBalanceOfSpaceDex',
-        galtBalanceOfSpaceDex.toString(10),
-        'spacePriceOnSaleSum',
-        spacePriceOnSaleSum.toString(10)
       );
     };
 
@@ -355,36 +329,37 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
     });
   });
 
-  describe('spaceDex dependency', async () => {
-    it('should be correct exchangeRate after exchange on spaceDex', async function() {
-      const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
-
-      await this.galtToken.mint(this.spaceDex.address, ether(100));
-
-      await this.spaceToken.mint(alice, {
-        from: coreTeam
-      });
-
-      const geohashTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
-
-      await this.valuatePlot(geohashTokenId, ether(5));
-      await this.setCustodianForPlot(geohashTokenId, bob);
-      await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
-        from: alice
-      });
-
-      const aliceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(alice).call();
-
-      const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
-      await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
-        from: alice
-      });
-
-      const aliceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(alice).call();
-      assertGaltBalanceChanged(aliceBalanceBefore, aliceBalanceAfter, geohashPrice.toString(10));
-
-      const galtDexEchangeRateAfter = await this.galtDex.exchangeRate('0');
-      assert.equal(galtDexEchangeRateBefore.toString(10), galtDexEchangeRateAfter.toString(10));
-    });
-  });
+  // TODO: use it for future SpaceMortgage
+  // describe('spaceDex dependency', async () => {
+  //   it('should be correct exchangeRate after exchange on spaceDex', async function() {
+  //     const galtDexEchangeRateBefore = await this.galtDex.exchangeRate('0');
+  //
+  //     await this.galtToken.mint(this.spaceDex.address, ether(100));
+  //
+  //     await this.spaceToken.mint(alice, {
+  //       from: coreTeam
+  //     });
+  //
+  //     const geohashTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+  //
+  //     await this.valuatePlot(geohashTokenId, ether(5));
+  //     await this.setCustodianForPlot(geohashTokenId, bob);
+  //     await this.spaceToken.approve(this.spaceDex.address, geohashTokenId, {
+  //       from: alice
+  //     });
+  //
+  //     const aliceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(alice).call();
+  //
+  //     const geohashPrice = await this.spaceDex.getSpaceTokenActualPriceWithFee(geohashTokenId);
+  //     await this.spaceDex.exchangeSpaceToGalt(geohashTokenId, {
+  //       from: alice
+  //     });
+  //
+  //     const aliceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(alice).call();
+  //     assertGaltBalanceChanged(aliceBalanceBefore, aliceBalanceAfter, geohashPrice.toString(10));
+  //
+  //     const galtDexEchangeRateAfter = await this.galtDex.exchangeRate('0');
+  //     assert.equal(galtDexEchangeRateBefore.toString(10), galtDexEchangeRateAfter.toString(10));
+  //   });
+  // });
 });

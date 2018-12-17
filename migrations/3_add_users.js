@@ -2,13 +2,14 @@ const PlotManager = artifacts.require('./PlotManager');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
+const PlotEscrow = artifacts.require('./PlotEscrow');
 const SpaceToken = artifacts.require('./SpaceToken');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
 const GaltDex = artifacts.require('./GaltDex');
-const SpaceDex = artifacts.require('./SpaceDex');
 const Oracles = artifacts.require('./Oracles');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
+const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
 
@@ -39,14 +40,17 @@ module.exports = async function(deployer, network, accounts) {
     const plotClarification = await PlotClarificationManager.at(data.plotClarificationAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
+    const plotEscrow = await PlotEscrow.at(data.plotEscrowAddress);
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
+    const spaceTokenSandbox = await SpaceToken.at(data.spaceTokenSandboxAddress);
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
+    const splitMergeSandbox = await SplitMerge.at(data.splitMergeSandboxAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
-    const spaceDex = await SpaceDex.at(data.spaceDexAddress);
     const oracles = await Oracles.at(data.oraclesAddress);
     const oracleStakeAccounting = await OracleStakesAccounting.at(data.oracleStakesAccountingAddress);
     const arbitrators = await Auditors.at(data.arbitratorsAddress);
+    const claimManager = await ClaimManager.at(data.claimManagerAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -61,6 +65,10 @@ module.exports = async function(deployer, network, accounts) {
 
     const PM_CADASTRAL_ORACLE_TYPE = 'pm_cadastral';
     const PM_AUDITOR_ORACLE_TYPE = 'pm_auditor';
+
+    const sandboxAdmin = '0x22c2e060b231ff2ba92459c85fee060d7f79c17a';
+    await splitMergeSandbox.addRoleTo(sandboxAdmin, 'geo_data_manager', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(sandboxAdmin, 'minter', { from: coreTeam });
 
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
     await oracles.setApplicationTypeOracleTypes(
@@ -116,6 +124,14 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
+    const PE_AUDITOR_ORACLE_TYPE = await plotEscrow.PE_AUDITOR_ORACLE_TYPE.call();
+    const PLOT_ESCROW_APPLICATION_TYPE = await plotEscrow.APPLICATION_TYPE.call();
+    await oracles.setApplicationTypeRoles(PLOT_ESCROW_APPLICATION_TYPE, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+      from: coreTeam
+    });
+
+    const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
+
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
       Jonybang2: '0x7DB143B5B2Ef089992c89a27B015Ab47391cdfFE',
@@ -143,7 +159,8 @@ module.exports = async function(deployer, network, accounts) {
       DevNickValidator: '0x3ff14ddd3da95f6f9ae7110c5197834e6167c8a3',
       DevNickValidator2: '0xa39b23e3befec6711f4c207c84604293f4409193',
       DevNickValidator3: '0xc25b780c31a93a95d0e0bca3ccc63645f7e7de6a',
-      DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7'
+      DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7',
+      sandboxAdmin
     };
 
     const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin', 'DevNik', 'DevNik2', 'DevNickAdmin'];
@@ -157,7 +174,8 @@ module.exports = async function(deployer, network, accounts) {
       PV_APPRAISER2_ORACLE_TYPE,
       PV_AUDITOR_ORACLE_TYPE,
       PC_CUSTODIAN_ORACLE_TYPE,
-      PC_AUDITOR_ORACLE_TYPE
+      PC_AUDITOR_ORACLE_TYPE,
+      PE_AUDITOR_ORACLE_TYPE
     ];
 
     const validatorsSpecificRoles = {
@@ -188,6 +206,7 @@ module.exports = async function(deployer, network, accounts) {
     const minDepositForAuditor = 2500; // 50k $
 
     const minDepositGalt = {};
+
     minDepositGalt[PM_CADASTRAL_ORACLE_TYPE] = minDepositForValidator;
     minDepositGalt[PM_AUDITOR_ORACLE_TYPE] = minDepositForValidator;
     minDepositGalt[PCL_CADASTRAL_ORACLE_TYPE] = minDepositForValidator;
@@ -197,6 +216,7 @@ module.exports = async function(deployer, network, accounts) {
     minDepositGalt[PV_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_CUSTODIAN_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
+    minDepositGalt[PE_AUDITOR_ORACLE_type] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
     _.forEach(validatorsSpecificRoles, validatorRoles => {
@@ -244,7 +264,6 @@ module.exports = async function(deployer, network, accounts) {
 
       if (_.includes(adminsList, name)) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(spaceDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         // TODO: make plotManager rolable too
@@ -253,6 +272,7 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotValuation.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotClarification.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        promises.push(plotEscrow.addRoleTo(address, 'fee_manager', { from: coreTeam }));
 
         promises.push(arbitrators.addRoleTo(address, 'role_manager', { from: coreTeam }));
         promises.push(arbitrators.addRoleTo(address, 'arbitrator_manager', { from: coreTeam }));
@@ -332,17 +352,17 @@ module.exports = async function(deployer, network, accounts) {
       }
     ];
 
-    await pIteration.forEachSeries(spaceTokensToMint, async (spaceTokenItem, index) => {
-      await spaceToken.mint(coreTeam, { from: coreTeam });
-      const tokenId = `0x000000000000000000000000000000000000000000000000000000000000000${index}`;
+    await pIteration.forEachSeries(spaceTokensToMint, async spaceTokenItem => {
+      const res = await spaceToken.mint(coreTeam, { from: coreTeam });
+      const { _tokenId } = res.logs[0].args;
 
       const { contour, level } = spaceTokenItem;
       const height = level === 1 ? 0 : 2;
 
-      await splitMerge.setPackageContour(tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-      await splitMerge.setPackageHeights(tokenId, contour.map(() => ether(height)), { from: coreTeam });
-      await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
-      await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
+      await splitMerge.setPackageContour(_tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
+      await splitMerge.setPackageHeights(_tokenId, contour.map(() => ether(height)), { from: coreTeam });
+      await splitMerge.setPackageLevel(_tokenId, level, { from: coreTeam });
+      await spaceToken.transferFrom(coreTeam, users.DevNickUser, _tokenId, { from: coreTeam });
     });
   });
 };

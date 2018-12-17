@@ -160,8 +160,10 @@ contract PlotEscrow is AbstractOracleApplication {
   bytes32[] public saleOrderArray;
   mapping(address => bytes32[]) public saleOrderArrayBySeller;
   mapping(address => bytes32[]) public saleOrderArrayByBuyer;
+  mapping(address => bytes32[]) public saleOrderArrayByAuditor;
   mapping(uint256 => bytes32) public spaceTokenLastOrderId;
   ArraySet.Bytes32Set openSaleOrders;
+  ArraySet.Bytes32Set auditRequiredSaleOrders;
 
 
   constructor () public {}
@@ -394,6 +396,8 @@ contract PlotEscrow is AbstractOracleApplication {
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.AUDIT_REQUIRED);
     changeAuditorStatus(saleOrder, _buyer, ValidationStatus.PENDING);
+
+    auditRequiredSaleOrders.add(_orderId);
   }
 
   function lockForAudit(
@@ -416,6 +420,9 @@ contract PlotEscrow is AbstractOracleApplication {
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.AUDIT);
     changeAuditorStatus(saleOrder, _buyer, ValidationStatus.LOCKED);
+    
+    auditRequiredSaleOrders.remove(_orderId);
+    saleOrderArrayByAuditor[msg.sender].push(_orderId);
   }
 
   function cancellationAuditReject(
@@ -922,12 +929,24 @@ contract PlotEscrow is AbstractOracleApplication {
     return openSaleOrders.elements();
   }
 
+  function getAuditRequiredSaleOrdersLength() external view returns (uint256) {
+    return auditRequiredSaleOrders.size();
+  }
+
+  function getAuditRequiredSaleOrders() external view returns (bytes32[]) {
+    return auditRequiredSaleOrders.elements();
+  }
+
   function getSellerOrders(address _seller) external view returns (bytes32[]) {
     return saleOrderArrayBySeller[_seller];
   }
 
   function getBuyerOrders(address _buyer) external view returns (bytes32[]) {
     return saleOrderArrayByBuyer[_buyer];
+  }
+
+  function getAuditorOrders(address _buyer) external view returns (bytes32[]) {
+    return saleOrderArrayByAuditor[_buyer];
   }
 
   function closeOrderHelper(SaleOrder storage saleOrder, address _buyer) internal {

@@ -31,9 +31,14 @@ library LandUtils {
   // bytes32("0123456789bcdefghjkmnpqrstuvwxyz")
   bytes32 constant GEOHASH5_MASK = 0x30313233343536373839626364656667686a6b6d6e707172737475767778797a;
 
+  struct LatLonData {
+    mapping(uint256 => int256[2]) latLonByGeohash;
+    mapping(bytes32 => mapping(uint8 => uint256)) geohashByLatLonHash;
+  }
+
   function geohash5Precision(uint256 _geohash5) public pure returns (uint256) {
     if (_geohash5 == 0) {
-      revert("Invalid geohash5");
+      return 0;
     } else if (_geohash5 <= C1_GEOHASH) {
       return 1;
     } else if (_geohash5 <= C2_GEOHASH) {
@@ -68,19 +73,11 @@ library LandUtils {
   }
 
   function incrementIntervalFirst(int256[2] interval) private pure returns (int256[2]) {
-    return [(interval[0] + interval[1]) / 2, interval[1]];
+    return;
   }
 
   function convertIntervalSecond(int256[2] interval) private pure returns (int256[2]) {
-    return [interval[0], (interval[0] + interval[1]) / 2];
-  }
-
-  function convertIntervalByCdAndMask(uint256 cd, uint8 mask, int256[2] interval) private pure returns (int256[2]) {
-    if (cd & mask != 0) {
-      return incrementIntervalFirst(interval);
-    } else {
-      return convertIntervalSecond(interval);
-    }
+    return;
   }
 
   function latLonIntervalToLatLon(
@@ -91,9 +88,8 @@ library LandUtils {
   pure
   returns (int256 lat, int256 lon)
   {
-    int256 lat = (latInterval[0] + latInterval[1]) / 2;
-    int256 lon = (lonInterval[0] + lonInterval[1]) / 2;
-    return (lat, lon);
+    lat = (latInterval[0] + latInterval[1]) / 2;
+    lon = (lonInterval[0] + lonInterval[1]) / 2;
   }
 
   function geohash5ToLatLonArr(uint256 _geohash5) public pure returns (int256[2]) {
@@ -113,8 +109,6 @@ library LandUtils {
       revert("Number exceeds the limit");
     }
 
-    bytes32 fiveOn = bytes32(31);
-
     int256[2] memory lat_interval = [int256(- 90 ether), int256(90 ether)];
     int256[2] memory lon_interval = [int256(- 180 ether), int256(180 ether)];
     // int256 lat_err = 90 ether;
@@ -125,24 +119,35 @@ library LandUtils {
     bool is_even = true;
 
     uint256 capacity = geohash5Precision(_geohash5);
+    uint256 num;
+    uint256 cd;
+    uint8 mask;
 
     while (capacity > 0) {
       capacity--;
 
-      uint256 num = _geohash5 >> 5 * capacity;
-      uint256 cd = uint256(bytes32(num) & fiveOn);
+      num = _geohash5 >> 5 * capacity;
+      cd = uint256(bytes32(num) & bytes32(31));
 
       for (uint8 i = 0; i < mask_arr.length; i++) {
-        uint8 mask = mask_arr[i];
+        mask = mask_arr[i];
 
         if (is_even) {
           // adds longitude info
           // lon_err /= 2;
-          lon_interval = convertIntervalByCdAndMask(cd, mask, lon_interval);
+          if (cd & mask != 0) {
+            lon_interval[0] = (lon_interval[0] + lon_interval[1]) / 2;
+          } else {
+            lon_interval[1] = (lon_interval[0] + lon_interval[1]) / 2;
+          }
         } else {
           // adds latitude info
           // lat_err /= 2;
-          lat_interval = convertIntervalByCdAndMask(cd, mask, lat_interval);
+          if (cd & mask != 0) {
+            lat_interval[0] = (lat_interval[0] + lat_interval[1]) / 2;
+          } else {
+            lat_interval[1] = (lat_interval[0] + lat_interval[1]) / 2;
+          }
         }
 
         is_even = !is_even;
@@ -150,5 +155,74 @@ library LandUtils {
     }
 
     return latLonIntervalToLatLon(lat_interval, lon_interval);
+  }
+
+  function latLonToGeohash5(int256 _lat, int256 _lon, uint8 _precision) public returns (uint256) {
+    int256[2] memory lat_interval = [int256(- 90 ether), int256(90 ether)];
+    int256[2] memory lon_interval = [int256(- 180 ether), int256(180 ether)];
+
+    uint8[5] memory bits = [16, 8, 4, 2, 1];
+
+    uint8 bit = 0;
+    uint8 ch = 0;
+
+    int256 mid;
+    bool even = true;
+
+    uint256 geohash;
+    uint8 precision = _precision;
+    while (precision > 0) {
+      if (even) {
+        mid = (lon_interval[0] + lon_interval[1]) / 2;
+        if (_lon > mid) {
+          ch |= bits[bit];
+          lon_interval[0] = mid;
+        } else {
+          lon_interval[1] = mid;
+        }
+      } else {
+        mid = (lat_interval[0] + lat_interval[1]) / 2;
+        if (_lat > mid) {
+          ch |= bits[bit];
+          lat_interval[0] = mid;
+        } else {
+          lat_interval[1] = mid;
+        }
+      }
+
+      even = !even;
+
+      if (bit < 4) {
+        bit += 1;
+      } else {
+        precision -= 1;
+        geohash += uint256(bytes32(ch) & bytes32(31)) << 5 * precision;
+        bit = 0;
+        ch = 0;
+      }
+    }
+    return geohash;
+  }
+
+  function geohash5ToGeohashString(uint256 _input) public pure returns (bytes32) {
+    if (_input > C12_GEOHASH) {
+      revert("Number exceeds the limit");
+      return 0x0;
+    }
+
+    uint256 num = _input;
+    bytes32 output;
+    bytes32 fiveOn = bytes32(31);
+    uint8 counter = 0;
+
+    while (num != 0) {
+      output = output >> 8;
+      uint256 d = uint256(bytes32(num) & fiveOn);
+      output = output ^ (bytes1(GEOHASH5_MASK[d]));
+      num = num >> 5;
+      counter++;
+    }
+
+    return output;
   }
 }

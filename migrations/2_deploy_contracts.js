@@ -1,8 +1,15 @@
 const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils.sol');
-const LandUtils = artifacts.require('./utils/LandUtils.sol');
-const PolygonUtils = artifacts.require('./utils/PolygonUtils.sol');
+const ArrayUtils = artifacts.require('./utils/ArrayUtils');
+const LandUtils = artifacts.require('./utils/LandUtils');
+const PolygonUtils = artifacts.require('./utils/PolygonUtils');
+const SegmentUtils = artifacts.require('./utils/SegmentUtils');
+const LinkedList = artifacts.require('./collections/LinkedList');
+const SweepQueueLinkedList = artifacts.require('./collections/SweepQueueLinkedList');
+const RedBlackTree = artifacts.require('./collections/RedBlackTree');
+const SweepLineRedBlackTree = artifacts.require('./collections/SweepLineRedBlackTree');
+const MartinezRueda = artifacts.require('./utils/MartinezRueda');
+const WeilerAtherton = artifacts.require('./utils/WeilerAtherton');
 const PlotManagerLib = artifacts.require('./PlotManagerLib');
 const PlotManager = artifacts.require('./PlotManager');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
@@ -13,8 +20,8 @@ const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const ClaimManager = artifacts.require('./ClaimManager');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
-const SpaceDex = artifacts.require('./SpaceDex');
 const Oracles = artifacts.require('./Oracles');
 const Arbitrators = artifacts.require('./Arbitrators');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
@@ -38,6 +45,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Create contract instances...');
     const galtToken = await GaltToken.new({ from: coreTeam });
     const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    const spaceTokenSandbox = await SpaceToken.new('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     const landUtils = await LandUtils.new({ from: coreTeam });
     const arrayUtils = await ArrayUtils.new({ from: coreTeam });
@@ -45,12 +53,37 @@ module.exports = async function(deployer, network, accounts) {
     SplitMerge.link('LandUtils', landUtils.address);
     SplitMerge.link('ArrayUtils', arrayUtils.address);
 
+    const linkedList = await LinkedList.new({ from: coreTeam });
+    SweepQueueLinkedList.link('LinkedList', linkedList.address);
+    const sweepQueueLinkedList = await SweepQueueLinkedList.new({ from: coreTeam });
+
+    const redBlackTree = await RedBlackTree.new({ from: coreTeam });
+    SweepLineRedBlackTree.link('RedBlackTree', redBlackTree.address);
+    const sweepLineRedBlackTree = await SweepLineRedBlackTree.new({ from: coreTeam });
+
+    MartinezRueda.link('LinkedList', linkedList.address);
+    MartinezRueda.link('RedBlackTree', redBlackTree.address);
+    MartinezRueda.link('SweepQueueLinkedList', sweepQueueLinkedList.address);
+    MartinezRueda.link('SweepLineRedBlackTree', sweepLineRedBlackTree.address);
+    const martinezRueda = await MartinezRueda.new({ from: coreTeam });
+
     const polygonUtils = await PolygonUtils.new({ from: coreTeam });
+    WeilerAtherton.link('LinkedList', linkedList.address);
+    WeilerAtherton.link('SweepQueueLinkedList', sweepQueueLinkedList.address);
+    WeilerAtherton.link('MartinezRueda', martinezRueda.address);
+    WeilerAtherton.link('PolygonUtils', polygonUtils.address);
+    const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
+
+    const segmentUtils = await SegmentUtils.new({ from: coreTeam });
+    SplitMerge.link('LandUtils', landUtils.address);
+    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
+    SplitMerge.link('WeilerAtherton', weilerAtherton.address);
+    SplitMerge.link('SegmentUtils', segmentUtils.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
+    const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
-    const spaceDex = await SpaceDex.new({ from: coreTeam });
 
     const oracles = await Oracles.new({ from: coreTeam });
 
@@ -91,8 +124,10 @@ module.exports = async function(deployer, network, accounts) {
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
     await spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
+    await spaceTokenSandbox.initialize('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
 
     await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
@@ -151,12 +186,6 @@ module.exports = async function(deployer, network, accounts) {
       { from: coreTeam }
     );
 
-    await galtDex.setSpaceDex(spaceDex.address, { from: coreTeam });
-
-    await spaceDex.initialize(galtToken.address, spaceToken.address, plotValuation.address, plotCustodian.address, {
-      from: coreTeam
-    });
-
     await claimManager.initialize(
       oracles.address,
       galtToken.address,
@@ -173,11 +202,12 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Mint GALT to dex contracts..');
     await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
-    await galtToken.mint(spaceDex.address, Web3.utils.toWei('10000000', 'ether'));
 
     console.log('Set roles of contracts...');
+    await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
-    await spaceDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
@@ -194,6 +224,14 @@ module.exports = async function(deployer, network, accounts) {
     await oracleStakesAccounting.addRoleTo(claimManager.address, await oracleStakesAccounting.ROLE_SLASH_MANAGER(), {
       from: coreTeam
     });
+
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'minter', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'burner', { from: coreTeam });
+    await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'operator', { from: coreTeam });
+
+    await vsMultiSig.addRoleTo(auditors.address, await vsMultiSig.ROLE_AUDITORS_MANAGER(), { from: coreTeam });
+    await vsMultiSig.addRoleTo(claimManager.address, await vsMultiSig.ROLE_PROPOSER(), { from: coreTeam });
+
     await abMultiSig.addRoleTo(arbitrators.address, await abMultiSig.ROLE_ARBITRATOR_MANAGER(), { from: coreTeam });
     await abMultiSig.addRoleTo(claimManager.address, await abMultiSig.ROLE_PROPOSER(), { from: coreTeam });
 
@@ -220,9 +258,6 @@ module.exports = async function(deployer, network, accounts) {
     await plotCustodian.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotClarification.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.5', 'ether'), { from: coreTeam });
     await plotEscrow.setMinimalApplicationFeeInGalt(Web3.utils.toWei('0.05', 'ether'), { from: coreTeam });
-
-    await spaceDex.setFee('0', '0', { from: coreTeam });
-    await spaceDex.setFee(Web3.utils.toWei('1', 'szabo'), '1', { from: coreTeam });
 
     await claimManager.setMinimalApplicationFeeInEth(Web3.utils.toWei('6', 'ether'), { from: coreTeam });
     await claimManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('45', 'ether'), { from: coreTeam });
@@ -251,6 +286,8 @@ module.exports = async function(deployer, network, accounts) {
             spaceTokenAbi: spaceToken.abi,
             splitMergeAddress: splitMerge.address,
             splitMergeAbi: splitMerge.abi,
+            // eslint-disable-next-line
+            spaceSplitOperationAbi: SpaceSplitOperation._json.abi,
             plotManagerAddress: plotManager.address,
             plotManagerAbi: plotManager.abi,
             plotClarificationAddress: plotClarification.address,
@@ -265,8 +302,6 @@ module.exports = async function(deployer, network, accounts) {
             landUtilsAbi: landUtils.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
-            spaceDexAddress: spaceDex.address,
-            spaceDexAbi: spaceDex.abi,
             claimManagerAddress: claimManager.address,
             claimManagerAbi: claimManager.abi,
             oraclesAddress: oracles.address,
@@ -276,7 +311,11 @@ module.exports = async function(deployer, network, accounts) {
             arbitratorsAddress: arbitrators.address,
             arbitratorsAbi: arbitrators.abi,
             arbitratorsMultiSigAddress: abMultiSig.address,
-            arbitratorsMultiSigAbi: abMultiSig.abi
+            arbitratorsMultiSigAbi: abMultiSig.abi,
+            spaceTokenSandboxAddress: spaceTokenSandbox.address,
+            spaceTokenSandboxAbi: spaceTokenSandbox.abi,
+            splitMergeSandboxAddress: splitMergeSandbox.address,
+            splitMergeSandboxAbi: splitMergeSandbox.abi
           },
           null,
           2
