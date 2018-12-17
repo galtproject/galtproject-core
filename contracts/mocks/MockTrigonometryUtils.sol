@@ -11,24 +11,14 @@ contract MockTrigonometryUtils {
   constructor() public {
 
   }
-  
-  function getSin(uint32 angle) public returns(int result) {
-    result = TrigonometryUtils.sin(angle);
+
+  function getSinOfRad(int256 etherRad) public returns(int result) {
+    result = TrigonometryUtils.getSinOfRad(etherRad);
     emit LogSinResult(result);
   }
 
-  function getSinOfEther(uint256 etherAngle) public returns(int result) {
-    result = TrigonometryUtils.sin256(etherAngle);
+  function getSinOfDegree(int256 etherDegree) public returns(int result) {
+    result = TrigonometryUtils.getSinOfDegree(etherDegree);
     emit LogSinResult(result);
-  }
-
-  function getTrueSinOfEther(int256 etherAngle) public returns(int result) {
-    result = TrigonometryUtils.getTrueSinOfInt(etherAngle);
-    emit LogSinResult(result);
-  }
-
-  function getCos(uint32 angle) public returns(int result) {
-    result = TrigonometryUtils.cos(angle);
-    emit LogCosResult(result);
   }
 }

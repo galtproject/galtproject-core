@@ -34,7 +34,7 @@ contract('PolygonUtils', ([coreTeam]) => {
   });
 
   describe('#getArea()', () => {
-    it.skip('should correctly get area', async function() {
+    it('should correctly get area', async function() {
       const contour = [
         [1.2291728239506483, 104.51007032766938],
         [1.2037726398557425, 104.50989866629243],
@@ -48,10 +48,8 @@ contract('PolygonUtils', ([coreTeam]) => {
       });
 
       const res = await this.mockPolygonUtils.getArea();
-      console.log(res.logs[0].args.result.toFixed());
 
-      // TODO: problem with accuracy of result, need to sin accuracy with 10 decimals instead of 5
-      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() - 1727367.5744677314), 1);
+      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() / 10 ** 18 - 1727367.5744677314), 0.00001);
     });
   });
 });
