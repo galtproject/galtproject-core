@@ -17,6 +17,8 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
+import "./traits/Initializable.sol";
+import "./traits/Permissionable.sol";
 
 
 contract GaltDex is Initializable, Ownable, Permissionable {
@@ -59,8 +61,8 @@ contract GaltDex is Initializable, Ownable, Permissionable {
     uint256 _ethFee,
     GaltToken _galtToken
   )
-  public
-  isInitializer
+    public
+    isInitializer
   {
     galtToken = _galtToken;
     baseExchangeRate = _baseExchangeRate;

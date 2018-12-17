@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../collections/ArraySet.sol";
 import "../Oracles.sol";
-import "../utils/Initializable.sol";
+import "../traits/Initializable.sol";
 import "./ArbitratorVoting.sol";
 
 

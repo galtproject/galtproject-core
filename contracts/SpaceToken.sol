@@ -17,7 +17,7 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./traits/Permissionable.sol";
-import "./utils/Initializable.sol";
+import "./traits/Initializable.sol";
 import "./SpaceReputationAccounting.sol";
 
 

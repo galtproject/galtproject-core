@@ -16,7 +16,7 @@ pragma experimental "v0.5.0";
 
 import "./Oracles.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./utils/Initializable.sol";
+import "./traits/Initializable.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {

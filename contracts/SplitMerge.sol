@@ -17,13 +17,13 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
-import "./utils/Initializable.sol";
+import "./traits/Initializable.sol";
 import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
 import "./SpaceSplitOperation.sol";
 
-contract SplitMerge is Initializable, Ownable, RBAC {
+contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
@@ -352,13 +352,5 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       getPackageHeights(_packageTokenId),
       getPackageLevel(_packageTokenId)
     );
-  }
-
-  function addRoleTo(address _operator, string _role) external onlyOwner {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(address _operator, string _role) external onlyOwner {
-    super.removeRole(_operator, _role);
   }
 }
