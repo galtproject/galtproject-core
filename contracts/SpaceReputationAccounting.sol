@@ -121,8 +121,17 @@ contract SpaceReputationAccounting is Permissionable {
     _delegations[msg.sender][msg.sender] += _amount;
   }
 
-  function revokeLocked(address _multiSig, address _delegate, uint256 _amount) external {
+  function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external {
+    require(_delegations[msg.sender][_delegate] >= _amount, "Not enough funds");
+    require(_locks[_delegate][_multiSig] >= _amount, "Not enough funds");
 
+    _delegations[msg.sender][_delegate] -= _amount;
+    _locks[_delegate][_multiSig] -= _amount;
+    _delegations[msg.sender][msg.sender] += _amount;
+    _balances[msg.sender] += _amount;
+
+    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
+    ArbitratorVoting(voting).onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
   }
 
   function lockReputation(address _multiSig, uint256 _amount) external {

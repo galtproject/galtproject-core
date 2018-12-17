@@ -1,9 +1,11 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
+const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const { zeroAddress, assertRevert, initHelperWeb3 } = require('../helpers');
+const { buildMultiSigContracts } = require('../deploymentHelpers');
 
 const web3 = new Web3(SpaceReputationAccounting.web3.currentProvider);
 
@@ -11,9 +13,12 @@ initHelperWeb3(web3);
 
 chai.use(chaiAsPromised);
 
-contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, dan, eve]) => {
+contract('SpaceReputationAccounting', accounts => {
+  const [coreTeam, minter, alice, bob, charlie, claimManager, galtTokenContract] = accounts;
+
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
+    this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.spaceToken.address, { from: coreTeam });
     this.spaceToken.setSpaceReputationAccounting(this.spaceReputationAccounting.address, { from: coreTeam });
     this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
@@ -28,11 +33,11 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
   describe('SpaceToken callback handlers', () => {
     it('should ignore permissions check if spaceReputationAccounting set to 0x0', async function() {
       this.spaceToken.setSpaceReputationAccounting(zeroAddress, { from: coreTeam });
-      this.spaceToken.addRole(coreTeam, 'minter', { from: coreTeam });
-      let res = this.spaceToken.mint(alice);
-      const token1 = res.logs[0].args.id;
+      this.spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
+      let res = await this.spaceToken.mint(alice);
+      const token1 = res.logs[0].args.tokenId;
 
-      res = this.spaceToken.ownerOf(token1);
+      res = await this.spaceToken.ownerOf(token1);
       assert.equal(res.toLowerCase(), alice);
     });
   });
@@ -56,7 +61,7 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
       assert.equal(res, 800);
 
       // TRANSFER #1
-      await this.spaceReputationAccounting.transfer(bob, alice, 350, { from: alice });
+      await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 450);
@@ -65,7 +70,7 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
       assert.equal(res, 350);
 
       // TRANSFER #2
-      await this.spaceReputationAccounting.transfer(charlie, alice, 100, { from: bob });
+      await this.spaceReputationAccounting.delegate(charlie, alice, 100, { from: bob });
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 450);
@@ -77,7 +82,7 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
       assert.equal(res, 100);
 
       // TRANSFER #3
-      await this.spaceReputationAccounting.transfer(alice, alice, 50, { from: charlie });
+      await this.spaceReputationAccounting.delegate(alice, alice, 50, { from: charlie });
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 500);
@@ -104,7 +109,7 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
       assert.equal(res, 50);
 
       // REVOKE #2
-      await assertRevert(this.spaceReputationAccounting.unstake(token1, { from: alice}));
+      await assertRevert(this.spaceReputationAccounting.unstake(token1, { from: alice }));
 
       await this.spaceReputationAccounting.revoke(bob, 50, { from: alice });
       await this.spaceReputationAccounting.revoke(charlie, 50, { from: alice });
@@ -123,6 +128,66 @@ contract('SpaceReputationAccounting', ([coreTeam, minter, alice, bob, charlie, d
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 0);
+    });
+  });
+
+  describe('revokeLocked', () => {
+    it('should allow revoking locked reputation', async function() {
+      const args = [
+        coreTeam,
+        claimManager,
+        this.oracles,
+        galtTokenContract,
+        this.spaceReputationAccounting.address,
+        ['0x1', '0x2', '0x3'],
+        2
+      ];
+
+      const [abMultiSigX] = await buildMultiSigContracts(...args);
+      const [abMultiSigY] = await buildMultiSigContracts(...args);
+      const [abMultiSigZ] = await buildMultiSigContracts(...args);
+
+      let res = await this.spaceToken.mint(alice, { from: minter });
+      const token1 = res.logs[0].args.tokenId.toNumber();
+
+      // HACK
+      await this.spaceReputationAccounting.setTokenArea(token1, 800, { from: alice });
+
+      // STAKE
+      await this.spaceReputationAccounting.stake(token1, { from: alice });
+      await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
+      await this.spaceReputationAccounting.delegate(charlie, alice, 100, { from: bob });
+      await this.spaceReputationAccounting.delegate(alice, alice, 50, { from: charlie });
+
+      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 500);
+
+      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 250);
+
+      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 50);
+
+      // Bob stakes reputation in multiSigA
+      await this.spaceReputationAccounting.lockReputation(abMultiSigX.address, 100, { from: bob });
+      await this.spaceReputationAccounting.lockReputation(abMultiSigY.address, 30, { from: bob });
+      await this.spaceReputationAccounting.lockReputation(abMultiSigZ.address, 70, { from: bob });
+
+      // Alice can revoke only 50 unlocked reputation tokens
+      await assertRevert(this.spaceReputationAccounting.revoke(bob, 51, { from: alice }));
+      await this.spaceReputationAccounting.revoke(bob, 50, { from: alice });
+
+      // To revoke locked reputation Alice uses #revokeLocked() and explicitly
+      // specifies multiSig to revoke reputation from
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 100, { from: bob }));
+      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 100, { from: alice });
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigY.address, 31, { from: alice }));
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigY.address, 30, { from: bob }));
+      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
+      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 70, { from: bob }));
+      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
     });
   });
 });
