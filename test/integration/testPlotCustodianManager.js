@@ -5,7 +5,6 @@ const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -91,7 +90,8 @@ contract('PlotCustodianManager', (accounts) => {
     coreTeam,
     galtSpaceOrg,
     feeManager,
-    multiSigWallet,
+    multiSigX,
+    stakesNotifier,
     applicationTypeManager,
     oracleManager,
     alice,
@@ -120,7 +120,6 @@ contract('PlotCustodianManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.oracleStakeAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
@@ -163,9 +162,6 @@ contract('PlotCustodianManager', (accounts) => {
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
-      from: coreTeam
-    });
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
@@ -190,7 +186,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+    await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
 
@@ -360,10 +356,19 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
-        from: oracleManager
-      });
       await this.oracles.addOracle(
+        multiSigX,
+        bob,
+        'Bob',
+        'MN',
+        [],
+        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'],
+        {
+          from: oracleManager
+        }
+      );
+      await this.oracles.addOracle(
+        multiSigX,
         charlie,
         'Charlie',
         'MN',
@@ -373,24 +378,37 @@ contract('PlotCustodianManager', (accounts) => {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
         from: oracleManager
       });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
 
-      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
 
       const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
@@ -713,10 +731,19 @@ contract('PlotCustodianManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
-        from: oracleManager
-      });
       await this.oracles.addOracle(
+        multiSigX,
+        bob,
+        'Bob',
+        'MN',
+        [],
+        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'],
+        {
+          from: oracleManager
+        }
+      );
+      await this.oracles.addOracle(
+        multiSigX,
         charlie,
         'Charlie',
         'MN',
@@ -726,23 +753,37 @@ contract('PlotCustodianManager', (accounts) => {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
         from: oracleManager
       });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: alice });
+
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
 
       const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
 

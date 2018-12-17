@@ -77,8 +77,9 @@ contract('PlotClarificationManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
+    multiSigX,
     feeManager,
-    multiSigWallet,
+    stakesNotifier,
     applicationTypeManager,
     oracleManager,
     alice,
@@ -106,7 +107,6 @@ contract('PlotClarificationManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.oracleStakeAccounting = await OracleStakeAccounting.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -136,9 +136,6 @@ contract('PlotClarificationManager', (accounts) => {
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
       from: coreTeam
     });
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
-      from: coreTeam
-    });
 
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
@@ -161,7 +158,7 @@ contract('PlotClarificationManager', (accounts) => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+    await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
 
@@ -318,19 +315,18 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: oracleManager });
-      await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: oracleManager });
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: oracleManager });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human', 'foo'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['bar', 'human'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: oracleManager });
 
-      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
 
       const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
@@ -693,18 +689,17 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human', 'foo'], { from: oracleManager });
-      await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['bar'], { from: oracleManager });
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: oracleManager });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human', 'foo'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['bar'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat', 'buzz'], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: oracleManager });
 
-      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(1500), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'foo', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'bar', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'buzz', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
 
       const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
 

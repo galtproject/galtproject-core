@@ -2,16 +2,18 @@ const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
-const zeroAddress = '0x0000000000000000000000000000000000000000';
+const one = '0x0000000000000000000000000000000000000001';
+const two = '0x0000000000000000000000000000000000000002';
+const three = '0x0000000000000000000000000000000000000003';
 
 const Helpers = {
-  async buildMultiSigContracts(
+  async buidlMultiSigContracts(
     roleManager,
     claimManager,
     oraclesContract,
     galtTokenAddress,
     spaceReputationAccountingAddress,
-    initialOwners = [zeroAddress, zeroAddress, zeroAddress],
+    initialOwners = [one, two, three],
     required = 2
   ) {
     const multiSig = await ArbitratorsMultiSig.new(initialOwners, required, { from: roleManager });

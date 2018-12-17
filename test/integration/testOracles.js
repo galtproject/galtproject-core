@@ -26,6 +26,7 @@ contract('Oracles', accounts => {
   const [
     coreTeam,
     oracleManager,
+    multiSigX,
     applicationTypeManager,
     oracleTypeManager,
     stakesManager,
@@ -164,17 +165,17 @@ contract('Oracles', accounts => {
 
     describe('#addOracle()', () => {
       it('should allow an oracleManager to assign oracles', async function() {
-        await this.oracles.addOracle(alice, 'Alice', 'sezu06', [], ['🦄'], { from: oracleManager });
+        await this.oracles.addOracle(multiSigX, alice, 'Alice', 'sezu06', [], ['🦄'], { from: oracleManager });
       });
 
       it('should deny an oracleManager to assign oracle with non-existent role', async function() {
         await assertRevert(
-          this.oracles.addOracle(alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: oracleManager })
+          this.oracles.addOracle(multiSigX, alice, 'Alice', 'sezu06', [], ['🦄', '🦆️'], { from: oracleManager })
         );
       });
 
       it('should deny any other person than oracleManager to assign oracles', async function() {
-        await assertRevert(this.oracles.addOracle(alice, 'Alice', 'sezu06', [], ['🦄'], { from: alice }));
+        await assertRevert(this.oracles.addOracle(multiSigX, alice, 'Alice', 'sezu06', [], ['🦄'], { from: alice }));
       });
     });
 
@@ -189,9 +190,9 @@ contract('Oracles', accounts => {
     });
 
     describe('#isOracleActive()', () => {
-      it('return true if oracle is active and has deposited his stake', async function() {
+      it('return true if oracle is active', async function() {
         assert(!(await this.oracles.isOracleActive(alice)));
-        await this.oracles.addOracle(alice, 'Alice', 'IN', [], ['🦄'], { from: oracleManager });
+        await this.oracles.addOracle(multiSigX, alice, 'Alice', 'IN', [], ['🦄'], { from: oracleManager });
         assert(await this.oracles.isOracleActive(alice));
         await this.oracles.removeOracle(alice, { from: oracleManager });
         assert(!(await this.oracles.isOracleActive(alice)));

@@ -76,7 +76,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       ownerOfToken == msg.sender ||
       spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
       spaceToken.getApproved(_spaceTokenId) == msg.sender,
-      "This action not permitted for msg.sender");
+      "This action not permitted");
     _;
   }
 
@@ -84,7 +84,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     require(
     /* solium-disable-next-line */
       hasRole(msg.sender, GEO_DATA_MANAGER),
-      "This action not permitted for msg.sender");
+      "This action not permitted");
     _;
   }
 
@@ -246,7 +246,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
-    require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted for msg.sender");
+    require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted");
     spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }

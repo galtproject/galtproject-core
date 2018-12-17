@@ -3,7 +3,6 @@ const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -77,7 +76,19 @@ Object.freeze(Currency);
  */
 contract('PlotManager', accounts => {
   before(clearLibCache);
-  const [coreTeam, galtSpaceOrg, feeManager, multiSigWallet, alice, bob, charlie, dan, eve, frank] = accounts;
+  const [
+    coreTeam,
+    galtSpaceOrg,
+    feeManager,
+    multiSigX,
+    stakesNotifier,
+    alice,
+    bob,
+    charlie,
+    dan,
+    eve,
+    frank
+  ] = accounts;
 
   beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
@@ -97,7 +108,6 @@ contract('PlotManager', accounts => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.oracleStakeAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
@@ -113,9 +123,6 @@ contract('PlotManager', accounts => {
         from: coreTeam
       }
     );
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
-      from: coreTeam
-    });
     await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, { from: coreTeam });
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
@@ -144,7 +151,7 @@ contract('PlotManager', accounts => {
     await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_GALT_SHARE_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
+    await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
 
@@ -429,14 +436,13 @@ contract('PlotManager', accounts => {
     describe('#closeApplication()', () => {
       describe('with status REVERTED', () => {
         it('should change status to CLOSED', async function() {
-          await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
-          await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
-          await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
 
-          await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-          await this.oracleStakeAccounting.stake(charlie, '🦄', ether(30), { from: alice });
-          await this.oracleStakeAccounting.stake(dan, '🦆', ether(30), { from: alice });
-          await this.oracleStakeAccounting.stake(eve, '🦋', ether(30), { from: alice });
+          await this.oracles.onOracleStakeChanged(multiSigX, charlie, '🦄', ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(multiSigX, dan, '🦆', ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(multiSigX, eve, '🦋', ether(30), { from: stakesNotifier });
 
           await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
           await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
@@ -461,17 +467,16 @@ contract('PlotManager', accounts => {
           ['', '', ''],
           { from: coreTeam }
         );
-        await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-        //
-        await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+//
+        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
 
         await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
         const res = await this.plotManager.submitApplication(
@@ -564,17 +569,16 @@ contract('PlotManager', accounts => {
           ['', '', ''],
           { from: coreTeam }
         );
-        await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-        await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(dan, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, 'cat', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'cat', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
@@ -658,17 +662,16 @@ contract('PlotManager', accounts => {
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-        await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-        await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
 
         await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
@@ -801,17 +804,16 @@ contract('PlotManager', accounts => {
       this.packageTokenId = res.packageTokenId;
       assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-      await this.oracles.addOracle(charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
 
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 
-      await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-      await this.oracleStakeAccounting.stake(bob, 'human', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(charlie, 'human', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(dan, 'cat', ether(30), { from: alice });
-      await this.oracleStakeAccounting.stake(eve, 'dog', ether(30), { from: alice });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
     });
 
     describe('#submitApplication()', () => {
@@ -1239,10 +1241,9 @@ contract('PlotManager', accounts => {
           { from: coreTeam }
         );
 
-        await this.oracles.addOracle(frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
 
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(150), { from: alice });
-        await this.oracleStakeAccounting.stake(frank, 'foo', ether(30), { from: alice });
+        await this.oracles.onOracleStakeChanged(multiSigX, frank, 'foo', ether(30), { from: stakesNotifier });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
       });
 
