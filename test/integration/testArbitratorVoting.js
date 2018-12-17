@@ -67,7 +67,7 @@ async function buildMultiSigContracts(
 }
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('ArbitratorVoting', accounts => {
+contract('ArbitratorVoting', accounts => {
   const [
     coreTeam,
     arbitratorManager,
@@ -2839,6 +2839,156 @@ contract.only('ArbitratorVoting', accounts => {
     });
   });
 
+  describe('#onReputationChanged()', () => {
+    beforeEach(async function() {
+      await this.abVotingX.addRoleTo(fakeSRA, await this.abVotingX.SPACE_REPUTATION_NOTIFIER(), {
+        from: coreTeam
+      });
+    });
+
+    describe('full reputation revoke', () => {
+      it('should revoke reputation from multiple candidates', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+        await this.abVotingX.grantReputation(candidateA, 200, { from: alice });
+        await this.abVotingX.grantReputation(candidateB, 300, { from: alice });
+        await this.abVotingX.grantReputation(candidateC, 100, { from: alice });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateB).call();
+        assert.equal(res, 300);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateC).call();
+        assert.equal(res, 100);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 0, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateB).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateC).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 0);
+      });
+
+      it('should revoke reputation from single candidate', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+        await this.abVotingX.grantReputation(candidateA, 200, { from: alice });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 600);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 0, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 0);
+      });
+
+      it('should revoke reputation only from candidate', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 800);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 0, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 0);
+      });
+    });
+
+    describe('partial reputation revoke', () => {
+      it('should revoke reputation from multiple candidates', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+        await this.abVotingX.grantReputation(candidateA, 200, { from: alice });
+        await this.abVotingX.grantReputation(candidateB, 300, { from: alice });
+        await this.abVotingX.grantReputation(candidateC, 100, { from: alice });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateB).call();
+        assert.equal(res, 300);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateC).call();
+        assert.equal(res, 100);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 200, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateB).call();
+        assert.equal(res, 100);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateC).call();
+        assert.equal(res, 100);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 200);
+      });
+
+      it('should revoke reputation from single candidate', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+        await this.abVotingX.grantReputation(candidateA, 200, { from: alice });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 600);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 200);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 100, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 0);
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(candidateA).call();
+        assert.equal(res, 100);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 100);
+      });
+
+      it('should revoke reputation only from candidate', async function() {
+        await this.abVotingX.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
+
+        let res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 800);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 800);
+
+        // REVOKE
+        await this.abVotingX.onDelegateReputationChanged(alice, 300, { from: fakeSRA });
+
+        res = await this.abVotingXWeb3.methods.getSpaceReputation(alice).call();
+        assert.equal(res, 300);
+        res = await this.abVotingXWeb3.methods.totalSpaceReputation().call();
+        assert.equal(res, 300);
+      });
+    });
+  });
+
   describe('#pushArbitrators()', () => {
     let voting;
     let votingWeb3;
@@ -2925,10 +3075,7 @@ contract.only('ArbitratorVoting', accounts => {
       await voting.recalculate(candidateC);
 
       const res = await votingWeb3.methods.getCandidates().call();
-      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [
-        candidateF,
-        candidateE
-      ]);
+      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateF, candidateE]);
       await assertRevert(voting.pushArbitrators());
     });
   });

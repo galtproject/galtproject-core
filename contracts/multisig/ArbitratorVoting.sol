@@ -44,6 +44,7 @@ contract ArbitratorVoting is Permissionable {
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
+  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
 
   event OracleStakeChanged(
     address oracle,
@@ -51,6 +52,24 @@ contract ArbitratorVoting is Permissionable {
     uint256 currentOracleWeight,
     uint256 newOracleWeight,
     uint256 newCandidateWeight
+  );
+
+  event Recalculate(
+    address delegate,
+    uint256 candidateSpaceReputation,
+    uint256 candidateOracleStake,
+    uint256 totalSpaceReputation,
+    uint256 totalOracleStakes,
+    uint256 spaceReputationRatio,
+    uint256 oracleStakeRatio,
+    uint256 combinedRatio,
+    uint256 weight
+  );
+
+  event ReputationBurnWithRevoke(
+    address delegate,
+    uint256 remainder,
+    uint256 limit
   );
 
   // limit for SpaceReputation delegation
@@ -67,10 +86,14 @@ contract ArbitratorVoting is Permissionable {
   mapping(address => Oracle) private oracles;
   // Oracle Candidate => totalWeights
   mapping(address => uint256) private oracleStakes;
+
   // Delegate => Delegate details
-  mapping(address => Delegate) private delegates;
+  mapping(address => Delegate) private delegatedReputation;
+  // Candidate/Delegate => locked
+  mapping(address => uint256) private lockedReputation;
   // Candidate/Delegate => balance
-  mapping(address => uint256) private spaceReputation;
+  mapping(address => uint256) private reputationBalance;
+
 
   // Candidate address => Candidate details
   mapping(address => Candidate) candidates;
@@ -81,7 +104,7 @@ contract ArbitratorVoting is Permissionable {
   }
 
   struct Delegate {
-    mapping(address => uint256) distributedWeight;
+    mapping(address => uint256) distributedReputation;
     ArraySet.AddressSet candidates;
   }
 
@@ -120,20 +143,9 @@ contract ArbitratorVoting is Permissionable {
     n = 10;
   }
 
-  event Recalculate(
-    address delegate,
-    uint256 candidateSpaceReputation,
-    uint256 candidateOracleStake,
-    uint256 totalSpaceReputation,
-    uint256 totalOracleStakes,
-    uint256 spaceReputationRatio,
-    uint256 oracleStakeRatio,
-    uint256 combinedRatio,
-    uint256 weight
-  );
 
   function recalculate(address _candidate) external {
-    uint256 candidateSpaceReputation = spaceReputation[_candidate];
+    uint256 candidateSpaceReputation = lockedReputation[_candidate];
     uint256 candidateOracleStake = oracleStakes[_candidate];
     uint256 spaceReputationRatio = 0;
     uint256 oracleStakeRatio = 0;
@@ -478,91 +490,121 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function grantReputation(address _candidate, uint256 _amount) external {
-    require(spaceReputation[msg.sender] >= _amount, "Not enough reputation");
+    require(lockedReputation[msg.sender] >= _amount, "Not enough reputation");
+    require(delegatedReputation[msg.sender].distributedReputation[msg.sender] >= _amount, "Not enough reputation");
+    require(delegatedReputation[msg.sender].candidates.size() <= 5, "Delegate reputation limit is 5 candidates");
 
-    delegates[msg.sender].distributedWeight[_candidate] += _amount;
-    spaceReputation[msg.sender] -= _amount;
-    spaceReputation[_candidate] += _amount;
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] -= _amount;
+    delegatedReputation[msg.sender].distributedReputation[_candidate] += _amount;
+
+    reputationBalance[msg.sender] -= _amount;
+    reputationBalance[_candidate] += _amount;
+
+    delegatedReputation[msg.sender].candidates.addSilent(_candidate);
   }
 
   function revokeReputation(address _candidate, uint256 _amount) external {
-    require(spaceReputation[_candidate] >= _amount, "Not enough reputation");
-    require(delegates[msg.sender].distributedWeight[_candidate] >= _amount, "Not enough reputation");
+    require(lockedReputation[_candidate] >= _amount, "Not enough reputation");
+    require(delegatedReputation[msg.sender].distributedReputation[_candidate] >= _amount, "Not enough reputation");
 
-    delegates[msg.sender].distributedWeight[_candidate] -= _amount;
-    spaceReputation[msg.sender] += _amount;
-    spaceReputation[_candidate] -= _amount;
+    delegatedReputation[msg.sender].distributedReputation[_candidate] -= _amount;
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] += _amount;
+
+    reputationBalance[_candidate] == _amount;
+    reputationBalance[msg.sender] += _amount;
+
+    if (delegatedReputation[msg.sender].distributedReputation[_candidate] == 0) {
+      delegatedReputation[msg.sender].candidates.remove(_candidate);
+    }
   }
-  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
 
   // @dev SpaceOwner balance changed
   // Handles SRA stakeReputation and revokeReputation calls
   function onDelegateReputationChanged(
     address _delegate,
-    uint256 _newWeight
+    uint256 _newLocked
   )
     external
     onlyRole(SPACE_REPUTATION_NOTIFIER)
   {
-    uint256 currentWeight = spaceReputation[_delegate];
-    emit ReputationChanged(_delegate, currentWeight, _newWeight);
+    // need more details
+    uint256 currentLocked = lockedReputation[_delegate];
+    uint256 selfDelegated = delegatedReputation[_delegate].distributedReputation[_delegate];
 
-    if (_newWeight >= currentWeight) {
-      // mint
-      uint256 diff = _newWeight - currentWeight;
-      spaceReputation[_delegate] += diff;
+    emit ReputationChanged(_delegate, currentLocked, _newLocked);
+
+    // mint
+    if (_newLocked >= currentLocked) {
+      uint256 diff = _newLocked - currentLocked;
+
+      lockedReputation[_delegate] += diff;
+      delegatedReputation[_delegate].distributedReputation[_delegate] += diff;
+      reputationBalance[_delegate] += diff;
       totalSpaceReputation += diff;
 
       emit ReputationMint(_delegate, diff);
+    // burn
     } else {
-      // burn
-      uint256 diff = currentWeight - _newWeight;
-      assert(diff <= currentWeight);
-      uint256 remainder = diff;
+      // diff is always positive, not 0
+      uint256 diff = currentLocked - _newLocked;
+      assert(diff <= currentLocked);
+      assert(diff > 0);
 
-      spaceReputation[_delegate] -= diff;
-      remainder -=currentWeight;
-
+      lockedReputation[_delegate] -= diff;
       totalSpaceReputation -= diff;
 
-      if (remainder == 0) {
+      // delegate has enough reputation on his own delegated account, no need to iterate over his candidates
+      if (diff <= selfDelegated) {
+        delegatedReputation[_delegate].distributedReputation[_delegate] -= diff;
+        reputationBalance[_delegate] -= diff;
+
         emit ReputationBurn(_delegate, diff);
+
         return;
       }
 
-      address[] memory candidatesToRevoke = delegates[_delegate].candidates.elements();
+      uint256 ownedDelegatedBalance = selfDelegated;
 
-      uint256 limit = 0;
-      if (candidateCounter < DELEGATE_CANDIDATES_LIMIT) {
-        limit = delegates[_delegate].candidates.size();
+      delegatedReputation[_delegate].distributedReputation[_delegate] = 0;
+      reputationBalance[_delegate] -= ownedDelegatedBalance;
+
+      uint256 remainder = diff - ownedDelegatedBalance;
+      assert(remainder > 0);
+
+      _revokeDelegatedReputation(_delegate, remainder);
+    }
+  }
+
+  function _revokeDelegatedReputation(address _delegate, uint256 _revokeAmount) internal {
+    address[] memory candidatesToRevoke = delegatedReputation[_delegate].candidates.elements();
+    uint256 len = candidatesToRevoke.length;
+    assert(candidatesToRevoke.length > 0);
+    uint256 remainder = _revokeAmount;
+
+    assert(len <= DELEGATE_CANDIDATES_LIMIT);
+
+    emit ReputationBurnWithRevoke(_delegate, remainder, len);
+
+    for (uint256 i = 0; i < len; i++) {
+      address candidate = candidatesToRevoke[i];
+      uint256 candidateReputation = delegatedReputation[_delegate].distributedReputation[candidate];
+
+      if (candidateReputation <= remainder) {
+        assert(reputationBalance[candidate] >= candidateReputation);
+
+        reputationBalance[candidate] -= candidateReputation;
+        delegatedReputation[_delegate].distributedReputation[candidate] = 0;
+
+        remainder -= candidateReputation;
       } else {
-        limit = DELEGATE_CANDIDATES_LIMIT;
-      }
+        assert(reputationBalance[candidate] >= remainder);
 
-      emit ReputationBurnWithRevoke(_delegate, diff, remainder, limit);
-      for (uint256 i = 0; i < limit; i++) {
-        address candidate = candidatesToRevoke[i];
-        uint256 v = delegates[_delegate].distributedWeight[candidate];
-
-        if (v >= remainder) {
-          delegates[_delegate].distributedWeight[candidate] = 0;
-          assert(spaceReputation[candidate] >= v);
-
-          spaceReputation[candidate] -= v;
-        } else {
-          assert(delegates[_delegate].distributedWeight[candidate] > remainder);
-          delegates[_delegate].distributedWeight[candidate] -= remainder;
-          return;
-        }
+        reputationBalance[candidate] -= remainder;
+        delegatedReputation[_delegate].distributedReputation[candidate] -= remainder;
+        return;
       }
     }
   }
-  event ReputationBurnWithRevoke(
-    address delegate,
-    uint256 diff,
-    uint256 remainder,
-    uint256 limit
-  );
 
   // @dev Oracle balance changed
   function onOracleStakeChanged(
@@ -644,7 +686,7 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function getSpaceReputation(address _delegate) external view returns (uint256) {
-    return spaceReputation[_delegate];
+    return reputationBalance[_delegate];
   }
 
   function getWeight(address _candidate) external view returns (uint256) {
