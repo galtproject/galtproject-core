@@ -22,6 +22,7 @@ const ValidatorStakes = artifacts.require('./ValidatorStakes');
 const SplitMerge = artifacts.require('./SplitMerge');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
+const GaltGenesis = artifacts.require('./GaltGenesis');
 const Validators = artifacts.require('./Validators');
 const Auditors = artifacts.require('./Auditors');
 const ValidatorStakesMultiSig = artifacts.require('./ValidatorStakesMultiSig.sol');
@@ -39,6 +40,7 @@ module.exports = async function(deployer, network, accounts) {
 
   deployer.then(async () => {
     const coreTeam = accounts[0];
+    const referralsFund = accounts[2]; // TODO: implement contract for referrals
     // const proxiesAdmin = accounts[1];
 
     // Deploy contracts...
@@ -84,6 +86,7 @@ module.exports = async function(deployer, network, accounts) {
     const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
 
     const galtDex = await GaltDex.new({ from: coreTeam });
+    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, { from: coreTeam });
 
     const validators = await Validators.new({ from: coreTeam });
 
@@ -207,8 +210,12 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    console.log('Mint GALT to dex contracts..');
-    await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
+    console.log('Mint GALT to contracts..');
+    const totalGalt = 10000000;
+    await galtToken.mint(galtDex.address, Web3.utils.toWei((totalGalt * 0.75).toString(), 'ether'));
+    await galtToken.mint(galtGenesis.address, Web3.utils.toWei((totalGalt * 0.05).toString(), 'ether'));
+    await galtToken.mint(referralsFund, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
+    await galtToken.mint(coreTeam, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
 
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
@@ -301,6 +308,8 @@ module.exports = async function(deployer, network, accounts) {
             plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
+            galtGenesisAddress: galtGenesis.address,
+            galtGenesisAbi: galtGenesis.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
             claimManagerAddress: claimManager.address,
