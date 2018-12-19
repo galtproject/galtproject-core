@@ -30,6 +30,8 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
   });
 
   it('should be started successfully', async function() {
+    assertRevert(this.galtGenesis.finish());
+
     await this.galtToken.mint(this.galtGenesis.address, ether(100));
     await this.galtGenesis.start(3600);
     const openingTime = await this.galtGenesis.openingTime();
@@ -58,7 +60,6 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
     });
 
     it('should allow to claim if paid and finished and reject if not', async function() {
-      assertRevert(this.galtGenesis.finish());
       await this.galtGenesis.start(5);
 
       await this.galtGenesis.pay({ from: alice, value: ether(1) });
