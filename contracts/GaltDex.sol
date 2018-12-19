@@ -26,6 +26,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   string public constant FEE_MANAGER = "fee_manager";
 
   GaltToken galtToken;
+  address galtGenesis;
 
   uint256 public constant exchangeRatePrecision = 1 szabo;
   uint256 public constant feePrecision = 1 szabo;
@@ -58,7 +59,8 @@ contract GaltDex is Initializable, Ownable, RBAC {
     uint256 _baseExchangeRate,
     uint256 _galtFee,
     uint256 _ethFee,
-    GaltToken _galtToken
+    GaltToken _galtToken,
+    address _galtGenesis
   )
   public
   isInitializer
@@ -68,6 +70,11 @@ contract GaltDex is Initializable, Ownable, RBAC {
     baseExchangeRate = _baseExchangeRate;
     galtFee = _galtFee;
     ethFee = _ethFee;
+    galtGenesis = _galtGenesis;
+  }
+
+  function () external payable {
+    // TODO: if galtGenesis - continue, else - exchange eth to galt
   }
 
   modifier onlyFeeManager() {
