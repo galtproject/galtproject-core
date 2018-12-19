@@ -10,7 +10,6 @@ const { initHelperWeb3, initHelperArtifacts, ether, assertRevert, clearLibCache 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-const { BN } = Web3.utils;
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -41,7 +40,7 @@ contract.only('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
     assertRevert(this.galtGenesis.start(3600));
   });
 
-  describe('#pay()', async () => {
+  describe('#pay() and #claim()', async () => {
     beforeEach(async function() {
       await this.galtToken.mint(this.galtGenesis.address, ether(100));
     });
@@ -57,7 +56,7 @@ contract.only('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
       assertRevert(this.galtGenesis.pay({ from: dan, value: ether(1) }));
     });
 
-    it.only('should allow to claim if paid and finished and reject if not', async function() {
+    it('should allow to claim if paid and finished and reject if not', async function() {
       await this.galtGenesis.start(5);
 
       await this.galtGenesis.pay({ from: alice, value: ether(1) });
@@ -73,13 +72,26 @@ contract.only('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
 
       await this.galtGenesis.finish({ from: eve });
 
-      await this.galtGenesis.claim({ from: alice });
-      await this.galtGenesis.claim({ from: bob });
-      await this.galtGenesis.claim({ from: dan });
-      await this.galtGenesis.claim({ from: eve });
-      assert.equal(true, false);
+      assert.equal((await web3.eth.getBalance(this.galtDex.address)).toString(), ether(1 + 2 + 3 + 4).toString());
+
+      let res = await this.galtGenesis.claim({ from: alice });
+      const aliceClaimedAmount = res.logs[0].args.galtValue;
+      res = await this.galtGenesis.claim({ from: bob });
+      const bobClaimedAmount = res.logs[0].args.galtValue;
+      res = await this.galtGenesis.claim({ from: dan });
+      const danClaimedAmount = res.logs[0].args.galtValue;
+      res = await this.galtGenesis.claim({ from: eve });
+      const eveClaimedAmount = res.logs[0].args.galtValue;
+
+      assert.equal((await this.galtToken.balanceOf(this.galtGenesis.address)).toString(), '0');
+      assert.equal((await this.galtToken.balanceOf(alice)).toString(), ether(100 / (1 + 2 + 3 + 4)).toString());
 
       assertRevert(this.galtGenesis.claim({ from: nana }));
+      assertRevert(this.galtGenesis.claim({ from: alice }));
+
+      assert.equal(bobClaimedAmount.div(aliceClaimedAmount).toString(), '2');
+      assert.equal(danClaimedAmount.div(aliceClaimedAmount).toString(), '3');
+      assert.equal(eveClaimedAmount.div(aliceClaimedAmount).toString(), '4');
     });
   });
 });
