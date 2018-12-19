@@ -58,6 +58,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
     });
 
     it('should allow to claim if paid and finished and reject if not', async function() {
+      assertRevert(this.galtGenesis.finish());
       await this.galtGenesis.start(5);
 
       await this.galtGenesis.pay({ from: alice, value: ether(1) });

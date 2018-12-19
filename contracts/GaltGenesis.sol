@@ -59,6 +59,7 @@ contract GaltGenesis is Ownable {
   }
 
   function finish() external {
+    require(openingTime > 0, "Not started");
     require(block.timestamp >= closingTime, "To soon");
     finished = true;
 
