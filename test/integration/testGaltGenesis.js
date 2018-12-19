@@ -5,7 +5,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, initHelperArtifacts, ether, assertRevert, clearLibCache } = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, szabo, assertRevert, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
@@ -19,13 +19,14 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
+contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.galtGenesis = await GaltGenesis.new(this.galtToken.address, this.galtDex.address, { from: coreTeam });
+    this.galtDex.initialize(szabo(1), szabo(15), szabo(15), this.galtToken.address, this.galtGenesis.address);
   });
 
   it('should be started successfully', async function() {

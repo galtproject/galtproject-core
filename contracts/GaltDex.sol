@@ -74,7 +74,11 @@ contract GaltDex is Initializable, Ownable, RBAC {
   }
 
   function () external payable {
-    // TODO: if galtGenesis - continue, else - exchange eth to galt
+    if(msg.sender == galtGenesis) {
+      // nothing to do
+    } else {
+      exchangeEthToGalt();
+    }
   }
 
   modifier onlyFeeManager() {
