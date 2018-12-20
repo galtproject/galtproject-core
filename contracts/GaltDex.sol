@@ -73,8 +73,8 @@ contract GaltDex is Initializable, Ownable, RBAC {
     galtGenesis = _galtGenesis;
   }
 
-  function () external payable {
-    if(msg.sender == galtGenesis) {
+  function() external payable {
+    if (msg.sender == galtGenesis) {
       // nothing to do
     } else {
       exchangeEthToGalt();
@@ -103,11 +103,11 @@ contract GaltDex is Initializable, Ownable, RBAC {
     emit LogExchangeEthToGalt(msg.sender, msg.value, galtToSend, ethFeeForAmount, galtToken.balanceOf(address(this)), _exchangeRate);
   }
 
-  function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns(uint256) {
+  function getExchangeEthAmountForGalt(uint256 ethAmount) public view returns (uint256) {
     return ethAmount.mul(exchangeRate(ethAmount)).div(exchangeRatePrecision);
   }
 
-  function getEthFeeForAmount(uint256 ethAmount) public view returns(uint256) {
+  function getEthFeeForAmount(uint256 ethAmount) public view returns (uint256) {
     if (ethFee > 0) {
       return ethAmount.div(100).mul(ethFee).div(feePrecision);
     } else {
@@ -133,11 +133,11 @@ contract GaltDex is Initializable, Ownable, RBAC {
     emit LogExchangeGaltToEth(msg.sender, galtAmount, ethToSend, galtFee, address(this).balance, _exchangeRate);
   }
 
-  function getExchangeGaltAmountForEth(uint256 galtAmount) public view returns(uint256) {
+  function getExchangeGaltAmountForEth(uint256 galtAmount) public view returns (uint256) {
     return galtAmount.div(exchangeRate(0)).mul(exchangeRatePrecision);
   }
 
-  function getGaltFeeForAmount(uint256 galtAmount) public view returns(uint256) {
+  function getGaltFeeForAmount(uint256 galtAmount) public view returns (uint256) {
     if (galtFee > 0) {
       return galtAmount.div(100).mul(galtFee).div(feePrecision);
     } else {
@@ -145,16 +145,16 @@ contract GaltDex is Initializable, Ownable, RBAC {
     }
   }
 
-  function exchangeRate(uint256 minusBalance) public view returns(uint256) {
+  function exchangeRate(uint256 minusBalance) public view returns (uint256) {
     if (ethToGaltSum > 0 && address(this).balance > 0) {
       uint256 galtSum = galtToken.totalSupply().sub(galtToken.balanceOf(address(this))).add(galtFeePayout);
-      
-//      if (spaceDex != address(0)) {
-//        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum()).sub(spaceDex.feePayout());
-//      }
-      
+
+      //      if (spaceDex != address(0)) {
+      //        galtSum = galtSum.sub(galtToken.balanceOf(address(spaceDex))).sub(spaceDex.spacePriceOnSaleSum()).sub(spaceDex.feePayout());
+      //      }
+
       uint256 ethSum = address(this).balance.sub(ethFeePayout).sub(minusBalance);
-      
+
       return galtSum.mul(exchangeRatePrecision).div(ethSum);
     } else {
       return baseExchangeRate;

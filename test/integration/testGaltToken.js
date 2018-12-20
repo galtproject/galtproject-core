@@ -3,9 +3,11 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { ether, assertRevert } = require('../helpers');
+const { ether, assertRevert, initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
+
+initHelperWeb3(web3);
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;

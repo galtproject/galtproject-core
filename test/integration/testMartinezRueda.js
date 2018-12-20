@@ -121,7 +121,7 @@ contract('MartinezRueda', ([coreTeam]) => {
       await this.mockMartinezRueda.orderEvents();
 
       const eventsLength = await this.mockMartinezRueda.getResultEventsLength();
-      console.log('eventsLength', eventsLength.toString(10));
+      // console.log('eventsLength', eventsLength.toString(10));
 
       const pointsShouldIncluded = [
         ['1200340250507000000', '104532680679113000000'],
