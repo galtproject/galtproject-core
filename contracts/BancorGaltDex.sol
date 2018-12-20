@@ -14,8 +14,16 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
+import "bancor-contracts/solidity/contracts/token/EtherToken.sol";
 import "bancor-contracts/solidity/contracts/token/SmartToken.sol";
 import "bancor-contracts/solidity/contracts/utility/ContractRegistry.sol";
+import "bancor-contracts/solidity/contracts/ContractIds.sol";
+import "bancor-contracts/solidity/contracts/utility/ContractFeatures.sol";
+import "bancor-contracts/solidity/contracts/converter/BancorGasPriceLimit.sol";
+import "bancor-contracts/solidity/contracts/converter/BancorFormula.sol";
+import "bancor-contracts/solidity/contracts/BancorNetwork.sol";
+import "bancor-contracts/solidity/contracts/converter/BancorConverterFactory.sol";
+import "bancor-contracts/solidity/contracts/converter/BancorConverterUpgrader.sol";
 
 import "bancor-contracts/solidity/contracts/converter/BancorConverter.sol";
 import "bancor-contracts/solidity/contracts/token/interfaces/ISmartToken.sol";

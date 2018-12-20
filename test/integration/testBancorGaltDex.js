@@ -1,7 +1,19 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const BancorGaltDex = artifacts.require('./BancorGaltDex.sol');
 const SmartToken = artifacts.require('bancor-contracts/solidity/contracts/token/SmartToken.sol');
 const ContractRegistry = artifacts.require('bancor-contracts/solidity/contracts/utility/ContractRegistry.sol');
-const BancorGaltDex = artifacts.require('./BancorGaltDex.sol');
+const ContractIds = artifacts.require('bancor-contracts/solidity/contracts/ContractIds.sol');
+const ContractFeatures = artifacts.require('bancor-contracts/solidity/contracts/utility/ContractFeatures.sol');
+const BancorGasPriceLimit = artifacts.require('bancor-contracts/solidity/contracts/converter/BancorGasPriceLimit.sol');
+const BancorFormula = artifacts.require('bancor-contracts/solidity/contracts/converter/BancorFormula.sol');
+const BancorNetwork = artifacts.require('bancor-contracts/solidity/contracts/BancorNetwork.sol');
+const BancorConverterFactory = artifacts.require(
+  'bancor-contracts/solidity/contracts/converter/BancorConverterFactory.sol'
+);
+const BancorConverterUpgrader = artifacts.require(
+  'bancor-contracts/solidity/contracts/converter/BancorConverterUpgrader.sol'
+);
+const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -36,19 +48,80 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDexToken = await SmartToken.new('GaltDex Token', 'GDT', '18', { from: coreTeam });
     this.galtDexRegistry = await ContractRegistry.new({ from: coreTeam });
-    
+    this.contractIds = await ContractIds.new({ from: coreTeam });
+    this.contractFeatures = await ContractFeatures.new({ from: coreTeam });
+    this.gasPriceLimit = await BancorGasPriceLimit.new('22000000000', { from: coreTeam });
+    this.formula = await BancorFormula.new({ from: coreTeam });
+    this.bancorNetwork = await BancorNetwork.new(this.galtDexRegistry.address, { from: coreTeam });
+    this.factory = await BancorConverterFactory.new({ from: coreTeam });
+    this.upgrader = await BancorConverterUpgrader.new(this.galtDexRegistry.address, { from: coreTeam });
+
     this.bancorGaltDex = await BancorGaltDex.new(
-        this.galtDexToken.address,
-        this.galtDexRegistry.address,
+      this.galtDexToken.address,
+      this.galtDexRegistry.address,
       '1000000',
       this.galtToken.address,
       '100',
       { from: coreTeam }
     );
+
+    await this.galtDexRegistry.registerAddress(
+      await this.contractIds.CONTRACT_FEATURES.call(),
+      this.contractFeatures.address
+    );
+
+    await this.galtDexRegistry.registerAddress(
+      await this.contractIds.BANCOR_GAS_PRICE_LIMIT.call(),
+      this.gasPriceLimit.address
+    );
+
+    await this.galtDexRegistry.registerAddress(await this.contractIds.BANCOR_FORMULA.call(), this.formula.address);
+
+    await this.galtDexRegistry.registerAddress(
+      await this.contractIds.BANCOR_NETWORK.call(),
+      this.bancorNetwork.address
+    );
+    await this.bancorNetwork.setSignerAddress(coreTeam);
+
+    await this.galtDexRegistry.registerAddress(
+      await this.contractIds.BANCOR_CONVERTER_FACTORY.call(),
+      this.factory.address
+    );
+
+    await this.galtDexRegistry.registerAddress(
+      await this.contractIds.BANCOR_CONVERTER_UPGRADER.call(),
+      this.upgrader.address
+    );
+
+    await this.galtDexRegistry.registerAddress(await this.contractIds.BANCOR_X.call(), coreTeam);
+
+    this.etherToken = await EtherToken.new({ from: coreTeam });
+
+    await this.bancorGaltDex.addConnector(this.etherToken.address, '1', false);
+
+    await this.etherToken.deposit({ from: coreTeam, value: ether(100000) });
+    await this.etherToken.transfer(this.bancorGaltDex.address, ether(100000), { from: coreTeam });
+
+    await this.galtToken.mint(this.bancorGaltDex.address, ether(1000));
+
+    await this.galtDexToken.issue(coreTeam, ether(100000000));
+
+    await this.galtDexToken.transferOwnership(this.bancorGaltDex.address);
+    await this.bancorGaltDex.acceptTokenOwnership();
   });
 
   it('should be initialized successfully', async function() {
     (await this.bancorGaltDex.registry()).should.be.eq(this.galtDexRegistry.address);
+  });
+
+  describe('#buyGalt()', async () => {
+    it('should be correct balance on buy', async function() {
+      await this.etherToken.deposit({ from: alice, value: ether(10) });
+
+      await this.etherToken.approve(this.bancorGaltDex.address, ether(10), { from: alice });
+        
+      await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(5), '1');
+    });
   });
 
   // describe('#buyGalt()', async () => {
@@ -152,5 +225,4 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   //     totalGaltFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
   //   });
   // });
-
 });
