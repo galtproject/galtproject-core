@@ -192,7 +192,7 @@ module.exports = async function(deployer, network, accounts) {
       Web3.utils.toWei('10', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
-      galtToken.address, 
+      galtToken.address,
       galtGenesis.address,
       { from: coreTeam }
     );
