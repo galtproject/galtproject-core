@@ -1,6 +1,6 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltDex = artifacts.require('./GaltDex.sol');
-const GaltGenesis = artifacts.require('./GaltGenesis.sol');
+const MockGaltGenesis = artifacts.require('./MockGaltGenesis.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -25,7 +25,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
-    this.galtGenesis = await GaltGenesis.new(this.galtToken.address, this.galtDex.address, { from: coreTeam });
+    this.galtGenesis = await MockGaltGenesis.new(this.galtToken.address, this.galtDex.address, { from: coreTeam });
     this.galtDex.initialize(szabo(1), szabo(15), szabo(15), this.galtToken.address, this.galtGenesis.address);
   });
 
@@ -54,7 +54,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
       await this.galtGenesis.pay({ from: alice, value: ether(1) });
       await this.galtGenesis.pay({ from: bob, value: ether(2) });
 
-      await waitSeconds(5);
+      await this.galtGenesis.hackClose();
       assertRevert(this.galtGenesis.pay({ from: alice, value: ether(1) }));
       assertRevert(this.galtGenesis.pay({ from: dan, value: ether(1) }));
     });
@@ -69,7 +69,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
 
       assertRevert(this.galtGenesis.claim({ from: alice }));
 
-      await waitSeconds(5);
+      await this.galtGenesis.hackClose();
 
       assertRevert(this.galtGenesis.claim({ from: alice }));
 
@@ -98,11 +98,3 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
     });
   });
 });
-
-function waitSeconds(seconds) {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve();
-    }, seconds * 1000);
-  });
-}
