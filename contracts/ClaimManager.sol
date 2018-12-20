@@ -22,6 +22,7 @@ import "./Oracles.sol";
 import "./collections/ArraySet.sol";
 import "./multisig/OracleStakesAccounting.sol";
 import "./multisig/ArbitratorsMultiSig.sol";
+import "./registries/MultiSigRegistry.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -55,6 +56,7 @@ contract ClaimManager is AbstractApplication {
 
   struct Claim {
     bytes32 id;
+    address multiSig;
     address applicant;
     address beneficiary;
     uint256 amount;
@@ -112,16 +114,9 @@ contract ClaimManager is AbstractApplication {
   uint256 public n;
 
   Oracles oracles;
-  OracleStakesAccounting oracleStakesAccounting;
-  ArbitratorsMultiSig arbitratorsMultiSig;
+  MultiSigRegistry multiSigRegistry;
 
   mapping(address => bytes32[]) applicationsByArbitrator;
-
-  modifier onlyArbitrator() {
-    require(arbitratorsMultiSig.isOwner(msg.sender), "Invalid arbitrator");
-
-    _;
-  }
 
   constructor () public {}
 
@@ -136,8 +131,7 @@ contract ClaimManager is AbstractApplication {
   function initialize(
     Oracles _oracles,
     ERC20 _galtToken,
-    OracleStakesAccounting _oracleStakesAccounting,
-    ArbitratorsMultiSig _arbitratorsMultiSig,
+    MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
     public
@@ -145,8 +139,7 @@ contract ClaimManager is AbstractApplication {
   {
     oracles = _oracles;
     galtToken = _galtToken;
-    oracleStakesAccounting = _oracleStakesAccounting;
-    arbitratorsMultiSig = _arbitratorsMultiSig;
+    multiSigRegistry = _multiSigRegistry;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     m = 3;
@@ -164,6 +157,7 @@ contract ClaimManager is AbstractApplication {
   /**
    * @dev Submit a new claim.
    *
+   * @param _multiSig to submit a claim
    * @param _beneficiary for refund
    * @param _amount of claim
    * @param _documents with details
@@ -171,6 +165,7 @@ contract ClaimManager is AbstractApplication {
    * @return new claim id
    */
   function submit(
+    address _multiSig,
     address _beneficiary,
     uint256 _amount,
     bytes32[] _documents,
@@ -180,6 +175,8 @@ contract ClaimManager is AbstractApplication {
     payable
     returns (bytes32)
   {
+    multiSigRegistry.requireValidMultiSig(_multiSig);
+
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -213,6 +210,7 @@ contract ClaimManager is AbstractApplication {
 
     c.status = ApplicationStatus.SUBMITTED;
     c.id = id;
+    c.multiSig = _multiSig;
     c.amount = _amount;
     c.beneficiary = _beneficiary;
     c.applicant = msg.sender;
@@ -238,8 +236,10 @@ contract ClaimManager is AbstractApplication {
    * @dev Arbitrator locks a claim to work on
    * @param _cId Claim ID
    */
-  function lock(bytes32 _cId) external onlyArbitrator {
+  function lock(bytes32 _cId) external {
     Claim storage c = claims[_cId];
+
+    require(ArbitratorsMultiSig(c.multiSig).isOwner(msg.sender), "Invalid arbitrator");
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
@@ -353,9 +353,11 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        oracleStakesAccounting.slashMultiple(p.oracles, p.oracleTypes, p.fines);
+        multiSigRegistry
+          .getOracleStakesAccounting(c.multiSig)
+          .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        arbitratorsMultiSig.proposeTransaction(
+        ArbitratorsMultiSig(c.multiSig).proposeTransaction(
           galtToken,
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)

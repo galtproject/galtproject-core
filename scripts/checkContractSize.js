@@ -2,11 +2,17 @@ const fs = require('fs');
 
 console.log('\nSize limit is about', 24577, '\n');
 checkSize('AbstractApplication');
+checkSize('ArraySet');
+checkSize('ArbitratorMultiSig');
+checkSize('ArbitratorVoting');
 checkSize('Auditors');
 checkSize('ClaimManager');
 checkSize('GaltDex');
 checkSize('GaltToken');
 checkSize('LandUtils');
+checkSize('MultiSigRegistry');
+checkSize('OracleStakesAccounting');
+checkSize('Oracles');
 checkSize('PlotClarificationManager');
 checkSize('PlotCustodianManager');
 checkSize('PlotEscrow');
@@ -16,14 +22,14 @@ checkSize('PlotManagerLib');
 checkSize('PlotValutaion');
 checkSize('SpaceDex');
 checkSize('SpaceToken');
+checkSize('SpaceReputationAccounting');
 checkSize('SplitMerge');
-checkSize('Validators');
-checkSize('ValidatorStakes');
-checkSize('ValidatorStakesMultiSig');
-checkSize('ArraySet');
-checkSize('ArbitratorMultiSig');
-checkSize('ArbitratorVoting');
-checkSize('OracleStakesAccounting');
+
+console.log('\nFactories...');
+checkSize('MultiSigFactory');
+checkSize('ArbitratorsMultiSigFactory');
+checkSize('ArbitratorVotingFactory');
+checkSize('OracleStakesAccountingFactory');
 console.log('\n');
 
 function checkSize(contract) {

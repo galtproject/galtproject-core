@@ -36,6 +36,7 @@ contract Oracles is Permissionable {
   string public constant ROLE_GALT_SHARE_MANAGER = "galt_share_manager";
   string public constant ROLE_ORACLE_STAKES_MANAGER = "oracle_stakes_manager";
   string public constant ROLE_ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
+  string public constant ROLE_ORACLE_STAKES_NOTIFIER_MANAGER = "oracle_stakes_notifier_manager";
 
   uint256 public constant ORACLE_TYPES_LIMIT = 50;
   bytes32 public constant ORACLE_TYPE_NOT_EXISTS = 0x0;
@@ -104,6 +105,12 @@ contract Oracles is Permissionable {
 
   modifier onlyOracleStakesNotifier() {
     require(hasRole(msg.sender, ROLE_ORACLE_STAKES_NOTIFIER), "No permissions for notifications");
+
+    _;
+  }
+
+  modifier onlyOracleStakesNotifierManager() {
+    require(hasRole(msg.sender, ROLE_ORACLE_STAKES_NOTIFIER_MANAGER), "No permissions for stake notifiers management");
 
     _;
   }
@@ -222,6 +229,10 @@ contract Oracles is Permissionable {
     }
 
     oraclesArray.push(_oracle);
+  }
+
+  function addOracleNotifierRoleTo(address _manager) external onlyOracleStakesNotifierManager {
+    _addRoleTo(_manager, ROLE_ORACLE_STAKES_NOTIFIER);
   }
 
   // TODO: only specific multisig allowed

@@ -1,9 +1,9 @@
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const Arbitrators = artifacts.require('./Arbitrators.sol');
 
 const Web3 = require('web3');
 const chai = require('chai');
@@ -18,6 +18,7 @@ const {
   assertEthBalanceChanged,
   assertRevert
 } = require('../helpers');
+const { deployMultiSigFactory } = require('../deploymentHelpers');
 
 const { stringToHex } = Web3.utils;
 
@@ -74,7 +75,7 @@ contract("ClaimManager", (accounts) => {
     galtSpaceOrg,
     feeManager,
     applicationTypeManager,
-    auditorManager,
+    spaceReputationAccounting,
     oracleManager,
     alice,
     bob,
@@ -98,41 +99,62 @@ contract("ClaimManager", (accounts) => {
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
+    this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.claimManager = await ClaimManager.new({ from: coreTeam });
-    this.oracleStakeAccounting = await OracleStakesAccounting.new({ from: coreTeam });
-    // arbitrators should be explicitly reassigned in order to synchronize MultiSig, Auditors and Oracles contract
-    this.abMultiSig = await ArbitratorsMultiSig.new([bob, charlie, dan], 2, { from: coreTeam });
-    this.arbitrators = await Arbitrators.new(this.abMultiSig.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigFactory = await deployMultiSigFactory(
+      this.multiSigRegistry.address,
+      this.galtToken.address,
+      this.oracles.address,
+      this.claimManager.address,
+      spaceReputationAccounting,
+      coreTeam
+    );
+
+    await this.multiSigRegistry.addRoleTo(this.multiSigFactory.address, await this.multiSigRegistry.ROLE_FACTORY(), {
+      from: coreTeam
+    });
+    await this.oracles.addRoleTo(
+      this.multiSigFactory.address,
+      await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(),
+      {
+        from: coreTeam
+      }
+    );
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
+
+    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+
+    const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
+    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+    this.abVotingX = res.logs[0].args.arbitratorVoting;
+    this.oracleStakesAccountingX = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+
+    // res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
+    // this.abMultiSigY = res.logs[0].args.arbitratorMultiSig;
+    // this.abVotingY = res.logs[0].args.arbitratorVoting;
+    // this.oracleStakesAccountingY = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+
+    this.mX = this.abMultiSigX.address;
+    // this.mY = this.abMultiSigY;
 
     await this.claimManager.initialize(
       this.oracles.address,
       this.galtToken.address,
-      this.oracleStakeAccounting.address,
-      this.abMultiSig.address,
+      this.multiSigRegistry.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, this.abMultiSig.address, {
-      from: coreTeam
-    });
 
     await this.claimManager.addRoleTo(feeManager, await this.claimManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
     await this.claimManager.addRoleTo(galtSpaceOrg, await this.claimManager.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-    await this.arbitrators.addRoleTo(auditorManager, await this.arbitrators.ROLE_ARBITRATOR_MANAGER(), {
-      from: coreTeam
-    });
-    await this.abMultiSig.addRoleTo(this.arbitrators.address, await this.abMultiSig.ROLE_ARBITRATOR_MANAGER(), {
-      from: coreTeam
-    });
-    await this.abMultiSig.addRoleTo(this.claimManager.address, await this.abMultiSig.ROLE_PROPOSER(), {
       from: coreTeam
     });
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -147,16 +169,6 @@ contract("ClaimManager", (accounts) => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
-    });
-    await this.oracleStakeAccounting.addRoleTo(
-      this.claimManager.address,
-      await this.oracleStakeAccounting.ROLE_SLASH_MANAGER(),
-      {
-        from: coreTeam
-      }
-    );
 
     await this.claimManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.claimManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
@@ -164,13 +176,13 @@ contract("ClaimManager", (accounts) => {
     await this.claimManager.setGaltSpaceGaltShare(13, { from: feeManager });
     await this.claimManager.setMofN(2, 3, { from: galtSpaceOrg });
 
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
-    await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
-
     this.claimManagerWeb3 = new web3.eth.Contract(this.claimManager.abi, this.claimManager.address);
-    this.oracleStakesWeb3 = new web3.eth.Contract(this.oracleStakeAccounting.abi, this.oracleStakeAccounting.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
-    this.abMultiSigWeb3 = new web3.eth.Contract(this.abMultiSig.abi, this.abMultiSig.address);
+    this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
+    this.oracleStakesAccountingXWeb3 = new web3.eth.Contract(
+      this.oracleStakesAccountingX.abi,
+      this.oracleStakesAccountingX.address
+    );
   });
 
   it('should be initialized successfully', async function() {
@@ -296,6 +308,7 @@ contract("ClaimManager", (accounts) => {
       it('should create a new application with SUBMITTED status', async function() {
         await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
         let res = await this.claimManager.submit(
+          this.mX,
           alice,
           ether(35),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -313,7 +326,7 @@ contract("ClaimManager", (accounts) => {
         it('should reject applications without payment', async function() {
           await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.claimManager.submit(alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
+            this.claimManager.submit(this.mX, alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
               from: alice
             })
           );
@@ -322,25 +335,40 @@ contract("ClaimManager", (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.claimManager.submit(alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), ether(20), {
-              from: alice
-            })
+            this.claimManager.submit(
+              this.mX,
+              alice,
+              ether(35),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              ether(20),
+              {
+                from: alice
+              }
+            )
           );
         });
 
         it('should reject applications with both ETH and GALT payments', async function() {
           await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.claimManager.submit(alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), ether(45), {
-              from: alice,
-              value: ether(10)
-            })
+            this.claimManager.submit(
+              this.mX,
+              alice,
+              ether(35),
+              this.attachedDocuments.map(galt.ipfsHashToBytes32),
+              ether(45),
+              {
+                from: alice,
+                value: ether(10)
+              }
+            )
           );
         });
 
         it('should calculate corresponding arbitrators and galtspace rewards', async function() {
           await this.galtToken.approve(this.claimManager.address, ether(53), { from: alice });
           let res = await this.claimManager.submit(
+            this.mX,
             alice,
             ether(35),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -365,6 +393,7 @@ contract("ClaimManager", (accounts) => {
     describe('with ETH payments', () => {
       it('should create a new application with SUBMITTED status', async function() {
         let res = await this.claimManager.submit(
+          this.mX,
           alice,
           ether(35),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -381,7 +410,7 @@ contract("ClaimManager", (accounts) => {
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.claimManager.submit(alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
+            this.claimManager.submit(this.mX, alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
               from: alice
             })
           );
@@ -389,7 +418,7 @@ contract("ClaimManager", (accounts) => {
 
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.claimManager.submit(alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
+            this.claimManager.submit(this.mX, alice, ether(35), this.attachedDocuments.map(galt.ipfsHashToBytes32), 0, {
               from: alice,
               value: ether(4)
             })
@@ -398,6 +427,7 @@ contract("ClaimManager", (accounts) => {
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           let res = await this.claimManager.submit(
+            this.mX,
             alice,
             ether(35),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -440,19 +470,12 @@ contract("ClaimManager", (accounts) => {
         from: applicationTypeManager
       });
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(dan, 'Dan', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(eve, 'Eve', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-
-      await this.arbitrators.setMofN(3, 5, { from: auditorManager });
-      await this.arbitrators.addArbitrator(bob, 280, { from: auditorManager });
-      await this.arbitrators.addArbitrator(charlie, 560, { from: auditorManager });
-      await this.arbitrators.addArbitrator(dan, 210, { from: auditorManager });
-      await this.arbitrators.addArbitrator(eve, 700, { from: auditorManager });
-      await this.arbitrators.addArbitrator(frank, 300, { from: auditorManager });
-      await this.arbitrators.pushArbitrators([eve, charlie, frank, bob, dan], { from: auditorManager });
+      await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
       const res = await this.claimManager.submit(
+        this.mX,
         alice,
         ether(35),
         this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -865,15 +888,17 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsThreshold, 3);
         assert.equal(res.totalSlots, 5);
 
-        await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], { from: oracleManager });
-        await this.oracles.addOracle(eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-        await this.oracles.addOracle(dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(600), { from: alice });
+        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
 
-        await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakeAccounting.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -905,9 +930,11 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should apply proposed slashes', async function() {
-        let res = await this.oracleStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE)).call();
+        let res = await this.oracleStakesAccountingXWeb3.methods
+          .stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE))
+          .call();
         assert.equal(res, ether(200));
-        res = await this.oracleStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
         assert.equal(res, ether(200));
 
         res = await this.oracles.isOracleActive(bob);
@@ -930,11 +957,11 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-        res = await this.oracleStakesWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE)).call();
         assert.equal(res, ether(190));
-        res = await this.oracleStakesWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
         assert.equal(res, ether(180));
-        //
+
         res = await this.oracles.isOracleActive(bob);
         assert.equal(res, true);
         res = await this.oracles.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
@@ -956,9 +983,9 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
         // staking back
-        await this.galtToken.approve(this.oracleStakeAccounting.address, ether(30), { from: alice });
-        await this.oracleStakeAccounting.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(10), { from: alice });
-        await this.oracleStakeAccounting.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(20), { from: alice });
+        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(30), { from: alice });
+        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(10), { from: alice });
+        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(20), { from: alice });
 
         res = await this.oracles.isOracleActive(bob);
         assert.equal(res, true);
@@ -976,7 +1003,7 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should create transfer claim value to a beneficiary', async function() {
-        let res = await this.abMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        let res = await this.abMultiSigXWeb3.methods.getTransactionCount(true, false).call();
         assert.equal(res, 0);
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
@@ -984,11 +1011,11 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.abMultiSigWeb3.methods.getTransactionCount(true, false).call();
+        res = await this.abMultiSigXWeb3.methods.getTransactionCount(true, false).call();
         assert.equal(res, 1);
 
         const txId = '0';
-        res = await this.abMultiSigWeb3.methods.transactions(txId).call();
+        res = await this.abMultiSigXWeb3.methods.transactions(txId).call();
         assert.equal(res.destination.toLowerCase(), this.galtToken.address);
         assert.equal(res.value, 0);
         assert.equal(
@@ -998,20 +1025,20 @@ contract("ClaimManager", (accounts) => {
             .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
-        const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.abMultiSig.address).call();
+        const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.abMultiSigX.address).call();
         assert(multiSigBalance > ether(20));
-        res = await this.abMultiSigWeb3.methods.required().call();
+        res = await this.abMultiSigXWeb3.methods.required().call();
         assert.equal(res, 3);
-        res = await this.abMultiSigWeb3.methods.getConfirmationCount(txId).call();
+        res = await this.abMultiSigXWeb3.methods.getConfirmationCount(txId).call();
         assert.equal(res, 0);
-        res = await this.abMultiSigWeb3.methods.getOwners().call();
+        res = await this.abMultiSigXWeb3.methods.getOwners().call();
         assert.sameMembers(res.map(a => a.toLowerCase()), [bob, charlie, dan, eve, frank]);
 
         const aliceInitialBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 
-        await this.abMultiSig.confirmTransaction(txId, { from: bob });
-        res = await this.abMultiSig.confirmTransaction(txId, { from: dan });
-        await this.abMultiSig.confirmTransaction(txId, { from: frank });
+        await this.abMultiSigX.confirmTransaction(txId, { from: bob });
+        await this.abMultiSigX.confirmTransaction(txId, { from: dan });
+        await this.abMultiSigX.confirmTransaction(txId, { from: frank });
 
         const aliceFinalBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 
@@ -1036,6 +1063,7 @@ contract("ClaimManager", (accounts) => {
         await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
 
         let res = await this.claimManager.submit(
+          this.mX,
           alice,
           ether(350),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
@@ -1263,6 +1291,7 @@ contract("ClaimManager", (accounts) => {
         await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
 
         let res = await this.claimManager.submit(
+          this.mX,
           alice,
           ether(350),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),

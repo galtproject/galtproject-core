@@ -5,7 +5,7 @@ const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
-const { buidlMultiSigContracts } = require('../../deploymentHelpers');
+const { deployMultiSigContracts } = require('../../deploymentHelpers');
 
 const { stringToHex } = Web3.utils;
 const web3 = new Web3(Oracles.web3.currentProvider);
@@ -50,9 +50,9 @@ contract('OracleStakesAccounting', accounts => {
 
     const args = [coreTeam, slashManager, this.oracles, this.galtToken.address, spaceReputationAccounting];
 
-    [this.abMultiSigX, this.abVotingX, this.oracleStakesAccountingX] = await buidlMultiSigContracts(...args);
-    [this.abMultiSigY, this.abVotingY, this.oracleStakesAccountingY] = await buidlMultiSigContracts(...args);
-    [this.abMultiSigZ, this.abVotingZ, this.oracleStakesAccountingZ] = await buidlMultiSigContracts(...args);
+    [this.abMultiSigX, this.abVotingX, this.oracleStakesAccountingX] = await deployMultiSigContracts(...args);
+    [this.abMultiSigY, this.abVotingY, this.oracleStakesAccountingY] = await deployMultiSigContracts(...args);
+    [this.abMultiSigZ, this.abVotingZ, this.oracleStakesAccountingZ] = await deployMultiSigContracts(...args);
 
     this.mX = this.abMultiSigX.address;
     this.mY = this.abMultiSigY.address;

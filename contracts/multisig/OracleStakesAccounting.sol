@@ -20,6 +20,7 @@ import "../collections/ArraySet.sol";
 import "../Oracles.sol";
 import "../traits/Initializable.sol";
 import "./ArbitratorVoting.sol";
+import "./ArbitratorsMultiSig.sol";
 
 
 contract OracleStakesAccounting is Permissionable {
@@ -64,7 +65,7 @@ contract OracleStakesAccounting is Permissionable {
   constructor(
     Oracles _oracles,
     ERC20 _galtToken,
-    address _multiSigWallet
+    ArbitratorsMultiSig _multiSigWallet
   )
     public
   {

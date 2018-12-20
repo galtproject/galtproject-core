@@ -37,7 +37,7 @@ contract SpaceReputationAccounting is Permissionable {
   // Reputation Owner => (Delegate => balance))
   mapping(address => mapping(address => uint256)) private _delegations;
 
-  // Delegate => locked
+  // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
 
   // HACK: there is no token area accounting anywhere else yet
