@@ -106,7 +106,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   }
 
   // GETTERS
-  function getArbitrators() public returns (address[]) {
+  function getArbitrators() public view returns (address[]) {
     return owners;
   }
 }

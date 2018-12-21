@@ -18,18 +18,29 @@ const PlotEscrow = artifacts.require('./PlotEscrow');
 const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
 const ClaimManager = artifacts.require('./ClaimManager');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
+const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
+const ArbitratorVotingFactory = artifacts.require('./ArbitratorVotingFactory.sol');
+const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountingFactory.sol');
+const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
+const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
-const Arbitrators = artifacts.require('./Arbitrators');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
+const fs = require('fs');
 
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
-const fs = require('fs');
+const web3 = new Web3(GaltToken.web3.currentProvider);
+
+function ether(number) {
+  return web3.utils.toWei(number.toString(), 'ether');
+}
 
 module.exports = async function(deployer, network, accounts) {
   if (network === 'test' || network === 'local_test' || network === 'development') {
@@ -39,6 +50,7 @@ module.exports = async function(deployer, network, accounts) {
 
   deployer.then(async () => {
     const coreTeam = accounts[0];
+    const unauthorized = accounts[1];
     // const proxiesAdmin = accounts[1];
 
     // Deploy contracts...
@@ -102,10 +114,67 @@ module.exports = async function(deployer, network, accounts) {
     const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
     const claimManager = await ClaimManager.new({ from: coreTeam });
-    const oracleStakesAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
-    const abMultiSig = await ArbitratorsMultiSig.new(coreTeam, [coreTeam], 1, { from: coreTeam });
-    const arbitrators = await Arbitrators.new(abMultiSig.address, { from: coreTeam });
+
+    const spaceReputationAccounting = await SpaceReputationAccounting.new(spaceToken.address, { from: coreTeam });
+
+    // MultiSigFactories
+    const multiSigContractFactory = await ArbitratorsMultiSigFactory.new({ from: coreTeam });
+    const votingContractFactory = await ArbitratorVotingFactory.new({ from: coreTeam });
+    const oracleStakesAccountingFactory = await OracleStakesAccountingFactory.new({ from: coreTeam });
+    const multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+
+    const multiSigFactory = await MultiSigFactory.new(
+      multiSigRegistry.address,
+      galtToken.address,
+      oracles.address,
+      claimManager.address,
+      spaceReputationAccounting.address,
+      multiSigContractFactory.address,
+      votingContractFactory.address,
+      oracleStakesAccountingFactory.address,
+      { from: coreTeam }
+    );
+
+    await multiSigRegistry.addRoleTo(multiSigFactory.address, await multiSigRegistry.ROLE_FACTORY(), {
+      from: coreTeam
+    });
+    await oracles.addRoleTo(multiSigFactory.address, await oracles.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(), {
+      from: coreTeam
+    });
+
+    await multiSigFactory.setCommission(0, { from: coreTeam });
+
+    // Deploy multiSig X
+
+    let res = await multiSigFactory.build(
+      [
+        '0x84131ce9f499667c6fd7ec9e0860d8dfaba63ed9',
+        '0xafc0fd8153bd835fa6e57e8b5c5b3210c44c5069',
+        '0xef7751e98c135d28af63d1353cb02dc502b72ee6'
+      ],
+      2,
+      { from: unauthorized }
+    );
+    const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+    const abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    const oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+
+    // Deploy multiSig Y
+    res = await multiSigFactory.build(
+      [
+        '0xef7751e98c135d28af63d1353cb02dc502b72ee6',
+        '0x02ffe5da61fbf31d46b1d8468487b86109e41943',
+        '0xc953e56acd698e1e7a1c2eb930eb7f53c2153d31'
+      ],
+      2,
+      { from: unauthorized }
+    );
+    const abMultiSigY = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+    const abVotingY = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    const oracleStakesAccountingY = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+
+    await multiSigFactory.setCommission(ether(100), { from: coreTeam });
 
     // Setup proxies...
     // NOTICE: The address of a proxy creator couldn't be used in the future for logic contract calls.
@@ -123,8 +192,6 @@ module.exports = async function(deployer, network, accounts) {
 
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
-    await spaceToken.initialize('Space Token', 'SPACE', { from: coreTeam });
-    await spaceTokenSandbox.initialize('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
     await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
@@ -186,17 +253,7 @@ module.exports = async function(deployer, network, accounts) {
       { from: coreTeam }
     );
 
-    await claimManager.initialize(
-      oracles.address,
-      galtToken.address,
-      oracleStakesAccounting.address,
-      abMultiSig.address,
-      coreTeam,
-      {
-        from: coreTeam
-      }
-    );
-    await oracleStakesAccounting.initialize(oracles.address, galtToken.address, abMultiSig.address, {
+    await claimManager.initialize(oracles.address, galtToken.address, multiSigRegistry.address, coreTeam, {
       from: coreTeam
     });
 
@@ -215,31 +272,21 @@ module.exports = async function(deployer, network, accounts) {
     await spaceToken.addRoleTo(splitMerge.address, 'operator', { from: coreTeam });
 
     await oracles.addRoleTo(coreTeam, await oracles.ROLE_APPLICATION_TYPE_MANAGER(), { from: coreTeam });
-    await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_TYPES_MANAGER(), { from: coreTeam });
+    await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_TYPE_MANAGER(), { from: coreTeam });
     await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_MANAGER(), { from: coreTeam });
     await oracles.addRoleTo(coreTeam, await oracles.ROLE_ORACLE_STAKES_MANAGER(), { from: coreTeam });
-    await oracles.addRoleTo(oracleStakesAccounting.address, await oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
-    });
-    await oracleStakesAccounting.addRoleTo(claimManager.address, await oracleStakesAccounting.ROLE_SLASH_MANAGER(), {
-      from: coreTeam
-    });
 
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'minter', { from: coreTeam });
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'burner', { from: coreTeam });
     await spaceTokenSandbox.addRoleTo(splitMergeSandbox.address, 'operator', { from: coreTeam });
 
-    await vsMultiSig.addRoleTo(auditors.address, await vsMultiSig.ROLE_AUDITORS_MANAGER(), { from: coreTeam });
-    await vsMultiSig.addRoleTo(claimManager.address, await vsMultiSig.ROLE_PROPOSER(), { from: coreTeam });
-
-    await abMultiSig.addRoleTo(arbitrators.address, await abMultiSig.ROLE_ARBITRATOR_MANAGER(), { from: coreTeam });
-    await abMultiSig.addRoleTo(claimManager.address, await abMultiSig.ROLE_PROPOSER(), { from: coreTeam });
-
     await plotManager.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await plotValuation.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await plotCustodian.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await claimManager.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await plotClarification.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await plotEscrow.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await claimManager.addRoleTo(coreTeam, 'galt_space', { from: coreTeam });
 
     console.log('Set fees of contracts...');
     await plotManager.setSubmissionFeeRate(Web3.utils.toWei('776.6', 'gwei'), Web3.utils.toWei('38830', 'gwei'), {
@@ -263,7 +310,7 @@ module.exports = async function(deployer, network, accounts) {
     await claimManager.setMinimalApplicationFeeInGalt(Web3.utils.toWei('45', 'ether'), { from: coreTeam });
     await claimManager.setGaltSpaceEthShare(33, { from: coreTeam });
     await claimManager.setGaltSpaceGaltShare(13, { from: coreTeam });
-    await claimManager.setNofM(2, 3, { from: coreTeam });
+    await claimManager.setMofN(2, 3, { from: coreTeam });
 
     console.log('Save addresses and abi to deployed folder...');
 
@@ -306,16 +353,20 @@ module.exports = async function(deployer, network, accounts) {
             claimManagerAbi: claimManager.abi,
             oraclesAddress: oracles.address,
             oraclesAbi: oracles.abi,
-            oracleStakesAccountingAddress: oracleStakesAccounting.address,
-            oracleStakesAccountingAbi: oracleStakesAccounting.abi,
-            arbitratorsAddress: arbitrators.address,
-            arbitratorsAbi: arbitrators.abi,
-            arbitratorsMultiSigAddress: abMultiSig.address,
-            arbitratorsMultiSigAbi: abMultiSig.abi,
             spaceTokenSandboxAddress: spaceTokenSandbox.address,
             spaceTokenSandboxAbi: spaceTokenSandbox.abi,
             splitMergeSandboxAddress: splitMergeSandbox.address,
-            splitMergeSandboxAbi: splitMergeSandbox.abi
+            splitMergeSandboxAbi: splitMergeSandbox.abi,
+            // multisigs
+            oracleStakesAccountingXAddress: oracleStakesAccountingX.address,
+            oracleStakesAccountingYAddress: oracleStakesAccountingY.address,
+            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
+            arbitratorsMultiSigXAddress: abMultiSigX.address,
+            arbitratorsMultiSigYAddress: abMultiSigY.address,
+            arbitratorsMultiSigAbi: abMultiSigX.abi,
+            arbitratorVotingXAddress: abVotingX.address,
+            arbitratorVotingYAddress: abVotingY.address,
+            arbitratorVotingAbi: abVotingX.abi
           },
           null,
           2

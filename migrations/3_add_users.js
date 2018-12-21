@@ -9,11 +9,9 @@ const GaltToken = artifacts.require('./GaltToken');
 const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
-const ClaimManager = artifacts.require('./ClaimManager');
 const Web3 = require('web3');
 const pIteration = require('p-iteration');
 
-const Auditors = artifacts.require('./Arbitrators');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
@@ -48,9 +46,7 @@ module.exports = async function(deployer, network, accounts) {
     const galtToken = await GaltToken.at(data.galtTokenAddress);
     const galtDex = await GaltDex.at(data.galtDexAddress);
     const oracles = await Oracles.at(data.oraclesAddress);
-    const oracleStakeAccounting = await OracleStakesAccounting.at(data.oracleStakesAccountingAddress);
-    const arbitrators = await Auditors.at(data.arbitratorsAddress);
-    const claimManager = await ClaimManager.at(data.claimManagerAddress);
+    const oracleStakeAccountingX = await OracleStakesAccounting.at(data.oracleStakesAccountingXAddress);
 
     const rewarder = accounts[3] || accounts[2] || accounts[1] || accounts[0];
 
@@ -126,11 +122,9 @@ module.exports = async function(deployer, network, accounts) {
 
     const PE_AUDITOR_ORACLE_TYPE = await plotEscrow.PE_AUDITOR_ORACLE_TYPE.call();
     const PLOT_ESCROW_APPLICATION_TYPE = await plotEscrow.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeRoles(PLOT_ESCROW_APPLICATION_TYPE, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+    await oracles.setApplicationTypeOracleTypes(PLOT_ESCROW_APPLICATION_TYPE, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
       from: coreTeam
     });
-
-    const CM_AUDITOR_ROLE = await claimManager.CM_AUDITOR.call();
 
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
@@ -216,7 +210,7 @@ module.exports = async function(deployer, network, accounts) {
     minDepositGalt[PV_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_CUSTODIAN_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
-    minDepositGalt[PE_AUDITOR_ORACLE_type] = minDepositForAuditor;
+    minDepositGalt[PE_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
     _.forEach(validatorsSpecificRoles, validatorRoles => {
@@ -229,14 +223,14 @@ module.exports = async function(deployer, network, accounts) {
 
     await galtDex.exchangeEthToGalt({ from: coreTeam, value: ether(needGaltForDeposits) });
 
-    await galtToken.approve(oracleStakeAccounting.address, ether(needGaltForDeposits), { from: coreTeam });
+    await galtToken.approve(oracleStakeAccountingX.address, ether(needGaltForDeposits), { from: coreTeam });
 
     console.log('add validators...');
 
     const rolesPromises = [];
     _.forEach(allRoles, roleName => {
       const minDeposit = ether(minDepositGalt[roleName]);
-      rolesPromises.push(oracles.setRoleMinimalDeposit(roleName, minDeposit, { from: coreTeam }));
+      rolesPromises.push(oracles.setOracleTypeMinimalDeposit(roleName, minDeposit, { from: coreTeam }));
     });
     await Promise.all(rolesPromises);
 
@@ -246,7 +240,9 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(
           new Promise(async resolve => {
             await oracles
-              .addOracle(address, name, 'MN', [], validatorsSpecificRoles[name], { from: coreTeam })
+              .addOracle(data.abMultiSigX.address, address, name, 'MN', [], validatorsSpecificRoles[name], {
+                from: coreTeam
+              })
               .catch(e => {
                 console.error(e);
                 resolve(e);
@@ -254,7 +250,7 @@ module.exports = async function(deployer, network, accounts) {
 
             console.log('validator added, validator stakes', name);
             const validatorPromises = validatorsSpecificRoles[name].map(roleName =>
-              oracleStakeAccounting.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
+              oracleStakeAccountingX.stake(address, roleName, ether(minDepositGalt[roleName]), { from: coreTeam })
             );
 
             Promise.all(validatorPromises).then(resolve);
@@ -273,9 +269,6 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotClarification.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotEscrow.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-
-        promises.push(arbitrators.addRoleTo(address, 'role_manager', { from: coreTeam }));
-        promises.push(arbitrators.addRoleTo(address, 'arbitrator_manager', { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
