@@ -39,9 +39,9 @@
   },
   "repository": "https://github.com/galtspace/galtproject-contracts",
   "scripts": {
-    "test": "truffle test --network test",
+    "test": "./node_modules/truffle/build/cli.bundled.js test --network test",
     "test-cov": "./node_modules/.bin/solidity-coverage",
-    "test-gas": "USE_GAS_REPORTER=yes truffle test --network development",
+    "test-gas": "USE_GAS_REPORTER=yes ./node_modules/truffle/build/cli.bundled.js test --network development",
     "eslint": "eslint .",
     "solium": "solium --dir ."
   },
