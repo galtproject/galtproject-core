@@ -18,6 +18,7 @@ import "../traits/Statusable.sol";
 import "../AbstractApplication.sol";
 import "../collections/ArraySet.sol";
 import "../AbstractArbitratorApplication.sol";
+import "../registries/MultiSigRegistry.sol";
 
 contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statusable {
   using SafeMath for uint256;
@@ -30,6 +31,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   event Nay(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
 
   struct Application {
+    address multiSig;
     address applicant;
 
     // votes required
@@ -93,8 +95,11 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
    * @dev Any arbitrator locks an application if an empty slots available
    * @param _aId Application ID
    */
-  function lock(bytes32 _aId) external anyArbitrator {
+  function lock(bytes32 _aId) external {
     Application storage a = applications[_aId];
+
+    multiSigRegistry.requireValidMultiSig(a.multiSig);
+    require(ArbitratorsMultiSig(a.multiSig).isOwner(msg.sender), "Not active arbitrator");
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
@@ -195,11 +200,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   // INTERNALS
 
   function _initialize(
+    MultiSigRegistry _multiSigRegistry,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     internal
   {
+    multiSigRegistry = _multiSigRegistry;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -217,11 +224,14 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   function _submit(
     bytes32 _id,
+    address _multiSig,
     uint256 _applicationFeeInGalt
   )
     internal
     returns (bytes32)
   {
+    multiSigRegistry.requireValidMultiSig(_multiSig);
+
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -243,6 +253,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     Application memory a;
 
     a.status = ApplicationStatus.SUBMITTED;
+    a.multiSig = _multiSig;
     a.applicant = msg.sender;
     a.m = m;
     a.n = n;

@@ -1,6 +1,5 @@
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
@@ -102,25 +101,13 @@ contract("ClaimManager", (accounts) => {
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.multiSigRegistry.address,
+
+    [this.multiSigFactory, this.multiSigRegistry] = await deployMultiSigFactory(
       this.galtToken.address,
-      this.oracles.address,
+      this.oracles,
       this.claimManager.address,
       spaceReputationAccounting,
       coreTeam
-    );
-
-    await this.multiSigRegistry.addRoleTo(this.multiSigFactory.address, await this.multiSigRegistry.ROLE_FACTORY(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(
-      this.multiSigFactory.address,
-      await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(),
-      {
-        from: coreTeam
-      }
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });

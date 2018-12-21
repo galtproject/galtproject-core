@@ -16,15 +16,17 @@ pragma experimental "v0.5.0";
 
 import "./AbstractApplication.sol";
 import "./multisig/ArbitratorsMultiSig.sol";
+import "./registries/MultiSigRegistry.sol";
 
 
 contract AbstractArbitratorApplication is AbstractApplication {
-  ArbitratorsMultiSig arbitratorsMultiSig;
+  MultiSigRegistry multiSigRegistry;
 
   mapping(address => bytes32[]) public applicationsByArbitrator;
 
-  modifier anyArbitrator() {
-    require(arbitratorsMultiSig.isOwner(msg.sender), "Not active arbitrator");
+  modifier anyArbitrator(address _multiSig) {
+    multiSigRegistry.requireValidMultiSig(_multiSig);
+    require(ArbitratorsMultiSig(_multiSig).isOwner(msg.sender), "Not active arbitrator");
     _;
   }
 

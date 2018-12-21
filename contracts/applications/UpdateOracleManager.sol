@@ -45,7 +45,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     public
     isInitializer
   {
-    _initialize(_galtToken, _galtSpaceRewardsAddress);
+//    _initialize(_galtToken, _galtSpaceRewardsAddress);
     oracles = _oracles;
   }
 
@@ -85,7 +85,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
     oracleDetails[id] = o;
 
-    return _submit(id, _applicationFeeInGalt);
+    return _submit(id, _multiSig, _applicationFeeInGalt);
   }
 
   function _execute(bytes32 _id) internal {

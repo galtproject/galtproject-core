@@ -17,13 +17,13 @@ pragma experimental "v0.5.0";
 import "../traits/Statusable.sol";
 import "../AbstractApplication.sol";
 import "../collections/ArraySet.sol";
+import "../registries/MultiSigRegistry.sol";
 import "./ArbitratorApprovableApplication.sol";
 
 contract NewOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
   struct OracleDetails {
-    address multiSig;
     address addr;
     bytes32 name;
     bytes32 position;
@@ -40,12 +40,13 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   function initialize(
     Oracles _oracles,
     ERC20 _galtToken,
+    MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    _initialize(_galtToken, _galtSpaceRewardsAddress);
+    _initialize(_multiSigRegistry, _galtToken, _galtSpaceRewardsAddress);
     oracles = _oracles;
   }
 
@@ -83,12 +84,13 @@ contract NewOracleManager is ArbitratorApprovableApplication {
 
     oracleDetails[id] = o;
 
-    return _submit(id, _applicationFeeInGalt);
+    return _submit(id, _multiSig, _applicationFeeInGalt);
   }
 
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
-    oracles.addOracle(d.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+    Application storage a = applications[_id];
+    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS

@@ -2,6 +2,7 @@ const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
 const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
 const ArbitratorVotingFactory = artifacts.require('./ArbitratorVotingFactory.sol');
@@ -12,15 +13,16 @@ const two = '0x0000000000000000000000000000000000000002';
 const three = '0x0000000000000000000000000000000000000003';
 
 const Helpers = {
-  async deployMultiSigFactory(multiSigRegistry, galtToken, oracles, claimManager, spaceReputationAccounting, owner) {
+  async deployMultiSigFactory(galtTokenAddress, oraclesContract, claimManager, spaceReputationAccounting, owner) {
     const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });
     const voting = await ArbitratorVotingFactory.new({ from: owner });
     const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
+    const multiSigRegistry = await MultiSigRegistry.new({ from: owner });
 
-    const res = await MultiSigFactory.new(
-      multiSigRegistry,
-      galtToken,
-      oracles,
+    const multiSigFactory = await MultiSigFactory.new(
+      multiSigRegistry.address,
+      galtTokenAddress,
+      oraclesContract.address,
       claimManager,
       spaceReputationAccounting,
       multiSig.address,
@@ -29,7 +31,18 @@ const Helpers = {
       { from: owner }
     );
 
-    return res;
+    await multiSigRegistry.addRoleTo(multiSigFactory.address, await multiSigRegistry.ROLE_FACTORY(), {
+      from: owner
+    });
+    await oraclesContract.addRoleTo(
+      multiSigFactory.address,
+      await oraclesContract.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(),
+      {
+        from: owner
+      }
+    );
+
+    return [multiSigFactory, multiSigRegistry];
   },
   async deployMultiSigContracts(
     roleManager,
