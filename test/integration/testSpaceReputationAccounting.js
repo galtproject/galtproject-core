@@ -1,11 +1,14 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const GaltToken = artifacts.require('./GaltToken.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
+const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
-const { zeroAddress, assertRevert, initHelperWeb3 } = require('../helpers');
-const { buildMultiSigContracts } = require('../deploymentHelpers');
+const { ether, zeroAddress, assertRevert, initHelperWeb3 } = require('../helpers');
+const { deployMultiSigFactory } = require('../deploymentHelpers');
 
 const web3 = new Web3(SpaceReputationAccounting.web3.currentProvider);
 
@@ -14,14 +17,22 @@ initHelperWeb3(web3);
 chai.use(chaiAsPromised);
 
 contract('SpaceReputationAccounting', accounts => {
-  const [coreTeam, minter, alice, bob, charlie, claimManager, galtTokenContract] = accounts;
+  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, claimManager] = accounts;
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
+    this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.spaceToken.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.spaceReputationAccounting = await SpaceReputationAccounting.new(
+      this.spaceToken.address,
+      this.multiSigRegistry.address,
+      { from: coreTeam }
+    );
     this.spaceToken.setSpaceReputationAccounting(this.spaceReputationAccounting.address, { from: coreTeam });
     this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
@@ -133,21 +144,25 @@ contract('SpaceReputationAccounting', accounts => {
 
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
-      const args = [
-        coreTeam,
-        claimManager,
+      this.multiSigFactory = await deployMultiSigFactory(
+        this.galtToken.address,
         this.oracles,
-        galtTokenContract,
+        claimManager,
+        this.multiSigRegistry,
         this.spaceReputationAccounting.address,
-        ['0x1', '0x2', '0x3'],
-        2
-      ];
+        coreTeam
+      );
+      await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
+      let res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
+      const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
 
-      const [abMultiSigX] = await buildMultiSigContracts(...args);
-      const [abMultiSigY] = await buildMultiSigContracts(...args);
-      const [abMultiSigZ] = await buildMultiSigContracts(...args);
+      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
+      const abMultiSigY = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
 
-      let res = await this.spaceToken.mint(alice, { from: minter });
+      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
+      const abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+
+      res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK

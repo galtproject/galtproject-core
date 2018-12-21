@@ -1,6 +1,7 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
@@ -96,10 +97,12 @@ contract('NewOracleManager', (accounts) => {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
 
-    [this.multiSigFactory, this.multiSigRegistry] = await deployMultiSigFactory(
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigFactory = await deployMultiSigFactory(
       this.galtToken.address,
       this.oracles,
       claimManager,
+      this.multiSigRegistry,
       spaceReputationAccounting,
       coreTeam
     );

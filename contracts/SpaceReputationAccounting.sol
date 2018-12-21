@@ -19,8 +19,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./collections/ArraySet.sol";
 import "./traits/Permissionable.sol";
 import "./SpaceToken.sol";
-import "./multisig/ArbitratorsMultiSig.sol";
 import "./multisig/ArbitratorVoting.sol";
+import "./registries/MultiSigRegistry.sol";
 
 
 contract SpaceReputationAccounting is Permissionable {
@@ -30,6 +30,7 @@ contract SpaceReputationAccounting is Permissionable {
   string public constant ROLE_SPACE_TOKEN = "space_token";
 
   SpaceToken spaceToken;
+  MultiSigRegistry multiSigRegistry;
 
   // Delegate => balance
   mapping(address => uint256) private _balances;
@@ -50,9 +51,10 @@ contract SpaceReputationAccounting is Permissionable {
   uint256 private totalStakedSpace;
 
 
-  constructor(SpaceToken _spaceToken) public {
+  constructor(SpaceToken _spaceToken, MultiSigRegistry _multiSigRegistry) public {
     _addRoleTo(address(_spaceToken), ROLE_SPACE_TOKEN);
     spaceToken = _spaceToken;
+    multiSigRegistry = _multiSigRegistry;
   }
 
   modifier onlySpaceTokenContract() {
@@ -130,8 +132,9 @@ contract SpaceReputationAccounting is Permissionable {
     _delegations[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
 
-    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
-    ArbitratorVoting(voting).onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
+    multiSigRegistry
+      .getArbitratorVoting(_multiSig)
+      .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
   }
 
   function lockReputation(address _multiSig, uint256 _amount) external {
@@ -140,8 +143,9 @@ contract SpaceReputationAccounting is Permissionable {
     _balances[msg.sender] -= _amount;
     _locks[msg.sender][_multiSig] += _amount;
 
-    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
-    ArbitratorVoting(voting).onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
+    multiSigRegistry
+      .getArbitratorVoting(_multiSig)
+      .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
   }
 
   function unlockReputation(address _multiSig, uint256 _amount) external {
@@ -155,8 +159,9 @@ contract SpaceReputationAccounting is Permissionable {
     _locks[msg.sender][_multiSig] -= _amount;
     _balances[msg.sender] += _amount;
 
-    address voting = ArbitratorsMultiSig(_multiSig).arbitratorVoting();
-    ArbitratorVoting(voting).onDelegateReputationChanged(msg.sender, afterUnlock);
+    multiSigRegistry
+      .getArbitratorVoting(_multiSig)
+      .onDelegateReputationChanged(msg.sender, afterUnlock);
   }
 
   function unstake(

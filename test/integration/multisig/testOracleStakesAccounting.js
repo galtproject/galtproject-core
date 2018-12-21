@@ -1,11 +1,12 @@
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
-const { deployMultiSigContracts } = require('../../deploymentHelpers');
 
 const { stringToHex } = Web3.utils;
 const web3 = new Web3(Oracles.web3.currentProvider);
@@ -36,6 +37,7 @@ contract('OracleStakesAccounting', accounts => {
     slashManager,
     applicationTypeManager,
     oracleManager,
+    multiSig,
     spaceReputationAccounting,
     alice,
     bob,
@@ -47,16 +49,29 @@ contract('OracleStakesAccounting', accounts => {
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
+    this.oracleStakesAccountingX = await OracleStakesAccounting.new(
+      this.oracles.address,
+      this.galtToken.address,
+      multiSig,
+      { from: coreTeam }
+    );
+    this.arbitratorVoting = await ArbitratorVoting.new(
+      multiSig,
+      spaceReputationAccounting,
+      this.oracleStakesAccountingX.address,
+      { from: coreTeam }
+    );
+    await this.arbitratorVoting.addRoleTo(
+      this.oracleStakesAccountingX.address,
+      await this.arbitratorVoting.ORACLE_STAKES_NOTIFIER(),
+      {
+        from: coreTeam
+      }
+    );
+    this.oracleStakesAccountingX.setVotingAddress(this.arbitratorVoting.address, { from: coreTeam });
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
-    const args = [coreTeam, slashManager, this.oracles, this.galtToken.address, spaceReputationAccounting];
-
-    [this.abMultiSigX, this.abVotingX, this.oracleStakesAccountingX] = await deployMultiSigContracts(...args);
-    [this.abMultiSigY, this.abVotingY, this.oracleStakesAccountingY] = await deployMultiSigContracts(...args);
-    [this.abMultiSigZ, this.abVotingZ, this.oracleStakesAccountingZ] = await deployMultiSigContracts(...args);
-
-    this.mX = this.abMultiSigX.address;
-    this.mY = this.abMultiSigY.address;
-    this.mZ = this.abMultiSigZ.address;
+    this.mX = multiSig;
 
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -70,8 +85,20 @@ contract('OracleStakesAccounting', accounts => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-
-    await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
+    await this.oracles.addRoleTo(
+      this.oracleStakesAccountingX.address,
+      await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(),
+      {
+        from: coreTeam
+      }
+    );
+    await this.oracleStakesAccountingX.addRoleTo(
+      slashManager,
+      await this.oracleStakesAccountingX.ROLE_SLASH_MANAGER(),
+      {
+        from: coreTeam
+      }
+    );
 
     await this.oracles.setApplicationTypeOracleTypes(
       NEW_APPLICATION,
@@ -162,7 +189,6 @@ contract('OracleStakesAccounting', accounts => {
           from: oracleManager
         }
       );
-
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(1000), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(55), { from: alice });

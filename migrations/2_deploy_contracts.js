@@ -116,13 +116,16 @@ module.exports = async function(deployer, network, accounts) {
     const claimManager = await ClaimManager.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
 
-    const spaceReputationAccounting = await SpaceReputationAccounting.new(spaceToken.address, { from: coreTeam });
-
     // MultiSigFactories
     const multiSigContractFactory = await ArbitratorsMultiSigFactory.new({ from: coreTeam });
     const votingContractFactory = await ArbitratorVotingFactory.new({ from: coreTeam });
     const oracleStakesAccountingFactory = await OracleStakesAccountingFactory.new({ from: coreTeam });
     const multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    const spaceReputationAccounting = await SpaceReputationAccounting.new(
+      spaceToken.address,
+      multiSigRegistry.address,
+      { from: coreTeam }
+    );
 
     const multiSigFactory = await MultiSigFactory.new(
       multiSigRegistry.address,
