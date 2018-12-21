@@ -31,7 +31,10 @@ import "bancor-contracts/solidity/contracts/token/interfaces/IERC20Token.sol";
 import "bancor-contracts/solidity/contracts/utility/interfaces/IContractRegistry.sol";
 
 contract BancorGaltDex is BancorConverter {
-  
+
+  mapping(address => uint256) public feeForWithdraw;
+  address feeFund;
+
   constructor(
     ISmartToken _token,
     IContractRegistry _registry,
@@ -39,10 +42,42 @@ contract BancorGaltDex is BancorConverter {
     IERC20Token _connectorToken,
     uint32 _connectorWeight
   )
-    public
-    BancorConverter(_token, _registry, _maxConversionFee, _connectorToken, _connectorWeight)
+  public
+  BancorConverter(_token, _registry, _maxConversionFee, _connectorToken, _connectorWeight)
   {
-    
+
+  }
+
+  /**
+        @dev helper, dispatches the Conversion event
+
+        @param _fromToken       ERC20 token to convert from
+        @param _toToken         ERC20 token to convert to
+        @param _amount          amount purchased/sold (in the source token)
+        @param _returnAmount    amount returned (in the target token)
+    */
+  function dispatchConversionEvent(IERC20Token _fromToken, IERC20Token _toToken, uint256 _amount, uint256 _returnAmount, uint256 _feeAmount) private {
+    // fee amount is converted to 255 bits -
+    // negative amount means the fee is taken from the source token, positive amount means its taken from the target token
+    // currently the fee is always taken from the target token
+    // since we convert it to a signed number, we first ensure that it's capped at 255 bits to prevent overflow
+    require(_feeAmount <= 2 ** 255, "_feeAmount <= 2 ** 255 failed");
+
+    feeForWithdraw[_toToken] = safeAdd(feeForWithdraw[_toToken], _feeAmount);
+
+    emit Conversion(_fromToken, _toToken, msg.sender, _amount, _returnAmount, int256(_feeAmount));
+  }
+
+  function setFeeFund(address _feeFund) public ownerOrManagerOnly {
+    feeFund = _feeFund;
   }
   
+  function claimFeeToFund(IERC20Token _connectorToken) public ownerOrManagerOnly {
+    require(feeFund != address(0), "Fee fund not set");
+    require(feeForWithdraw[_connectorToken] > 0, "No fee available for this token");
+
+    _connectorToken.transfer(feeFund, feeForWithdraw[_connectorToken]);
+
+    feeForWithdraw[_connectorToken] = 0;
+  }
 }

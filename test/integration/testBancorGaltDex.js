@@ -18,20 +18,11 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const {
-  zeroAddress,
-  initHelperWeb3,
-  initHelperArtifacts,
-  ether,
-  szabo,
-  deploySplitMerge,
-  clearLibCache
-} = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-const { BN } = Web3.utils;
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -41,17 +32,17 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
+contract('BancorGaltDex', ([coreTeam, alice, feeFund]) => {
   before(clearLibCache);
 
   const gasPriceLimit = '22000000000';
   const converterMaxFee = '1000000';
 
-  const galtTokenGaltDexBalance = 100000;
-  const etherTokenGaltDexBalance = 100;
+  const galtTokenGaltDexBalance = 500000;
+  const etherTokenGaltDexBalance = 100000;
 
-  const galtWeight = '10000';
-  const etherWeight = '100';
+  const galtWeight = '1';
+  const etherWeight = '2';
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
@@ -113,6 +104,7 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
 
     await this.galtToken.mint(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
 
+    await this.galtDexToken.issue(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
     await this.galtDexToken.transferOwnership(this.bancorGaltDex.address);
     await this.bancorGaltDex.acceptTokenOwnership();
   });
@@ -121,13 +113,8 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
     (await this.bancorGaltDex.registry()).should.be.eq(this.galtDexRegistry.address);
   });
 
-  describe('#buyGalt()', async () => {
-    it('should be correct balance on buy', async function() {
-      console.log('\n', 'galtTokenGaltDexBalance', galtTokenGaltDexBalance);
-      console.log('etherTokenGaltDexBalance', etherTokenGaltDexBalance);
-      console.log('galtWeight ', galtWeight);
-      console.log('etherWeight', etherWeight);
-
+  describe('#convert()', async () => {
+    it('should be change the rate on buy', async function() {
       await this.etherToken.deposit({ from: alice, value: ether(100) });
 
       await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
@@ -135,22 +122,56 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
       const etherBalance = (await this.etherToken.balanceOf(alice)).toString(10);
       etherBalance.should.be.eq(ether(100).toString(10));
 
-      const fromEther = 5;
+      const etherToExchange = 1;
 
-      for (let i = 0; i < 10; i++) {
-        await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(fromEther), '1', {
-          from: alice,
-          gasPrice: gasPriceLimit
-        });
+      let lastRate;
+      for (let i = 0; i < 20; i++) {
+        // eslint-disable-next-line
+        const res = await this.bancorGaltDex.convert(
+          this.etherToken.address,
+          this.galtToken.address,
+          ether(etherToExchange),
+          '1',
+          {
+            from: alice,
+            gasPrice: gasPriceLimit
+          }
+        );
 
-        const galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
-        const toGalt = parseFloat(web3.utils.fromWei(galtBalance, 'ether').toString(10));
+        // eslint-disable-next-line
+        const fromEther = web3.utils.fromWei(res.logs[1].args._amount.toString(10), 'ether');
+        // eslint-disable-next-line
+        const toGalt = web3.utils.fromWei(res.logs[1].args._return.toString(10), 'ether');
 
-        console.log('\n', 'fromEther', fromEther, 'toGalt', toGalt, 'rate', toGalt / fromEther);
+        const rate = toGalt / fromEther;
+        if (i > 0) {
+          assert.isBelow(rate, lastRate);
+        }
+        // console.log('fromEther', fromEther, 'toGalt', toGalt, 'rate', rate, 'rateDiff', lastRate - rate);
+        lastRate = rate;
       }
+    });
+  });
 
-      assert.equal(true, true);
-      // galtBalance.should.be.eq('499987375422921');
+  describe('#claimFeeToFund()', async () => {
+    it('should be fee taken', async function() {
+      await this.bancorGaltDex.setConversionFee('1000'); // 0.2%
+      await this.bancorGaltDex.setFeeFund(feeFund);
+
+      await this.etherToken.deposit({ from: alice, value: ether(100) });
+      await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
+
+      const res = await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(1), '1', {
+        from: alice,
+        gasPrice: gasPriceLimit
+      });
+      // eslint-disable-next-line
+      const feeTaken = res.logs[1].args._conversionFee.toFixed();
+      assert.isAbove(parseInt(feeTaken, 10), 0);
+
+      await this.bancorGaltDex.claimFeeToFund(this.galtToken.address);
+
+      assert.equal((await this.galtToken.balanceOf(feeFund)).toFixed(), feeTaken);
     });
   });
 });
