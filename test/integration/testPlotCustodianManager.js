@@ -236,7 +236,7 @@ contract('PlotCustodianManager', (accounts) => {
   });
 
   it('should be initialized successfully', async function() {
-    (await this.plotValuation.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    assert.equal(await this.plotValuationWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
   });
 
   describe('contract config modifiers', () => {

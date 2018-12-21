@@ -176,7 +176,7 @@ contract("ClaimManager", (accounts) => {
   });
 
   it('should be initialized successfully', async function() {
-    (await this.claimManager.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    assert.equal(await this.claimManagerWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
   });
 
   describe('contract config modifiers', () => {

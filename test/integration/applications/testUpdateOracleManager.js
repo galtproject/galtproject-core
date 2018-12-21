@@ -190,7 +190,7 @@ contract('UpdateOracleManager', (accounts) => {
   });
 
   it('should be initialized successfully', async function() {
-    (await this.updateOracle.minimalApplicationFeeInEth()).toString(10).should.be.a.bignumber.eq(ether(6));
+    assert.equal(await this.updateOracleWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
   });
 
   describe('#submit()', () => {
