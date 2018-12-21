@@ -44,13 +44,16 @@ chai.should();
 contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   before(clearLibCache);
 
+  const gasPriceLimit = '22000000000';
+  const galtWeight = '100';
+
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDexToken = await SmartToken.new('GaltDex Token', 'GDT', '18', { from: coreTeam });
     this.galtDexRegistry = await ContractRegistry.new({ from: coreTeam });
     this.contractIds = await ContractIds.new({ from: coreTeam });
     this.contractFeatures = await ContractFeatures.new({ from: coreTeam });
-    this.gasPriceLimit = await BancorGasPriceLimit.new('22000000000', { from: coreTeam });
+    this.gasPriceLimit = await BancorGasPriceLimit.new(gasPriceLimit, { from: coreTeam });
     this.formula = await BancorFormula.new({ from: coreTeam });
     this.bancorNetwork = await BancorNetwork.new(this.galtDexRegistry.address, { from: coreTeam });
     this.factory = await BancorConverterFactory.new({ from: coreTeam });
@@ -61,7 +64,7 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
       this.galtDexRegistry.address,
       '1000000',
       this.galtToken.address,
-      '100',
+      galtWeight,
       { from: coreTeam }
     );
 
@@ -119,8 +122,17 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
       await this.etherToken.deposit({ from: alice, value: ether(10) });
 
       await this.etherToken.approve(this.bancorGaltDex.address, ether(10), { from: alice });
-        
-      await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(5), '1');
+
+      const etherBalance = (await this.etherToken.balanceOf(alice)).toString(10);
+      etherBalance.should.be.eq(ether(10).toString(10));
+
+      await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(5), '1', {
+        from: alice,
+        gasPrice: gasPriceLimit
+      });
+
+      const galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
+      galtBalance.should.be.eq('499987375422921');
     });
   });
 
