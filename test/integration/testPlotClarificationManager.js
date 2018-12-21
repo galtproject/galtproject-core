@@ -4,7 +4,6 @@ const PlotClarificationManager = artifacts.require('./PlotClarificationManager.s
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const OracleStakeAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');

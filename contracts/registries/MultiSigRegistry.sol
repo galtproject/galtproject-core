@@ -37,7 +37,10 @@ contract MultiSigRegistry is Permissionable {
     ArbitratorsMultiSig _abMultiSig,
     ArbitratorVoting _abVoting,
     OracleStakesAccounting _oracleStakesAccounting
-  ) external onlyRole(ROLE_FACTORY) {
+  )
+    external
+    onlyRole(ROLE_FACTORY)
+  {
     MultiSig storage ms = multiSigs[_abMultiSig];
 
     ms.active = true;

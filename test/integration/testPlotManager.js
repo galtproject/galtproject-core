@@ -469,7 +469,7 @@ contract('PlotManager', accounts => {
         );
         await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
         await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
-//
+
         await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
         await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
 

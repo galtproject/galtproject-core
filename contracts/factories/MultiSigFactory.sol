@@ -72,7 +72,10 @@ contract MultiSigFactory is Ownable {
   function build(
     address[] _initialOwners,
     uint256 _multiSigRequired
-  ) external returns (ArbitratorsMultiSig, ArbitratorVoting, OracleStakesAccounting) {
+  )
+    external
+    returns (ArbitratorsMultiSig, ArbitratorVoting, OracleStakesAccounting)
+  {
     galtToken.transferFrom(msg.sender, address(this), commission);
 
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _multiSigRequired);

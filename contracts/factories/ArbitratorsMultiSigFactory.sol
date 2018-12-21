@@ -24,7 +24,10 @@ contract ArbitratorsMultiSigFactory is Ownable {
   function build(
     address[] _initialOwners,
     uint256 _multiSigRequired
-  ) external returns (ArbitratorsMultiSig) {
+  )
+    external
+    returns (ArbitratorsMultiSig)
+  {
     ArbitratorsMultiSig multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired);
 
     multiSig.addRoleTo(msg.sender, "role_manager");

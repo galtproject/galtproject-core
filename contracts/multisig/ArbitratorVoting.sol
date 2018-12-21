@@ -370,7 +370,7 @@ contract ArbitratorVoting is Permissionable {
     address next = candidates[currentAddress].next;
     // TODO: case when it is a head now
 
-    while(currentAddress != address(0)) {
+    while (currentAddress != address(0)) {
       // TODO: limit not reahed
       if (next == address(0)) {
         candidates[currentAddress].next = _candidate;
@@ -453,7 +453,7 @@ contract ArbitratorVoting is Permissionable {
     address currentAddress = candidatesHead;
     address next = candidates[currentAddress].next;
 
-    while(next != address(0)) {
+    while (next != address(0)) {
       if (_candidate == next) {
         address nextAfter = candidates[next].next;
         candidates[currentAddress].next = nextAfter;

@@ -31,7 +31,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltDex', ([coreTeam, stakeManager, alice, bob, dan, eve]) => {
+contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
   before(clearLibCache);
   const fee = 15;
   const baseExchangeRate = 1;

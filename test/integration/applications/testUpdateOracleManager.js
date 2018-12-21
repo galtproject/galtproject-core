@@ -75,7 +75,7 @@ contract('UpdateOracleManager', (accounts) => {
     charlie,
     dan,
     frank,
-    george,
+    george
   ] = accounts;
 
   beforeEach(async function() {

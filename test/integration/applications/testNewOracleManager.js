@@ -81,7 +81,7 @@ contract('NewOracleManager', (accounts) => {
     eve,
     frank,
     george,
-    henrey,
+    henrey
   ] = accounts;
 
   beforeEach(async function() {

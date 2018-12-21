@@ -28,7 +28,10 @@ contract ArbitratorVotingFactory is Ownable {
     ArbitratorsMultiSig arbitratorsMultiSig,
     SpaceReputationAccounting spaceReputationAccounting,
     OracleStakesAccounting oracleStakesAccounting
-  ) external returns (ArbitratorVoting) {
+  )
+    external
+    returns (ArbitratorVoting)
+  {
     ArbitratorVoting voting = new ArbitratorVoting(
       arbitratorsMultiSig,
       spaceReputationAccounting,

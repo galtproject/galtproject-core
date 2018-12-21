@@ -28,7 +28,10 @@ contract OracleStakesAccountingFactory is Ownable {
     Oracles _oracles,
     GaltToken _galtToken,
     ArbitratorsMultiSig _arbitratorMultiSig
-  ) external returns (OracleStakesAccounting) {
+  )
+    external
+    returns (OracleStakesAccounting)
+  {
     OracleStakesAccounting oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitratorMultiSig);
 
     oracleStakes.addRoleTo(msg.sender, "role_manager");
