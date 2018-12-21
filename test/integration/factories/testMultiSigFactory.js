@@ -1,5 +1,6 @@
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
@@ -21,10 +22,12 @@ contract("MultiSigFactory", (accounts) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
-    [this.multiSigFactory, this.multiSigRegistry] = await deployMultiSigFactory(
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigFactory = await deployMultiSigFactory(
       this.galtToken.address,
       this.oracles,
       claimManagerAddress,
+      this.multiSigRegistry,
       spaceReputationAccounting,
       coreTeam
     );
@@ -43,7 +46,6 @@ contract("MultiSigFactory", (accounts) => {
 
     assert.sameMembers(await abMultiSigX.getArbitrators(), members);
     await assertRevert(abVotingX.pushArbitrators());
-    assert.sameMembers(await abMultiSigX.getArbitrators(), []);
   });
 
   it('should build contracts without commission', async function() {
