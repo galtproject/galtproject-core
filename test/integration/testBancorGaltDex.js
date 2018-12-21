@@ -45,7 +45,13 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
   before(clearLibCache);
 
   const gasPriceLimit = '22000000000';
-  const galtWeight = '100';
+  const converterMaxFee = '1000000';
+
+  const galtTokenGaltDexBalance = 100000;
+  const etherTokenGaltDexBalance = 100;
+
+  const galtWeight = '10000';
+  const etherWeight = '100';
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
@@ -62,7 +68,7 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
     this.bancorGaltDex = await BancorGaltDex.new(
       this.galtDexToken.address,
       this.galtDexRegistry.address,
-      '1000000',
+      converterMaxFee,
       this.galtToken.address,
       galtWeight,
       { from: coreTeam }
@@ -100,14 +106,12 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
 
     this.etherToken = await EtherToken.new({ from: coreTeam });
 
-    await this.bancorGaltDex.addConnector(this.etherToken.address, '1', false);
+    await this.bancorGaltDex.addConnector(this.etherToken.address, etherWeight, false);
 
-    await this.etherToken.deposit({ from: coreTeam, value: ether(100000) });
-    await this.etherToken.transfer(this.bancorGaltDex.address, ether(100000), { from: coreTeam });
+    await this.etherToken.deposit({ from: coreTeam, value: ether(etherTokenGaltDexBalance) });
+    await this.etherToken.transfer(this.bancorGaltDex.address, ether(etherTokenGaltDexBalance), { from: coreTeam });
 
-    await this.galtToken.mint(this.bancorGaltDex.address, ether(1000));
-
-    await this.galtDexToken.issue(coreTeam, ether(100000000));
+    await this.galtToken.mint(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
 
     await this.galtDexToken.transferOwnership(this.bancorGaltDex.address);
     await this.bancorGaltDex.acceptTokenOwnership();
@@ -119,122 +123,34 @@ contract.only('GaltDex', ([coreTeam, alice, bob, dan, eve]) => {
 
   describe('#buyGalt()', async () => {
     it('should be correct balance on buy', async function() {
-      await this.etherToken.deposit({ from: alice, value: ether(10) });
+      console.log('\n', 'galtTokenGaltDexBalance', galtTokenGaltDexBalance);
+      console.log('etherTokenGaltDexBalance', etherTokenGaltDexBalance);
+      console.log('galtWeight ', galtWeight);
+      console.log('etherWeight', etherWeight);
 
-      await this.etherToken.approve(this.bancorGaltDex.address, ether(10), { from: alice });
+      await this.etherToken.deposit({ from: alice, value: ether(100) });
+
+      await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
 
       const etherBalance = (await this.etherToken.balanceOf(alice)).toString(10);
-      etherBalance.should.be.eq(ether(10).toString(10));
+      etherBalance.should.be.eq(ether(100).toString(10));
 
-      await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(5), '1', {
-        from: alice,
-        gasPrice: gasPriceLimit
-      });
+      const fromEther = 5;
 
-      const galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
-      galtBalance.should.be.eq('499987375422921');
+      for (let i = 0; i < 10; i++) {
+        await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(fromEther), '1', {
+          from: alice,
+          gasPrice: gasPriceLimit
+        });
+
+        const galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
+        const toGalt = parseFloat(web3.utils.fromWei(galtBalance, 'ether').toString(10));
+
+        console.log('\n', 'fromEther', fromEther, 'toGalt', toGalt, 'rate', toGalt / fromEther);
+      }
+
+      assert.equal(true, true);
+      // galtBalance.should.be.eq('499987375422921');
     });
   });
-
-  // describe('#buyGalt()', async () => {
-  //   const ethToSend = parseInt(ether(10), 10);
-  //   const shouldEthFee = (ethToSend / 100) * fee;
-  //   const galtByFirstExchange = ethToSend * baseExchangeRate;
-  //
-  //   const galtToSend = ethToSend / 4;
-  //   const shouldGaltFee = (galtToSend / 100) * fee;
-  //
-  //   beforeEach(async function() {
-  //     const ethFeeForAmount = await this.galtDex.getEthFeeForAmount(ethToSend, { from: alice });
-  //     ethFeeForAmount.toString(10).should.be.eq(shouldEthFee.toString(10));
-  //
-  //     const galtToReceive = await this.galtDex.getExchangeEthAmountForGalt(ethToSend, { from: alice });
-  //     galtToReceive.toString(10).should.be.eq(galtByFirstExchange.toString(10));
-  //
-  //     await this.galtDex.exchangeEthToGalt({ from: alice, value: ethToSend });
-  //   });
-  //
-  //   it('should be correct balance on buy', async function() {
-  //     // this.showGaltDexStatus();
-  //
-  //     let galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
-  //     galtBalance.should.be.eq(galtByFirstExchange.toString(10));
-  //
-  //     (await web3.eth.getBalance(this.galtDex.address)).toString(10).should.be.eq(ethToSend.toString(10));
-  //
-  //     (await this.galtDex.ethToGaltSum()).toString(10).should.be.eq(ethToSend.toString(10));
-  //
-  //     const shouldReceiveGalt = (await this.shouldReceiveGalt(ethToSend)).toString(10);
-  //
-  //     await this.galtDex.exchangeEthToGalt({ from: alice, value: ethToSend });
-  //
-  //     // this.showGaltDexStatus();
-  //
-  //     galtBalance = (await this.galtToken.balanceOf(alice)).toString(10);
-  //     galtBalance.should.be.eq(new BN(galtByFirstExchange.toString(10)).add(new BN(shouldReceiveGalt)).toString(10));
-  //
-  //     (await web3.eth.getBalance(this.galtDex.address)).toString(10).should.be.eq((ethToSend * 2).toString(10));
-  //
-  //     (await this.galtDex.ethToGaltSum()).toString(10).should.be.eq((ethToSend * 2).toString(10));
-  //   });
-  //
-  //   it('should exchange back to eth', async function() {
-  //     const galtBalance = await this.galtToken.balanceOf(alice);
-  //
-  //     const aliceBalance = await web3.eth.getBalance(alice);
-  //
-  //     await this.galtToken.approve(this.galtDex.address, galtToSend, { from: alice });
-  //
-  //     const allowance = await this.galtToken.allowance(alice, this.galtDex.address);
-  //     allowance.toString(10).should.be.eq(galtToSend.toString(10));
-  //
-  //     const shouldReceiveEth = await this.shouldReceiveEth(galtToSend);
-  //
-  //     await this.galtDex.exchangeGaltToEth(galtToSend, { from: alice });
-  //
-  //     const aliceBalanceDiff = (await web3.eth.getBalance(alice)) - aliceBalance;
-  //
-  //     (shouldReceiveEth - aliceBalanceDiff).should.be.lt(parseInt(ether(0.03), 10));
-  //
-  //     const galtBalanceAfterExchange = await this.galtToken.balanceOf(alice);
-  //
-  //     (galtBalance - galtBalanceAfterExchange).toString(10).should.be.eq(galtToSend.toString(10));
-  //
-  //     (await this.galtDex.galtToEthSum()).toString(10).should.be.eq(galtToSend.toString(10));
-  //   });
-  //
-  //   it('should receive fee', async function() {
-  //     await this.galtToken.approve(this.galtDex.address, galtToSend, { from: alice });
-  //     await this.galtDex.exchangeGaltToEth(galtToSend, { from: alice });
-  //
-  //     let ethFeePayout = await this.galtDex.ethFeePayout();
-  //     ethFeePayout.toString(10).should.be.eq(shouldEthFee.toString(10));
-  //
-  //     const coreTeamEthBalance = await web3.eth.getBalance(coreTeam);
-  //     await this.galtDex.withdrawEthFee({ from: coreTeam });
-  //     const coreTeamEthBalanceProfit = (await web3.eth.getBalance(coreTeam)) - coreTeamEthBalance;
-  //
-  //     (shouldEthFee - coreTeamEthBalanceProfit).should.be.lt(parseInt(ether(0.003), 10));
-  //
-  //     ethFeePayout = await this.galtDex.ethFeePayout();
-  //     ethFeePayout.toString(10).should.be.eq((0).toString(10));
-  //
-  //     const totalEthFeePayout = await this.galtDex.ethFeeTotalPayout();
-  //     totalEthFeePayout.toString(10).should.be.eq(shouldEthFee.toString(10));
-  //
-  //     let galtFeePayout = await this.galtDex.galtFeePayout();
-  //     galtFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
-  //
-  //     await this.galtDex.withdrawGaltFee({ from: coreTeam });
-  //     const coreTeamGaltBalance = await this.galtToken.balanceOf(coreTeam);
-  //
-  //     coreTeamGaltBalance.toString(10).should.be.eq(shouldGaltFee.toString(10));
-  //
-  //     galtFeePayout = await this.galtDex.galtFeePayout();
-  //     galtFeePayout.toString(10).should.be.eq((0).toString(10));
-  //
-  //     const totalGaltFeePayout = await this.galtDex.galtFeeTotalPayout();
-  //     totalGaltFeePayout.toString(10).should.be.eq(shouldGaltFee.toString(10));
-  //   });
-  // });
 });
