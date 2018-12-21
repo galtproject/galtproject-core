@@ -40,12 +40,13 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   function initialize(
     Oracles _oracles,
     ERC20 _galtToken,
+    MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-//    _initialize(_galtToken, _galtSpaceRewardsAddress);
+    _initialize(_multiSigRegistry, _galtToken, _galtSpaceRewardsAddress);
     oracles = _oracles;
   }
 
@@ -90,7 +91,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
-    oracles.addOracle(d.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+    Application storage a = applications[_id];
+    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -101,6 +103,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     external
     view
     returns (
+      address multiSig,
       address addr,
       bytes32 name,
       bytes32 position,
@@ -109,8 +112,10 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     )
   {
     OracleDetails storage o = oracleDetails[_id];
+    Application storage a = applications[_id];
 
     return (
+      a.multiSig,
       o.addr,
       o.name,
       o.position,

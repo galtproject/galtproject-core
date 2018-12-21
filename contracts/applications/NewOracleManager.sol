@@ -101,6 +101,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     external
     view
     returns (
+      address multiSig,
       address addr,
       bytes32 name,
       bytes32 position,
@@ -109,8 +110,10 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     )
   {
     OracleDetails storage o = oracleDetails[_id];
+    Application storage a = applications[_id];
 
     return (
+      a.multiSig,
       o.addr,
       o.name,
       o.position,

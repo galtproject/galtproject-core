@@ -10,6 +10,7 @@ const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const { initHelperWeb3, ether, assertRevert } = require('../../helpers');
+const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8 } = Web3.utils;
@@ -65,8 +66,9 @@ contract('UpdateOracleManager', (accounts) => {
     coreTeam,
     galtSpaceOrg,
     feeManager,
-    multiSigWallet,
     applicationTypeManager,
+    claimManager,
+    spaceReputationAccounting,
     oracleManager,
     alice,
     bob,
@@ -74,8 +76,6 @@ contract('UpdateOracleManager', (accounts) => {
     dan,
     frank,
     george,
-    henrey,
-    ivan
   ] = accounts;
 
   beforeEach(async function() {
@@ -88,17 +88,30 @@ contract('UpdateOracleManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.oracleStakeAccounting = await OracleStakesAccounting.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
     this.updateOracle = await UpdateOracleManager.new({ from: coreTeam });
-    this.abMultiSig = await ArbitratorsMultiSig.new([bob, charlie, dan, frank, george, henrey, ivan], 3, {
-      from: coreTeam
-    });
+
+    [this.multiSigFactory, this.multiSigRegistry] = await deployMultiSigFactory(
+      this.galtToken.address,
+      this.oracles,
+      claimManager,
+      spaceReputationAccounting,
+      coreTeam
+    );
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+
+    const res = await this.multiSigFactory.build([bob, charlie, dan, frank, george], 3, { from: alice });
+    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+    this.abVotingX = res.logs[0].args.arbitratorVoting;
+    this.oracleStakesAccountingX = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    this.mX = this.abMultiSigX.address;
 
     await this.newOracle.initialize(
       this.oracles.address,
       this.galtToken.address,
-      this.abMultiSig.address,
+      this.multiSigRegistry.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -108,16 +121,12 @@ contract('UpdateOracleManager', (accounts) => {
     await this.updateOracle.initialize(
       this.oracles.address,
       this.galtToken.address,
-      this.abMultiSig.address,
+      this.multiSigRegistry.address,
       galtSpaceOrg,
       {
         from: coreTeam
       }
     );
-
-    await this.oracleStakeAccounting.initialize(this.oracles.address, this.galtToken.address, multiSigWallet, {
-      from: coreTeam
-    });
 
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -135,9 +144,6 @@ contract('UpdateOracleManager', (accounts) => {
       from: coreTeam
     });
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(this.oracleStakeAccounting.address, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
 
@@ -197,7 +203,7 @@ contract('UpdateOracleManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
     });
@@ -206,6 +212,7 @@ contract('UpdateOracleManager', (accounts) => {
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
         let res = await this.updateOracle.submit(
+          this.mX,
           bob,
           'Bob',
           'MN',
@@ -225,6 +232,7 @@ contract('UpdateOracleManager', (accounts) => {
         await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
         await assertRevert(
           this.updateOracle.submit(
+            this.mX,
             galtSpaceOrg,
             'Bob',
             'MN',
@@ -242,6 +250,7 @@ contract('UpdateOracleManager', (accounts) => {
     describe('with ETH payment', () => {
       it('should allow an applicant pay commission in ETH', async function() {
         let res = await this.updateOracle.submit(
+          this.mX,
           bob,
           'Bob',
           'MN',
@@ -261,6 +270,7 @@ contract('UpdateOracleManager', (accounts) => {
       it('should deny applying for non-validator', async function() {
         await assertRevert(
           this.updateOracle.submit(
+            this.mX,
             galtSpaceOrg,
             'Bob',
             'MN',
@@ -290,6 +300,7 @@ contract('UpdateOracleManager', (accounts) => {
       // NewOracle
       await this.galtToken.approve(this.newOracle.address, ether(47), { from: alice });
       let res = await this.newOracle.submit(
+        this.mX,
         bob,
         'Bob',
         'MN',
@@ -315,6 +326,7 @@ contract('UpdateOracleManager', (accounts) => {
       // UpdateOracle
       await this.galtToken.approve(this.updateOracle.address, ether(47), { from: alice });
       res = await this.updateOracle.submit(
+        this.mX,
         bob,
         'Bob',
         'MN',
