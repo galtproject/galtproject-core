@@ -31,7 +31,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
+contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
   before(clearLibCache);
   const fee = 15;
   const baseExchangeRate = 1;
@@ -123,21 +123,35 @@ contract('GaltDex', ([coreTeam, stakeManager, stakeNotifier, alice, bob, dan, ev
     await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: coreTeam });
 
-    await this.oracles.addOracle(bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE], {
+    await this.oracles.addOracle(
+      multiSigX,
+      bob,
+      'Bob',
+      'MN',
+      [],
+      [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+      {
+        from: coreTeam
+      }
+    );
+    await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
-    await this.oracles.addOracle(dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-      from: coreTeam
-    });
-    await this.oracles.addOracle(eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
 
-    await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onOracleStakeChanged(dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
-    await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
+      from: stakeNotifier
+    });
+    await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      from: stakeNotifier
+    });
+    await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
+      from: stakeNotifier
+    });
+    await this.oracles.onOracleStakeChanged(multiSigX, dan, PC_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
+    await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), { from: stakeNotifier });
 
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
 
