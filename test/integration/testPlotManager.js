@@ -1220,7 +1220,7 @@ contract('PlotManager', accounts => {
       });
 
       it('should deny a oracle approve application if hash doesnt match', async function() {
-        await assertRevert(this.plotManager.approveApplication(this.aId, `${this.credentials}_foo`, { from: bob }));
+        await assertRevert(this.plotManager.approveApplication(this.aId, web3.utils.sha3(`foo`), { from: bob }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
