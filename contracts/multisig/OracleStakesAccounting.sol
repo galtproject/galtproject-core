@@ -27,18 +27,20 @@ contract OracleStakesAccounting is Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event OracleBalanceStake(
+  event OracleStakeDeposit(
     address oracle,
     bytes32 oracleType,
     uint256 amount,
-    int256 finalStake
+    int256 finalOracleTypeStake,
+    int256 finalOracleTotalStake
   );
 
-  event OracleBalanceSlash(
+  event OracleStakeSlash(
     address oracle,
     bytes32 oracleType,
     uint256 amount,
-    int256 finalStake
+    int256 finalOracleTypeStake,
+    int256 finalOracleTotalStake
   );
 
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
@@ -94,21 +96,21 @@ contract OracleStakesAccounting is Permissionable {
   function _slash(address _oracle, bytes32 _oracleType, uint256 _amount) internal {
     require(oracles.isOracleTypeAssigned(_oracle, _oracleType), "Some oracle types doesn't match");
 
-    int256 initialRoleBalance = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
-    int256 initialTotalBalance = oracleTypes[_oracle].totalStakes;
-    int256 finalRoleBalance = oracleTypes[_oracle].oracleTypeStakes[_oracleType] - int256(_amount);
-    int256 finalTotalBalance = oracleTypes[_oracle].totalStakes - int256(_amount);
+    int256 initialOracleTypeStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
+    int256 initialOracleTotalStake = oracleTypes[_oracle].totalStakes;
+    int256 finalOracleTypeStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType] - int256(_amount);
+    int256 finalOracleTotalStake = oracleTypes[_oracle].totalStakes - int256(_amount);
 
-    assert(finalTotalBalance < initialTotalBalance);
-    assert(finalRoleBalance < initialRoleBalance);
+    assert(finalOracleTotalStake < initialOracleTotalStake);
+    assert(finalOracleTypeStake < initialOracleTypeStake);
 
-    oracleTypes[_oracle].totalStakes = finalTotalBalance;
-    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleBalance;
+    oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
+    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    oracles.onOracleStakeChanged(multiSigWallet, _oracle, _oracleType, finalRoleBalance);
-    voting.onOracleStakeChanged(_oracle, uint256(finalTotalBalance));
+    oracles.onOracleStakeChanged(multiSigWallet, _oracle, _oracleType, finalOracleTypeStake);
+    voting.onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
-    emit OracleBalanceSlash(_oracle, _oracleType, _amount, finalTotalBalance);
+    emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
@@ -131,7 +133,7 @@ contract OracleStakesAccounting is Permissionable {
     oracles.onOracleStakeChanged(multiSigWallet, _oracle, _oracleType, finalRoleStake);
     voting.onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
-    emit OracleBalanceStake(_oracle, _oracleType, _amount, finalTotalStakes);
+    emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }
 
   function balanceOf(address _oracle) external view returns (int256) {

@@ -62,6 +62,7 @@ contract ClaimManager is AbstractApplication {
     uint256 amount;
     bytes32 chosenProposal;
     uint256 messageCount;
+    uint256 multiSigTransactionId;
     uint256 m;
     uint256 n;
 
@@ -357,7 +358,7 @@ contract ClaimManager is AbstractApplication {
           .getOracleStakesAccounting(c.multiSig)
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        ArbitratorsMultiSig(c.multiSig).proposeTransaction(
+        c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
           galtToken,
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
@@ -376,6 +377,9 @@ contract ClaimManager is AbstractApplication {
       "Application status should be APPROVED or REJECTED");
     require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
     require(c.fees.arbitratorRewardPaidOut[msg.sender] == false);
+    if (c.status == ApplicationStatus.APPROVED) {
+      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
+    }
 
     c.fees.arbitratorRewardPaidOut[msg.sender] = true;
 
@@ -395,6 +399,9 @@ contract ClaimManager is AbstractApplication {
     require(
       c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
+    if (c.status == ApplicationStatus.APPROVED) {
+      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
+    }
 
     require(c.fees.galtSpaceReward > 0, "Reward is 0");
     require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
@@ -465,6 +472,11 @@ contract ClaimManager is AbstractApplication {
     c.fees.arbitratorReward = rewardSize;
   }
 
+  function _checkMultiSigTransactionExecuted(Claim storage c) internal returns (bool) {
+    (, , , bool executed) = ArbitratorsMultiSig(c.multiSig).transactions(c.multiSigTransactionId);
+    return executed;
+  }
+
   function changeSaleOrderStatus(
     Claim storage _claim,
     ApplicationStatus _status
@@ -491,6 +503,7 @@ contract ClaimManager is AbstractApplication {
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
+      uint256 multiSigTransactionId,
       uint256 messageCount,
       ApplicationStatus status
     )
@@ -507,6 +520,7 @@ contract ClaimManager is AbstractApplication {
       c.arbitrators.size(),
       c.m,
       n,
+      c.multiSigTransactionId,
       c.messageCount,
       c.status
     );

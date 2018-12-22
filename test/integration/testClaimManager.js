@@ -120,16 +120,9 @@ contract("ClaimManager", (accounts) => {
 
     const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
     this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.abVotingX = res.logs[0].args.arbitratorVoting;
-    this.oracleStakesAccountingX = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-
-    // res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
-    // this.abMultiSigY = res.logs[0].args.arbitratorMultiSig;
-    // this.abVotingY = res.logs[0].args.arbitratorVoting;
-    // this.oracleStakesAccountingY = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 
     this.mX = this.abMultiSigX.address;
-    // this.mY = this.abMultiSigY;
 
     await this.claimManager.initialize(
       this.oracles.address,
@@ -575,6 +568,8 @@ contract("ClaimManager", (accounts) => {
       });
     });
 
+    // WARNING: it is still possible to propose an approval when some of the candidates have no specified roles
+    // and even inactive candidates
     describe('#proposeApproval()', () => {
       beforeEach(async function() {
         const res = await this.claimManagerWeb3.methods.claim(this.cId).call();
@@ -1050,6 +1045,31 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by GALT', () => {
       beforeEach(async function() {
+        await this.oracles.addOracle(
+          this.mX,
+          bob,
+          'Bob',
+          'MN',
+          [],
+          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+          {
+            from: oracleManager
+          }
+        );
+        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+
+        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice });
+
+        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+
         await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
 
         let res = await this.claimManager.submit(
@@ -1129,51 +1149,65 @@ contract("ClaimManager", (accounts) => {
             assert.equal(res.totalSlots, '5');
           });
 
-          it('should allow galt space withdrawal only once', async function() {
-            const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
-            await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
-            const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
-
-            assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
-          });
-
-          it('should deny galt space double claim a reward', async function() {
-            await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+          it('should deny galt space withdrawal if transaction not executed', async function() {
             await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
           });
 
-          it('should allow oracles claiming their rewards', async function() {
-            const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-            const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-            const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-            const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+          describe('after transaction was executed', () => {
+            beforeEach(async function() {
+              const txId = '0';
 
-            await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: dan });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: charlie });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: eve });
+              await this.abMultiSigX.confirmTransaction(txId, { from: bob });
+              await this.abMultiSigX.confirmTransaction(txId, { from: dan });
+              await this.abMultiSigX.confirmTransaction(txId, { from: frank });
+            });
 
-            const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-            const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-            const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-            const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+            it('should allow galt space withdrawal only once', async function() {
+              const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+              await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+              const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
 
-            assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
-            assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
-            assertGaltBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(10.2225));
-            assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(10.2225));
-          });
+              assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
+            });
 
-          it('should deny oracles claiming their rewards twice', async function() {
-            await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: dan });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: charlie });
-            await this.claimManager.claimArbitratorReward(this.cId, { from: eve });
+            it('should deny galt space double claim a reward', async function() {
+              await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
+              await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
+            });
 
-            await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: bob }));
-            await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: dan }));
-            await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: charlie }));
-            await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: eve }));
+            it('should allow oracles claiming their rewards', async function() {
+              const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+              const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+              const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+              const eveBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+              await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: dan });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: charlie });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: eve });
+
+              const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
+              const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
+              const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
+              const eveBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(eve).call();
+
+              assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
+              assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
+              assertGaltBalanceChanged(charlieBalanceBefore, charlieBalanceAfter, ether(10.2225));
+              assertGaltBalanceChanged(eveBalanceBefore, eveBalanceAfter, ether(10.2225));
+            });
+
+            it('should deny oracles claiming their rewards twice', async function() {
+              await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: dan });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: charlie });
+              await this.claimManager.claimArbitratorReward(this.cId, { from: eve });
+
+              await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: bob }));
+              await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: dan }));
+              await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: charlie }));
+              await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: eve }));
+            });
           });
         });
 
@@ -1181,6 +1215,12 @@ contract("ClaimManager", (accounts) => {
           beforeEach(async function() {
             await this.claimManager.vote(this.cId, this.pId2, { from: bob });
             await this.claimManager.vote(this.cId, this.pId2, { from: eve });
+
+            const txId = '0';
+
+            await this.abMultiSigX.confirmTransaction(txId, { from: bob });
+            await this.abMultiSigX.confirmTransaction(txId, { from: dan });
+            await this.abMultiSigX.confirmTransaction(txId, { from: frank });
           });
 
           it('should calculate and assign rewards for arbitrators and galt space', async function() {
@@ -1278,6 +1318,31 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by ETH', () => {
       beforeEach(async function() {
+        await this.oracles.addOracle(
+          this.mX,
+          bob,
+          'Bob',
+          'MN',
+          [],
+          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+          {
+            from: oracleManager
+          }
+        );
+        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+
+        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice });
+
+        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+        await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+
         await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
 
         let res = await this.claimManager.submit(
@@ -1333,6 +1398,12 @@ contract("ClaimManager", (accounts) => {
           await this.claimManager.vote(this.cId, this.pId2, { from: eve });
           await this.claimManager.vote(this.cId, this.pId3, { from: charlie });
           await this.claimManager.vote(this.cId, this.pId2, { from: bob });
+
+          const txId = '0';
+
+          await this.abMultiSigX.confirmTransaction(txId, { from: bob });
+          await this.abMultiSigX.confirmTransaction(txId, { from: dan });
+          await this.abMultiSigX.confirmTransaction(txId, { from: frank });
         });
 
         it('should calculate and assign rewards for arbitrators and galt space', async function() {
