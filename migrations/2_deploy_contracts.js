@@ -275,11 +275,13 @@ module.exports = async function(deployer, network, accounts) {
     const networkId = await web3.eth.net.getId();
 
     let commit;
-    const rev = fs.readFileSync('.git/HEAD').toString();
+    // eslint-disable-next-line
+    const rev = fs.readFileSync('.git/HEAD').toString().replace('\n', '');
     if (rev.indexOf(':') === -1) {
       commit = rev;
     } else {
-      commit = fs.readFileSync(`.git/${rev.substring(5)}`).toString();
+      // eslint-disable-next-line
+      commit = fs.readFileSync(`.git/${rev.substring(5)}`).toString().replace('\n', '');
     }
 
     await new Promise(resolve => {
