@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./traits/Initializable.sol";
+import "./traits/Permissionable.sol";
 import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
@@ -47,6 +48,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   mapping(uint256 => uint256[]) public packageToContour;
   mapping(uint256 => int256[]) public packageToHeights;
   mapping(uint256 => int256) public packageToLevel;
+
+  // HACK: there is no token area accounting anywhere else yet
+  mapping(uint256 => uint256) public tokenArea;
 
   uint256[] allPackages;
 
@@ -339,6 +343,16 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   function getPackageLevel(uint256 _packageTokenId) public view returns (int256) {
     return packageToLevel[_packageTokenId];
+  }
+
+  // HACK: no permissions check since this method is a temporary hack
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external {
+    tokenArea[_spaceTokenId] = _area;
+  }
+
+  // TODO: implement
+  function getContourArea(uint256 _packageTokenId) external view returns (uint256) {
+    return tokenArea[_packageTokenId];
   }
 
   function getPackageGeoData(uint256 _packageTokenId) public view returns (

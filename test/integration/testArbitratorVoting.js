@@ -7,17 +7,17 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
+const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const { ether, assertRevert, initHelperWeb3 } = require('../helpers');
+const { ether, assertRevert, initHelperWeb3, initHelperArtifacts, deploySplitMerge } = require('../helpers');
 
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
 const { deployMultiSigFactory } = require('../deploymentHelpers');
 
 initHelperWeb3(web3);
-
-chai.use(chaiAsPromised);
+initHelperArtifacts(artifacts);
 
 const TYPE_A = 'TYPE_A';
 const TYPE_B = 'TYPE_B';
@@ -62,11 +62,22 @@ contract('ArbitratorVoting', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.splitMerge = await deploySplitMerge();
+
+    this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+    this.spaceLockerFactory = await SpaceLockerFactory.new(
+      this.spaceLockerRegistry.address,
+      this.galtToken.address,
+      this.spaceToken.address,
+      this.splitMerge.address,
+      { from: coreTeam }
+    );
 
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.spaceReputationAccounting = await SpaceReputationAccounting.new(
       this.spaceToken.address,
       this.multiSigRegistry.address,
+      this.spaceLockerRegistry.address,
       { from: coreTeam }
     );
     this.multiSigFactory = await deployMultiSigFactory(
@@ -87,6 +98,8 @@ contract('ArbitratorVoting', accounts => {
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
     await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
     await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
 
@@ -120,6 +133,13 @@ contract('ArbitratorVoting', accounts => {
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
+    await this.spaceLockerRegistry.addRoleTo(
+      this.spaceLockerFactory.address,
+      await this.spaceLockerRegistry.ROLE_FACTORY(),
+      {
+        from: coreTeam
+      }
+    );
 
     // CONFIGURING
     await this.oracles.setApplicationTypeOracleTypes(
@@ -262,25 +282,66 @@ contract('ArbitratorVoting', accounts => {
 
       // SET AREAS
       let p = [
-        this.spaceReputationAccounting.setTokenArea(x1, '300'),
-        this.spaceReputationAccounting.setTokenArea(x2, '500'),
-        this.spaceReputationAccounting.setTokenArea(x3, '400'),
-        this.spaceReputationAccounting.setTokenArea(x4, '700'),
-        this.spaceReputationAccounting.setTokenArea(x5, '100'),
-        this.spaceReputationAccounting.setTokenArea(x6, '1000'),
-        this.spaceReputationAccounting.setTokenArea(x7, '200')
+        this.splitMerge.setTokenArea(x1, '300'),
+        this.splitMerge.setTokenArea(x2, '500'),
+        this.splitMerge.setTokenArea(x3, '400'),
+        this.splitMerge.setTokenArea(x4, '700'),
+        this.splitMerge.setTokenArea(x5, '100'),
+        this.splitMerge.setTokenArea(x6, '1000'),
+        this.splitMerge.setTokenArea(x7, '200')
       ];
 
       await Promise.all(p);
 
+      await this.galtToken.approve(this.spaceLockerFactory.address, ether(20), { from: alice });
+      await this.galtToken.approve(this.spaceLockerFactory.address, ether(30), { from: bob });
+      await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: charlie });
+
+      // BUILD LOCKER CONTRACTS
+      res = await this.spaceLockerFactory.build({ from: alice });
+      const lockerAddress1 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: alice });
+      const lockerAddress2 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: bob });
+      const lockerAddress3 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: bob });
+      const lockerAddress4 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: bob });
+      const lockerAddress5 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: charlie });
+      const lockerAddress6 = res.logs[0].args.locker;
+
+      const locker1 = await SpaceLocker.at(lockerAddress1);
+      const locker2 = await SpaceLocker.at(lockerAddress2);
+      const locker3 = await SpaceLocker.at(lockerAddress3);
+      const locker4 = await SpaceLocker.at(lockerAddress4);
+      const locker5 = await SpaceLocker.at(lockerAddress5);
+      const locker6 = await SpaceLocker.at(lockerAddress6);
+
+      // APPROVE SPACE TOKENS
+      await this.spaceToken.approve(lockerAddress1, x1, { from: alice });
+      await this.spaceToken.approve(lockerAddress2, x2, { from: alice });
+      await this.spaceToken.approve(lockerAddress3, x3, { from: bob });
+      await this.spaceToken.approve(lockerAddress4, x4, { from: bob });
+      await this.spaceToken.approve(lockerAddress5, x5, { from: bob });
+      await this.spaceToken.approve(lockerAddress6, x6, { from: charlie });
+
+      // DEPOSIT SPACE TOKENS
+      await locker1.deposit(x1, { from: alice });
+      await locker2.deposit(x2, { from: alice });
+      await locker3.deposit(x3, { from: bob });
+      await locker4.deposit(x4, { from: bob });
+      await locker5.deposit(x5, { from: bob });
+      await locker6.deposit(x6, { from: charlie });
+
       // STAKE TOKENS AT SRA
       p = [
-        this.spaceReputationAccounting.stake(x1, { from: alice }),
-        this.spaceReputationAccounting.stake(x2, { from: alice }),
-        this.spaceReputationAccounting.stake(x3, { from: bob }),
-        this.spaceReputationAccounting.stake(x4, { from: bob }),
-        this.spaceReputationAccounting.stake(x5, { from: bob }),
-        this.spaceReputationAccounting.stake(x6, { from: charlie })
+        this.spaceReputationAccounting.mint(x1, lockerAddress1, { from: alice }),
+        this.spaceReputationAccounting.mint(x2, lockerAddress2, { from: alice }),
+        this.spaceReputationAccounting.mint(x3, lockerAddress3, { from: bob }),
+        this.spaceReputationAccounting.mint(x4, lockerAddress4, { from: bob }),
+        this.spaceReputationAccounting.mint(x5, lockerAddress5, { from: bob }),
+        this.spaceReputationAccounting.mint(x6, lockerAddress6, { from: charlie })
       ];
 
       await Promise.all(p);

@@ -21,6 +21,7 @@ import "./traits/Permissionable.sol";
 import "./SpaceToken.sol";
 import "./multisig/ArbitratorVoting.sol";
 import "./registries/MultiSigRegistry.sol";
+import "./registries/SpaceLockerRegistry.sol";
 
 
 contract SpaceReputationAccounting is Permissionable {
@@ -31,6 +32,7 @@ contract SpaceReputationAccounting is Permissionable {
 
   SpaceToken spaceToken;
   MultiSigRegistry multiSigRegistry;
+  SpaceLockerRegistry spaceLockerRegistry;
 
   // Delegate => balance
   mapping(address => uint256) private _balances;
@@ -41,20 +43,23 @@ contract SpaceReputationAccounting is Permissionable {
   // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
 
-  // HACK: there is no token area accounting anywhere else yet
-  mapping(uint256 => uint256) public tokenArea;
-
-  // Token #ID => isStaked
-  mapping(uint256 => bool) public tokenStaked;
+  // Token #ID => minted amount
+  mapping(uint256 => uint256) public mintedReputation;
 
   // L0
   uint256 private totalStakedSpace;
 
-
-  constructor(SpaceToken _spaceToken, MultiSigRegistry _multiSigRegistry) public {
+  constructor(
+    SpaceToken _spaceToken,
+    MultiSigRegistry _multiSigRegistry,
+    SpaceLockerRegistry _spaceLockerRegistry
+  )
+    public
+  {
     _addRoleTo(address(_spaceToken), ROLE_SPACE_TOKEN);
     spaceToken = _spaceToken;
     multiSigRegistry = _multiSigRegistry;
+    spaceLockerRegistry = _spaceLockerRegistry;
   }
 
   modifier onlySpaceTokenContract() {
@@ -62,38 +67,100 @@ contract SpaceReputationAccounting is Permissionable {
     _;
   }
 
-  modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
-    require(msg.sender == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
+  modifier onlySpaceTokenOwner(uint256 _spaceTokenId, SpaceLocker _spaceLocker) {
+    require(_spaceLocker == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
+    require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
+    spaceLockerRegistry.requireValidLocker(_spaceLocker);
     _;
   }
 
   // MODIFIERS
 
-  // HACK: no permissions check since this method is a temporary hack
-  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external {
-    tokenArea[_spaceTokenId] = _area;
-  }
-
-  function stake(
-    uint256 _spaceTokenId
+  // @dev Mints reputation for given token in case when 'reputation < minted'
+  // PermissionED
+  function mint(
+    uint256 _spaceTokenId,
+    SpaceLocker _spaceLocker
   )
     external
-    onlySpaceTokenOwner(_spaceTokenId)
+    onlySpaceTokenOwner(_spaceTokenId, _spaceLocker)
   {
-    require(tokenStaked[_spaceTokenId] == false, "SpaceToken is already staked");
+    uint256 newReputation = _spaceLocker.reputation();
+    uint256 diff = newReputation - mintedReputation[_spaceTokenId];
+    require(diff > 0, "No reputation to mint");
 
-    // TODO: fetch token weight from the correct source
-    uint256 area = tokenArea[_spaceTokenId];
-    assert(area > 0);
+    totalStakedSpace += diff;
 
-    totalStakedSpace += area;
-
-    _balances[msg.sender] += area;
-    _delegations[msg.sender][msg.sender] += area;
-    tokenStaked[_spaceTokenId] = true;
+    _balances[msg.sender] += diff;
+    _delegations[msg.sender][msg.sender] += diff;
+    mintedReputation[_spaceTokenId] += diff;
   }
 
-  // Transfer owned reputation
+  // PermissionLESS
+  function burn(
+    uint256 _spaceTokenId,
+    SpaceLocker _spaceLocker,
+    address _delegate,
+    uint256 _amount
+  )
+    external
+  {
+    spaceLockerRegistry.requireValidLocker(_spaceLocker);
+    // TODO: it is possible to burn reputation of token A while providing a locker contract for a token B
+
+    address owner = _spaceLocker.owner();
+
+    uint256 newReputation = _spaceLocker.reputation();
+    uint256 diff = mintedReputation[_spaceTokenId] - newReputation;
+    require(diff > 0, "No reputation to burn");
+    require(_amount <= diff, "Amount to burn is too big");
+
+    require(_balances[_delegate] >= _amount, "Not enough funds to burn");
+    require(_delegations[owner][_delegate] >= _amount, "Not enough funds to burn");
+
+    totalStakedSpace -= _amount;
+
+    _balances[_delegate] -= _amount;
+    _delegations[owner][_delegate] -= _amount;
+
+    mintedReputation[_spaceTokenId] -= _amount;
+  }
+
+  // PermissionLESS
+  function burnLocked(
+    uint256 _spaceTokenId,
+    SpaceLocker _spaceLocker,
+    address _delegate,
+    address _multiSig,
+    uint256 _amount
+  )
+    external
+  {
+    spaceLockerRegistry.requireValidLocker(_spaceLocker);
+    // TODO: it is possible to burn reputation of token A while providing a locker contract for a token B
+
+    address owner = _spaceLocker.owner();
+
+    uint256 newReputation = _spaceLocker.reputation();
+    uint256 diff = mintedReputation[_spaceTokenId] - newReputation;
+    require(diff > 0, "No reputation to burn");
+    require(_amount <= diff, "Amount to burn is too big");
+
+    require(_delegations[owner][_delegate] >= _amount, "Not enough delegated funds");
+    require(_locks[_delegate][_multiSig] >= _amount, "Not enough locked funds");
+
+    _delegations[owner][_delegate] -= _amount;
+    _locks[_delegate][_multiSig] -= _amount;
+
+    mintedReputation[_spaceTokenId] -= _amount;
+
+    multiSigRegistry
+      .getArbitratorVoting(_multiSig)
+      .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
+  }
+
+  // @dev Transfer owned reputation
+  // PermissionED
   function delegate(address _to, address _owner, uint256 _amount) external {
     require(_balances[msg.sender] >= _amount, "Not enough funds");
     require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
@@ -109,6 +176,7 @@ contract SpaceReputationAccounting is Permissionable {
     _delegations[_owner][_to] += _amount;
   }
 
+  // PermissionED
   function revoke(address _from, uint256 _amount) external {
     require(_balances[_from] >= _amount, "Not enough funds");
     require(_delegations[msg.sender][_from] >= _amount, "Not enough funds");
@@ -123,6 +191,7 @@ contract SpaceReputationAccounting is Permissionable {
     _delegations[msg.sender][msg.sender] += _amount;
   }
 
+  // PermissionED
   function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external {
     require(_delegations[msg.sender][_delegate] >= _amount, "Not enough funds");
     require(_locks[_delegate][_multiSig] >= _amount, "Not enough funds");
@@ -137,6 +206,7 @@ contract SpaceReputationAccounting is Permissionable {
       .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
   }
 
+  // PermissionED
   function lockReputation(address _multiSig, uint256 _amount) external {
     require(_balances[msg.sender] >= _amount, "Insufficient amount to lock");
 
@@ -148,6 +218,7 @@ contract SpaceReputationAccounting is Permissionable {
       .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
   }
 
+  // PermissionED
   function unlockReputation(address _multiSig, uint256 _amount) external {
     uint256 beforeUnlock = _locks[msg.sender][_multiSig];
     uint256 afterUnlock = _locks[msg.sender][_multiSig] - _amount;
@@ -162,33 +233,6 @@ contract SpaceReputationAccounting is Permissionable {
     multiSigRegistry
       .getArbitratorVoting(_multiSig)
       .onDelegateReputationChanged(msg.sender, afterUnlock);
-  }
-
-  function unstake(
-    uint256 _spaceTokenId
-  )
-    external
-    onlySpaceTokenOwner(_spaceTokenId)
-  {
-    require(tokenStaked[_spaceTokenId] == true, "SpaceToken is already staked");
-
-    // TODO: fetch token weight from the correct source
-    uint256 area = tokenArea[_spaceTokenId];
-    assert(area > 0);
-
-    require(_balances[msg.sender] >= area, "Not enough funds to unstake");
-    require(_delegations[msg.sender][msg.sender] >= area, "Not enough funds to unstake");
-
-    totalStakedSpace -= area;
-
-    _balances[msg.sender] -= area;
-    _delegations[msg.sender][msg.sender] -= area;
-    tokenStaked[_spaceTokenId] = false;
-  }
-
-  // EVENTS (PERMISSION CHECKS)
-  function requireUnstaked(uint256 _spaceTokenId) external {
-    require(tokenStaked[_spaceTokenId] == false, "Token is staked and cannot be moved");
   }
 
   // GETTERS

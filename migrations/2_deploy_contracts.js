@@ -27,6 +27,8 @@ const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
@@ -116,6 +118,15 @@ module.exports = async function(deployer, network, accounts) {
     const claimManager = await ClaimManager.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
 
+    const spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+    const spaceLockerFactory = await SpaceLockerFactory.new(
+      spaceLockerRegistry.address,
+      galtToken.address,
+      spaceToken.address,
+      splitMerge.address,
+      { from: coreTeam }
+    );
+
     // MultiSigFactories
     const multiSigContractFactory = await ArbitratorsMultiSigFactory.new({ from: coreTeam });
     const votingContractFactory = await ArbitratorVotingFactory.new({ from: coreTeam });
@@ -124,6 +135,7 @@ module.exports = async function(deployer, network, accounts) {
     const spaceReputationAccounting = await SpaceReputationAccounting.new(
       spaceToken.address,
       multiSigRegistry.address,
+      spaceLockerRegistry.address,
       { from: coreTeam }
     );
 
@@ -140,6 +152,9 @@ module.exports = async function(deployer, network, accounts) {
     );
 
     await multiSigRegistry.addRoleTo(multiSigFactory.address, await multiSigRegistry.ROLE_FACTORY(), {
+      from: coreTeam
+    });
+    await spaceLockerRegistry.addRoleTo(spaceLockerFactory.address, await spaceLockerRegistry.ROLE_FACTORY(), {
       from: coreTeam
     });
     await oracles.addRoleTo(multiSigFactory.address, await oracles.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(), {
