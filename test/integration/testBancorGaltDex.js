@@ -139,9 +139,9 @@ contract('BancorGaltDex', ([coreTeam, alice, feeFund]) => {
         );
 
         // eslint-disable-next-line
-        const fromEther = web3.utils.fromWei(res.logs[1].args._amount.toString(10), 'ether');
+        const fromEther = web3.utils.fromWei(res.logs[0].args._amount.toString(10), 'ether');
         // eslint-disable-next-line
-        const toGalt = web3.utils.fromWei(res.logs[1].args._return.toString(10), 'ether');
+        const toGalt = web3.utils.fromWei(res.logs[0].args._return.toString(10), 'ether');
 
         const rate = toGalt / fromEther;
         if (i > 0) {
@@ -166,7 +166,7 @@ contract('BancorGaltDex', ([coreTeam, alice, feeFund]) => {
         gasPrice: gasPriceLimit
       });
       // eslint-disable-next-line
-      const feeTaken = res.logs[1].args._conversionFee.toFixed();
+      const feeTaken = res.logs[0].args._conversionFee.toFixed();
       assert.isAbove(parseInt(feeTaken, 10), 0);
 
       await this.bancorGaltDex.claimFeeToFund(this.galtToken.address);
