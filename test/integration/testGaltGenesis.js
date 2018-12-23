@@ -26,11 +26,11 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.galtGenesis = await MockGaltGenesis.new(this.galtToken.address, this.galtDex.address, { from: coreTeam });
-    this.galtDex.initialize(szabo(1), szabo(15), szabo(15), this.galtToken.address, this.galtGenesis.address);
+    await this.galtDex.initialize(szabo(1), szabo(15), szabo(15), this.galtToken.address, this.galtGenesis.address);
   });
 
   it('should be started successfully', async function() {
-    assertRevert(this.galtGenesis.finish());
+    await assertRevert(this.galtGenesis.finish());
 
     await this.galtToken.mint(this.galtGenesis.address, ether(100));
     await this.galtGenesis.start(3600);
@@ -40,7 +40,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
   });
 
   it('should be failed on start without GALT', async function() {
-    assertRevert(this.galtGenesis.start(3600));
+    await assertRevert(this.galtGenesis.start(3600));
   });
 
   describe('#pay() and #claim()', async () => {
@@ -55,8 +55,8 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
       await this.galtGenesis.pay({ from: bob, value: ether(2) });
 
       await this.galtGenesis.hackClose();
-      assertRevert(this.galtGenesis.pay({ from: alice, value: ether(1) }));
-      assertRevert(this.galtGenesis.pay({ from: dan, value: ether(1) }));
+      await assertRevert(this.galtGenesis.pay({ from: alice, value: ether(1) }));
+      await assertRevert(this.galtGenesis.pay({ from: dan, value: ether(1) }));
     });
 
     it('should allow to claim if paid and finished and reject if not', async function() {
@@ -67,11 +67,11 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
       await this.galtGenesis.pay({ from: dan, value: ether(3) });
       await this.galtGenesis.pay({ from: eve, value: ether(4) });
 
-      assertRevert(this.galtGenesis.claim({ from: alice }));
+      await assertRevert(this.galtGenesis.claim({ from: alice }));
 
       await this.galtGenesis.hackClose();
 
-      assertRevert(this.galtGenesis.claim({ from: alice }));
+      await assertRevert(this.galtGenesis.claim({ from: alice }));
 
       await this.galtGenesis.finish({ from: eve });
 
@@ -89,8 +89,8 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
       assert.equal((await this.galtToken.balanceOf(this.galtGenesis.address)).toString(), '0');
       assert.equal((await this.galtToken.balanceOf(alice)).toString(), ether(100 / (1 + 2 + 3 + 4)).toString());
 
-      assertRevert(this.galtGenesis.claim({ from: nana }));
-      assertRevert(this.galtGenesis.claim({ from: alice }));
+      await assertRevert(this.galtGenesis.claim({ from: nana }));
+      await assertRevert(this.galtGenesis.claim({ from: alice }));
 
       assert.equal(bobClaimedAmount.div(aliceClaimedAmount).toString(), '2');
       assert.equal(danClaimedAmount.div(aliceClaimedAmount).toString(), '3');
