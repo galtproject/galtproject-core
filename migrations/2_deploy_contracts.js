@@ -27,9 +27,12 @@ const Auditors = artifacts.require('./Auditors');
 const ValidatorStakesMultiSig = artifacts.require('./ValidatorStakesMultiSig.sol');
 const Web3 = require('web3');
 
+const web3 = new Web3(Auditors.web3.currentProvider);
+
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const fs = require('fs');
+const packageVersion = require('../package.json').version;
 
 module.exports = async function(deployer, network, accounts) {
   if (network === 'test' || network === 'local_test' || network === 'development') {
@@ -268,19 +271,34 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Save addresses and abi to deployed folder...');
 
+    const blockNumber = await web3.eth.getBlockNumber();
+    const networkId = await web3.eth.net.getId();
+
+    let commit;
+    const rev = fs.readFileSync('.git/HEAD').toString();
+    if (rev.indexOf(':') === -1) {
+      commit = rev;
+    } else {
+      commit = fs.readFileSync(`.git/${rev.substring(5)}`).toString();
+    }
+
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
       if (!fs.existsSync(deployDirectory)) {
         fs.mkdirSync(deployDirectory);
       }
 
-      const deployFile = `${deployDirectory}/${network}.json`;
+      const deployFile = `${deployDirectory}/${networkId}.json`;
       console.log(`saved to ${deployFile}`);
 
       fs.writeFile(
         deployFile,
         JSON.stringify(
           {
+            packageVersion,
+            commit,
+            networkId,
+            blockNumber,
             galtTokenAddress: galtToken.address,
             galtTokenAbi: galtToken.abi,
             spaceTokenAddress: spaceToken.address,
