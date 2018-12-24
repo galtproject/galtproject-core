@@ -45,17 +45,17 @@ contract.only('PolygonUtils', ([coreTeam]) => {
       const shouldBeArea = 1727367.5744677314;
       // Checks by services:
       // 1. https://github.com/mapbox/geojson-area
-      // 1 727 367 sq m
+      //    1 727 367 sq m
       // 2. https://stackoverflow.com/questions/49666791/getting-area-from-gps-coordinates
-      // 1 727 367 sq m
+      //    2 879 454 167 sq m
       // 3. https://3planeta.com/googlemaps/google-maps-calculator-ploschadei.html
-      // 6 887 504 sq m
+      //    6 887 504 sq m
       // 4. https://geographiclib.sourceforge.io/cgi-bin/Planimeter?type=polygon&rhumb=geodesic&input=1.2291728239506483%2C+104.51007032766938%0D%0A1.2037726398557425%2C+104.50989866629243%0D%0A1.2036009784787893%2C+104.53199403360486%0D%0A1.227113390341401%2C+104.53336732462049&option=Submit
-      // 6 841 437.7
+      //    6 841 437.7
       // 5. https://www.daftlogic.com/projects-google-maps-area-calculator-tool.htm
-      // 6 864 573.76
+      //    6 864 573.76
       // 5. https://stackoverflow.com/a/25122759/6053486
-      // 5 559 263.270789316
+      //    5 559 263.270789316
 
       const etherContour = contour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
       await pIteration.forEachSeries(etherContour, async point => {
@@ -64,7 +64,7 @@ contract.only('PolygonUtils', ([coreTeam]) => {
 
       const res = await this.mockPolygonUtils.getArea();
 
-      console.log(res.logs[0].args.result.toFixed());
+      console.log(res.logs[0].args.result.toFixed() / 10 ** 18);
       assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() / 10 ** 18 - shouldBeArea), 0.00001);
     });
   });
