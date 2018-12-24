@@ -16,15 +16,18 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./Oracles.sol";
-import "./PlotEscrow.sol";
-import "./AbstractOracleApplication.sol";
+import "../SpaceToken.sol";
+import "../SplitMerge.sol";
+import "../Oracles.sol";
+import "../PlotEscrow.sol";
+import "../AbstractOracleApplication.sol";
+import "../traits/Statusable.sol";
+import "../registries/SpaceCustodianRegistry.sol";
 
 
-contract PlotCustodianManager is AbstractOracleApplication {
+contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.AddressSet;
 
   // `PlotCustodianManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6;
@@ -34,17 +37,8 @@ contract PlotCustodianManager is AbstractOracleApplication {
   // `PC_AUDITOR_ORACLE_TYPE` bytes32 representation
   bytes32 public constant PC_AUDITOR_ORACLE_TYPE = 0x50435f41554449544f525f4f5241434c455f5459504500000000000000000000;
 
-  enum ApplicationStatus {
-    NOT_EXISTS,
-    SUBMITTED,
-    REVERTED,
-    LOCKED,
-    REVIEW,
-    APPROVED,
-    COMPLETED,
-    REJECTED,
-    CLOSED
-  }
+  uint256 public constant MODIFY_CUSTODIAN_LIMIT = 10;
+  uint256 public constant TOTAL_CUSTODIAN_LIMIT = 10;
 
   enum ValidationStatus {
     NOT_EXISTS,
@@ -57,6 +51,12 @@ contract PlotCustodianManager is AbstractOracleApplication {
     DETACH
   }
 
+  enum Choice {
+    PENDING,
+    APPROVE,
+    REJECT
+  }
+
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
@@ -64,44 +64,57 @@ contract PlotCustodianManager is AbstractOracleApplication {
   struct Application {
     bytes32 id;
     address applicant;
-    address chosenCustodian;
+    address auditor;
     uint256 spaceTokenId;
-    Action action;
-    uint256 oraclesReward;
-    uint256 galtSpaceReward;
-    bool galtSpaceRewardPaidOut;
     bool throughEscrow;
-    uint8 approveConfirmations;
+    string rejectMessage;
+
+    Action action;
     Currency currency;
     ApplicationStatus status;
 
     bytes32[] custodianDocuments;
-    bytes32[] assignedOracleTypes;
 
-    // TODO: combine into role struct
-    mapping(bytes32 => uint256) assignedRewards;
-    mapping(bytes32 => bool) roleRewardPaidOut;
-    mapping(bytes32 => string) roleMessages;
-    mapping(bytes32 => address) roleAddresses;
-    mapping(address => bytes32) addressOracleTypes;
-    mapping(bytes32 => ValidationStatus) validationStatus;
+    ArraySet.AddressSet custodiansToModify;
+    ArraySet.AddressSet acceptedCustodians;
+    ArraySet.AddressSet lockedCustodians;
+
+    Voting voting;
+    Rewards rewards;
   }
 
-  struct ApplicationDetails {
-    bytes32 credentialsHash;
-    bytes32 ledgerIdentifier;
-    uint8 precision;
-    bytes2 country;
+  struct Voting {
+    uint256 approveCount;
+
+    uint256 required;
+
+    // voters = unique(acceptedCustodians + lockedCustodians) + 1 auditor + 1 applicant
+    ArraySet.AddressSet voters;
+    mapping(address => bool) approvals;
   }
 
-  uint256 public gasPriceForDeposits;
+  struct Rewards {
+    uint256 galtSpaceReward;
+    // oraclesReward = custodianReward * N + auditorReward (with some chance of error)
+    uint256 oraclesReward;
+    uint256 totalCustodiansReward;
+    uint256 custodianReward;
+    uint256 auditorReward;
 
-  mapping(bytes32 => Application) public applications;
-  mapping(uint256 => address) public assignedCustodians;
+    bool galtSpaceRewardPaidOut;
+    bool auditorRewardPaidOut;
+    mapping(address => bool) custodianRewardPaidOut;
+  }
+
+  mapping(bytes32 => Application) private applications;
+
+  // TODO: do not store in the application contract
+  mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
   PlotEscrow public plotEscrow;
+  SpaceCustodianRegistry public spaceCustodianRegistry;
 
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
@@ -113,11 +126,13 @@ contract PlotCustodianManager is AbstractOracleApplication {
     _;
   }
 
-  modifier onlyOracleOfApplication(bytes32 _aId) {
+  modifier onlyParticipatingCustodian(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressOracleTypes[msg.sender] != 0x0, "The oracle is not assigned to any role");
-    require(oracles.isOracleActive(msg.sender), "Not active oracle");
+    require(
+      a.acceptedCustodians.has(msg.sender) ||
+      a.lockedCustodians.has(msg.sender),
+      "Only a custodian role is allowed to perform this action");
 
     _;
   }
@@ -137,6 +152,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
     Oracles _oracles,
     ERC20 _galtToken,
     PlotEscrow _plotEscrow,
+    SpaceCustodianRegistry _spaceCustodianRegistry,
     address _galtSpaceRewardsAddress
   )
     external
@@ -148,6 +164,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
     galtToken = _galtToken;
     plotEscrow = _plotEscrow;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+    spaceCustodianRegistry = _spaceCustodianRegistry;
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
@@ -155,7 +172,6 @@ contract PlotCustodianManager is AbstractOracleApplication {
     minimalApplicationFeeInGalt = 10;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
-    gasPriceForDeposits = 4 wei;
     paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
@@ -165,7 +181,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
   function submitApplicationFromEscrow(
     uint256 _spaceTokenId,
     Action _action,
-    address _chosenCustodian,
+    address[] _custodiansToModify,
     address _applicant,
     uint256 _applicationFeeInGalt
   )
@@ -182,7 +198,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
       _spaceTokenId,
       _action,
       _applicant,
-      _chosenCustodian,
+      _custodiansToModify,
       true,
       _applicationFeeInGalt
     );
@@ -192,13 +208,13 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * @dev Submit a new custodian management application
    * @param _spaceTokenId package SpaceToken ID
    * @param _action either ATTACH or DETACH custodian
-   * @param _chosenCustodian which would consider working on this application
+   * @param _custodiansToModify which would be either pushed to the current ones or removed
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
    */
-  function submitApplication(
+  function submit(
     uint256 _spaceTokenId,
     Action _action,
-    address _chosenCustodian,
+    address[] _custodiansToModify,
     uint256 _applicationFeeInGalt
   )
     external
@@ -212,7 +228,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
       _spaceTokenId,
       _action,
       msg.sender,
-      _chosenCustodian,
+      _custodiansToModify,
       false,
       _applicationFeeInGalt
     );
@@ -222,13 +238,15 @@ contract PlotCustodianManager is AbstractOracleApplication {
     uint256 _spaceTokenId,
     Action _action,
     address _applicant,
-    address _chosenCustodian,
+    address[] _custodiansToModify,
     bool _throughEscrow,
     uint256 _applicationFeeInGalt
   )
     internal
     returns (bytes32)
   {
+    require(_custodiansToModify.length <= MODIFY_CUSTODIAN_LIMIT, "Too many custodians to modify");
+
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -247,7 +265,6 @@ contract PlotCustodianManager is AbstractOracleApplication {
       currency = Currency.GALT;
     }
 
-    Application memory a;
     bytes32 _id = keccak256(
       abi.encodePacked(
         _spaceTokenId,
@@ -257,28 +274,26 @@ contract PlotCustodianManager is AbstractOracleApplication {
     );
 
     require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
-    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ORACLE_TYPE);
+
+    Application storage a = applications[_id];
+
+    _storeCustodians(a, _spaceTokenId, _custodiansToModify, _action);
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
     a.throughEscrow = _throughEscrow;
     a.applicant = _applicant;
-    a.chosenCustodian = _chosenCustodian;
     a.currency = currency;
     a.spaceTokenId = _spaceTokenId;
     a.action = _action;
 
     calculateAndStoreFee(a, fee);
 
-    applications[_id] = a;
-
     applicationsArray.push(_id);
     applicationsByApplicant[_applicant].push(_id);
 
     emit LogNewApplication(_id, _applicant);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
-
-    assignRequiredOracleTypesAndRewards(_id);
 
     return _id;
   }
@@ -288,13 +303,13 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * @param _aId application ID
    * @param _spaceTokenId package SpaceToken ID
    * @param _action either ATTACH or DETACH custodian
-   * @param _chosenCustodian which would consider working on this application
+   * @param _custodiansToModify which would consider working on this application
    */
-  function resubmitApplication(
+  function resubmit(
     bytes32 _aId,
     uint256 _spaceTokenId,
     Action _action,
-    address _chosenCustodian
+    address[] _custodiansToModify
   )
     external
     onlyApplicant(_aId)
@@ -305,81 +320,109 @@ contract PlotCustodianManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
     require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
     require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
-    oracles.requireOracleActiveWithAssignedActiveOracleType(_chosenCustodian, PC_CUSTODIAN_ORACLE_TYPE);
+
+    a.custodiansToModify.clear();
+    _storeCustodians(a, _spaceTokenId, _custodiansToModify, _action);
 
     a.spaceTokenId = _spaceTokenId;
     a.action = _action;
-    a.chosenCustodian = _chosenCustodian;
+    a.acceptedCustodians.clear();
+    a.lockedCustodians.clear();
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
+  function _storeCustodians(
+    Application storage _a,
+    uint256 _spaceTokenId,
+    address[] memory _custodiansToModify,
+    Action _action
+  )
+    internal
+  {
+    uint256 len = _custodiansToModify.length;
+
+    require((assignedCustodians[_spaceTokenId].size() + len) < TOTAL_CUSTODIAN_LIMIT, "Exceed total custodian limit");
+
+    for (uint256 i = 0; i < len; i++) {
+      address custodian = _custodiansToModify[i];
+      oracles.requireOracleActiveWithAssignedActiveOracleType(custodian, PC_CUSTODIAN_ORACLE_TYPE);
+
+      if (_action == Action.ATTACH) {
+        require(!assignedCustodians[_spaceTokenId].has(custodian), "Custodian already locked a slot");
+      } else {
+        require(assignedCustodians[_spaceTokenId].has(custodian), "Custodian doesn't have slot");
+      }
+
+      _a.custodiansToModify.add(custodian);
+    }
   }
 
   /**
    * @dev Application can be reverted by a custodian
    * @param _aId application ID
    */
-  function revertApplication(bytes32 _aId) external {
+  function revert(bytes32 _aId) external {
     Application storage a = applications[_aId];
     oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
-    require(a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't revert a role not in PENDING status");
-    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
+      a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.ACCEPTED,
+      "Application status should be SUBMITTED or ACCEPTED");
+    require(
+      a.custodiansToModify.has(msg.sender) ||
+      assignedCustodians[a.spaceTokenId].has(msg.sender),
+      "Not valid custodian");
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
   /**
-   * @dev Application can be accepted by a custodian
+   * @dev The modifying custodians accept changes
    * @param _aId application ID
    */
-  function acceptApplication(bytes32 _aId) external {
+  function accept(bytes32 _aId) external {
     Application storage a = applications[_aId];
     oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
-    require(a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't accept a role not in PENDING status");
-    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
 
-    a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE] = msg.sender;
-    a.addressOracleTypes[msg.sender] = PC_CUSTODIAN_ORACLE_TYPE;
+    require(a.custodiansToModify.has(msg.sender), "Not in modifiers list");
+    require(!a.acceptedCustodians.has(msg.sender), "Already accepted");
+
+    a.acceptedCustodians.add(msg.sender);
+
+    // TODO: add/replace with event
     applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, PC_CUSTODIAN_ORACLE_TYPE, ValidationStatus.LOCKED);
-
-    if (a.validationStatus[PC_AUDITOR_ORACLE_TYPE] == ValidationStatus.LOCKED) {
-      changeApplicationStatus(a, ApplicationStatus.LOCKED);
+    if (a.acceptedCustodians.size() == a.custodiansToModify.size()) {
+      if (assignedCustodians[a.spaceTokenId].size() == 0) {
+        changeApplicationStatus(a, ApplicationStatus.LOCKED);
+      } else {
+        changeApplicationStatus(a, ApplicationStatus.ACCEPTED);
+      }
     }
   }
 
   /**
-   * @dev Application can be locked by an auditor
+   * @dev Existing custodians lock application
    * @param _aId application ID
    */
-  function lockApplication(bytes32 _aId) external {
+  function lock(bytes32 _aId) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_AUDITOR_ORACLE_TYPE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(
-      a.status == ApplicationStatus.SUBMITTED ||
-      a.status == ApplicationStatus.REVIEW,
-      "Application status should be SUBMITTED or REVIEW");
-    require(a.roleAddresses[PC_AUDITOR_ORACLE_TYPE] == address(0), "Oracle is already assigned on this role");
-    require(a.validationStatus[PC_AUDITOR_ORACLE_TYPE] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+      a.status == ApplicationStatus.ACCEPTED,
+      "Application status should be ACCEPTED");
+    require(assignedCustodians[a.spaceTokenId].has(msg.sender), "Not in assigned list");
 
-    a.roleAddresses[PC_AUDITOR_ORACLE_TYPE] = msg.sender;
-    a.addressOracleTypes[msg.sender] = PC_AUDITOR_ORACLE_TYPE;
+    // TODO: add/replace with event
     applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, PC_AUDITOR_ORACLE_TYPE, ValidationStatus.LOCKED);
-
-    if (a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.LOCKED && a.status != ApplicationStatus.REVIEW) {
+    if (assignedCustodians[a.spaceTokenId].size() == a.lockedCustodians.size()) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -390,10 +433,34 @@ contract PlotCustodianManager is AbstractOracleApplication {
    */
   function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
+    ArraySet.AddressSet storage voters = a.voting.voters;
 
-    require(a.validationStatus[PC_CUSTODIAN_ORACLE_TYPE] == ValidationStatus.LOCKED, "Validation status of custodian should be LOCKED");
-
+    require(
+      a.status == ApplicationStatus.LOCKED,
+      "Application status should be LOCKED");
     spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
+    // TODO: assign values;
+
+    // voters = unique(acceptedCustodians + lockedCustodians) + 1 auditor + 1 applicant
+    uint256 votersCount = a.acceptedCustodians.size() + 2;
+
+    address[] memory accepted = a.acceptedCustodians.elements();
+    for (uint256 i = 0; i < accepted.length; i++) {
+      voters.add(accepted[i]);
+    }
+
+    address[] memory current = a.lockedCustodians.elements();
+    for (uint256 i = 0; i < current.length; i++) {
+      if (!voters.has(current[i])) {
+        voters.add(current[i]);
+        votersCount++;
+      }
+    }
+
+    voters.add(a.applicant);
+    a.voting.required = votersCount;
+
+    _calculateAndStoreCustodianRewards(a);
 
     changeApplicationStatus(a, ApplicationStatus.REVIEW);
   }
@@ -405,14 +472,47 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * @param _aId application ID
    * @param _documents to attach
    */
-  function attachDocuments(bytes32 _aId, bytes32[] _documents) external {
+  function attachDocuments(
+    bytes32 _aId,
+    bytes32[] _documents
+  )
+    external
+    onlyParticipatingCustodian(_aId)
+  {
     Application storage a = applications[_aId];
     oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
-    require(a.chosenCustodian == msg.sender, "The sender is not chosen as a custodian of this application");
+
+    address[] memory voters = a.voting.voters.elements();
+    for (uint256 i = 0; i < voters.length; i++) {
+      a.voting.approvals[voters[i]] = false;
+    }
+
+    a.voting.approveCount = 0;
+    a.voting.required = 0;
 
     a.custodianDocuments = _documents;
+  }
+
+  /**
+   * @dev Auditor lock application
+   * @param _aId application ID
+   */
+  function auditorLock(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_AUDITOR_ORACLE_TYPE);
+
+    require(
+      a.status == ApplicationStatus.REVIEW,
+      "Application status should be REVIEW");
+    require(a.auditor == address(0), "Not in assigned list");
+
+    // TODO: add/replace with event
+    applicationsByOracle[msg.sender].push(_aId);
+
+    a.auditor = msg.sender;
+    a.voting.voters.add(msg.sender);
   }
 
   /**
@@ -420,26 +520,22 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * Requires all the participants to call this method in order to confirm that they are agree on the given terms.
    * @param _aId application ID
    */
-  function approveApplication(bytes32 _aId) external {
+  function approve(bytes32 _aId) external {
     Application storage a = applications[_aId];
+    Voting storage v = a.voting;
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(v.voters.has(msg.sender), "Not in voters list");
+    require(v.approvals[msg.sender] == false, "Already approved");
 
-    if (msg.sender == a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE]) {
-      a.approveConfirmations = a.approveConfirmations + 1;
-    } else if (msg.sender == a.roleAddresses[PC_AUDITOR_ORACLE_TYPE]) {
-      a.approveConfirmations = a.approveConfirmations + 2;
-    } else if (msg.sender == a.applicant) {
-      a.approveConfirmations = a.approveConfirmations + 4;
-    } else {
-      revert("Invalid role");
-    }
+    v.approveCount += 1;
+    v.approvals[msg.sender] = true;
 
-    if (a.approveConfirmations == 7) {
+    if (v.approveCount == v.required) {
       if (a.action == Action.DETACH) {
-        delete assignedCustodians[a.spaceTokenId];
+        spaceCustodianRegistry.detach(a.spaceTokenId, a.custodiansToModify.elements());
       } else {
-        assignedCustodians[a.spaceTokenId] = a.chosenCustodian;
+        spaceCustodianRegistry.attach(a.spaceTokenId, a.custodiansToModify.elements());
       }
 
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
@@ -450,13 +546,23 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * @dev Reject the application by a custodian if he changed his mind or the application looks suspicious.
    * @param _aId application ID
    */
-  function rejectApplication(bytes32 _aId, string _message) external {
+  function reject(
+    bytes32 _aId,
+    string _message
+  )
+    external
+    onlyParticipatingCustodian(_aId)
+  {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
-    require(msg.sender == a.roleAddresses[PC_CUSTODIAN_ORACLE_TYPE], "Only a custodian role is allowed to perform this action");
+    require(
+      a.acceptedCustodians.has(msg.sender) || a.lockedCustodians.has(msg.sender) || a.auditor == msg.sender,
+      "Only a custodians or auditor are allowed to perform this action");
+    require(a.auditor != address(0), "Auditor should be assigned first");
 
-    a.roleMessages[PC_CUSTODIAN_ORACLE_TYPE] = _message;
+    a.rejectMessage = _message;
+
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
@@ -484,7 +590,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
    * @dev Close the application by the applicant without attaching/detaching a custodian
    * @param _aId application ID
    */
-  function closeApplication(bytes32 _aId) external onlyApplicant(_aId) {
+  function close(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(
@@ -499,48 +605,47 @@ contract PlotCustodianManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.CLOSED);
   }
 
-  // DANGER: could reset non-existing role
-  function resetApplicationRole(bytes32 _aId, bytes32 _role) external {
-    // TODO: move permissions to an applicant
-    assert(false);
-    Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.LOCKED &&
-      a.status == ApplicationStatus.REVIEW,
-      "Could not reset applications in state LOCKED or REVIEW");
-    require(a.roleAddresses[_role] != address(0), "Address should be already set");
-
-    // Do not affect on application state
-    a.roleAddresses[_role] = address(0);
-    changeValidationStatus(a, _role, ValidationStatus.PENDING);
-  }
-
+  /**
+   * @dev Custodians and auditor claim their rewards
+   * @param _aId application ID
+   */
   function claimOracleReward(
     bytes32 _aId
   )
     external
-    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    bytes32 senderRole = a.addressOracleTypes[msg.sender];
-    uint256 reward = a.assignedRewards[senderRole];
+
+    require(oracles.isOracleActive(msg.sender), "Not active oracle");
 
     require(
       a.status == ApplicationStatus.COMPLETED ||
       a.status == ApplicationStatus.CLOSED,
       "Application status should be either COMPLETED or CLOSED");
 
-    require(reward > 0, "Reward is 0");
-    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
+    uint256 reward;
 
-    a.roleRewardPaidOut[senderRole] = true;
+    if (msg.sender == a.auditor) {
+      require(a.rewards.auditorRewardPaidOut == false, "Reward is already paid out");
+      reward = a.rewards.auditorReward;
+      a.rewards.auditorRewardPaidOut = true;
+    } else {
+      require(
+        a.acceptedCustodians.has(msg.sender) || a.lockedCustodians.has(msg.sender),
+        "Not a participating custodian");
+
+      require(a.rewards.custodianRewardPaidOut[msg.sender] == false, "Reward is already paid out");
+      a.rewards.custodianRewardPaidOut[msg.sender] = true;
+
+      reward = a.rewards.custodianReward;
+    }
+
+    require(reward > 0, "Reward is 0");
 
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
-    } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, reward);
     } else {
-      revert("Unknown currency");
+      galtToken.transfer(msg.sender, reward);
     }
   }
 
@@ -557,18 +662,28 @@ contract PlotCustodianManager is AbstractOracleApplication {
       a.status == ApplicationStatus.COMPLETED ||
       a.status == ApplicationStatus.CLOSED,
       "Application status should be either COMPLETED or CLOSED");
-    require(a.galtSpaceReward > 0, "Reward is 0");
-    require(a.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+    require(a.rewards.galtSpaceReward > 0, "Reward is 0");
+    require(a.rewards.galtSpaceRewardPaidOut == false, "Reward is already paid out");
 
-    a.galtSpaceRewardPaidOut = true;
+    a.rewards.galtSpaceRewardPaidOut = true;
 
     if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.galtSpaceReward);
+      msg.sender.transfer(a.rewards.galtSpaceReward);
     } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.galtSpaceReward);
-    } else {
-      revert("Unknown currency");
+      galtToken.transfer(msg.sender, a.rewards.galtSpaceReward);
     }
+  }
+
+  // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
+  function _calculateAndStoreCustodianRewards(Application storage a) internal {
+    // voters = 1 applicant + oracles (1 auditor will be pushed later)
+    // at the moment only oracles and an applicant are pushed here
+    uint256 len = a.voting.voters.size();
+    assert(len > 0);
+
+    uint256 rewardSize = a.rewards.totalCustodiansReward.div(len);
+
+    a.rewards.custodianReward = rewardSize;
   }
 
   function getApplicationById(
@@ -579,10 +694,11 @@ contract PlotCustodianManager is AbstractOracleApplication {
     returns (
       address applicant,
       uint256 spaceTokenId,
-      address chosenCustodian,
-      uint8 approveConfirmations,
-      bytes32[] assignedOracleTypes,
+      address[] custodiansToModify,
+      address[] acceptedCustodians,
+      address[] lockedCustodians,
       bytes32[] custodianDocuments,
+      address auditor,
       bool throughEscrow,
       ApplicationStatus status,
       Currency currency,
@@ -596,10 +712,11 @@ contract PlotCustodianManager is AbstractOracleApplication {
     return (
       m.applicant,
       m.spaceTokenId,
-      m.chosenCustodian,
-      m.approveConfirmations,
-      m.assignedOracleTypes,
+      m.custodiansToModify.elements(),
+      m.acceptedCustodians.elements(),
+      m.lockedCustodians.elements(),
       m.custodianDocuments,
+      m.auditor,
       m.throughEscrow,
       m.status,
       m.currency,
@@ -607,65 +724,81 @@ contract PlotCustodianManager is AbstractOracleApplication {
     );
   }
 
-  function getApplicationFinanceById(
+  function getApplicationRewards(
     bytes32 _id
   )
     external
     view
     returns (
-      ApplicationStatus status,
       Currency currency,
-      uint256 oraclesReward,
       uint256 galtSpaceReward,
-      bool galtSpaceRewardPaidOut
+      uint256 oraclesReward,
+      uint256 totalCustodiansReward,
+      uint256 custodianReward,
+      uint256 auditorReward,
+      bool galtSpaceRewardPaidOut,
+      bool auditorRewardPaidOut
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
-    Application storage m = applications[_id];
+    Rewards storage r = applications[_id].rewards;
 
     return (
-      m.status,
-      m.currency,
-      m.oraclesReward,
-      m.galtSpaceReward,
-      m.galtSpaceRewardPaidOut
+      applications[_id].currency,
+      r.galtSpaceReward,
+      r.oraclesReward,
+      r.totalCustodiansReward,
+      r.custodianReward,
+      r.auditorReward,
+      r.galtSpaceRewardPaidOut,
+      r.auditorRewardPaidOut
     );
   }
 
-  function getApplicationOracle(
+  function getApplicationCustodian(
     bytes32 _aId,
-    bytes32 _role
+    address _custodian
   )
     external
     view
     returns (
-      address oracle,
-      uint256 reward,
+      bool approved,
       bool rewardPaidOut,
-      ValidationStatus status,
-      string message
+      bool involved
     )
   {
+    Application storage a = applications[_aId];
+
+    bool involved = (
+      a.acceptedCustodians.has(_custodian) ||
+      a.lockedCustodians.has(_custodian) || a.custodiansToModify.has(_custodian));
+
     return (
-      applications[_aId].roleAddresses[_role],
-      applications[_aId].assignedRewards[_role],
-      applications[_aId].roleRewardPaidOut[_role],
-      applications[_aId].validationStatus[_role],
-      applications[_aId].roleMessages[_role]
+      a.voting.approvals[_custodian],
+      a.rewards.custodianRewardPaidOut[_custodian],
+      involved
     );
   }
 
-  function changeValidationStatus(
-    Application storage _a,
-    bytes32 _role,
-    ValidationStatus _status
-  )
-    internal
+  function getApplicationVoting(bytes32 _aId)
+    external
+    view
+    returns (
+      uint256 approveCount,
+      uint256 required,
+      address[] voters,
+      bool currentAddressApproved
+    )
   {
-    emit LogValidationStatusChanged(_a.id, _role, _status);
+    Voting storage v = applications[_aId].voting;
 
-    _a.validationStatus[_role] = _status;
+    return (
+      v.approveCount,
+      v.required,
+      v.voters.elements(),
+      v.approvals[msg.sender]
+    );
   }
 
   function changeApplicationStatus(
@@ -680,7 +813,7 @@ contract PlotCustodianManager is AbstractOracleApplication {
   }
 
   function calculateAndStoreFee(
-    Application memory _a,
+    Application storage _a,
     uint256 _fee
   )
     internal
@@ -698,33 +831,15 @@ contract PlotCustodianManager is AbstractOracleApplication {
 
     assert(oraclesReward.add(galtSpaceReward) == _fee);
 
-    _a.oraclesReward = oraclesReward;
-    _a.galtSpaceReward = galtSpaceReward;
-  }
+    _a.rewards.galtSpaceReward = galtSpaceReward;
+    _a.rewards.oraclesReward = oraclesReward;
 
-  /**
-   * Completely relies on Oracles contract share values without any check
-   */
-  function assignRequiredOracleTypesAndRewards(bytes32 _aId) internal {
-    Application storage a = applications[_aId];
-    assert(a.oraclesReward > 0);
-
-    uint256 totalReward = 0;
-
-    a.assignedOracleTypes = oracles.getApplicationTypeOracleTypes(APPLICATION_TYPE);
-    uint256 len = a.assignedOracleTypes.length;
-    for (uint8 i = 0; i < len; i++) {
-      bytes32 oracleType = a.assignedOracleTypes[i];
-      uint256 rewardShare = a
+    _a.rewards.totalCustodiansReward = _a
+      .rewards
       .oraclesReward
-      .mul(oracles.getOracleTypeRewardShare(oracleType))
+      .mul(oracles.getOracleTypeRewardShare(PC_CUSTODIAN_ORACLE_TYPE))
       .div(100);
 
-      a.assignedRewards[oracleType] = rewardShare;
-      changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
-      totalReward = totalReward.add(rewardShare);
-    }
-
-    assert(totalReward == a.oraclesReward);
+    _a.rewards.auditorReward = oraclesReward.sub(_a.rewards.totalCustodiansReward);
   }
 }

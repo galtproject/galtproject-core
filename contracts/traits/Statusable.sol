@@ -21,6 +21,12 @@ contract Statusable {
     SUBMITTED,
     APPROVED,
     REJECTED,
-    REVERTED
+    REVERTED,
+
+    ACCEPTED,
+    LOCKED,
+    REVIEW,
+    COMPLETED,
+    CLOSED
   }
 }

@@ -16,7 +16,7 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./PlotCustodianManager.sol";
+import "./applications/PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
 import "./SpaceToken.sol";
 import "./Oracles.sol";
@@ -577,7 +577,7 @@ contract PlotEscrow is AbstractOracleApplication {
   function applyCustodianAssignment(
     bytes32 _orderId,
     address _buyer,
-    address _chosenCustodian,
+    address[] _chosenCustodians,
     uint256 _applicationFeeInGalt
   )
     external
@@ -596,7 +596,7 @@ contract PlotEscrow is AbstractOracleApplication {
     saleOffer.custodianApplicationId = plotCustodianManager.submitApplicationFromEscrow.value(msg.value)(
       saleOrder.spaceTokenId,
       PlotCustodianManager.Action.ATTACH,
-      _chosenCustodian,
+      _chosenCustodians,
       msg.sender,
       _applicationFeeInGalt
     );
