@@ -52,6 +52,8 @@ contract.only('PolygonUtils', ([coreTeam]) => {
       // 6 887 504 sq m
       // 4. https://geographiclib.sourceforge.io/cgi-bin/Planimeter?type=polygon&rhumb=geodesic&input=1.2291728239506483%2C+104.51007032766938%0D%0A1.2037726398557425%2C+104.50989866629243%0D%0A1.2036009784787893%2C+104.53199403360486%0D%0A1.227113390341401%2C+104.53336732462049&option=Submit
       // 6 841 437.7
+      // 5. https://www.daftlogic.com/projects-google-maps-area-calculator-tool.htm
+      // 6 864 573.76
 
       const etherContour = contour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
       await pIteration.forEachSeries(etherContour, async point => {
