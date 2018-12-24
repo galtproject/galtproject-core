@@ -18,10 +18,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./AbstractApplication.sol";
 import "./SpaceToken.sol";
-import "./Validators.sol";
+import "./Oracles.sol";
 import "./collections/ArraySet.sol";
-import "./ValidatorStakes.sol";
-import "./ValidatorStakesMultiSig.sol";
+import "./multisig/OracleStakesAccounting.sol";
+import "./multisig/ArbitratorsMultiSig.sol";
+import "./registries/MultiSigRegistry.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -30,9 +31,6 @@ contract ClaimManager is AbstractApplication {
 
   // `ClaimManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
-
-  // `CM_JUROR` bytes32 representation hash
-  bytes32 public constant CM_AUDITOR = 0x434d5f41554449544f5200000000000000000000000000000000000000000000;
 
   // `bytes4(keccak256('transfer(address,uint256)'))`
   bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
@@ -52,17 +50,19 @@ contract ClaimManager is AbstractApplication {
 
   event ClaimStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event NewClaim(bytes32 id, address applicant);
-  event ValidatorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
+  event ArbitratorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
   event NewProposal(bytes32 claimId, bytes32 proposalId, Action action, address proposer);
   event NewMessage(bytes32 claimId, uint256 messageId);
 
   struct Claim {
     bytes32 id;
+    address multiSig;
     address applicant;
     address beneficiary;
     uint256 amount;
     bytes32 chosenProposal;
     uint256 messageCount;
+    uint256 multiSigTransactionId;
     uint256 m;
     uint256 n;
 
@@ -75,16 +75,16 @@ contract ClaimManager is AbstractApplication {
     bytes32[] attachedDocuments;
 
     bytes32[] proposals;
-    ArraySet.AddressSet validators;
+    ArraySet.AddressSet arbitrators;
   }
 
   struct FeeDetails {
     Currency currency;
-    uint256 validatorsReward;
-    uint256 validatorReward;
+    uint256 arbitratorsReward;
+    uint256 arbitratorReward;
     uint256 galtSpaceReward;
     bool galtSpaceRewardPaidOut;
-    mapping(address => bool) validatorRewardPaidOut;
+    mapping(address => bool) arbitratorRewardPaidOut;
   }
 
   struct Proposal {
@@ -94,8 +94,8 @@ contract ClaimManager is AbstractApplication {
     address from;
     string message;
     uint256 amount;
-    address[] validators;
-    bytes32[] roles;
+    address[] oracles;
+    bytes32[] oracleTypes;
     uint256[] fines;
   }
 
@@ -108,51 +108,43 @@ contract ClaimManager is AbstractApplication {
 
   mapping(bytes32 => Claim) claims;
 
-  // validator count required to
-  uint256 public n;
-
-  // total validator count able to lock the claim
+  // arbitrators count required to
   uint256 public m;
 
-  ValidatorStakes validatorStakes;
-  ValidatorStakesMultiSig validatorStakesMultiSig;
+  // total arbitrators count able to lock the claim
+  uint256 public n;
 
-  modifier onlyValidSuperValidator() {
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, CM_AUDITOR);
+  Oracles oracles;
+  MultiSigRegistry multiSigRegistry;
 
-    _;
-  }
+  mapping(address => bytes32[]) applicationsByArbitrator;
 
   constructor () public {}
 
-  function setNofM(uint256 _n, uint256 _m) external onlyOwner {
-    require(2 <= _n, "Should satisfy `2 <= n`");
-    require(_n <= _m, "Should satisfy `n <= m`");
+  function setMofN(uint256 _m, uint256 _n) external onlyRole(ROLE_GALT_SPACE) {
+    require(2 <= _m, "Should satisfy `2 <= n`");
+    require(_m <= _n, "Should satisfy `n <= m`");
 
-    n = _n;
     m = _m;
+    n = _n;
   }
 
   function initialize(
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
-    ValidatorStakes _validatorStakes,
-    ValidatorStakesMultiSig _validatorStakesMultiSig,
+    MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    owner = msg.sender;
-
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
-    validatorStakes = _validatorStakes;
-    validatorStakesMultiSig = _validatorStakesMultiSig;
+    multiSigRegistry = _multiSigRegistry;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
-    n = 3;
-    m = 5;
+    m = 3;
+    n = 5;
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
@@ -166,6 +158,7 @@ contract ClaimManager is AbstractApplication {
   /**
    * @dev Submit a new claim.
    *
+   * @param _multiSig to submit a claim
    * @param _beneficiary for refund
    * @param _amount of claim
    * @param _documents with details
@@ -173,6 +166,7 @@ contract ClaimManager is AbstractApplication {
    * @return new claim id
    */
   function submit(
+    address _multiSig,
     address _beneficiary,
     uint256 _amount,
     bytes32[] _documents,
@@ -182,6 +176,8 @@ contract ClaimManager is AbstractApplication {
     payable
     returns (bytes32)
   {
+    multiSigRegistry.requireValidMultiSig(_multiSig);
+
     // Default is ETH
     Currency currency;
     uint256 fee;
@@ -215,6 +211,7 @@ contract ClaimManager is AbstractApplication {
 
     c.status = ApplicationStatus.SUBMITTED;
     c.id = id;
+    c.multiSig = _multiSig;
     c.amount = _amount;
     c.beneficiary = _beneficiary;
     c.applicant = msg.sender;
@@ -228,7 +225,7 @@ contract ClaimManager is AbstractApplication {
     claims[id] = c;
 
     applicationsArray.push(id);
-    applicationsByAddresses[msg.sender].push(id);
+    applicationsByApplicant[msg.sender].push(id);
 
     emit NewClaim(id, msg.sender);
     emit ClaimStatusChanged(id, ApplicationStatus.SUBMITTED);
@@ -237,37 +234,48 @@ contract ClaimManager is AbstractApplication {
   }
 
   /**
-   * @dev Super-Validator locks a claim to work on
+   * @dev Arbitrator locks a claim to work on
    * @param _cId Claim ID
    */
-  function lock(bytes32 _cId) external onlyValidSuperValidator {
+  function lock(bytes32 _cId) external {
     Claim storage c = claims[_cId];
 
+    require(ArbitratorsMultiSig(c.multiSig).isOwner(msg.sender), "Invalid arbitrator");
+
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(!c.validators.has(msg.sender), "Validator has already locked the application");
-    require(c.validators.size() < m, "All validator slots are locked");
+    require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
+    require(c.arbitrators.size() < n, "All arbitrator slots are locked");
 
-    c.validators.add(msg.sender);
+    c.arbitrators.add(msg.sender);
 
-    emit ValidatorSlotTaken(_cId, c.validators.size(), m);
+    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n);
   }
 
   /**
-   * @dev Super-Validator makes approve proposal
+   * @dev Arbitrator makes approve proposal
    * @param _cId Claim ID
    */
-  function proposeApproval(bytes32 _cId, string _msg, uint256 _amount, address[] _a, bytes32[] _r, uint256[] _f) external {
+  function proposeApproval(
+    bytes32 _cId,
+    string _msg,
+    uint256 _amount,
+    address[] _a,
+    bytes32[] _r,
+    uint256[] _f
+  )
+    external
+  {
     require(_a.length == _r.length, "Address/Role arrays should be equal");
     require(_r.length == _f.length, "Role/Fine arrays should be equal");
 
-    require(_a.length > 0, "Accused validators array should contain at leas one element");
+    require(_a.length > 0, "Accused oracles array should contain at leas one element");
 
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+    require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
-    require(validators.validatorsHaveRolesAssigned(_a, _r), "Some roles are invalid");
+    require(oracles.oraclesHasTypesAssigned(_a, _r), "Some roles are invalid");
 
     bytes32 id = keccak256(abi.encode(_cId, _msg, _a, _r, _f, msg.sender));
     require(c.proposalDetails[id].from == address(0), "Proposal already exists");
@@ -279,14 +287,14 @@ contract ClaimManager is AbstractApplication {
     p.action = Action.APPROVE;
     p.message = _msg;
     p.amount = _amount;
-    p.validators = _a;
-    p.roles = _r;
+    p.oracles = _a;
+    p.oracleTypes = _r;
     p.fines = _f;
 
     c.proposalDetails[id] = p;
     c.proposals.push(id);
 
-    // validator immediately votes for the proposal
+    // arbitrator immediately votes for the proposal
     _voteFor(c, id);
     // as we have minimum n equal 2, a brand new proposal could not be executed in this step
 
@@ -294,14 +302,14 @@ contract ClaimManager is AbstractApplication {
   }
 
   /**
-   * @dev Super-Validator makes reject proposal
+   * @dev Arbitrator makes reject proposal
    * @param _cId Claim ID
    */
   function proposeReject(bytes32 _cId, string _msg) external {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+    require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
     bytes32 id = keccak256(abi.encode(_cId, _msg, msg.sender));
     require(c.proposalDetails[id].from == address(0), "Proposal already exists");
@@ -316,7 +324,7 @@ contract ClaimManager is AbstractApplication {
     c.proposalDetails[id] = p;
     c.proposals.push(id);
 
-    // validator immediately votes for the proposal
+    // arbitrator immediately votes for the proposal
     _voteFor(c, id);
     // as we have minimum n equal 2, a brand new proposal could not be executed in this step
 
@@ -324,7 +332,7 @@ contract ClaimManager is AbstractApplication {
   }
 
   /**
-   * @dev Super-Validator votes for a proposal
+   * @dev Arbitrator votes for a proposal
    * @param _cId Claim ID
    * @param _pId Proposal ID
    */
@@ -332,7 +340,7 @@ contract ClaimManager is AbstractApplication {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
+    require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
     Proposal storage p = c.proposalDetails[_pId];
 
@@ -340,15 +348,17 @@ contract ClaimManager is AbstractApplication {
 
     _voteFor(c, _pId);
 
-    if (p.votesFor.size() == c.n) {
+    if (p.votesFor.size() == c.m) {
       c.chosenProposal = _pId;
       calculateAndStoreAuditorRewards(c);
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        validatorStakes.slash(p.validators, p.roles, p.fines);
+        multiSigRegistry
+          .getOracleStakesAccounting(c.multiSig)
+          .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        validatorStakesMultiSig.proposeTransaction(
+        c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
           galtToken,
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
@@ -359,22 +369,24 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
-  function claimValidatorReward(bytes32 _cId) external {
+  function claimArbitratorReward(bytes32 _cId) external {
     Claim storage c = claims[_cId];
 
     require(
       c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
-    require(c.validators.has(msg.sender) == true, "Validator not in locked list");
-    require(c.fees.validatorRewardPaidOut[msg.sender] == false);
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, CM_AUDITOR);
+    require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
+    require(c.fees.arbitratorRewardPaidOut[msg.sender] == false);
+    if (c.status == ApplicationStatus.APPROVED) {
+      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
+    }
 
-    c.fees.validatorRewardPaidOut[msg.sender] = true;
+    c.fees.arbitratorRewardPaidOut[msg.sender] = true;
 
     if (c.fees.currency == Currency.ETH) {
-      msg.sender.transfer(c.fees.validatorReward);
+      msg.sender.transfer(c.fees.arbitratorReward);
     } else if (c.fees.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, c.fees.validatorReward);
+      galtToken.transfer(msg.sender, c.fees.arbitratorReward);
     }
   }
 
@@ -387,6 +399,9 @@ contract ClaimManager is AbstractApplication {
     require(
       c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
+    if (c.status == ApplicationStatus.APPROVED) {
+      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
+    }
 
     require(c.fees.galtSpaceReward > 0, "Reward is 0");
     require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
@@ -406,7 +421,7 @@ contract ClaimManager is AbstractApplication {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
-    require(c.validators.has(msg.sender) == true || c.applicant == msg.sender, "Allowed only to an applicant or a validator");
+    require(c.arbitrators.has(msg.sender) == true || c.applicant == msg.sender, "Allowed only to an applicant or a arbitrator");
 
     uint256 id = c.messageCount;
     c.messages[id] = Message(id, block.timestamp, msg.sender, _text);
@@ -441,20 +456,25 @@ contract ClaimManager is AbstractApplication {
     }
 
     uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+    uint256 arbitratorsReward = _fee.sub(galtSpaceReward);
 
-    assert(validatorsReward.add(galtSpaceReward) == _fee);
+    assert(arbitratorsReward.add(galtSpaceReward) == _fee);
 
-    _c.fees.validatorsReward = validatorsReward;
+    _c.fees.arbitratorsReward = arbitratorsReward;
     _c.fees.galtSpaceReward = galtSpaceReward;
   }
 
-  // NOTICE: in case 100 ether / 3, each validator will receive 33.33... ether and 1 wei will remain on contract
+  // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
   function calculateAndStoreAuditorRewards (Claim storage c) internal {
-    uint256 len = c.validators.size();
-    uint256 rewardSize = c.fees.validatorsReward.div(len);
+    uint256 len = c.arbitrators.size();
+    uint256 rewardSize = c.fees.arbitratorsReward.div(len);
 
-    c.fees.validatorReward = rewardSize;
+    c.fees.arbitratorReward = rewardSize;
+  }
+
+  function _checkMultiSigTransactionExecuted(Claim storage c) internal returns (bool) {
+    (, , , bool executed) = ArbitratorsMultiSig(c.multiSig).transactions(c.multiSigTransactionId);
+    return executed;
   }
 
   function changeSaleOrderStatus(
@@ -479,10 +499,11 @@ contract ClaimManager is AbstractApplication {
       address beneficiary,
       uint256 amount,
       bytes32[] attachedDocuments,
-      address[] validators,
+      address[] arbitrators,
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
+      uint256 multiSigTransactionId,
       uint256 messageCount,
       ApplicationStatus status
     )
@@ -495,10 +516,11 @@ contract ClaimManager is AbstractApplication {
       c.beneficiary,
       c.amount,
       c.attachedDocuments,
-      c.validators.elements(),
-      c.validators.size(),
-      c.n,
-      m,
+      c.arbitrators.elements(),
+      c.arbitrators.size(),
+      c.m,
+      n,
+      c.multiSigTransactionId,
       c.messageCount,
       c.status
     );
@@ -510,31 +532,19 @@ contract ClaimManager is AbstractApplication {
     external
     returns (
       Currency currency,
-      uint256 validatorsReward,
+      uint256 arbitratorsReward,
       uint256 galtSpaceReward,
-      uint256 validatorReward
+      uint256 arbitratorReward
     )
   {
     FeeDetails storage f = claims[_cId].fees;
 
     return (
       f.currency,
-      f.validatorsReward,
+      f.arbitratorsReward,
       f.galtSpaceReward,
-      f.validatorReward
+      f.arbitratorReward
     );
-  }
-
-  function getAllClaims() external view returns (bytes32[]) {
-    return applicationsArray;
-  }
-
-  function getClaimsByAddress(address _applicant) external view returns (bytes32[]) {
-    return applicationsByAddresses[_applicant];
-  }
-
-  function getClaimsByValidator(address _applicant) external view returns (bytes32[]) {
-    return applicationsByValidator[_applicant];
   }
 
   function getProposals(bytes32 _cId) external view returns (bytes32[]) {
@@ -563,9 +573,9 @@ contract ClaimManager is AbstractApplication {
   }
 
   /*
-   * @dev Get Proposal ID the validator voted for
+   * @dev Get Proposal ID the arbitrator voted for
    * @param _cId Claim ID
-   * @param _v validator address
+   * @param _v arbitrator address
    */
   function getVotedFor(bytes32 _cId, address _v) external view returns (bytes32) {
     return claims[_cId].votes[_v];
@@ -584,8 +594,8 @@ contract ClaimManager is AbstractApplication {
       string message,
       address[] votesFor,
       uint256 votesSize,
-      address[] validators,
-      bytes32[] roles,
+      address[] oracles,
+      bytes32[] oracleTypes,
       uint256[] fines
     )
   {
@@ -598,8 +608,8 @@ contract ClaimManager is AbstractApplication {
       p.message,
       p.votesFor.elements(),
       p.votesFor.size(),
-      p.validators,
-      p.roles,
+      p.oracles,
+      p.oracleTypes,
       p.fines
     );
   }

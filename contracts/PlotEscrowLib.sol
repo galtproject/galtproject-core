@@ -44,7 +44,7 @@ library PlotEscrowLib {
     } else if (msg.sender == saleOrder.seller) {
       saleOffer.resolved = saleOffer.resolved | 2;
     } else {
-      revert("No permissions to resolve the order");
+      revert("No permissions for order resolve");
     }
 
     bool custodianAssigned = _plotCustodianManager.assignedCustodians(saleOrder.spaceTokenId) != address(0);
@@ -61,9 +61,9 @@ library PlotEscrowLib {
   )
     external
   {
-    require(saleOrder.seller != _msgSender, "Could not apply with the seller's address");
+    require(saleOrder.seller != _msgSender, "Can't apply as seller");
     require(saleOrder.status == PlotEscrow.SaleOrderStatus.OPEN, "SaleOrderStatus should be OPEN");
-    require(saleOrder.offers[_msgSender].status == PlotEscrow.SaleOfferStatus.NOT_EXISTS, "Offer for this application already exists");
+    require(saleOrder.offers[_msgSender].status == PlotEscrow.SaleOfferStatus.NOT_EXISTS, "Offer already exists");
     require(_bid > 0, "Negative ask price");
 
     PlotEscrow.SaleOffer memory saleOffer;

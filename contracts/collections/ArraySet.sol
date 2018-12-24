@@ -66,6 +66,16 @@ library ArraySet {
     _set.map[lastElement] = currentElementIndex;
   }
 
+  function clear(AddressSet storage _set) internal {
+    for (uint256 i = 0; i < _set.array.length; i++) {
+      address v = _set.array[i];
+      delete _set.map[v];
+      _set.exists[v] = false;
+    }
+
+    delete _set.array;
+  }
+
   function has(AddressSet storage _set, address _v) internal view returns (bool) {
     return _set.exists[_v];
   }
@@ -136,12 +146,11 @@ library ArraySet {
   }
 
   function clear(Bytes32Set storage _set) internal {
-    bytes32[] storage ary = _set.array;
-
-    for (uint256 i = 0; i < ary.length; i++) {
-      delete _set.exists[ary[i]];
-      delete ary[i];
+    for (uint256 i = 0; i < _set.array.length; i++) {
+      _set.exists[_set.array[i]] = false;
     }
+
+    delete _set.array;
   }
 
   function has(Bytes32Set storage _set, bytes32 _v) internal view returns (bool) {

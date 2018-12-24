@@ -4,8 +4,9 @@ cleanup:
 	rm -rf ./build
 
 compile: cleanup
-	truffle compile
+	./node_modules/truffle/build/cli.bundled.js compile
 	node scripts/checkContractSize.js
+	tput bel
 
 validate:
 	npm run solium
