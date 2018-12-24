@@ -88,6 +88,8 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
+  // TODO: try to this solution
+  // https://stackoverflow.com/questions/49666791/getting-area-from-gps-coordinates
   function getArea(CoorsPolygon storage _polygon) internal returns (uint) {
     int[2] memory p1;
     int[2] memory p2;
@@ -98,22 +100,11 @@ library PolygonUtils {
       return 0;
     }
 
-    for (uint i = 0; i < _polygon.points.length; i++) {
-      if (i == _polygon.points.length - 2) {// i = N-2
-        p1 = _polygon.points[_polygon.points.length - 2];
-        p2 = _polygon.points[_polygon.points.length - 1];
-        p3 = _polygon.points[0];
-      } else if (i == _polygon.points.length - 1) {// i = N-1
-        p1 = _polygon.points[_polygon.points.length - 1];
-        p2 = _polygon.points[0];
-        p3 = _polygon.points[1];
-      } else {// i = 0 to N-3
-        p1 = _polygon.points[i];
-        p2 = _polygon.points[i + 1];
-        p3 = _polygon.points[i + 2];
-      }
+    for (uint i = 0; i < _polygon.points.length - 1; i++) {
+      p1 = _polygon.points[i];
+      p2 = _polygon.points[i + 1];
 
-      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getSinOfDegree(p2[1]));
+      area += ((rad(p2[0]) - rad(p1[0])) * (2 ether + TrigonometryUtils.getSinOfDegree(p1[1]) + TrigonometryUtils.getSinOfDegree(p2[1])));
     }
 
     area = (area / 2 ether) * RADIUS * RADIUS;
