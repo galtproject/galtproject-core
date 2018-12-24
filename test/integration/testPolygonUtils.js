@@ -54,6 +54,8 @@ contract.only('PolygonUtils', ([coreTeam]) => {
       // 6 841 437.7
       // 5. https://www.daftlogic.com/projects-google-maps-area-calculator-tool.htm
       // 6 864 573.76
+      // 5. https://stackoverflow.com/a/25122759/6053486
+      // 5 559 263.270789316
 
       const etherContour = contour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
       await pIteration.forEachSeries(etherContour, async point => {
