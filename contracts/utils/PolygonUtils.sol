@@ -88,8 +88,6 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  // TODO: try to this solution
-  // https://stackoverflow.com/questions/49666791/getting-area-from-gps-coordinates
   function getArea(CoorsPolygon storage _polygon) internal returns (uint) {
     int[2] memory p1;
     int[2] memory p2;

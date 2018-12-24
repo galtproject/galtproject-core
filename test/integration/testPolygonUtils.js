@@ -46,11 +46,13 @@ contract.only('PolygonUtils', ([coreTeam]) => {
       // Checks by services:
       // 1. https://github.com/mapbox/geojson-area
       // 1 727 367 sq m
-      // 2. https://3planeta.com/googlemaps/google-maps-calculator-ploschadei.html
+      // 2. https://stackoverflow.com/questions/49666791/getting-area-from-gps-coordinates
+      // 1 727 367 sq m
+      // 3. https://3planeta.com/googlemaps/google-maps-calculator-ploschadei.html
       // 6 887 504 sq m
-      // 3. https://geographiclib.sourceforge.io/cgi-bin/Planimeter?type=polygon&rhumb=geodesic&input=1.2291728239506483%2C+104.51007032766938%0D%0A1.2037726398557425%2C+104.50989866629243%0D%0A1.2036009784787893%2C+104.53199403360486%0D%0A1.227113390341401%2C+104.53336732462049&option=Submit
+      // 4. https://geographiclib.sourceforge.io/cgi-bin/Planimeter?type=polygon&rhumb=geodesic&input=1.2291728239506483%2C+104.51007032766938%0D%0A1.2037726398557425%2C+104.50989866629243%0D%0A1.2036009784787893%2C+104.53199403360486%0D%0A1.227113390341401%2C+104.53336732462049&option=Submit
       // 6 841 437.7
-      
+
       const etherContour = contour.map(point => point.map(c => ether(Math.round(c * 10 ** 12) / 10 ** 12)));
       await pIteration.forEachSeries(etherContour, async point => {
         await this.mockPolygonUtils.addPoint(point);
