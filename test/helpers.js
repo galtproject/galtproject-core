@@ -281,20 +281,29 @@ const Helpers = {
     libCache.WeilerAtherton = await WeilerAtherton.new();
     return libCache.WeilerAtherton;
   },
+  async getSplitMergeLib() {
+    if (libCache.SplitMergeLib) {
+      return libCache.SplitMergeLib;
+    }
+    const SplitMergeLib = Helpers.requireContract('./SplitMergeLib.sol');
+    SplitMergeLib.link('ArrayUtils', (await Helpers.getArrayUtilsLib()).address);
+    libCache.SplitMergeLib = await SplitMergeLib.new();
+    return libCache.SplitMergeLib;
+  },
   async deploySplitMerge() {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
 
-    const arrayUtils = await Helpers.getArrayUtilsLib();
     const landUtils = await Helpers.getLandUtilsLib();
     const segmentUtils = await Helpers.getSegmentUtilsLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
+    const splitMergeLib = await Helpers.getSplitMergeLib();
 
     SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
 
     const splitMerge = await SplitMerge.new();
     return splitMerge;

@@ -21,8 +21,8 @@ import "./traits/Initializable.sol";
 import "./traits/Permissionable.sol";
 import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
-import "./utils/ArrayUtils.sol";
 import "./SpaceSplitOperation.sol";
+import "./SplitMergeLib.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
@@ -268,7 +268,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
       "Space tokens levels should be equal"
     );
-    checkMergeContours(
+    SplitMergeLib.checkMergeContours(
       getPackageContour(_sourcePackageTokenId),
       getPackageContour(_destinationPackageTokenId),
       _destinationPackageContour
@@ -295,42 +295,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256[] memory sourceContour,
     uint256[] memory mergeContour,
     uint256[] memory resultContour
-  )
-    public
-  {
-    for (uint i = 0; i < sourceContour.length; i++) {
-      for (uint j = 0; j < mergeContour.length; j++) {
-        if (sourceContour[i] == mergeContour[j] && sourceContour[i] != 0) {
-          sourceContour[i] = 0;
-          mergeContour[j] = 0;
-        }
-      }
-    }
-
-    uint256[] memory checkResultContour = new uint256[](resultContour.length);
-    for (uint i = 0; i < resultContour.length; i++) {
-      checkResultContour[i] = resultContour[i];
-    }
-
-    //    emit CheckMergeContoursSecondStart(sourceContour, mergeContour, resultContour);
-
-    for (uint i = 0; i < sourceContour.length + mergeContour.length; i++) {
-      uint256 el = 0;
-      if (i < sourceContour.length) {
-        if (sourceContour[i] != 0) {
-          el = sourceContour[i];
-        }
-      } else if (mergeContour[i - sourceContour.length] != 0) {
-        el = mergeContour[i - sourceContour.length];
-      }
-
-      if (el != 0) {
-        int index = ArrayUtils.uintFind(checkResultContour, el);
-        require(index != - 1, "Unique element not exists in result contour");
-        checkResultContour[uint(index)] = 0;
-      }
-    }
-    //    emit CheckMergeContoursSecondFinish(sourceContour, mergeContour, checkResultContour);
+  ) public {
+    SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
 
   function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
