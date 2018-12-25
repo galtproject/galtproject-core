@@ -10,7 +10,7 @@ const galt = require('@galtproject/utils');
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
 const { BN } = Web3.utils;
-const { zeroAddress, assertRevert, deploySplitMerge, initHelperArtifacts, clearLibCache } = require('../helpers');
+const { assertRevert, deploySplitMerge, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
 
@@ -31,7 +31,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await deploySplitMerge();
 
-    await this.splitMerge.initialize(this.spaceToken.address, zeroAddress, { from: coreTeam });
+    await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');

@@ -211,8 +211,8 @@ module.exports = async function(deployer, network, accounts) {
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
 
-    await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
-    await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
+    await splitMerge.initialize(spaceToken.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceTokenSandbox.address, { from: coreTeam });
 
     await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
       from: coreTeam

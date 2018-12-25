@@ -135,7 +135,7 @@ contract('PlotValuation', (accounts) => {
         from: coreTeam
       }
     );
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
+    await this.splitMerge.initialize(this.spaceToken.address, {
       from: coreTeam
     });
 

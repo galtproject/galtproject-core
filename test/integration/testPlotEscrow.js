@@ -185,7 +185,7 @@ contract("PlotEscrow", (accounts) => {
       }
     );
 
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
+    await this.splitMerge.initialize(this.spaceToken.address, {
       from: coreTeam
     });
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {

@@ -33,14 +33,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
-  event LogFirstStage(uint256[] arr1, int256[] arr2);
-  event LogSecondStage(uint256[] arr1, uint256[] arr2);
-
-  //  event CheckMergeContoursSecondStart(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
-  //  event CheckMergeContoursSecondFinish(uint256[] checkSourceContour, uint256[] checkMergeContour, uint256[] resultContour);
-
   SpaceToken spaceToken;
-  address plotManager;
 
   event PackageInit(bytes32 id, address owner);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
@@ -62,14 +55,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   event NewSplitSpaceToken(uint256 id);
 
-  function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
+  function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;
-    plotManager = _plotManager;
-  }
-
-  modifier ownerOrPlotManager() {
-    require(plotManager == msg.sender || owner() == msg.sender, "No permissions to mint geohash");
-    _;
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
