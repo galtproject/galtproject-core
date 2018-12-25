@@ -60,7 +60,7 @@ contract GaltGenesis is Ownable {
 
   function finish() external {
     require(openingTime > 0, "Not started");
-    require(block.timestamp >= closingTime, "To soon");
+    require(block.timestamp >= closingTime, "Too soon");
     finished = true;
 
     emit Finished(address(this).balance, block.timestamp);
@@ -87,6 +87,7 @@ contract GaltGenesis is Ownable {
     uint256 galtBalanceOfGenesis = galtToken.balanceOf(address(this));
 
     uint256 claimAmount = paidByAddress[msg.sender].mul(totalGalt).div(totalPaid);
+    // TODO: maybe add additional check for accuracy error
     if (claimAmount > galtBalanceOfGenesis) {
       claimAmount = galtBalanceOfGenesis;
     }
