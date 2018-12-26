@@ -24,7 +24,7 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
   });
 
   describe('#mint()', () => {
-    it.only('should allow minter mint some tokens if called by owner', async function() {
+    it('should allow minter mint some tokens if called by owner', async function() {
       await this.spaceToken.mint(alice, { from: minter });
       const res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
