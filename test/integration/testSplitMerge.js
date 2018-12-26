@@ -1,6 +1,5 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
-// const _ = require('lodash');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -29,7 +28,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.subjectContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
 
     await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 

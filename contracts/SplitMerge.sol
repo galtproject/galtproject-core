@@ -19,10 +19,10 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./traits/Initializable.sol";
 import "./traits/Permissionable.sol";
-import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
-import "./SpaceSplitOperation.sol";
+import "./interfaces/ISpaceSplitOperation.sol";
 import "./SplitMergeLib.sol";
+import "./interfaces/ISpaceSplitOperationFactory.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
@@ -34,6 +34,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
   SpaceToken spaceToken;
+  ISpaceSplitOperationFactory splitOperationFactory;
 
   event PackageInit(bytes32 id, address owner);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
@@ -45,8 +46,6 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   // HACK: there is no token area accounting anywhere else yet
   mapping(uint256 => uint256) public tokenArea;
 
-  uint256[] allPackages;
-
   mapping(address => bool) public activeSplitOperations;
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
   address[] public allSplitOperations;
@@ -57,6 +56,10 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;
+  }
+  
+  function setSplitOperationFactory(address _splitOperationFactory) external onlyOwner {
+    splitOperationFactory = ISpaceSplitOperationFactory(_splitOperationFactory);
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
@@ -169,16 +172,16 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
-    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(address(spaceToken), spaceTokenOwner, _spaceTokenId, getPackageContour(_spaceTokenId), _clippingContour);
-    activeSplitOperations[address(newSplitOperation)] = true;
-    tokenIdToSplitOperations[_spaceTokenId].push(address(newSplitOperation));
-    allSplitOperations.push(newSplitOperation);
+    address newSplitOperationAddress = splitOperationFactory.build(_spaceTokenId, _clippingContour);
+    activeSplitOperations[newSplitOperationAddress] = true;
+    tokenIdToSplitOperations[_spaceTokenId].push(newSplitOperationAddress);
+    allSplitOperations.push(newSplitOperationAddress);
 
-    spaceToken.transferFrom(spaceTokenOwner, address(newSplitOperation), _spaceTokenId);
-    newSplitOperation.init();
+    spaceToken.transferFrom(spaceTokenOwner, newSplitOperationAddress, _spaceTokenId);
+    ISpaceSplitOperation(newSplitOperationAddress).init();
 
-    emit SplitOperationStart(_spaceTokenId, address(newSplitOperation));
-    return newSplitOperation;
+    emit SplitOperationStart(_spaceTokenId, newSplitOperationAddress);
+    return newSplitOperationAddress;
   }
   
   function getCurrentSplitOperation(uint256 _spaceTokenId) external returns(address) {
@@ -193,7 +196,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called for active SpaceSplitOperation contract");
-    SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
+    ISpaceSplitOperation splitOperation = ISpaceSplitOperation(splitOperationAddress);
 
     (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
 
@@ -236,7 +239,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
-    SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
+    ISpaceSplitOperation splitOperation = ISpaceSplitOperation(splitOperationAddress);
     require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted");
     spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;

@@ -290,22 +290,26 @@ const Helpers = {
     libCache.SplitMergeLib = await SplitMergeLib.new();
     return libCache.SplitMergeLib;
   },
-  async deploySplitMerge() {
+  async deploySplitMerge(spaceTokenAddress) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+    const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const landUtils = await Helpers.getLandUtilsLib();
-    const segmentUtils = await Helpers.getSegmentUtilsLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
     const splitMergeLib = await Helpers.getSplitMergeLib();
 
     SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('PolygonUtils', polygonUtils.address);
-    SplitMerge.link('WeilerAtherton', weilerAtherton.address);
-    SplitMerge.link('SegmentUtils', segmentUtils.address);
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
 
+    SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
+    SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
+
     const splitMerge = await SplitMerge.new();
+
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceTokenAddress, splitMerge.address);
+    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
+
     return splitMerge;
   }
 };

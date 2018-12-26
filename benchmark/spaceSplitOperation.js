@@ -1,4 +1,5 @@
 const SpaceSplitOperation = artifacts.require('../contracts/SpaceSplitOperation.sol');
+const SpaceSplitOperationFactory = artifacts.require('../contracts/factories/SpaceSplitOperationFactory.sol');
 const SpaceToken = artifacts.require('../contracts/mocks/SpaceToken.sol');
 
 const _ = require('lodash');
@@ -28,12 +29,7 @@ module.exports = async function(callback) {
   const coreTeam = accounts[0];
 
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-  let splitMerge;
-  try {
-    splitMerge = await deploySplitMerge();
-  } catch (e) {
-    console.error(e);
-  }
+  const splitMerge = await deploySplitMerge(spaceToken.address);
 
   // const splitMergeWeb3 = new web3.eth.Contract(splitMerge.abi, splitMerge.address);
 

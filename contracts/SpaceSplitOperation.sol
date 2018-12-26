@@ -17,13 +17,16 @@ pragma experimental "v0.5.0";
 
 import "./utils/WeilerAtherton.sol";
 import "./utils/PolygonUtils.sol";
+import "./interfaces/ISpaceSplitOperation.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
 
-contract SpaceSplitOperation {
+contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
 
   WeilerAtherton.State private weilerAtherton;
+  
+  event InitSplitOperation(address subjectTokenOwner, uint256 subjectTokenId, uint256[] subjectContour, uint256[] clippingContour);
 
   // TODO: use stages
   enum Stage {
@@ -51,8 +54,8 @@ contract SpaceSplitOperation {
   uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
-  constructor(address _spaceToken, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] _subjectContour, uint256[] _clippingContour) public {
-    splitMerge = SplitMerge(msg.sender);
+  constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] _subjectContour, uint256[] _clippingContour) public {
+    splitMerge = SplitMerge(_splitMerge);
     spaceToken = SpaceToken(_spaceToken);
 
     subjectTokenOwner = _subjectTokenOwner;
@@ -75,6 +78,8 @@ contract SpaceSplitOperation {
     weilerAtherton.initWeilerAtherton();
     spaceToken.approve(address(splitMerge), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
+    
+    emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);
   }
 
   function prepareSubjectPolygon() public {

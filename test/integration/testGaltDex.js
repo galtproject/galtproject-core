@@ -42,7 +42,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.galtDex = await GaltDex.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
