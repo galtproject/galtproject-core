@@ -18,11 +18,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
-import "./Validators.sol";
-import "./AbstractApplication.sol";
+import "./Oracles.sol";
+import "./AbstractOracleApplication.sol";
 
 
-contract PlotClarificationManager is AbstractApplication {
+contract PlotClarificationManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
   // 'PlotClarificationManager' hash
@@ -44,7 +44,7 @@ contract PlotClarificationManager is AbstractApplication {
   }
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
   event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 spaceTokenId);
   event LogNewApplication(bytes32 id, address applicant);
 
@@ -54,7 +54,7 @@ contract PlotClarificationManager is AbstractApplication {
     bytes32 ledgerIdentifier;
     uint256 spaceTokenId;
     
-    uint256 validatorsReward;
+    uint256 oraclesReward;
     uint256 galtSpaceReward;
     uint256 gasDeposit;
     bool galtSpaceRewardPaidOut;
@@ -68,13 +68,13 @@ contract PlotClarificationManager is AbstractApplication {
     uint256[] newContour;
     int256[] newHeights;
     int256 newLevel;
-    bytes32[] assignedRoles;
+    bytes32[] assignedOracleTypes;
 
     mapping(bytes32 => uint256) assignedRewards;
-    mapping(bytes32 => bool) roleRewardPaidOut;
-    mapping(bytes32 => string) roleMessages;
-    mapping(bytes32 => address) roleAddresses;
-    mapping(address => bytes32) addressRoles;
+    mapping(bytes32 => bool) oracleTypeRewardPaidOut;
+    mapping(bytes32 => string) oracleTypeMessages;
+    mapping(bytes32 => address) oracleTypeAddresses;
+    mapping(address => bytes32) addressOracleTypes;
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
@@ -85,17 +85,17 @@ contract PlotClarificationManager is AbstractApplication {
 
   constructor () public {}
 
-  modifier validatorsReady() {
-    require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+  modifier oraclesReady() {
+    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracles list not complete");
 
     _;
   }
 
-  modifier onlyValidatorOfApplication(bytes32 _aId) {
+  modifier onlyOracleOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressRoles[msg.sender] != 0x0, "Not valid validator");
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, a.addressRoles[msg.sender]);
+    require(a.addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, a.addressOracleTypes[msg.sender]);
 
     _;
   }
@@ -111,18 +111,16 @@ contract PlotClarificationManager is AbstractApplication {
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     external
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -144,7 +142,7 @@ contract PlotClarificationManager is AbstractApplication {
     uint256 _applicationFeeInGalt
   )
     external
-    validatorsReady
+    oraclesReady
     payable
     returns (bytes32)
   {
@@ -192,54 +190,54 @@ contract PlotClarificationManager is AbstractApplication {
 
     applications[_id] = a;
     applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(_id);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
     calculateAndStoreFee(applications[_id], fee);
-    assignRequiredValidatorRolesAndRewards(_id);
+    assignRequiredOracleTypesAndRewards(_id);
 
     return _id;
   }
 
-  function lockApplicationForReview(bytes32 _aId, bytes32 _role) external anyValidator {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external anyOracle {
     Application storage a = applications[_aId];
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, _role);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
-    require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
-    require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+    require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
+    require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock a oracle type not in PENDING status");
 
-    a.roleAddresses[_role] = msg.sender;
-    a.addressRoles[msg.sender] = _role;
-    applicationsByValidator[msg.sender].push(_aId);
+    a.oracleTypeAddresses[_oracleType] = msg.sender;
+    a.addressOracleTypes[msg.sender] = _oracleType;
+    applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, _role, ValidationStatus.LOCKED);
+    changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
   function approveApplication(
     bytes32 _aId
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+    require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
 
-    changeValidationStatus(a, role, ValidationStatus.APPROVED);
+    changeValidationStatus(a, oracleType, ValidationStatus.APPROVED);
 
-    uint256 len = a.assignedRoles.length;
+    uint256 len = a.assignedOracleTypes.length;
     bool allApproved = true;
 
     for (uint8 i = 0; i < len; i++) {
-      if (a.validationStatus[a.assignedRoles[i]] != ValidationStatus.APPROVED) {
+      if (a.validationStatus[a.assignedOracleTypes[i]] != ValidationStatus.APPROVED) {
         allApproved = false;
       }
     }
@@ -257,29 +255,29 @@ contract PlotClarificationManager is AbstractApplication {
     string _message
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
 
-    bytes32 senderRole = a.addressRoles[msg.sender];
+    bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
 
-    require(a.validationStatus[senderRole] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[senderRole] == msg.sender, "Sender not assigned to this application");
+    require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[senderOracleType] == msg.sender, "Sender not assigned to this application");
 
-    uint256 len = a.assignedRoles.length;
+    uint256 len = a.assignedOracleTypes.length;
 
     for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] == ValidationStatus.PENDING) {
-        revert("All validator roles should lock the application first");
+      bytes32 currentOracleType = a.assignedOracleTypes[i];
+      if (a.validationStatus[currentOracleType] == ValidationStatus.PENDING) {
+        revert("All oracle types should lock the application first");
       }
     }
 
-    a.roleMessages[senderRole] = _message;
+    a.oracleTypeMessages[senderOracleType] = _message;
 
-    changeValidationStatus(a, senderRole, ValidationStatus.REVERTED);
+    changeValidationStatus(a, senderOracleType, ValidationStatus.REVERTED);
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
@@ -293,12 +291,12 @@ contract PlotClarificationManager is AbstractApplication {
 
     require(a.status == ApplicationStatus.REVERTED, "ApplicationStatus should be REVERTED");
 
-    uint256 len = a.assignedRoles.length;
+    uint256 len = a.assignedOracleTypes.length;
 
     for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = a.assignedRoles[i];
-      if (a.validationStatus[currentRole] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, currentRole, ValidationStatus.LOCKED);
+      bytes32 currentOracleType = a.assignedOracleTypes[i];
+      if (a.validationStatus[currentOracleType] != ValidationStatus.LOCKED) {
+        changeValidationStatus(a, currentOracleType, ValidationStatus.LOCKED);
       }
     }
 
@@ -323,7 +321,7 @@ contract PlotClarificationManager is AbstractApplication {
     emit LogPackageTokenWithdrawn(a.id, a.spaceTokenId);
   }
 
-  function claimValidatorReward(bytes32 _aId) external onlyValidatorOfApplication(_aId) {
+  function claimOracleReward(bytes32 _aId) external onlyOracleOfApplication(_aId) {
     Application storage a = applications[_aId];
 
     require(
@@ -331,13 +329,13 @@ contract PlotClarificationManager is AbstractApplication {
       a.status == ApplicationStatus.APPROVED,
       "ApplicationStatus should one of REVERTED or APPROVED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
     require(a.tokenWithdrawn == true, "Token should be withdrawn first");
-    require(a.roleRewardPaidOut[role] == false, "Reward is already withdrawn");
+    require(a.oracleTypeRewardPaidOut[oracleType] == false, "Reward is already withdrawn");
 
-    uint256 reward = a.assignedRewards[role];
-    a.roleRewardPaidOut[role] = true;
+    uint256 reward = a.assignedRewards[oracleType];
+    a.oracleTypeRewardPaidOut[oracleType] = true;
 
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
@@ -385,9 +383,9 @@ contract PlotClarificationManager is AbstractApplication {
       bool tokenWithdrawn,
       bool gasDepositWithdrawn,
       bool galtSpaceRewardPaidOut,
-      bytes32[] assignedValidatorRoles,
+      bytes32[] assignedOracleTypes,
       uint256 gasDeposit,
-      uint256 validatorsReward,
+      uint256 oraclesReward,
       uint256 galtSpaceReward
     )
   {
@@ -403,9 +401,9 @@ contract PlotClarificationManager is AbstractApplication {
       m.tokenWithdrawn,
       m.gasDepositWithdrawn,
       m.galtSpaceRewardPaidOut,
-      m.assignedRoles,
+      m.assignedOracleTypes,
       m.gasDeposit,
-      m.validatorsReward,
+      m.oraclesReward,
       m.galtSpaceReward
     );
   }
@@ -429,14 +427,14 @@ contract PlotClarificationManager is AbstractApplication {
     return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier);
   }
 
-  function getApplicationValidator(
+  function getApplicationOracle(
     bytes32 _aId,
-    bytes32 _role
+    bytes32 _oracleType
   )
     external
     view
     returns (
-      address validator,
+      address oracle,
       uint256 reward,
       bool rewardPaidOut,
       ValidationStatus status,
@@ -446,24 +444,24 @@ contract PlotClarificationManager is AbstractApplication {
     Application storage m = applications[_aId];
 
     return (
-      m.roleAddresses[_role],
-      m.assignedRewards[_role],
-      m.roleRewardPaidOut[_role],
-      m.validationStatus[_role],
-      m.roleMessages[_role]
+      m.oracleTypeAddresses[_oracleType],
+      m.assignedRewards[_oracleType],
+      m.oracleTypeRewardPaidOut[_oracleType],
+      m.validationStatus[_oracleType],
+      m.oracleTypeMessages[_oracleType]
     );
   }
 
   function changeValidationStatus(
     Application storage _a,
-    bytes32 _role,
+    bytes32 _oracleType,
     ValidationStatus _status
   )
     internal
   {
-    emit LogValidationStatusChanged(_a.id, _role, _status);
+    emit LogValidationStatusChanged(_a.id, _oracleType, _status);
 
-    _a.validationStatus[_role] = _status;
+    _a.validationStatus[_oracleType] = _status;
   }
 
   function changeApplicationStatus(
@@ -493,46 +491,34 @@ contract PlotClarificationManager is AbstractApplication {
     }
 
     uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+    uint256 oraclesReward = _fee.sub(galtSpaceReward);
 
-    assert(validatorsReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtSpaceReward) == _fee);
 
-    _a.validatorsReward = validatorsReward;
+    _a.oraclesReward = oraclesReward;
     _a.galtSpaceReward = galtSpaceReward;
   }
 
-  function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
+  function assignRequiredOracleTypesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
-    assert(a.validatorsReward > 0);
+    assert(a.oraclesReward > 0);
 
     uint256 totalReward = 0;
 
-    a.assignedRoles = validators.getApplicationTypeRoles(APPLICATION_TYPE);
-    uint256 len = a.assignedRoles.length;
+    a.assignedOracleTypes = oracles.getApplicationTypeOracleTypes(APPLICATION_TYPE);
+    uint256 len = a.assignedOracleTypes.length;
     for (uint8 i = 0; i < len; i++) {
-      bytes32 role = a.assignedRoles[i];
+      bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
-        .validatorsReward
-        .mul(validators.getRoleRewardShare(role))
+        .oraclesReward
+        .mul(oracles.getOracleTypeRewardShare(oracleType))
         .div(100);
 
-      a.assignedRewards[role] = rewardShare;
-      changeValidationStatus(a, role, ValidationStatus.PENDING);
+      a.assignedRewards[oracleType] = rewardShare;
+      changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward == a.validatorsReward);
-  }
-
-  function getAllApplications() external view returns (bytes32[]) {
-    return applicationsArray;
-  }
-
-  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
-    return applicationsByAddresses[_applicant];
-  }
-
-  function getApplicationsByValidator(address _validator) external view returns (bytes32[]) {
-    return applicationsByValidator[_validator];
+    assert(totalReward == a.oraclesReward);
   }
 }

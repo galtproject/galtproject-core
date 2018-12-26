@@ -14,13 +14,14 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/ownership/rbac/RBAC.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
+import "./traits/Initializable.sol";
+import "./traits/Permissionable.sol";
 
-contract GaltDex is Initializable, Ownable, RBAC {
+
+contract GaltDex is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
 
   string public constant FEE_MANAGER = "fee_manager";
@@ -60,10 +61,9 @@ contract GaltDex is Initializable, Ownable, RBAC {
     uint256 _ethFee,
     GaltToken _galtToken
   )
-  public
-  isInitializer
+    public
+    isInitializer
   {
-    owner = msg.sender;
     galtToken = _galtToken;
     baseExchangeRate = _baseExchangeRate;
     galtFee = _galtFee;
@@ -71,7 +71,7 @@ contract GaltDex is Initializable, Ownable, RBAC {
   }
 
   modifier onlyFeeManager() {
-    checkRole(msg.sender, FEE_MANAGER);
+    requireRole(msg.sender, FEE_MANAGER);
     _;
   }
 
@@ -168,13 +168,5 @@ contract GaltDex is Initializable, Ownable, RBAC {
   function withdrawGaltFee() public onlyFeeManager {
     galtToken.transfer(msg.sender, galtFeePayout);
     galtFeePayout = 0;
-  }
-
-  function addRoleTo(address _operator, string _role) public onlyOwner {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(address _operator, string _role) public onlyOwner {
-    super.removeRole(_operator, _role);
   }
 }

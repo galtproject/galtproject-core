@@ -16,33 +16,33 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
 import "./PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
 import "./SpaceToken.sol";
-import "./Validators.sol";
+import "./Oracles.sol";
 import "./collections/ArraySet.sol";
+import "./AbstractOracleApplication.sol";
 
 
 /**
  * Plot Escrow contract
  *
- * Vocabulary for this contract
+ * Glossary for this contract
  * - Order - Sale order to sell SpaceToken using escrow contract
  * - Offer - Offer for a specific order
  *
- * There is only `PV_AUDITOR_ROLE` validator role. It's reward is assigned only in
+ * There is only `PV_AUDITOR_ROLE` oracle role. It's reward is assigned only in
  * a case when escrow cancellation audit process was instantiated.
  */
-contract PlotEscrow is AbstractApplication {
+contract PlotEscrow is AbstractOracleApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.Bytes32Set;
 
-  // `PlotValuation` keccak256 hash
+  // `PlotEscrow` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48;
 
-  // `PV_AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant PE_AUDITOR_ROLE = 0x50455f41554449544f525f524f4c450000000000000000000000000000000000;
+  // `PE_AUDITOR_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PE_AUDITOR_ORACLE_TYPE = 0x50455f41554449544f525f4f5241434c455f5459504500000000000000000000;
 
   enum SaleOrderStatus {
     NOT_EXISTS,
@@ -153,8 +153,8 @@ contract PlotEscrow is AbstractApplication {
   mapping(bytes32 => SaleOrder) public saleOrders;
   mapping(uint256 => bool) public tokenOnSale;
 
-  SpaceToken public spaceToken;
-  PlotCustodianManager public plotCustodianManager;
+  SpaceToken internal spaceToken;
+  PlotCustodianManager internal plotCustodianManager;
 
   // Caching (items could be obsolete)
   bytes32[] public saleOrderArray;
@@ -171,18 +171,16 @@ contract PlotEscrow is AbstractApplication {
   function initialize(
     SpaceToken _spaceToken,
     PlotCustodianManager _plotCustodianManager,
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     plotCustodianManager = _plotCustodianManager;
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -207,10 +205,10 @@ contract PlotEscrow is AbstractApplication {
     payable
   {
     require(spaceToken.exists(_spaceTokenId), "Token doesn't exist");
-    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Only owner of the token is allowed to apply");
+    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Only space token owner allowed");
     require(tokenOnSale[_spaceTokenId] == false, "Token is already on sale");
     require(_ask > 0, "Negative ask price");
-    require(_documents.length > 0, "At least one attached document required");
+    require(_documents.length > 0, "PlotEscrow. Documents missing");
 
     if (_currency == EscrowCurrency.ERC20) {
       require(ERC20(_erc20address).balanceOf(msg.sender) >= 0, "Failed ERC20 contract check");
@@ -235,7 +233,7 @@ contract PlotEscrow is AbstractApplication {
       galtToken.transferFrom(msg.sender, address(this), fee);
     // Payment in ETH
     } else {
-      require(_feeInGalt == 0, "Could not accept both ETH and GALT");
+      require(_feeInGalt == 0, "ETH and GALT attached");
       require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment in ETH");
       saleOrder.fees.currency = Currency.ETH;
       fee = msg.value;
@@ -284,7 +282,7 @@ contract PlotEscrow is AbstractApplication {
     external
   {
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireOpenHelper(_orderId, _buyer);
-    require(saleOrder.seller == msg.sender, "Only the seller is allowed to modify ask price");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
 
     saleOffer.ask = _ask;
   }
@@ -308,8 +306,8 @@ contract PlotEscrow is AbstractApplication {
   {
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireOpenHelper(_orderId, _buyer);
 
-    require(saleOrder.seller == msg.sender, "Only the seller is allowed to modify ask price");
-    require(saleOffer.ask == saleOffer.bid, "Offer ask and bid prices should match");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
+    require(saleOffer.ask == saleOffer.bid, "ask & bid prices should match");
 
     saleOrder.lastBuyer = _buyer;
 
@@ -329,7 +327,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(
       msg.sender == saleOrder.seller || msg.sender == saleOffer.buyer,
-      "Either seller or buyer are allowed to perform this action");
+      "Only seller/buyer are allowed");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
   }
@@ -342,8 +340,8 @@ contract PlotEscrow is AbstractApplication {
   {
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireMatchHelper(_orderId, _buyer);
 
-    require(saleOrder.seller == msg.sender, "Only the seller is allowed attaching space token");
-    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == msg.sender, "Sender doesn't own Space Token with the given ID");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
+    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == msg.sender, "Sender doesn't own given token");
 
     spaceToken.transferFrom(msg.sender, address(this), saleOrder.spaceTokenId);
 
@@ -361,7 +359,7 @@ contract PlotEscrow is AbstractApplication {
   {
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireMatchHelper(_orderId, _buyer);
 
-    require(saleOffer.buyer == msg.sender, "Only the buyer is allowed attaching payment");
+    require(saleOffer.buyer == msg.sender, "PlotEscrow. Only buyer allowed");
     require(saleOffer.paymentAttached == false, "Payment is already attached");
 
     if (saleOrder.escrowCurrency == EscrowCurrency.ETH) {
@@ -394,7 +392,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(
       msg.sender == saleOrder.seller || msg.sender == saleOffer.buyer,
-      "Either seller or buyer are allowed to perform this action");
+      "Only seller/buyer are allowed");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.AUDIT_REQUIRED);
     changeAuditorStatus(saleOrder, _buyer, ValidationStatus.PENDING);
@@ -414,9 +412,9 @@ contract PlotEscrow is AbstractApplication {
 
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
 
-    require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer status required");
+    require(saleOffer.status == SaleOfferStatus.AUDIT_REQUIRED, "AUDIT_REQUIRED offer required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ORACLE_TYPE);
 
     saleOffer.auditor.addr = msg.sender;
 
@@ -441,7 +439,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ORACLE_TYPE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.ESCROW);
@@ -462,7 +460,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.AUDIT, "AUDIT offer status required");
 
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, PE_AUDITOR_ROLE);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PE_AUDITOR_ORACLE_TYPE);
     require(saleOffer.auditor.addr == msg.sender, "Auditor address mismatch");
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.CANCELLED);
@@ -487,9 +485,9 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
 
-    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing Space token");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
 
-    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Space token doesn't belong to this contract");
+    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Contract should own the token");
 
     spaceToken.safeTransferFrom(address(this), msg.sender, saleOrder.spaceTokenId);
 
@@ -515,7 +513,7 @@ contract PlotEscrow is AbstractApplication {
 
     require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
 
-    require(saleOffer.buyer == msg.sender, "Only buyer is allowed withdrawing payment");
+    require(saleOffer.buyer == msg.sender, "PlotEscrow. Only buyer allowed");
 
     if (spaceToken.ownerOf(saleOrder.spaceTokenId) != address(this)) {
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.EMPTY);
@@ -590,9 +588,9 @@ contract PlotEscrow is AbstractApplication {
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
     require(saleOffer.status == SaleOfferStatus.ESCROW, "ESCROW offer status required");
 
-    require(saleOrder.seller == msg.sender, "Only seller is allowed applying custodian assignment");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Invalid applicant");
 
-    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Space token doesn't belong to this contract");
+    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Contract should own the token");
 
     spaceToken.approve(address(plotCustodianManager), saleOrder.spaceTokenId);
     saleOffer.custodianApplicationId = plotCustodianManager.submitApplicationFromEscrow.value(msg.value)(
@@ -617,7 +615,7 @@ contract PlotEscrow is AbstractApplication {
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
     require(saleOffer.status == SaleOfferStatus.CUSTODIAN_REVIEW, "CUSTODIAN_REVIEW offer status required");
 
-    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing token back");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
 
     plotCustodianManager.withdrawToken(
       saleOffer.custodianApplicationId
@@ -635,17 +633,11 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    SaleOrder storage saleOrder = saleOrders[_orderId];
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedWithResolvedHelper(_orderId, _buyer);
 
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
+    require(saleOffer.buyer == msg.sender, "PlotEscrow. Only buyer allowed");
 
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-
-    require(saleOffer.status == SaleOfferStatus.RESOLVED, "RESOLVED offer status required");
-
-    require(saleOffer.buyer == msg.sender, "Only buyer is allowed withdrawing Space token");
-
-    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Space token doesn't belong to this contract");
+    require(spaceToken.ownerOf(saleOrder.spaceTokenId) == address(this), "Contract should own the token");
 
     spaceToken.safeTransferFrom(address(this), msg.sender, saleOrder.spaceTokenId);
 
@@ -663,15 +655,9 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    SaleOrder storage saleOrder = saleOrders[_orderId];
+    (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedWithResolvedHelper(_orderId, _buyer);
 
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-
-    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
-
-    require(saleOffer.status == SaleOfferStatus.RESOLVED, "RESOLVED offer status required");
-
-    require(saleOrder.seller == msg.sender, "Only seller is allowed withdrawing payment");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Invalid claimer");
 
     if (spaceToken.ownerOf(saleOrder.spaceTokenId) != address(this)) {
       closeOrderHelper(saleOrder, _buyer);
@@ -697,7 +683,7 @@ contract PlotEscrow is AbstractApplication {
     SaleOrder storage saleOrder = saleOrders[_orderId];
 
     require(saleOrder.status == SaleOrderStatus.OPEN, "OPEN order status required");
-    require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
     tokenOnSale[saleOrder.spaceTokenId] = false;
     openSaleOrdersRemove(_orderId);
 
@@ -717,7 +703,7 @@ contract PlotEscrow is AbstractApplication {
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
 
     require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED order status required");
-    require(saleOrder.seller == msg.sender, "Only seller is allowed canceling the order");
+    require(saleOrder.seller == msg.sender, "PlotEscrow. Only seller allowed");
     require(saleOffer.status == SaleOfferStatus.EMPTY, "EMPTY offer status required");
 
     tokenOnSale[saleOrder.spaceTokenId] = true;
@@ -727,14 +713,14 @@ contract PlotEscrow is AbstractApplication {
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.OPEN);
   }
 
-  function claimValidatorReward(
+  function claimOracleReward(
     bytes32 _rId
   )
     external
   {
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedOrCancelledHelper(_rId);
 
-    require(saleOffer.auditor.addr == msg.sender, "Only the last acted auditor is eligible claiming the reward");
+    require(saleOffer.auditor.addr == msg.sender, "Only the last auditor allowed");
     require(saleOrder.fees.auditorRewardPaidOut == false, "Reward is already paid out");
 
     saleOrder.fees.auditorRewardPaidOut = true;
@@ -751,7 +737,7 @@ contract PlotEscrow is AbstractApplication {
   )
     external
   {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+    require(msg.sender == galtSpaceRewardsAddress, "Only GaltSpace allowed");
 
     (SaleOrder storage saleOrder, SaleOffer storage saleOffer) = requireClosedOrCancelledHelper(_rId);
 
@@ -997,7 +983,7 @@ contract PlotEscrow is AbstractApplication {
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
 
-    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED sale order status required");
+    require(saleOrder.status == SaleOrderStatus.LOCKED, "LOCKED sale order required");
 
     SaleOffer storage saleOffer = saleOrder.offers[_buyer];
 
@@ -1019,6 +1005,24 @@ contract PlotEscrow is AbstractApplication {
       saleOrder.status == SaleOrderStatus.CLOSED ||
       saleOrder.status == SaleOrderStatus.CANCELLED,
       "CLOSED or CANCELLED sale order status required");
+
+    return (saleOrder, saleOffer);
+  }
+
+  function requireClosedWithResolvedHelper(
+    bytes32 _orderId,
+    address _buyer
+  )
+    internal
+    returns (SaleOrder storage, SaleOffer storage)
+  {
+    SaleOrder storage saleOrder = saleOrders[_orderId];
+    SaleOffer storage saleOffer = saleOrder.offers[_buyer];
+
+    require(
+      saleOrder.status == SaleOrderStatus.CLOSED ||
+      saleOffer.status == SaleOfferStatus.RESOLVED,
+      "CLOSED sale order and RESOLVED sale offer statuses required");
 
     return (saleOrder, saleOffer);
   }
@@ -1057,7 +1061,7 @@ contract PlotEscrow is AbstractApplication {
   )
     internal
   {
-    emit LogAuditorStatusChanged(_r.id, _buyer, PE_AUDITOR_ROLE, _status);
+    emit LogAuditorStatusChanged(_r.id, _buyer, PE_AUDITOR_ORACLE_TYPE, _status);
 
     _r.offers[_buyer].auditor.status = _status;
   }

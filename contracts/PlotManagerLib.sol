@@ -33,16 +33,16 @@ library PlotManagerLib {
       _a.status == PlotManager.ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
 
-    uint256 len = _a.assignedRoles.length;
+    uint256 len = _a.assignedOracleTypes.length;
 
     for (uint8 i = 0; i < len; i++) {
-      bytes32 currentRole = _a.assignedRoles[i];
-      if (_a.validationStatus[currentRole] == PlotManager.ValidationStatus.PENDING) {
-        revert("One of the roles has PENDING status");
+      bytes32 currentOracleType = _a.assignedOracleTypes[i];
+      if (_a.validationStatus[currentOracleType] == PlotManager.ValidationStatus.PENDING) {
+        revert("One of the oracle type has PENDING status");
       }
     }
 
-    bytes32 senderRole = _a.addressRoles[msg.sender];
-    _a.roleMessages[senderRole] = _message;
+    bytes32 senderOracleType = _a.addressOracleTypes[msg.sender];
+    _a.oracleTypeMessages[senderOracleType] = _message;
   }
 }

@@ -32,11 +32,9 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     this.splitMerge = await deploySplitMerge();
 
     await this.splitMerge.initialize(this.spaceToken.address, zeroAddress, { from: coreTeam });
-    await this.spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
 
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
     await this.splitMerge.addRoleTo(coreTeam, await this.splitMerge.GEO_DATA_MANAGER());
 
@@ -83,6 +81,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     this.splitPackage = async (subjectSpaceTokenId, clippingContour) => {
       let res;
+      await this.spaceToken.approve(this.splitMerge.address, subjectSpaceTokenId, { from: alice });
       res = await this.splitMerge.startSplitOperation(
         subjectSpaceTokenId,
         clippingContour.map(galt.geohashToGeohash5),
@@ -401,6 +400,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const clippingContour = ['w24qfpu7xbxy', 'w24qfrw580b5', 'w24qfjjp5tt2', 'w24qfm1uttt9'];
 
+      await this.spaceToken.approve(this.splitMerge.address, subjectSpaceTokenId, { from: alice });
       const res = await this.splitMerge.startSplitOperation(
         subjectSpaceTokenId,
         clippingContour.map(galt.geohashToGeohash5),

@@ -14,16 +14,17 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "zos-lib/contracts/migrations/Initializable.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
+import "./traits/Initializable.sol";
+import "./traits/Permissionable.sol";
 import "./utils/PolygonUtils.sol";
 import "./utils/LandUtils.sol";
 import "./utils/ArrayUtils.sol";
 import "./SpaceSplitOperation.sol";
 
-contract SplitMerge is Initializable, Ownable, RBAC {
+contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
@@ -52,6 +53,9 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   mapping(uint256 => int256[]) public packageToHeights;
   mapping(uint256 => int256) public packageToLevel;
 
+  // HACK: there is no token area accounting anywhere else yet
+  mapping(uint256 => uint256) public tokenArea;
+
   uint256[] allPackages;
 
   mapping(address => bool) public activeSplitOperations;
@@ -61,13 +65,12 @@ contract SplitMerge is Initializable, Ownable, RBAC {
   LandUtils.LatLonData private latLonData;
 
   function initialize(SpaceToken _spaceToken, address _plotManager) public isInitializer {
-    owner = msg.sender;
     spaceToken = _spaceToken;
     plotManager = _plotManager;
   }
 
   modifier ownerOrPlotManager() {
-    require(plotManager == msg.sender || owner == msg.sender, "No permissions to mint geohash");
+    require(plotManager == msg.sender || owner() == msg.sender, "No permissions to mint geohash");
     _;
   }
 
@@ -79,7 +82,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       ownerOfToken == msg.sender ||
       spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
       spaceToken.getApproved(_spaceTokenId) == msg.sender,
-      "This action not permitted for msg.sender");
+      "This action not permitted");
     _;
   }
 
@@ -87,7 +90,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     require(
     /* solium-disable-next-line */
       hasRole(msg.sender, GEO_DATA_MANAGER),
-      "This action not permitted for msg.sender");
+      "This action not permitted");
     _;
   }
 
@@ -249,7 +252,7 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
     SpaceSplitOperation splitOperation = SpaceSplitOperation(splitOperationAddress);
-    require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted for msg.sender");
+    require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted");
     spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -344,6 +347,16 @@ contract SplitMerge is Initializable, Ownable, RBAC {
     return packageToLevel[_packageTokenId];
   }
 
+  // HACK: no permissions check since this method is a temporary hack
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external {
+    tokenArea[_spaceTokenId] = _area;
+  }
+
+  // TODO: implement
+  function getContourArea(uint256 _packageTokenId) external view returns (uint256) {
+    return tokenArea[_packageTokenId];
+  }
+
   function getPackageGeoData(uint256 _packageTokenId) public view returns (
     uint256[] contour,
     int256[] heights,
@@ -355,13 +368,5 @@ contract SplitMerge is Initializable, Ownable, RBAC {
       getPackageHeights(_packageTokenId),
       getPackageLevel(_packageTokenId)
     );
-  }
-
-  function addRoleTo(address _operator, string _role) external onlyOwner {
-    super.addRole(_operator, _role);
-  }
-
-  function removeRoleFrom(address _operator, string _role) external onlyOwner {
-    super.removeRole(_operator, _role);
   }
 }

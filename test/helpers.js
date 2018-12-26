@@ -42,6 +42,16 @@ const Helpers = {
       setTimeout(resolve, timeout);
     });
   },
+  async assertInvalid(promise) {
+    try {
+      await promise;
+    } catch (error) {
+      const revert = error.message.search('invalid opcode') >= 0;
+      assert(revert, `Expected INVALID (0xfe), got '${error}' instead`);
+      return;
+    }
+    assert.fail('Expected INVALID (0xfe) not received');
+  },
   async assertRevert(promise) {
     try {
       await promise;
