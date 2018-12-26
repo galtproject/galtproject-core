@@ -42,7 +42,6 @@ contract GaltGenesis is Ownable {
   event Finished(uint256 ethBalance, uint256 finishingTime);
 
   constructor (GaltToken _galtToken, GaltDex _galtDex) public {
-    owner = msg.sender;
     galtToken = _galtToken;
     galtDex = _galtDex;
   }
