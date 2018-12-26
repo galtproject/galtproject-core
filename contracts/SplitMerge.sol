@@ -57,7 +57,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;
   }
-  
+
   function setSplitOperationFactory(address _splitOperationFactory) external onlyOwner {
     splitOperationFactory = ISpaceSplitOperationFactory(_splitOperationFactory);
   }
@@ -83,8 +83,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function initPackage(address spaceTokenOwner)
-    public onlyGeoDataManager()
-    returns (uint256)
+  public onlyGeoDataManager()
+  returns (uint256)
   {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
 
@@ -94,7 +94,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -114,7 +114,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
@@ -122,7 +122,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageLevel(uint256 _packageTokenId, int256 _level)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     packageToLevel[_packageTokenId] = _level;
   }
@@ -139,7 +139,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       cacheGeohashToLatLon(_geohashList[i]);
     }
   }
-  
+
   function getCachedLatLonByGeohash(uint256 _geohash) public returns (int256[2]) {
     return latLonData.latLonByGeohash[_geohash];
   }
@@ -166,9 +166,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _spaceTokenId,
     uint256[] _clippingContour
   )
-    external
-    onlySpaceTokenOwner(_spaceTokenId)
-    returns (address)
+  external
+  onlySpaceTokenOwner(_spaceTokenId)
+  returns (address)
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
@@ -183,12 +183,12 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     emit SplitOperationStart(_spaceTokenId, newSplitOperationAddress);
     return newSplitOperationAddress;
   }
-  
-  function getCurrentSplitOperation(uint256 _spaceTokenId) external returns(address) {
+
+  function getCurrentSplitOperation(uint256 _spaceTokenId) external returns (address) {
     return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
   }
 
-  function getSplitOperationsCount(uint256 _spaceTokenId) external returns(uint256) {
+  function getSplitOperationsCount(uint256 _spaceTokenId) external returns (uint256) {
     return tokenIdToSplitOperations[_spaceTokenId].length;
   }
 
@@ -217,9 +217,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
 
     packageToHeights[_spaceTokenId] = subjectPackageHeights;
-    
+
     spaceToken.transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
-    
+
     for (uint j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken.mint(subjectTokenOwner);
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
@@ -250,9 +250,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _destinationPackageTokenId,
     uint256[] _destinationPackageContour
   )
-    external
-    onlySpaceTokenOwner(_sourcePackageTokenId)
-    onlySpaceTokenOwner(_destinationPackageTokenId)
+  external
+  onlySpaceTokenOwner(_sourcePackageTokenId)
+  onlySpaceTokenOwner(_destinationPackageTokenId)
   {
     require(
       getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
@@ -263,7 +263,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       getPackageContour(_destinationPackageTokenId),
       _destinationPackageContour
     );
-    
+
     packageToContour[_destinationPackageTokenId] = _destinationPackageContour;
 
     int256[] memory sourcePackageHeights = getPackageHeights(_sourcePackageTokenId);
@@ -285,7 +285,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256[] memory sourceContour,
     uint256[] memory mergeContour,
     uint256[] memory resultContour
-  ) public {
+  ) 
+    public 
+  {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
 
