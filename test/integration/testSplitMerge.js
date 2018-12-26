@@ -21,7 +21,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.only('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -496,5 +496,13 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), subjectContour);
       assert.equal(await this.spaceToken.exists.call(clippingSpaceTokensIds[0]), false);
     });
+  });
+
+  it.only('should calculate contour area correctly', async function() {
+    const contour = ['w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
+    await this.splitMerge.cacheGeohashListToLatLon(contour);
+    const res = await this.splitMerge.calculateContourArea(contour);
+    console.log('gasUsed', res.receipt.gasUsed);
+    assert.equal(res.logs[0].args.area.toFixed(), 12554128688986059590510318);
   });
 });

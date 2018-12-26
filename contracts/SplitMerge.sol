@@ -23,6 +23,7 @@ import "./utils/LandUtils.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SplitMergeLib.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
+import "./utils/PolygonUtils.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
@@ -38,6 +39,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   event PackageInit(bytes32 id, address owner);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
+  event ContourAreaCalculate(uint256[] contour, uint256 area);
 
   mapping(uint256 => uint256[]) public packageToContour;
   mapping(uint256 => int256[]) public packageToHeights;
@@ -311,6 +313,22 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   // TODO: implement
   function getContourArea(uint256 _packageTokenId) external view returns (uint256) {
     return tokenArea[_packageTokenId];
+  }
+  
+  function calculateContourArea(uint256[] contour) external returns(uint256 area) {
+    PolygonUtils.CoorsPolygon memory p;
+    p.points = new int256[2][](contour.length);
+
+    for(uint i = 0; i < contour.length; i++) {
+      if(latLonData.latLonByGeohash[contour[i]][0] != 0 && latLonData.latLonByGeohash[contour[i]][1] != 0) {
+        p.points[i] = latLonData.latLonByGeohash[contour[i]];
+      } else {
+        p.points[i] = cacheGeohashToLatLon(contour[i]);
+      }
+      
+    }
+    area = PolygonUtils.getArea(p);
+    emit ContourAreaCalculate(contour, area);
   }
 
   function getPackageGeoData(uint256 _packageTokenId) public view returns (

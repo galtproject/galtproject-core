@@ -88,7 +88,7 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  function getArea(CoorsPolygon storage _polygon) internal returns (uint) {
+  function getArea(CoorsPolygon memory _polygon) internal returns (uint) {
     int[2] memory p1;
     int[2] memory p2;
     int[2] memory p3;
