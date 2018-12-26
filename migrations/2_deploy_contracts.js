@@ -30,6 +30,8 @@ const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
+const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
@@ -88,14 +90,25 @@ module.exports = async function(deployer, network, accounts) {
     WeilerAtherton.link('PolygonUtils', polygonUtils.address);
     const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
 
+    const splitMergeLib = await SplitMergeLib.new({ from: coreTeam });
     const segmentUtils = await SegmentUtils.new({ from: coreTeam });
     SplitMerge.link('LandUtils', landUtils.address);
     SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
     const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
+
+    SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
+    SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
+
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
+
+    const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
 
     const galtDex = await GaltDex.new({ from: coreTeam });
 
