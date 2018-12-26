@@ -11,7 +11,5 @@ install:
   - npm install -g eslint solium
 
 script:
-  - npm run eslint
-  - npm run solium
-  - npm run test
+  - npm run eslint && npm run solium && npm run test
 

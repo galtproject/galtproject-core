@@ -1,12 +1,12 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
+import "../traits/Initializable.sol";
 // TODO: remove initializer
-import "zos-lib/contracts/migrations/Initializable.sol";
 
 
-contract MockToken is Initializable, MintableToken {
+contract MockToken is Initializable, ERC20Mintable {
   // solium-disable-next-line uppercase
   string public constant name = "Mock Token";
 
@@ -22,10 +22,6 @@ contract MockToken is Initializable, MintableToken {
   }
 
   function initialize() public isInitializer {
-    owner = msg.sender;
-
-    totalSupply_ = INITIAL_SUPPLY;
-    balances[msg.sender] = INITIAL_SUPPLY;
-    emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
+    _mint(msg.sender, INITIAL_SUPPLY);
   }
 }

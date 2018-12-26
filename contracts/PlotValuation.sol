@@ -16,24 +16,24 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
+import "./AbstractOracleApplication.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
-import "./Validators.sol";
+import "./Oracles.sol";
 
 
-contract PlotValuation is AbstractApplication {
+contract PlotValuation is AbstractOracleApplication {
   using SafeMath for uint256;
 
   // `PlotValuation` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9;
 
-  // `APPRAISER_ROLE` bytes32 representation hash
-  bytes32 public constant PV_APPRAISER_ROLE = 0x50565f4150505241495345525f524f4c45000000000000000000000000000000;
-  // `APPRAISER2_ROLE` bytes32 representation
-  bytes32 public constant PV_APPRAISER2_ROLE = 0x50565f415050524149534552325f524f4c450000000000000000000000000000;
-  // `AUDITOR_ROLE` bytes32 representation
-  bytes32 public constant PV_AUDITOR_ROLE = 0x50565f41554449544f525f524f4c450000000000000000000000000000000000;
+  // `PV_APPRAISER_ORACLE_TYPE` bytes32 representation hash
+  bytes32 public constant PV_APPRAISER_ORACLE_TYPE = 0x50565f4150505241495345525f4f5241434c455f545950450000000000000000;
+  // `PV_APPRAISER2_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PV_APPRAISER2_ORACLE_TYPE = 0x50565f415050524149534552325f4f5241434c455f5459504500000000000000;
+  // `PV_AUDITOR_ORACLE_TYPE` bytes32 representation
+  bytes32 public constant PV_AUDITOR_ORACLE_TYPE = 0x50565f41554449544f525f4f5241434c455f5459504500000000000000000000;
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -51,14 +51,14 @@ contract PlotValuation is AbstractApplication {
   }
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
+  event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
     address applicant;
     uint256 spaceTokenId;
-    uint256 validatorsReward;
+    uint256 oraclesReward;
     uint256 galtSpaceReward;
     uint256 firstValuation;
     uint256 secondValuation;
@@ -68,14 +68,14 @@ contract PlotValuation is AbstractApplication {
     ApplicationStatus status;
 
     bytes32[] attachedDocuments;
-    bytes32[] assignedRoles;
+    bytes32[] assignedOracleTypes;
 
-    // TODO: combine into role struct
+    // TODO: combine into oracleType struct
     mapping(bytes32 => uint256) assignedRewards;
-    mapping(bytes32 => bool) roleRewardPaidOut;
-    mapping(bytes32 => string) roleMessages;
-    mapping(bytes32 => address) roleAddresses;
-    mapping(address => bytes32) addressRoles;
+    mapping(bytes32 => bool) oracleTypeRewardPaidOut;
+    mapping(bytes32 => string) oracleTypeMessages;
+    mapping(bytes32 => address) oracleTypeAddresses;
+    mapping(address => bytes32) addressOracleTypes;
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
@@ -100,18 +100,16 @@ contract PlotValuation is AbstractApplication {
   function initialize(
     SpaceToken _spaceToken,
     SplitMerge _splitMerge,
-    Validators _validators,
+    Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    owner = msg.sender;
-
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
-    validators = _validators;
+    oracles = _oracles;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
@@ -135,18 +133,18 @@ contract PlotValuation is AbstractApplication {
     _;
   }
 
-  modifier onlyValidatorOfApplication(bytes32 _aId) {
+  modifier onlyOracleOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressRoles[msg.sender] != 0x0, "The validator is not assigned to any role");
-    require(validators.isValidatorActive(msg.sender), "Not active validator");
+    require(a.addressOracleTypes[msg.sender] != 0x0, "The oracle is not assigned to any oracleType");
+    require(oracles.isOracleActive(msg.sender), "Not active oracle");
 
     _;
   }
 
   // TODO: move to abstract class
-  modifier rolesReady() {
-    require(validators.isApplicationTypeReady(APPLICATION_TYPE), "Roles list not complete");
+  modifier oracleTypesReady() {
+    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "OracleTypes list not complete");
 
     _;
   }
@@ -168,7 +166,7 @@ contract PlotValuation is AbstractApplication {
   )
     external
     payable
-    rolesReady
+    oracleTypesReady
     returns (bytes32)
   {
     require(_attachedDocuments.length > 0, "At least one document should be attached");
@@ -215,20 +213,20 @@ contract PlotValuation is AbstractApplication {
     applications[_id] = a;
 
     applicationsArray.push(_id);
-    applicationsByAddresses[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(_id);
 
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
-    assignRequiredValidatorRolesAndRewards(_id);
+    assignRequiredOracleOracleTypesAndRewards(_id);
 
     return _id;
   }
 
-  // Application can be locked by a role only once.
-  function lockApplication(bytes32 _aId, bytes32 _role) external {
+  // Application can be locked by a oracleType only once.
+  function lockApplication(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
-    validators.requireValidatorActiveWithAssignedActiveRole(msg.sender, _role);
+    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
 
     require(
       /* solium-disable-next-line */
@@ -237,28 +235,30 @@ contract PlotValuation is AbstractApplication {
       a.status == ApplicationStatus.REVERTED ||
       a.status == ApplicationStatus.CONFIRMED,
       "Application status should be SUBMITTED, REVERTED, VALUATED or CONFIRMED");
-    require(a.roleAddresses[_role] == address(0), "Validator is already assigned on this role");
-    require(a.validationStatus[_role] == ValidationStatus.PENDING, "Can't lock a role not in PENDING status");
+    require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracleType");
+    require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock a oracleType not in PENDING status");
 
-    a.roleAddresses[_role] = msg.sender;
-    a.addressRoles[msg.sender] = _role;
-    applicationsByValidator[msg.sender].push(_aId);
+    a.oracleTypeAddresses[_oracleType] = msg.sender;
+    a.addressOracleTypes[msg.sender] = _oracleType;
+    applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, _role, ValidationStatus.LOCKED);
+    changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  // DANGER: could reset non-existing role
-  function resetApplicationRole(bytes32 _aId, bytes32 _role) external onlyOwner {
+  // DANGER: could reset non-existing oracleType
+  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external {
+  // TODO: move permissions to an applicant
+    assert(false);
     Application storage a = applications[_aId];
     require(
       a.status != ApplicationStatus.APPROVED &&
       a.status != ApplicationStatus.NOT_EXISTS,
       "Could not reset applications in state NOT_EXISTS or APPROVED");
-    require(a.roleAddresses[_role] != address(0), "Address should be already set");
+    require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
     // Do not affect on application state
-    a.roleAddresses[_role] = address(0);
-    changeValidationStatus(a, _role, ValidationStatus.PENDING);
+    a.oracleTypeAddresses[_oracleType] = address(0);
+    changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
   /**
@@ -271,7 +271,7 @@ contract PlotValuation is AbstractApplication {
     uint256 _valuation
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
@@ -279,11 +279,11 @@ contract PlotValuation is AbstractApplication {
       a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.REVERTED,
       "Application status should be SUBMITTED or REVERTED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    require(role == PV_APPRAISER_ROLE, "PV_APPRAISER_ROLE expected");
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+    require(oracleType == PV_APPRAISER_ORACLE_TYPE, "PV_APPRAISER_ORACLE_TYPE expected");
+    require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
 
     a.firstValuation = _valuation;
 
@@ -305,7 +305,7 @@ contract PlotValuation is AbstractApplication {
     uint256 _valuation
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
@@ -313,11 +313,11 @@ contract PlotValuation is AbstractApplication {
       a.status == ApplicationStatus.VALUATED,
       "Application status should be VALUATED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    require(role == PV_APPRAISER2_ROLE, "PV_APPRAISER2_ROLE expected");
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+    require(oracleType == PV_APPRAISER2_ORACLE_TYPE, "PV_APPRAISER2_ORACLE_TYPE expected");
+    require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
 
     a.secondValuation = _valuation;
 
@@ -337,7 +337,7 @@ contract PlotValuation is AbstractApplication {
     bytes32 _aId
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
@@ -345,11 +345,11 @@ contract PlotValuation is AbstractApplication {
       a.status == ApplicationStatus.CONFIRMED,
       "Application status should be CONFIRMED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    require(role == PV_AUDITOR_ROLE, "PV_AUDITOR_ROLE expected");
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+    require(oracleType == PV_AUDITOR_ORACLE_TYPE, "PV_AUDITOR_ORACLE_TYPE expected");
+    require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
 
     plotValuations[a.spaceTokenId] = a.firstValuation;
     changeApplicationStatus(a, ApplicationStatus.APPROVED);
@@ -365,7 +365,7 @@ contract PlotValuation is AbstractApplication {
     string _message
   )
     external
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
 
@@ -373,35 +373,35 @@ contract PlotValuation is AbstractApplication {
       a.status == ApplicationStatus.CONFIRMED,
       "Application status should be CONFIRMED");
 
-    bytes32 role = a.addressRoles[msg.sender];
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    require(role == PV_AUDITOR_ROLE, "PV_AUDITOR_ROLE expected");
-    require(a.validationStatus[role] == ValidationStatus.LOCKED, "Application should be locked first");
-    require(a.roleAddresses[role] == msg.sender, "Sender not assigned to this application");
+    require(oracleType == PV_AUDITOR_ORACLE_TYPE, "PV_AUDITOR_ORACLE_TYPE expected");
+    require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
+    require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
 
-    a.roleMessages[role] = _message;
+    a.oracleTypeMessages[oracleType] = _message;
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function claimValidatorReward(
+  function claimOracleReward(
     bytes32 _aId
   )
     external 
-    onlyValidatorOfApplication(_aId)
+    onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    bytes32 senderRole = a.addressRoles[msg.sender];
-    uint256 reward = a.assignedRewards[senderRole];
+    bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
+    uint256 reward = a.assignedRewards[senderOracleType];
 
     require(
       a.status == ApplicationStatus.APPROVED,
       "Application status should be APPROVED");
 
     require(reward > 0, "Reward is 0");
-    require(a.roleRewardPaidOut[senderRole] == false, "Reward is already paid");
+    require(a.oracleTypeRewardPaidOut[senderOracleType] == false, "Reward is already paid");
 
-    a.roleRewardPaidOut[senderRole] = true; 
+    a.oracleTypeRewardPaidOut[senderOracleType] = true;
 
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
@@ -451,9 +451,9 @@ contract PlotValuation is AbstractApplication {
       uint256 firstValuation,
       uint256 secondValuation,
       bytes32[] attachedDocuments,
-      bytes32[] assignedValidatorRoles,
+      bytes32[] assignedOracleTypes,
       uint256 galtSpaceReward,
-      uint256 validatorsReward,
+      uint256 oraclesReward,
       bool galtSpaceRewardPaidOut
     )
   {
@@ -469,33 +469,21 @@ contract PlotValuation is AbstractApplication {
       m.firstValuation,
       m.secondValuation,
       m.attachedDocuments,
-      m.assignedRoles,
+      m.assignedOracleTypes,
       m.galtSpaceReward,
-      m.validatorsReward,
+      m.oraclesReward,
       m.galtSpaceRewardPaidOut
     );
   }
 
-  function getAllApplications() external view returns (bytes32[]) {
-    return applicationsArray;
-  }
-
-  function getApplicationsByAddress(address _applicant) external view returns (bytes32[]) {
-    return applicationsByAddresses[_applicant];
-  }
-
-  function getApplicationsByValidator(address _applicant) external view returns (bytes32[]) {
-    return applicationsByValidator[_applicant];
-  }
-
-  function getApplicationValidator(
+  function getApplicationOracle(
     bytes32 _aId,
-    bytes32 _role
+    bytes32 _oracleType
   )
     external
     view
     returns (
-      address validator,
+      address oracle,
       uint256 reward,
       bool rewardPaidOut,
       ValidationStatus status,
@@ -503,24 +491,24 @@ contract PlotValuation is AbstractApplication {
     )
   {
     return (
-      applications[_aId].roleAddresses[_role],
-      applications[_aId].assignedRewards[_role],
-      applications[_aId].roleRewardPaidOut[_role],
-      applications[_aId].validationStatus[_role],
-      applications[_aId].roleMessages[_role]
+      applications[_aId].oracleTypeAddresses[_oracleType],
+      applications[_aId].assignedRewards[_oracleType],
+      applications[_aId].oracleTypeRewardPaidOut[_oracleType],
+      applications[_aId].validationStatus[_oracleType],
+      applications[_aId].oracleTypeMessages[_oracleType]
     );
   }
 
   function changeValidationStatus(
     Application storage _a,
-    bytes32 _role,
+    bytes32 _oracleType,
     ValidationStatus _status
   )
     internal
   {
-    emit LogValidationStatusChanged(_a.id, _role, _status);
+    emit LogValidationStatusChanged(_a.id, _oracleType, _status);
 
-    _a.validationStatus[_role] = _status;
+    _a.validationStatus[_oracleType] = _status;
   }
 
   function changeApplicationStatus(
@@ -549,37 +537,37 @@ contract PlotValuation is AbstractApplication {
     }
 
     uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 validatorsReward = _fee.sub(galtSpaceReward);
+    uint256 oraclesReward = _fee.sub(galtSpaceReward);
 
-    assert(validatorsReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtSpaceReward) == _fee);
 
-    _a.validatorsReward = validatorsReward;
+    _a.oraclesReward = oraclesReward;
     _a.galtSpaceReward = galtSpaceReward;
   }
 
   /**
-   * Completely relies on Validator contract share values without any check
+   * Completely relies on Oracle contract share values without any check
    */
-  function assignRequiredValidatorRolesAndRewards(bytes32 _aId) internal {
+  function assignRequiredOracleOracleTypesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
-    assert(a.validatorsReward > 0);
+    assert(a.oraclesReward > 0);
 
     uint256 totalReward = 0;
 
-    a.assignedRoles = validators.getApplicationTypeRoles(APPLICATION_TYPE);
-    uint256 len = a.assignedRoles.length;
+    a.assignedOracleTypes = oracles.getApplicationTypeOracleTypes(APPLICATION_TYPE);
+    uint256 len = a.assignedOracleTypes.length;
     for (uint8 i = 0; i < len; i++) {
-      bytes32 role = a.assignedRoles[i];
+      bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
-      .validatorsReward
-      .mul(validators.getRoleRewardShare(role))
+      .oraclesReward
+      .mul(oracles.getOracleTypeRewardShare(oracleType))
       .div(100);
 
-      a.assignedRewards[role] = rewardShare;
-      changeValidationStatus(a, role, ValidationStatus.PENDING);
+      a.assignedRewards[oracleType] = rewardShare;
+      changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward == a.validatorsReward);
+    assert(totalReward == a.oraclesReward);
   }
 }
