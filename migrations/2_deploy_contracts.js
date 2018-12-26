@@ -91,9 +91,10 @@ module.exports = async function(deployer, network, accounts) {
     const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
 
     const splitMergeLib = await SplitMergeLib.new({ from: coreTeam });
+    SplitMergeLib.link('ArrayUtils', arrayUtils.address);
+
     const segmentUtils = await SegmentUtils.new({ from: coreTeam });
     SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
