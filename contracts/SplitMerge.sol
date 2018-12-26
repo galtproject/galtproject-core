@@ -85,8 +85,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function initPackage(address spaceTokenOwner)
-    public onlyGeoDataManager()
-    returns (uint256)
+  public onlyGeoDataManager()
+  returns (uint256)
   {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
 
@@ -96,7 +96,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -116,7 +116,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
@@ -124,7 +124,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageLevel(uint256 _packageTokenId, int256 _level)
-    public onlyGeoDataManager()
+  public onlyGeoDataManager()
   {
     packageToLevel[_packageTokenId] = _level;
   }
@@ -168,9 +168,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _spaceTokenId,
     uint256[] _clippingContour
   )
-    external
-    onlySpaceTokenOwner(_spaceTokenId)
-    returns (address)
+  external
+  onlySpaceTokenOwner(_spaceTokenId)
+  returns (address)
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
@@ -252,9 +252,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _destinationPackageTokenId,
     uint256[] _destinationPackageContour
   )
-    external
-    onlySpaceTokenOwner(_sourcePackageTokenId)
-    onlySpaceTokenOwner(_destinationPackageTokenId)
+  external
+  onlySpaceTokenOwner(_sourcePackageTokenId)
+  onlySpaceTokenOwner(_destinationPackageTokenId)
   {
     require(
       getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
@@ -287,8 +287,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256[] memory sourceContour,
     uint256[] memory mergeContour,
     uint256[] memory resultContour
-  ) 
-    public 
+  )
+  public
   {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
@@ -312,13 +312,13 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function getContourArea(uint256 _packageTokenId) external view returns (uint256) {
     return tokenArea[_packageTokenId];
   }
-  
-  function calculateContourArea(uint256[] contour) external returns(uint256 area) {
+
+  function calculateContourArea(uint256[] contour) external returns (uint256 area) {
     PolygonUtils.CoorsPolygon memory p;
     p.points = new int256[2][](contour.length);
 
-    for(uint i = 0; i < contour.length; i++) {
-      if(latLonData.latLonByGeohash[contour[i]][0] != 0 && latLonData.latLonByGeohash[contour[i]][1] != 0) {
+    for (uint i = 0; i < contour.length; i++) {
+      if (latLonData.latLonByGeohash[contour[i]][0] != 0 && latLonData.latLonByGeohash[contour[i]][1] != 0) {
         p.points[i] = latLonData.latLonByGeohash[contour[i]];
       } else {
         p.points[i] = cacheGeohashToLatLon(contour[i]);
@@ -335,9 +335,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   )
   {
     return (
-      getPackageContour(_packageTokenId),
-      getPackageHeights(_packageTokenId),
-      getPackageLevel(_packageTokenId)
+    getPackageContour(_packageTokenId),
+    getPackageHeights(_packageTokenId),
+    getPackageLevel(_packageTokenId)
     );
   }
 }
