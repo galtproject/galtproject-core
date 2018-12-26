@@ -240,7 +240,7 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(
           new Promise(async resolve => {
             await oracles
-              .addOracle(data.abMultiSigX.address, address, name, 'MN', [], validatorsSpecificRoles[name], {
+              .addOracle(data.arbitratorsMultiSigXAddress, address, name, 'MN', [], validatorsSpecificRoles[name], {
                 from: coreTeam
               })
               .catch(e => {
@@ -347,15 +347,15 @@ module.exports = async function(deployer, network, accounts) {
 
     await pIteration.forEachSeries(spaceTokensToMint, async spaceTokenItem => {
       const res = await spaceToken.mint(coreTeam, { from: coreTeam });
-      const { _tokenId } = res.logs[0].args;
+      const { tokenId } = res.logs[0].args;
 
       const { contour, level } = spaceTokenItem;
       const height = level === 1 ? 0 : 2;
 
-      await splitMerge.setPackageContour(_tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-      await splitMerge.setPackageHeights(_tokenId, contour.map(() => ether(height)), { from: coreTeam });
-      await splitMerge.setPackageLevel(_tokenId, level, { from: coreTeam });
-      await spaceToken.transferFrom(coreTeam, users.DevNickUser, _tokenId, { from: coreTeam });
+      await splitMerge.setPackageContour(tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
+      await splitMerge.setPackageHeights(tokenId, contour.map(() => ether(height)), { from: coreTeam });
+      await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
+      await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
     });
   });
 };

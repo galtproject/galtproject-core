@@ -283,6 +283,7 @@ module.exports = async function(deployer, network, accounts) {
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
