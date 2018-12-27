@@ -281,6 +281,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotClarification.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
