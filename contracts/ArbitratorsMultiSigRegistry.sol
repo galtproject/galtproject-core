@@ -19,19 +19,20 @@ import "./multisig/ArbitratorsMultiSig.sol";
 import "./traits/Permissionable.sol";
 
 contract ArbitratorsMultiSigRegistry {
+  using ArraySet for ArraySet.AddressSet;
 
   event NewMultiSig(uint256 id, address addr);
 
-  address[] private multiSigs;
+  ArraySet.AddressSet private multiSigs;
 
   constructor() public {}
 
   // MODIFIERS
   function createMultiSig(address[] _initialOwners, uint256 _required) external returns(uint256 id) {
-    uint256 id = multiSigs.length;
+    uint256 id = multiSigs.size();
     address ms = new ArbitratorsMultiSig(_initialOwners, _required);
 
-    multiSigs.push(ms);
+    multiSigs.add(ms);
     emit NewMultiSig(id, ms);
 
     return id;
@@ -39,6 +40,14 @@ contract ArbitratorsMultiSigRegistry {
 
   // GETTERS
   function getMultiSig(uint256 _id) external returns (address) {
-    return multiSigs[_id];
+    return multiSigs.elements()[_id];
+  }
+  
+  function getMultiSigList() external returns (address[]) {
+    return multiSigs.elements();
+  }
+
+  function getMultiSigCount() external returns (uint256) {
+    return multiSigs.size();
   }
 }

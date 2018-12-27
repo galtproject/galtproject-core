@@ -20,7 +20,7 @@ chai.use(chaiBigNumber);
 chai.should();
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('ArbitratorsMultiSig', accounts => {
+contract.only('ArbitratorsMultiSig', accounts => {
   const [coreTeam, alice, bob, charlie, dan] = accounts;
 
   beforeEach(async function() {
