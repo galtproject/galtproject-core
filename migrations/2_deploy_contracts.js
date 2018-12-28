@@ -379,6 +379,8 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeSandboxAbi: splitMergeSandbox.abi,
             // multisigs
             oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
+            oracleStakesAccountingXAddress: oracleStakesAccountingX.address,
+            oracleStakesAccountingYAddress: oracleStakesAccountingY.address,
             spaceReputationAccountingAddress: spaceReputationAccounting.address,
             spaceReputationAccountingAbi: spaceReputationAccounting.abi,
             spaceLockerRegistryAddress: spaceLockerRegistry.address,
