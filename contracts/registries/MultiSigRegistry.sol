@@ -25,6 +25,7 @@ contract MultiSigRegistry is Permissionable {
 
   // MultiSig address => Details
   mapping(address => MultiSig) private multiSigs;
+  ArraySet.AddressSet private multiSigsArray;
 
   struct MultiSig {
     bool active;
@@ -47,6 +48,8 @@ contract MultiSigRegistry is Permissionable {
     ms.voting = _abVoting;
     ms.oracleStakesAccounting = _oracleStakesAccounting;
     ms.factoryAddress = msg.sender;
+    
+    multiSigs.add(ms);
   }
 
   // REQUIRES
