@@ -281,8 +281,10 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotClarification.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
@@ -376,9 +378,15 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeSandboxAddress: splitMergeSandbox.address,
             splitMergeSandboxAbi: splitMergeSandbox.abi,
             // multisigs
+            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
             oracleStakesAccountingXAddress: oracleStakesAccountingX.address,
             oracleStakesAccountingYAddress: oracleStakesAccountingY.address,
-            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
+            spaceReputationAccountingAddress: spaceReputationAccounting.address,
+            spaceReputationAccountingAbi: spaceReputationAccounting.abi,
+            spaceLockerRegistryAddress: spaceLockerRegistry.address,
+            spaceLockerRegistryAbi: spaceLockerRegistry.abi,
+            multiSigRegistryAddress: multiSigRegistry.address,
+            multiSigRegistryAbi: multiSigRegistry.abi,
             arbitratorsMultiSigXAddress: abMultiSigX.address,
             arbitratorsMultiSigYAddress: abMultiSigY.address,
             arbitratorsMultiSigAbi: abMultiSigX.abi,
