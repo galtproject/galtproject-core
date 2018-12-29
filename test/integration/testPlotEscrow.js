@@ -150,7 +150,7 @@ contract("PlotEscrow", (accounts) => {
     this.plotEscrow = await PlotEscrow.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
     await this.plotManager.initialize(
@@ -185,7 +185,7 @@ contract("PlotEscrow", (accounts) => {
       }
     );
 
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
+    await this.splitMerge.initialize(this.spaceToken.address, {
       from: coreTeam
     });
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {

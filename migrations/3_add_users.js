@@ -135,6 +135,7 @@ module.exports = async function(deployer, network, accounts) {
       Nikita: '0x8d362af4c86b05d6F256147A6E76b9d7aF205A24',
       Nikita2: '0x41a19AFBa5184ae7fE2607dF5895082f2056912B',
       Nikita3: '0xf8802036a4Cc35aaDC5aaa3fAE15935282D2F7c7',
+      Nikita4: '0xa37d461C6f7457d9E9D7Aa48CCc7C9eA3707A716',
       Igor: '0x06dba6eb6a1044b8cbcaa0033ea3897bf37e6671',
       Igor2: '0x8052C9fc345dB9c1A70Afc0A81416029F23E5f76',
       Igor3: '0xF6310635508a46ba66AaBdf28486744c715d6bcC',
@@ -179,6 +180,9 @@ module.exports = async function(deployer, network, accounts) {
       Jonybang2: allRoles,
       Jonybang3: allRoles,
       Nikita: allRoles,
+      Nikita2: allRoles,
+      Nikita3: allRoles,
+      Nikita4: allRoles,
       Igor: allRoles,
       Igor2: allRoles,
       Igor3: allRoles,
@@ -242,7 +246,7 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(
           new Promise(async resolve => {
             await oracles
-              .addOracle(data.abMultiSigX.address, address, name, 'MN', [], validatorsSpecificRoles[name], {
+              .addOracle(data.arbitratorsMultiSigXAddress, address, name, 'MN', [], validatorsSpecificRoles[name], {
                 from: coreTeam
               })
               .catch(e => {
@@ -349,15 +353,15 @@ module.exports = async function(deployer, network, accounts) {
 
     await pIteration.forEachSeries(spaceTokensToMint, async spaceTokenItem => {
       const res = await spaceToken.mint(coreTeam, { from: coreTeam });
-      const { _tokenId } = res.logs[0].args;
+      const { tokenId } = res.logs[0].args;
 
       const { contour, level } = spaceTokenItem;
       const height = level === 1 ? 0 : 2;
 
-      await splitMerge.setPackageContour(_tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
-      await splitMerge.setPackageHeights(_tokenId, contour.map(() => ether(height)), { from: coreTeam });
-      await splitMerge.setPackageLevel(_tokenId, level, { from: coreTeam });
-      await spaceToken.transferFrom(coreTeam, users.DevNickUser, _tokenId, { from: coreTeam });
+      await splitMerge.setPackageContour(tokenId, contour.map(galt.geohashToGeohash5), { from: coreTeam });
+      await splitMerge.setPackageHeights(tokenId, contour.map(() => ether(height)), { from: coreTeam });
+      await splitMerge.setPackageLevel(tokenId, level, { from: coreTeam });
+      await spaceToken.transferFrom(coreTeam, users.DevNickUser, tokenId, { from: coreTeam });
     });
   });
 };

@@ -113,7 +113,7 @@ contract('PlotValuation', (accounts) => {
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
 
     await this.plotManager.initialize(
       this.spaceToken.address,
@@ -135,7 +135,7 @@ contract('PlotValuation', (accounts) => {
         from: coreTeam
       }
     );
-    await this.splitMerge.initialize(this.spaceToken.address, this.plotManager.address, {
+    await this.splitMerge.initialize(this.spaceToken.address, {
       from: coreTeam
     });
 

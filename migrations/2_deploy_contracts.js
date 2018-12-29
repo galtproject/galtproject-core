@@ -30,6 +30,8 @@ const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
+const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
@@ -90,14 +92,26 @@ module.exports = async function(deployer, network, accounts) {
     WeilerAtherton.link('PolygonUtils', polygonUtils.address);
     const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
 
+    SplitMergeLib.link('ArrayUtils', arrayUtils.address);
+    const splitMergeLib = await SplitMergeLib.new({ from: coreTeam });
+
     const segmentUtils = await SegmentUtils.new({ from: coreTeam });
     SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
     const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
+
+    SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
+    SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
+
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
+
+    const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
 
     const galtDex = await GaltDex.new({ from: coreTeam });
 
@@ -213,8 +227,8 @@ module.exports = async function(deployer, network, accounts) {
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
 
-    await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
-    await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
+    await splitMerge.initialize(spaceToken.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceToken.address, { from: coreTeam });
 
     await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
@@ -283,8 +297,10 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotClarification.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
@@ -395,9 +411,15 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeSandboxAddress: splitMergeSandbox.address,
             splitMergeSandboxAbi: splitMergeSandbox.abi,
             // multisigs
+            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
             oracleStakesAccountingXAddress: oracleStakesAccountingX.address,
             oracleStakesAccountingYAddress: oracleStakesAccountingY.address,
-            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
+            spaceReputationAccountingAddress: spaceReputationAccounting.address,
+            spaceReputationAccountingAbi: spaceReputationAccounting.abi,
+            spaceLockerRegistryAddress: spaceLockerRegistry.address,
+            spaceLockerRegistryAbi: spaceLockerRegistry.abi,
+            multiSigRegistryAddress: multiSigRegistry.address,
+            multiSigRegistryAbi: multiSigRegistry.abi,
             arbitratorsMultiSigXAddress: abMultiSigX.address,
             arbitratorsMultiSigYAddress: abMultiSigY.address,
             arbitratorsMultiSigAbi: abMultiSigX.abi,
