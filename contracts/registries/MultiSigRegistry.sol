@@ -21,6 +21,8 @@ import "../multisig/OracleStakesAccounting.sol";
 
 
 contract MultiSigRegistry is Permissionable {
+  using ArraySet for ArraySet.AddressSet;
+  
   string public constant ROLE_FACTORY = "space_token";
 
   // MultiSig address => Details
@@ -48,8 +50,8 @@ contract MultiSigRegistry is Permissionable {
     ms.voting = _abVoting;
     ms.oracleStakesAccounting = _oracleStakesAccounting;
     ms.factoryAddress = msg.sender;
-    
-    multiSigs.add(ms);
+
+    multiSigsArray.add(_abMultiSig);
   }
 
   // REQUIRES
@@ -66,6 +68,30 @@ contract MultiSigRegistry is Permissionable {
 
   function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
     return multiSigs[_multiSig].oracleStakesAccounting;
+  }
+  
+  function getMultiSig(address _abMultiSig) external returns (
+    bool active,
+    address voting,
+    address oracleStakesAccounting,
+    address factoryAddress
+  ) {
+    MultiSig storage ms = multiSigs[_abMultiSig];
+    
+    return (
+      ms.active,
+      ms.voting,
+      ms.oracleStakesAccounting,
+      ms.factoryAddress
+    );
+  }
+
+  function getMultiSigList() external returns (address[]) {
+    return multiSigsArray.elements();
+  }
+
+  function getMultiSigCount() external returns (uint256) {
+    return multiSigsArray.size();
   }
   // TODO: how to update Factory Address?
   // TODO: how to deactivate multiSig?
