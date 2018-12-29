@@ -36,7 +36,9 @@ const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
 const Web3 = require('web3');
+
 const fs = require('fs');
+const packageVersion = require('../package.json').version;
 
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
@@ -348,19 +350,36 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Save addresses and abi to deployed folder...');
 
+    const blockNumber = await web3.eth.getBlockNumber();
+    const networkId = await web3.eth.net.getId();
+
+    let commit;
+    // eslint-disable-next-line
+    const rev = fs.readFileSync('.git/HEAD').toString().replace('\n', '');
+    if (rev.indexOf(':') === -1) {
+      commit = rev;
+    } else {
+      // eslint-disable-next-line
+      commit = fs.readFileSync(`.git/${rev.substring(5)}`).toString().replace('\n', '');
+    }
+
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
       if (!fs.existsSync(deployDirectory)) {
         fs.mkdirSync(deployDirectory);
       }
 
-      const deployFile = `${deployDirectory}/${network}.json`;
+      const deployFile = `${deployDirectory}/${networkId}.json`;
       console.log(`saved to ${deployFile}`);
 
       fs.writeFile(
         deployFile,
         JSON.stringify(
           {
+            packageVersion,
+            commit,
+            networkId,
+            blockNumber,
             galtTokenAddress: galtToken.address,
             galtTokenAbi: galtToken.abi,
             spaceTokenAddress: spaceToken.address,

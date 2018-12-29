@@ -33,7 +33,9 @@ module.exports = async function(deployer, network, accounts) {
   const coreTeam = accounts[0];
 
   deployer.then(async () => {
-    const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${network}.json`).toString());
+    const networkId = await web3.eth.net.getId();
+
+    const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${networkId}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
     const plotClarification = await PlotClarificationManager.at(data.plotClarificationAddress);
     const plotValuation = await PlotValuation.at(data.plotValuationAddress);

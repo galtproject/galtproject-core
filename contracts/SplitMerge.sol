@@ -38,7 +38,11 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   ISpaceSplitOperationFactory splitOperationFactory;
 
   event PackageInit(bytes32 id, address owner);
+  event PackageHeightsSet(bytes32 id, int256[] heights);
+  event PackageContourSet(bytes32 id, uint256[] contour);
+  event PackageLevelSet(bytes32 id, int256 level);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
+  event NewSplitSpaceToken(uint256 id);
   event ContourAreaCalculate(uint256[] contour, uint256 area);
 
   mapping(uint256 => uint256[]) public packageToContour;
@@ -53,8 +57,6 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   address[] public allSplitOperations;
 
   LandUtils.LatLonData private latLonData;
-
-  event NewSplitSpaceToken(uint256 id);
 
   function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;

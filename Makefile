@@ -32,10 +32,10 @@ benchmark:
 	for file in `ls ./benchmark`; do echo \\n$${file}\\n; ./node_modules/.bin/truffle exec benchmark/$${file} --network test -c; done
 
 deploy-ganache:
-	rm -rf build && truffle migrate --network ganache && ./node_modules/.bin/surge ./deployed $$DOMAIN && echo "CONTRACTS_CONFIG_URL=$$DOMAIN\ganache.json"
+	rm -rf build && truffle migrate --network ganache && ./node_modules/.bin/surge ./deployed $$DOMAIN
 	
 deploy-testnet57:
-	rm -rf build && truffle migrate --network testnet57 && ./node_modules/.bin/surge ./deployed $$DOMAIN && echo "CONTRACTS_CONFIG_URL=$$DOMAIN\testnet57.json"
+	rm -rf build && truffle migrate --network testnet57 && ./node_modules/.bin/surge ./deployed $$DOMAIN
 	
 deploy-local:
-	rm -rf build && truffle migrate --network local && ./node_modules/.bin/surge ./deployed $$DOMAIN && echo "CONTRACTS_CONFIG_URL=$$DOMAIN\local.json"
+	rm -rf build && truffle migrate --network local && ./node_modules/.bin/surge ./deployed $$DOMAIN
