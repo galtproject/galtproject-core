@@ -22,7 +22,7 @@ import "../multisig/OracleStakesAccounting.sol";
 
 contract MultiSigRegistry is Permissionable {
   using ArraySet for ArraySet.AddressSet;
-  
+
   string public constant ROLE_FACTORY = "space_token";
 
   // MultiSig address => Details
@@ -41,8 +41,8 @@ contract MultiSigRegistry is Permissionable {
     ArbitratorVoting _abVoting,
     OracleStakesAccounting _oracleStakesAccounting
   )
-    external
-    onlyRole(ROLE_FACTORY)
+  external
+  onlyRole(ROLE_FACTORY)
   {
     MultiSig storage ms = multiSigs[_abMultiSig];
 
@@ -69,15 +69,18 @@ contract MultiSigRegistry is Permissionable {
   function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
     return multiSigs[_multiSig].oracleStakesAccounting;
   }
-  
-  function getMultiSig(address _abMultiSig) external returns (
-    bool active,
-    address voting,
-    address oracleStakesAccounting,
-    address factoryAddress
-  ) {
+
+  function getMultiSig(address _abMultiSig) 
+    external 
+    returns (
+      bool active,
+      address voting,
+      address oracleStakesAccounting,
+      address factoryAddress
+    ) 
+  {
     MultiSig storage ms = multiSigs[_abMultiSig];
-    
+
     return (
       ms.active,
       ms.voting,
