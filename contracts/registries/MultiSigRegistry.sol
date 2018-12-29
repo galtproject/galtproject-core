@@ -21,10 +21,14 @@ import "../multisig/OracleStakesAccounting.sol";
 
 
 contract MultiSigRegistry is Permissionable {
+  using ArraySet for ArraySet.AddressSet;
+
   string public constant ROLE_FACTORY = "space_token";
 
   // MultiSig address => Details
-  mapping(address => MultiSig) private multiSigs;
+  // TODO: need to be a private?
+  mapping(address => MultiSig) public multiSigs;
+  ArraySet.AddressSet private multiSigsArray;
 
   struct MultiSig {
     bool active;
@@ -38,8 +42,8 @@ contract MultiSigRegistry is Permissionable {
     ArbitratorVoting _abVoting,
     OracleStakesAccounting _oracleStakesAccounting
   )
-    external
-    onlyRole(ROLE_FACTORY)
+  external
+  onlyRole(ROLE_FACTORY)
   {
     MultiSig storage ms = multiSigs[_abMultiSig];
 
@@ -47,6 +51,8 @@ contract MultiSigRegistry is Permissionable {
     ms.voting = _abVoting;
     ms.oracleStakesAccounting = _oracleStakesAccounting;
     ms.factoryAddress = msg.sender;
+
+    multiSigsArray.add(_abMultiSig);
   }
 
   // REQUIRES
@@ -63,6 +69,14 @@ contract MultiSigRegistry is Permissionable {
 
   function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
     return multiSigs[_multiSig].oracleStakesAccounting;
+  }
+
+  function getMultiSigList() external returns (address[]) {
+    return multiSigsArray.elements();
+  }
+
+  function getMultiSigCount() external returns (uint256) {
+    return multiSigsArray.size();
   }
   // TODO: how to update Factory Address?
   // TODO: how to deactivate multiSig?
