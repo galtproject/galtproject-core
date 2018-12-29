@@ -26,7 +26,8 @@ contract MultiSigRegistry is Permissionable {
   string public constant ROLE_FACTORY = "space_token";
 
   // MultiSig address => Details
-  mapping(address => MultiSig) private multiSigs;
+  // TODO: need to be a private?
+  mapping(address => MultiSig) public multiSigs;
   ArraySet.AddressSet private multiSigsArray;
 
   struct MultiSig {
@@ -68,25 +69,6 @@ contract MultiSigRegistry is Permissionable {
 
   function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
     return multiSigs[_multiSig].oracleStakesAccounting;
-  }
-
-  function getMultiSig(address _abMultiSig) 
-    external 
-    returns (
-      bool active,
-      address voting,
-      address oracleStakesAccounting,
-      address factoryAddress
-    ) 
-  {
-    MultiSig storage ms = multiSigs[_abMultiSig];
-
-    return (
-      ms.active,
-      ms.voting,
-      ms.oracleStakesAccounting,
-      ms.factoryAddress
-    );
   }
 
   function getMultiSigList() external returns (address[]) {
