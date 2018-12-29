@@ -21,7 +21,7 @@ initHelperArtifacts(artifacts);
 chai.use(chaiAsPromised);
 
 contract('SpaceReputationAccounting', accounts => {
-  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, claimManager] = accounts;
+  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager] = accounts;
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
@@ -47,6 +47,9 @@ contract('SpaceReputationAccounting', accounts => {
     this.spaceLockerRegistry.addRoleTo(this.spaceLockerFactory.address, await this.spaceLockerRegistry.ROLE_FACTORY(), {
       from: coreTeam
     });
+    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
+      from: coreTeam
+    });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
@@ -70,7 +73,7 @@ contract('SpaceReputationAccounting', accounts => {
       assert.equal(res.toLowerCase(), alice);
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, { from: alice });
+      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -235,7 +238,7 @@ contract('SpaceReputationAccounting', accounts => {
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, { from: alice });
+      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
 
       // CREATE LOCKER
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
