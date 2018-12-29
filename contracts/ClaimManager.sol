@@ -494,9 +494,9 @@ contract ClaimManager is AbstractApplication {
   )
     external
     returns (
-      bytes32 id,
       address applicant,
       address beneficiary,
+      address multiSig,
       uint256 amount,
       bytes32[] attachedDocuments,
       address[] arbitrators,
@@ -511,9 +511,9 @@ contract ClaimManager is AbstractApplication {
     Claim storage c = claims[_cId];
 
     return (
-      c.id,
       c.applicant,
       c.beneficiary,
+      c.multiSig,
       c.amount,
       c.attachedDocuments,
       c.arbitrators.elements(),
