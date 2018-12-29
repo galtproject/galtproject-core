@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
+const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const PlotEscrow = artifacts.require('./PlotEscrow.sol');
 const PlotEscrowLib = artifacts.require('./PlotEscrowLib.sol');
 const ArraySet = artifacts.require('./collections/ArraySet.sol');
@@ -151,6 +152,7 @@ contract("PlotEscrow", (accounts) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
     await this.plotManager.initialize(
@@ -179,6 +181,7 @@ contract("PlotEscrow", (accounts) => {
       this.oracles.address,
       this.galtToken.address,
       this.plotEscrow.address,
+      this.spaceCustodianRegistry.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -217,6 +220,13 @@ contract("PlotEscrow", (accounts) => {
     await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
+    await this.spaceCustodianRegistry.addRoleTo(
+      this.plotCustodianManager.address,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
 
     await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
