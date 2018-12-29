@@ -91,7 +91,6 @@ contract PlotManager is AbstractOracleApplication {
   uint256 public submissionFeeRateEth;
 
   mapping(bytes32 => Application) public applications;
-  bytes32[] private applicationsArray;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
