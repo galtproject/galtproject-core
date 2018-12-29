@@ -87,10 +87,9 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     super._setTokenURI(_tokenId, _uri);
   }
 
-  // https://github.com/OpenZeppelin/openzeppelin-solidity/issues/1512
-//  function tokensOfOwner(address _owner) external view returns (uint256[]) {
-//    return _ownedTokens[_owner];
-//  }
+  function tokensOfOwner(address _owner) external view returns (uint256[]) {
+    return _tokensOfOwner(_owner);
+  }
 
   function _generateTokenId() internal returns (uint256) {
     return packTokenIdCounter++;
