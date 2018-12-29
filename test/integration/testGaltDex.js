@@ -3,6 +3,7 @@ const GaltDex = artifacts.require('./GaltDex.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const PlotValuation = artifacts.require('./PlotValuation.sol');
 const PlotCustodian = artifacts.require('./PlotCustodianManager.sol');
+const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
@@ -45,6 +46,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
+    this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
 
     this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, zeroAddress, {
       from: coreTeam
@@ -73,6 +75,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
       this.oracles.address,
       this.galtToken.address,
       zeroAddress,
+      this.spaceCustodianRegistry.address,
       coreTeam,
       {
         from: coreTeam
@@ -94,6 +97,14 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     await this.oracles.addRoleTo(stakeNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
+    await this.spaceCustodianRegistry.addRoleTo(
+      this.plotCustodian.address,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
+
     const PV_APPRAISER_ORACLE_TYPE = await this.plotValuation.PV_APPRAISER_ORACLE_TYPE.call();
     const PV_APPRAISER2_ORACLE_TYPE = await this.plotValuation.PV_APPRAISER2_ORACLE_TYPE.call();
     const PV_AUDITOR_ORACLE_TYPE = await this.plotValuation.PV_AUDITOR_ORACLE_TYPE.call();
