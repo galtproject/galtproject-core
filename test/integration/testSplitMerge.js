@@ -21,7 +21,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SplitMerge', ([coreTeam, alice]) => {
+contract('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
@@ -498,7 +498,7 @@ contract.only('SplitMerge', ([coreTeam, alice]) => {
     });
   });
 
-  it.only('should calculate contour area correctly', async function() {
+  it('should calculate contour area correctly', async function() {
     const contour = ['w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
     await this.splitMerge.cacheGeohashListToLatLon(contour);
     const res = await this.splitMerge.calculateContourArea(contour);

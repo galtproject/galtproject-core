@@ -32,6 +32,7 @@ contract('ArbitratorVoting', accounts => {
     arbitratorManager,
     oracleManager,
     claimManager,
+    geoDateManagement,
     fakeSRA,
     zeroOwner,
     alice,
@@ -131,6 +132,9 @@ contract('ArbitratorVoting', accounts => {
       from: coreTeam
     });
     await this.spaceToken.addRoleTo(minter, 'minter', {
+      from: coreTeam
+    });
+    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
       from: coreTeam
     });
     await this.spaceLockerRegistry.addRoleTo(
@@ -282,13 +286,13 @@ contract('ArbitratorVoting', accounts => {
 
       // SET AREAS
       let p = [
-        this.splitMerge.setTokenArea(x1, '300'),
-        this.splitMerge.setTokenArea(x2, '500'),
-        this.splitMerge.setTokenArea(x3, '400'),
-        this.splitMerge.setTokenArea(x4, '700'),
-        this.splitMerge.setTokenArea(x5, '100'),
-        this.splitMerge.setTokenArea(x6, '1000'),
-        this.splitMerge.setTokenArea(x7, '200')
+        this.splitMerge.setTokenArea(x1, '300', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x2, '500', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x3, '400', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x4, '700', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x5, '100', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x6, '1000', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x7, '200', { from: geoDateManagement })
       ];
 
       await Promise.all(p);

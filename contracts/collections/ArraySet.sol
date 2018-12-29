@@ -145,6 +145,7 @@ library ArraySet {
     _set.map[lastElement] = currentElementIndex;
   }
 
+  // TODO: _set.map[_v] should be deleted
   function clear(Bytes32Set storage _set) internal {
     for (uint256 i = 0; i < _set.array.length; i++) {
       _set.exists[_set.array[i]] = false;

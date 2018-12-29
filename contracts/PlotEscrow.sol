@@ -16,7 +16,7 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./PlotCustodianManager.sol";
+import "./applications/PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
 import "./SpaceToken.sol";
 import "./Oracles.sol";
@@ -155,6 +155,7 @@ contract PlotEscrow is AbstractOracleApplication {
 
   SpaceToken internal spaceToken;
   PlotCustodianManager internal plotCustodianManager;
+  SpaceCustodianRegistry internal spaceCustodianRegistry;
 
   // Caching (items could be obsolete)
   bytes32[] public saleOrderArray;
@@ -171,6 +172,7 @@ contract PlotEscrow is AbstractOracleApplication {
   function initialize(
     SpaceToken _spaceToken,
     PlotCustodianManager _plotCustodianManager,
+    SpaceCustodianRegistry _spaceCustodianRegistry,
     Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
@@ -183,6 +185,7 @@ contract PlotEscrow is AbstractOracleApplication {
     oracles = _oracles;
     galtToken = _galtToken;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+    spaceCustodianRegistry = _spaceCustodianRegistry;
 
     // Default values for revenue shares and application fees
     // Override them using one of the corresponding setters
@@ -234,7 +237,9 @@ contract PlotEscrow is AbstractOracleApplication {
     // Payment in ETH
     } else {
       require(_feeInGalt == 0, "ETH and GALT attached");
-      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment in ETH");
+      // TODO: keep the require with error message
+//      require(msg.value >= minimalApplicationFeeInEth, "Insufficient payment in ETH");
+      require(msg.value >= minimalApplicationFeeInEth);
       saleOrder.fees.currency = Currency.ETH;
       fee = msg.value;
     }
@@ -566,7 +571,7 @@ contract PlotEscrow is AbstractOracleApplication {
   {
     SaleOrder storage saleOrder = saleOrders[_orderId];
 
-    if (PlotEscrowLib.resolveHelper(saleOrder, plotCustodianManager, _buyer)) {
+    if (PlotEscrowLib.resolveHelper(saleOrder, spaceCustodianRegistry, _buyer)) {
       changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.RESOLVED);
     }
   }
@@ -577,7 +582,7 @@ contract PlotEscrow is AbstractOracleApplication {
   function applyCustodianAssignment(
     bytes32 _orderId,
     address _buyer,
-    address _chosenCustodian,
+    address[] _chosenCustodians,
     uint256 _applicationFeeInGalt
   )
     external
@@ -596,7 +601,7 @@ contract PlotEscrow is AbstractOracleApplication {
     saleOffer.custodianApplicationId = plotCustodianManager.submitApplicationFromEscrow.value(msg.value)(
       saleOrder.spaceTokenId,
       PlotCustodianManager.Action.ATTACH,
-      _chosenCustodian,
+      _chosenCustodians,
       msg.sender,
       _applicationFeeInGalt
     );

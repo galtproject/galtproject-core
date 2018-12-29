@@ -17,7 +17,7 @@ pragma experimental "v0.5.0";
 import "./PlotEscrow.sol";
 import "./SpaceToken.sol";
 import "./AbstractApplication.sol";
-import "./PlotCustodianManager.sol";
+import "./applications/PlotCustodianManager.sol";
 import "./SplitMerge.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -28,7 +28,7 @@ library PlotEscrowLib {
 
   function resolveHelper(
     PlotEscrow.SaleOrder storage saleOrder,
-    PlotCustodianManager _plotCustodianManager,
+    SpaceCustodianRegistry _spaceCustodianRegistry,
     address _buyer
   )
     external
@@ -47,7 +47,7 @@ library PlotEscrowLib {
       revert("No permissions for order resolve");
     }
 
-    bool custodianAssigned = _plotCustodianManager.assignedCustodians(saleOrder.spaceTokenId) != address(0);
+    bool custodianAssigned = _spaceCustodianRegistry.spaceCustodianCount(saleOrder.spaceTokenId) > 0;
 
     if (saleOffer.resolved == 3 && custodianAssigned) {
       changeStatus = true;

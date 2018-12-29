@@ -37,6 +37,18 @@ const Helpers = {
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
   },
+  applicationStatus: {
+    NOT_EXISTS: 0,
+    SUBMITTED: 1,
+    APPROVED: 2,
+    REJECTED: 3,
+    REVERTED: 4,
+    ACCEPTED: 5,
+    LOCKED: 6,
+    REVIEW: 7,
+    COMPLETED: 8,
+    CLOSED: 9
+  },
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
@@ -313,5 +325,7 @@ const Helpers = {
     return splitMerge;
   }
 };
+
+Object.freeze(Helpers.applicationStatus);
 
 module.exports = Helpers;

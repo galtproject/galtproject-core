@@ -29,6 +29,7 @@ const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
+const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
 const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
 const SplitMergeLib = artifacts.require('./SplitMergeLib');
@@ -135,6 +136,7 @@ module.exports = async function(deployer, network, accounts) {
     const plotEscrow = await PlotEscrow.new({ from: coreTeam });
 
     const claimManager = await ClaimManager.new({ from: coreTeam });
+    const spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
     const plotClarification = await PlotClarificationManager.new({ from: coreTeam });
 
     const spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
@@ -265,6 +267,7 @@ module.exports = async function(deployer, network, accounts) {
       oracles.address,
       galtToken.address,
       plotEscrow.address,
+      spaceCustodianRegistry.address,
       coreTeam,
       {
         from: coreTeam
@@ -309,6 +312,8 @@ module.exports = async function(deployer, network, accounts) {
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
+
+    await spaceCustodianRegistry.addRoleTo(plotCustodian.address, 'application', { from: coreTeam });
 
     await spaceToken.addRoleTo(plotManager.address, 'minter', { from: coreTeam });
     await spaceToken.addRoleTo(splitMerge.address, 'minter', { from: coreTeam });
