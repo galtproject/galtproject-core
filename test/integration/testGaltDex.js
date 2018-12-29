@@ -46,7 +46,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     this.plotValuation = await PlotValuation.new({ from: coreTeam });
     this.plotCustodian = await PlotCustodian.new({ from: coreTeam });
 
-    this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, {
+    this.galtDex.initialize(szabo(baseExchangeRate), szabo(fee), szabo(fee), this.galtToken.address, zeroAddress, {
       from: coreTeam
     });
 

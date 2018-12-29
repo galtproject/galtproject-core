@@ -34,6 +34,7 @@ const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFacto
 const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
+const GaltGenesis = artifacts.require('./GaltGenesis');
 const Oracles = artifacts.require('./Oracles');
 const Web3 = require('web3');
 
@@ -57,6 +58,7 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const coreTeam = accounts[0];
     const unauthorized = accounts[1];
+    const referralsFund = accounts[2];
     // const proxiesAdmin = accounts[1];
 
     // Deploy contracts...
@@ -114,6 +116,7 @@ module.exports = async function(deployer, network, accounts) {
     await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
 
     const galtDex = await GaltDex.new({ from: coreTeam });
+    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, { from: coreTeam });
 
     const oracles = await Oracles.new({ from: coreTeam });
 
@@ -284,6 +287,7 @@ module.exports = async function(deployer, network, accounts) {
       Web3.utils.toWei('1', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
       galtToken.address,
+      galtGenesis.address,
       { from: coreTeam }
     );
 
@@ -291,8 +295,12 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    console.log('Mint GALT to dex contracts..');
-    await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
+    console.log('Mint GALT to contracts..');
+    const totalGalt = 10000000;
+    await galtToken.mint(galtDex.address, Web3.utils.toWei((totalGalt * 0.75).toString(), 'ether'));
+    await galtToken.mint(galtGenesis.address, Web3.utils.toWei((totalGalt * 0.05).toString(), 'ether'));
+    await galtToken.mint(referralsFund, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
+    await galtToken.mint(coreTeam, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
 
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
@@ -400,6 +408,8 @@ module.exports = async function(deployer, network, accounts) {
             plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
+            galtGenesisAddress: galtGenesis.address,
+            galtGenesisAbi: galtGenesis.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
             claimManagerAddress: claimManager.address,
