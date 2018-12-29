@@ -62,7 +62,7 @@ contract('ArbitratorVoting', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
 
     this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
     this.spaceLockerFactory = await SpaceLockerFactory.new(

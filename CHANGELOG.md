@@ -1,3 +1,15 @@
+## Galt Project Contracts [v0.5.0](https://github.com/galtspace/galtproject-contracts/tree/v0.5.0) (2018-12-21)
+
+The full list of included changes:
+
+- Use MartinezRueda instead of BentleyOttman, remove BentleyOttman
+- Add abstract LinkedList contract
+- Implement SpaceSplitOperation for split geohash contours by WeilerAtherton and MartinezRueda
+- Add benchmark scripts for MartinezRueda and SpaceSplitOperation
+- Rework SplitMerge split method for deploy SpaceSplitOperation and using it for split geohash contours
+- Implement Trigonometry utils with sin calculation: of degree and radians
+- Implement PolygonUtils.getArea for get area from LatLon polygons
+
 ## Galt Project Contracts [v0.4.0](https://github.com/galtspace/galtproject-contracts/tree/v0.4.0) (2018-11-18)
 
 The full list of included changes:

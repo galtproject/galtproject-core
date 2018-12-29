@@ -31,11 +31,16 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
+const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
 const GaltDex = artifacts.require('./GaltDex');
+const GaltGenesis = artifacts.require('./GaltGenesis');
 const Oracles = artifacts.require('./Oracles');
 const Web3 = require('web3');
+
 const fs = require('fs');
+const packageVersion = require('../package.json').version;
 
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
@@ -54,6 +59,7 @@ module.exports = async function(deployer, network, accounts) {
   deployer.then(async () => {
     const coreTeam = accounts[0];
     const unauthorized = accounts[1];
+    const referralsFund = accounts[2];
     // const proxiesAdmin = accounts[1];
 
     // Deploy contracts...
@@ -89,16 +95,29 @@ module.exports = async function(deployer, network, accounts) {
     WeilerAtherton.link('PolygonUtils', polygonUtils.address);
     const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
 
+    SplitMergeLib.link('ArrayUtils', arrayUtils.address);
+    const splitMergeLib = await SplitMergeLib.new({ from: coreTeam });
+
     const segmentUtils = await SegmentUtils.new({ from: coreTeam });
     SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('ArrayUtils', arrayUtils.address);
     SplitMerge.link('PolygonUtils', polygonUtils.address);
     SplitMerge.link('WeilerAtherton', weilerAtherton.address);
     SplitMerge.link('SegmentUtils', segmentUtils.address);
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
     const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
 
+    SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
+    SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
+
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
+
+    const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
+
     const galtDex = await GaltDex.new({ from: coreTeam });
+    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, { from: coreTeam });
 
     const oracles = await Oracles.new({ from: coreTeam });
 
@@ -213,8 +232,8 @@ module.exports = async function(deployer, network, accounts) {
     // Call initialize methods (constructor substitute for proxy-backed contract)
     console.log('Initialize contracts...');
 
-    await splitMerge.initialize(spaceToken.address, plotManager.address, { from: coreTeam });
-    await splitMergeSandbox.initialize(spaceTokenSandbox.address, plotManager.address, { from: coreTeam });
+    await splitMerge.initialize(spaceToken.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceToken.address, { from: coreTeam });
 
     await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
@@ -271,6 +290,7 @@ module.exports = async function(deployer, network, accounts) {
       Web3.utils.toWei('1', 'szabo'),
       Web3.utils.toWei('1', 'szabo'),
       galtToken.address,
+      galtGenesis.address,
       { from: coreTeam }
     );
 
@@ -278,14 +298,20 @@ module.exports = async function(deployer, network, accounts) {
       from: coreTeam
     });
 
-    console.log('Mint GALT to dex contracts..');
-    await galtToken.mint(galtDex.address, Web3.utils.toWei('10000000', 'ether'));
+    console.log('Mint GALT to contracts..');
+    const totalGalt = 10000000;
+    await galtToken.mint(galtDex.address, Web3.utils.toWei((totalGalt * 0.75).toString(), 'ether'));
+    await galtToken.mint(galtGenesis.address, Web3.utils.toWei((totalGalt * 0.05).toString(), 'ether'));
+    await galtToken.mint(referralsFund, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
+    await galtToken.mint(coreTeam, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
 
     console.log('Set roles of contracts...');
     await splitMerge.addRoleTo(coreTeam, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
+    await splitMerge.addRoleTo(plotClarification.address, 'geo_data_manager', { from: coreTeam });
 
     await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
 
     await spaceCustodianRegistry.addRoleTo(plotCustodian.address, 'application', { from: coreTeam });
 
@@ -337,19 +363,36 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Save addresses and abi to deployed folder...');
 
+    const blockNumber = await web3.eth.getBlockNumber();
+    const networkId = await web3.eth.net.getId();
+
+    let commit;
+    // eslint-disable-next-line
+    const rev = fs.readFileSync('.git/HEAD').toString().replace('\n', '');
+    if (rev.indexOf(':') === -1) {
+      commit = rev;
+    } else {
+      // eslint-disable-next-line
+      commit = fs.readFileSync(`.git/${rev.substring(5)}`).toString().replace('\n', '');
+    }
+
     await new Promise(resolve => {
       const deployDirectory = `${__dirname}/../deployed`;
       if (!fs.existsSync(deployDirectory)) {
         fs.mkdirSync(deployDirectory);
       }
 
-      const deployFile = `${deployDirectory}/${network}.json`;
+      const deployFile = `${deployDirectory}/${networkId}.json`;
       console.log(`saved to ${deployFile}`);
 
       fs.writeFile(
         deployFile,
         JSON.stringify(
           {
+            packageVersion,
+            commit,
+            networkId,
+            blockNumber,
             galtTokenAddress: galtToken.address,
             galtTokenAbi: galtToken.abi,
             spaceTokenAddress: spaceToken.address,
@@ -370,6 +413,8 @@ module.exports = async function(deployer, network, accounts) {
             plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
+            galtGenesisAddress: galtGenesis.address,
+            galtGenesisAbi: galtGenesis.abi,
             galtDexAddress: galtDex.address,
             galtDexAbi: galtDex.abi,
             claimManagerAddress: claimManager.address,
@@ -381,9 +426,15 @@ module.exports = async function(deployer, network, accounts) {
             splitMergeSandboxAddress: splitMergeSandbox.address,
             splitMergeSandboxAbi: splitMergeSandbox.abi,
             // multisigs
+            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
             oracleStakesAccountingXAddress: oracleStakesAccountingX.address,
             oracleStakesAccountingYAddress: oracleStakesAccountingY.address,
-            oracleStakesAccountingAbi: oracleStakesAccountingX.abi,
+            spaceReputationAccountingAddress: spaceReputationAccounting.address,
+            spaceReputationAccountingAbi: spaceReputationAccounting.abi,
+            spaceLockerRegistryAddress: spaceLockerRegistry.address,
+            spaceLockerRegistryAbi: spaceLockerRegistry.abi,
+            multiSigRegistryAddress: multiSigRegistry.address,
+            multiSigRegistryAbi: multiSigRegistry.abi,
             arbitratorsMultiSigXAddress: abMultiSigX.address,
             arbitratorsMultiSigYAddress: abMultiSigY.address,
             arbitratorsMultiSigAbi: abMultiSigX.abi,
