@@ -25,7 +25,7 @@ contract('SpaceReputationAccounting', accounts => {
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });

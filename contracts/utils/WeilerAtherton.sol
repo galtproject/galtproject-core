@@ -70,7 +70,7 @@ library WeilerAtherton {
   event LogSetNextPoint(int256[2] curPoint, bool isIntersection, int256[2] nextPoint);
   event LogIncludeIntersectionInResult(string polygon, int256[2] point, uint256 handledPoints);
 
-  function initWeilerAtherton(State storage state) internal {
+  function initWeilerAtherton(State storage state) public {
     state.martinezRueda.initMartinezRueda();
   }
 
