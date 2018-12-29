@@ -28,7 +28,7 @@ library PlotEscrowLib {
 
   function resolveHelper(
     PlotEscrow.SaleOrder storage saleOrder,
-    PlotCustodianManager _plotCustodianManager,
+    SpaceCustodianRegistry _spaceCustodianRegistry,
     address _buyer
   )
     external
@@ -47,12 +47,11 @@ library PlotEscrowLib {
       revert("No permissions for order resolve");
     }
 
-    // TODO: fix
-//    bool custodianAssigned = _plotCustodianManager.assignedCustodians(saleOrder.spaceTokenId) != address(0);
-//
-//    if (saleOffer.resolved == 3 && custodianAssigned) {
-//      changeStatus = true;
-//    }
+    bool custodianAssigned = _spaceCustodianRegistry.spaceCustodianCount(saleOrder.spaceTokenId) > 0;
+
+    if (saleOffer.resolved == 3 && custodianAssigned) {
+      changeStatus = true;
+    }
   }
 
   function createSaleOfferHelper(

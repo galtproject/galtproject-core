@@ -93,11 +93,6 @@ const EscrowCurrency = {
   ERC20: 1
 };
 
-const CustodianAction = {
-  ATTACH: 0,
-  DETACH: 1
-};
-
 Object.freeze(SaleOrderStatus);
 Object.freeze(SaleOfferStatus);
 Object.freeze(ValidationStatus);
@@ -114,12 +109,14 @@ contract("PlotEscrow", (accounts) => {
     multiSigX,
     stakesNotifier,
     applicationTypeManager,
+    custodianManager,
     oracleManager,
     alice,
     bob,
     charlie,
     dan,
-    eve
+    eve,
+    frank
   ] = accounts;
 
   beforeEach(async function() {
@@ -168,6 +165,7 @@ contract("PlotEscrow", (accounts) => {
     await this.plotEscrow.initialize(
       this.spaceToken.address,
       this.plotCustodianManager.address,
+      this.spaceCustodianRegistry.address,
       this.oracles.address,
       this.galtToken.address,
       galtSpaceOrg,
@@ -220,6 +218,13 @@ contract("PlotEscrow", (accounts) => {
     await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
+    await this.spaceCustodianRegistry.addRoleTo(
+      custodianManager,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
     await this.spaceCustodianRegistry.addRoleTo(
       this.plotCustodianManager.address,
       await this.spaceCustodianRegistry.ROLE_APPLICATION(),
@@ -409,6 +414,9 @@ contract("PlotEscrow", (accounts) => {
       await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
+      await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+        from: oracleManager
+      });
 
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
@@ -426,6 +434,9 @@ contract("PlotEscrow", (accounts) => {
         from: stakesNotifier
       });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PE_AUDITOR_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
 
@@ -732,29 +743,7 @@ contract("PlotEscrow", (accounts) => {
 
           describe('for closed(successful) offers', () => {
             beforeEach(async function() {
-              // assign custodian
-              const res = await this.plotCustodianManager.submitApplication(
-                this.spaceTokenId,
-                CustodianAction.ATTACH,
-                bob,
-                0,
-                {
-                  from: alice,
-                  value: ether(6)
-                }
-              );
-              this.aId = res.logs[0].args.id;
-
-              await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
-              await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-              await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
-              await this.plotCustodianManager.attachToken(this.aId, {
-                from: alice
-              });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
-              await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+              this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob], { from: custodianManager });
             });
 
             describe('when auditor is bound', () => {
@@ -1044,29 +1033,7 @@ contract("PlotEscrow", (accounts) => {
 
           describe('for closed(successful) offers', () => {
             beforeEach(async function() {
-              // assign custodian
-              const res = await this.plotCustodianManager.submitApplication(
-                this.spaceTokenId,
-                CustodianAction.ATTACH,
-                bob,
-                0,
-                {
-                  from: alice,
-                  value: ether(6)
-                }
-              );
-              this.aId = res.logs[0].args.id;
-
-              await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
-              await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-              await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
-              await this.plotCustodianManager.attachToken(this.aId, {
-                from: alice
-              });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
-              await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
-              await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+              this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob], { from: custodianManager });
             });
 
             describe('when auditor is bound', () => {
@@ -1578,21 +1545,23 @@ contract("PlotEscrow", (accounts) => {
 
         it('should allow seller apply for custodian assignment', async function() {
           // apply for custodian assignment through PlotEscrow contract
-          let res = await this.plotEscrow.applyCustodianAssignment(this.rId, bob, charlie, 0, {
+          let res = await this.plotEscrow.applyCustodianAssignment(this.rId, bob, [charlie, frank], 0, {
             from: alice,
             value: ether(8)
           });
           const cId = res.logs[0].args.id;
 
           // continue custodian registration
-          await this.plotCustodianManager.lockApplication(cId, { from: eve });
-          await this.plotCustodianManager.acceptApplication(cId, { from: charlie });
+          await this.plotCustodianManager.accept(cId, { from: charlie });
+          await this.plotCustodianManager.accept(cId, { from: frank });
           await this.plotCustodianManager.attachToken(cId, {
             from: alice
           });
-          await this.plotCustodianManager.approveApplication(cId, { from: charlie });
-          await this.plotCustodianManager.approveApplication(cId, { from: alice });
-          await this.plotCustodianManager.approveApplication(cId, { from: eve });
+          await this.plotCustodianManager.auditorLock(cId, { from: eve });
+          await this.plotCustodianManager.approve(cId, { from: charlie });
+          await this.plotCustodianManager.approve(cId, { from: frank });
+          await this.plotCustodianManager.approve(cId, { from: alice });
+          await this.plotCustodianManager.approve(cId, { from: eve });
 
           await this.plotEscrow.withdrawTokenFromCustodianContract(this.rId, bob, { from: alice });
 
@@ -1786,29 +1755,7 @@ contract("PlotEscrow", (accounts) => {
 
       describe('with already attached custodian', () => {
         beforeEach(async function() {
-          // assign custodian
-          const res = await this.plotCustodianManager.submitApplication(
-            this.spaceTokenId,
-            CustodianAction.ATTACH,
-            bob,
-            0,
-            {
-              from: alice,
-              value: ether(6)
-            }
-          );
-          this.aId = res.logs[0].args.id;
-
-          await this.plotCustodianManager.lockApplication(this.aId, { from: eve });
-          await this.plotCustodianManager.acceptApplication(this.aId, { from: bob });
-          await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
-          await this.plotCustodianManager.attachToken(this.aId, {
-            from: alice
-          });
-          await this.plotCustodianManager.approveApplication(this.aId, { from: bob });
-          await this.plotCustodianManager.approveApplication(this.aId, { from: eve });
-          await this.plotCustodianManager.approveApplication(this.aId, { from: alice });
-          await this.plotCustodianManager.withdrawToken(this.aId, { from: alice });
+          this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob], { from: custodianManager });
         });
 
         describe('#resolve()', () => {
@@ -2158,6 +2105,9 @@ contract("PlotEscrow", (accounts) => {
             from: oracleManager
           }
         );
+        await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+          from: oracleManager
+        });
         await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });
@@ -2177,6 +2127,9 @@ contract("PlotEscrow", (accounts) => {
           from: stakesNotifier
         });
         await this.oracles.onOracleStakeChanged(multiSigX, eve, PE_AUDITOR_ORACLE_TYPE, ether(30), {
+          from: stakesNotifier
+        });
+        await this.oracles.onOracleStakeChanged(multiSigX, frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });
       });
