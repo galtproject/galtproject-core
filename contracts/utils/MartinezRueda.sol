@@ -70,7 +70,7 @@ library MartinezRueda {
     Operation operation;
   }
 
-  function initMartinezRueda(State storage state) internal {
+  function initMartinezRueda(State storage state) public {
     //transaction reverted on maxHandleQueuePointsPerCall = 16 
     state.maxHandleQueuePointsPerCall = 6;
 

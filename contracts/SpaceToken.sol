@@ -43,7 +43,7 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
   }
 
   modifier onlyOwnerOf(uint256 _tokenId) {
-    require(ownerOf(_tokenId) == msg.sender);
+    require(ownerOf(_tokenId) == msg.sender, "Only owner of Space token");
     _;
   }
 
