@@ -225,4 +225,166 @@ library LandUtils {
 
     return output;
   }
+
+  function latLonToUtm(int256 _lat, int256 _lon) public returns (
+    uint zone, 
+    uint h,
+    uint x,
+    uint y, 
+    uint datum, 
+    uint convergence, 
+    uint scale
+  ) {
+    require(-80 <= _lat && _lat <= 84, "Outside UTM limits");
+
+    //    var falseEasting = 500e3, falseNorthing = 10000e3;
+
+    uint zone = Math.floor((_lon + 180) / 6) + 1;
+    // longitudinal zone
+    uint L0 = ((zone - 1) * 6 - 180 + 3).toRadians();
+    // longitude of central meridian
+
+    // ---- handle Norway/Svalbard exceptions
+    // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
+    uint latBand = Math.floor(_lat / 8 + 10);
+    // adjust zone & central meridian for Norway
+    if (zone == 31 && latBand == 17 && _lon >= 3) {
+      zone++;
+      L0 += (6).toRadians();
+    }
+    // adjust zone & central meridian for Svalbard
+    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon < 9) {
+      zone--;
+      L0 -= (6).toRadians();
+    }
+    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon >= 9) {
+      zone++;
+      L0 += (6).toRadians();
+    }
+    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon < 21) {
+      zone--;
+      L0 -= (6).toRadians();
+    }
+    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon >= 21) {
+      zone++;
+      L0 += (6).toRadians();
+    }
+    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon < 33) {
+      zone--;
+      L0 -= (6).toRadians();
+    }
+    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon >= 33) {
+      zone++;
+      L0 += (6).toRadians();
+    }
+
+    uint F = _lat.toRadians();
+    // latitude ± from equator
+    uint L = _lon.toRadians() - L0;
+    // longitude ± from central meridian
+
+    uint a = this.datum.ellipsoid.a;
+    uint f = this.datum.ellipsoid.f;
+    // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
+
+    uint k0 = 0.9996;
+    // UTM scale on the central meridian
+
+    // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
+
+    uint e = Math.sqrt(f * (2 - f));
+    // eccentricity
+    uint n = f / (2 - f);
+    // 3rd flattening
+    uint n2 = n * n;
+    uint n3 = n * n2;
+    uint n4 = n * n3;
+    uint n5 = n * n4;
+    uint n6 = n * n5;
+    // TODO: compare Horner-form accuracy?
+
+    uint cosL = Math.cos(L);
+    uint sinL = Math.sin(L);
+    uint tanL = Math.tan(L);
+
+    uint t = Math.tan(F);
+    // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
+    uint o = Math.sinh(e * Math.atanh(e * t / Math.sqrt(1 + t * t)));
+
+    uint ti = t * Math.sqrt(1 + o * o) - o * Math.sqrt(1 + t * t);
+
+    uint Ei = Math.atan2(ti, cosL);
+    uint ni = Math.asinh(sinL / Math.sqrt(ti * ti + cosL * cosL));
+
+    uint A = a / (1 + n) * (1 + 1 / 4 * n2 + 1 / 64 * n4 + 1 / 256 * n6);
+    // 2πA is the circumference of a meridian
+
+    uint a = [0, // note a is one-based array (6th order Krüger expressions)
+    1 / 2 * n - 2 / 3 * n2 + 5 / 16 * n3 + 41 / 180 * n4 - 127 / 288 * n5 + 7891 / 37800 * n6,
+    13 / 48 * n2 - 3 / 5 * n3 + 557 / 1440 * n4 + 281 / 630 * n5 - 1983433 / 1935360 * n6,
+    61 / 240 * n3 - 103 / 140 * n4 + 15061 / 26880 * n5 + 167603 / 181440 * n6,
+    49561 / 161280 * n4 - 179 / 168 * n5 + 6601661 / 7257600 * n6,
+    34729 / 80640 * n5 - 3418889 / 1995840 * n6,
+    212378941 / 319334400 * n6];
+
+    uint E = Ei;
+    for (uint j = 1; j <= 6; j++) {
+      E += a[j] * Math.sin(2 * j * Ei) * Math.cosh(2 * j * ni);
+    }
+
+    uint n = ni;
+    for (uint j = 1; j <= 6; j++) {
+      n += a[j] * Math.cos(2 * j * Ei) * Math.sinh(2 * j * ni);
+    }
+
+    uint x = k0 * A * n;
+    uint y = k0 * A * E;
+
+    // ---- convergence: Karney 2011 Eq 23, 24
+
+    uint pi = 1;
+    for (uint j = 1; j <= 6; j++) {
+      pi += 2 * j * a[j] * Math.cos(2 * j * Ei) * Math.cosh(2 * j * ni);
+    }
+    uint qi = 0;
+    for (uint j = 1; j <= 6; j++) {
+      qi += 2 * j * a[j] * Math.sin(2 * j * Ei) * Math.sinh(2 * j * ni);
+    }
+
+    uint Vi = Math.atan(ti / Math.sqrt(1 + ti * ti) * tanL);
+    uint Vii = Math.atan2(qi, pi);
+
+    uint V = Vi + Vii;
+
+    // ---- scale: Karney 2011 Eq 25
+
+    uint sinF = Math.sin(F);
+    uint ki = Math.sqrt(1 - e * e * sinF * sinF) * Math.sqrt(1 + t * t) / Math.sqrt(ti * ti + cosL * cosL);
+    uint kii = A / a * Math.sqrt(pi * pi + qi * qi);
+
+    uint k = k0 * ki * kii;
+
+    // ------------
+
+    // shift x/y to false origins
+    x = x + falseEasting;
+    // make x relative to false easting
+    if (y < 0) {
+      y = y + falseNorthing;
+      // make y in southern hemisphere relative to false northing
+    }
+
+    // round to reasonable precision
+    x = Number(x.toFixed(6));
+    // nm precision
+    y = Number(y.toFixed(6));
+    // nm precision
+    uint convergence = Number(V.toDegrees().toFixed(9));
+    uint scale = Number(k.toFixed(12));
+
+    uint h = _lat >= 0 ? 'N' : 'S';
+    // hemisphere
+
+    return (zone, h, x, y, this.datum, convergence, scale);
+  }
 }
