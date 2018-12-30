@@ -1,6 +1,7 @@
 const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const MockLandUtils = artifacts.require('./mocks/MockLandUtils.sol');
 
+const geodesy = require('geodesy');
 const Web3 = require('web3');
 const { assertRevert } = require('../helpers');
 
@@ -74,6 +75,30 @@ contract('LandUtils', ([deployer]) => {
       });
 
       assert.deepEqual(res.logs[0].args.result.toString(10), '30136808136');
+    });
+  });
+
+  describe.only('#latLonToUtm()', () => {
+    it('should correctly convert lat lon to utm', async function() {
+      const point = [1.1789703369140625, 104.51362609863281];
+
+      const LatLon = geodesy.LatLonSpherical;
+
+      const p1 = new LatLon(point[0], point[1]);
+
+      const shouldBeUtm = p1.toUtm();
+
+      console.log('shouldBeUtm', shouldBeUtm);
+
+      const res = await this.mockLandUtils.latLonToUtm(
+        point.map(coor => web3.utils.toWei(coor.toString(), 'ether')),
+        7,
+        {
+          from: deployer
+        }
+      );
+
+      assert.deepEqual(res.logs[0].args.result.toString(10), shouldBeUtm);
     });
   });
 });

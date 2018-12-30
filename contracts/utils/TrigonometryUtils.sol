@@ -52,4 +52,31 @@ library TrigonometryUtils {
   function radToDegree(int256 radians) internal returns (int256) {
     return radians * (180 / PI) * 1 ether;
   }
+  function atanh(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function cosh(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function sinh(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function asinh(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function tan(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function atan(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function atan2(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function sin(int256 radians) internal returns (int256) {
+    return 0;
+  }
+  function cos(int256 radians) internal returns (int256) {
+    return 0;
+  }
 }
