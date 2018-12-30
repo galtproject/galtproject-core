@@ -44,4 +44,12 @@ library TrigonometryUtils {
     }
     return s;
   }
+  
+  function degreeToRad(int256 degree) internal returns (int256) {
+    return degree * (PI / 180) / 1 ether;
+  }
+  
+  function radToDegree(int256 radians) internal returns (int256) {
+    return radians * (180 / PI) * 1 ether;
+  }
 }

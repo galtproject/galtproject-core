@@ -60,4 +60,15 @@ library MathUtils {
       z = (x / z + z) / 2;
     }
   }
+  
+  function floorInt(int x) internal pure returns (int) {
+    return (x / 1 ether) * 1 ether;
+  }
+  
+  function toFixedInt(int x, int precision) internal pure returns (int) {
+    if(precision == 18) {
+      return x;
+    }
+    return (x / (10 ** (18 - precision))) * (10 ** (18 - precision));
+  }
 }
