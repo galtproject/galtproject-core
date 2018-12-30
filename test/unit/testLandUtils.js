@@ -184,6 +184,8 @@ function toUtm(_lat, _lon) {
 
   const τ = Math.tan(φ); // τ ≡ tanφ, τʹ ≡ tanφʹ; prime (ʹ) indicates angles on the conformal sphere
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
+  console.log('Atanh', 'input', (e * τ) / Math.sqrt(1 + τ * τ));
+  console.log('Atanh', 'output', Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
 

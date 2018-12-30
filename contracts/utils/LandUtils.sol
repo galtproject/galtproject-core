@@ -270,7 +270,7 @@ library LandUtils {
     variables[0] = TrigonometryUtils.degreeToRad(_lat);
     variables[1] = TrigonometryUtils.tan(variables[0]);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-    variables[2] = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh((e * variables[1] * 1 ether) / MathUtils.sqrtInt(1 + variables[1] * variables[1])));
+    variables[2] = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 + variables[1] * variables[1])));
 
     variables[3] = variables[1] * MathUtils.sqrtInt(1 + variables[2] * variables[2]) - variables[2] * MathUtils.sqrtInt(1 + variables[1] * variables[1]);
 
