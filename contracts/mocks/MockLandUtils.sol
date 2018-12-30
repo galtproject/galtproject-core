@@ -21,4 +21,9 @@ contract MockLandUtils {
     geohash5 = LandUtils.latLonToGeohash5(point[0], point[1], precision);
     emit LogGeohash5Result(geohash5);
   }
+
+  function latLonToUtm(int256[2] point) public returns(uint256 geohash5) {
+    LandUtils.latLonToUtm(point[0], point[1]);
+    emit LogGeohash5Result(geohash5);
+  }
 }

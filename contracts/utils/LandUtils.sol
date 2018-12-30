@@ -255,7 +255,7 @@ library LandUtils {
     int convergence, 
     int scale
   ) {
-    require(-80 <= _lat && _lat <= 84, "Outside UTM limits");
+    require(-80 ether <= _lat && _lat <= 84 ether, "Outside UTM limits");
 
     (int zone, int L0) = getUTM_L0_zone(_lat, _lon);
     
@@ -270,7 +270,7 @@ library LandUtils {
     variables[0] = TrigonometryUtils.degreeToRad(_lat);
     variables[1] = TrigonometryUtils.tan(variables[0]);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-    variables[2] = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh(e * variables[1] / MathUtils.sqrtInt(1 + variables[1] * variables[1])));
+    variables[2] = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh((e * variables[1] * 1 ether) / MathUtils.sqrtInt(1 + variables[1] * variables[1])));
 
     variables[3] = variables[1] * MathUtils.sqrtInt(1 + variables[2] * variables[2]) - variables[2] * MathUtils.sqrtInt(1 + variables[1] * variables[1]);
 
@@ -283,55 +283,55 @@ library LandUtils {
     //  variables[6] - Ei
     //  variables[7] - ni
     (variables[4], variables[5], variables[6], variables[7]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
-
-    //  variables[8] - E
-    variables[8] = variables[6];
-    for (int j = 1; j <= 6; j++) {
-      variables[8] += a[uint(j)] * TrigonometryUtils.sin(2 * j * variables[7]) * TrigonometryUtils.cosh(2 * j * variables[7]);
-    }
-
-    //  variables[9] - n
-    variables[9] = variables[7];
-    for (int j = 1; j <= 6; j++) {
-      variables[9] += a[uint(j)] * TrigonometryUtils.cos(2 * j * variables[6]) * TrigonometryUtils.sinh(2 * j * variables[7]);
-    }
-
-    x = k0 * A * variables[9];
-    y = k0 * A * variables[8];
-
-    // ---- convergence: Karney 2011 Eq 23, 24
-
-    //  variables[10] - qi
-    //  variables[11] - pi
-    //  variables[12] - V
-    variables[10] = getUTM_qi(a, variables[6], variables[7]);
-    variables[11] = getUTM_pi(a, variables[6], variables[7]);
-    variables[12] = getUTM_V(variables[3], variables[4], variables[10], variables[11]);
-
-    // ---- scale: Karney 2011 Eq 25
-
-    //  variables[13] - k
-    variables[13] = getUTM_k(variables[0], variables[1], variables[3], variables[5], variables[11], variables[10]);
-
-    // ------------
-
-    // shift x/y to false origins
-    x = x + falseEasting;
-    // make x relative to false easting
-    if (y < 0) {
-      y = y + falseNorthing;
-      // make y in southern hemisphere relative to false northing
-    }
-
-    // round to reasonable precision
-    x = MathUtils.toFixedInt(x, 6);
-    // nm precision
-    y = MathUtils.toFixedInt(y, 6);
-    // nm precision
-    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
-    scale = MathUtils.toFixedInt(variables[13], 12);
-
-    h = _lat >= 0 ? 'N' : 'S';
+//
+//    //  variables[8] - E
+//    variables[8] = variables[6];
+//    for (int j = 1; j <= 6; j++) {
+//      variables[8] += a[uint(j)] * TrigonometryUtils.sin(2 * j * variables[7]) * TrigonometryUtils.cosh(2 * j * variables[7]);
+//    }
+//
+//    //  variables[9] - n
+//    variables[9] = variables[7];
+//    for (int j = 1; j <= 6; j++) {
+//      variables[9] += a[uint(j)] * TrigonometryUtils.cos(2 * j * variables[6]) * TrigonometryUtils.sinh(2 * j * variables[7]);
+//    }
+//
+//    x = k0 * A * variables[9];
+//    y = k0 * A * variables[8];
+//
+//    // ---- convergence: Karney 2011 Eq 23, 24
+//
+//    //  variables[10] - qi
+//    //  variables[11] - pi
+//    //  variables[12] - V
+//    variables[10] = getUTM_qi(a, variables[6], variables[7]);
+//    variables[11] = getUTM_pi(a, variables[6], variables[7]);
+//    variables[12] = getUTM_V(variables[3], variables[4], variables[10], variables[11]);
+//
+//    // ---- scale: Karney 2011 Eq 25
+//
+//    //  variables[13] - k
+//    variables[13] = getUTM_k(variables[0], variables[1], variables[3], variables[5], variables[11], variables[10]);
+//
+//    // ------------
+//
+//    // shift x/y to false origins
+//    x = x + falseEasting;
+//    // make x relative to false easting
+//    if (y < 0) {
+//      y = y + falseNorthing;
+//      // make y in southern hemisphere relative to false northing
+//    }
+//
+//    // round to reasonable precision
+//    x = MathUtils.toFixedInt(x, 6);
+//    // nm precision
+//    y = MathUtils.toFixedInt(y, 6);
+//    // nm precision
+//    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
+//    scale = MathUtils.toFixedInt(variables[13], 12);
+//
+//    h = _lat >= 0 ? 'N' : 'S';
     // hemisphere
   }
   

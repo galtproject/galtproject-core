@@ -53,7 +53,7 @@ library TrigonometryUtils {
     return radians * (180 / PI) * 1 ether;
   }
   function atanh(int256 radians) internal returns (int256) {
-    return 0;
+    return Math.log((1+x)/(1-x)) / 2;
   }
   function cosh(int256 radians) internal returns (int256) {
     return 0;
@@ -65,7 +65,7 @@ library TrigonometryUtils {
     return 0;
   }
   function tan(int256 radians) internal returns (int256) {
-    return 0;
+    return (sin(radians) * 1 ether) / cos(radians);
   }
   function atan(int256 radians) internal returns (int256) {
     return 0;
@@ -77,6 +77,6 @@ library TrigonometryUtils {
     return getSinOfRad(radians);
   }
   function cos(int256 radians) internal returns (int256) {
-    return 0;
+    return getSinOfRad(radians + (PI / 2));
   }
 }

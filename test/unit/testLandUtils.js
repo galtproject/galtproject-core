@@ -91,8 +91,8 @@ contract('LandUtils', ([deployer]) => {
       assert.equal(shouldBeUtm.convergence, -0.010007613);
       assert.equal(shouldBeUtm.scale, 0.999636244047);
 
-      assert.equal(true, false);
-      return;
+      // assert.equal(true, false);
+      // return;
 
       /**
  { zone: 48,
@@ -104,14 +104,14 @@ contract('LandUtils', ([deployer]) => {
 
          */
 
-      const res = await this.mockLandUtils.latLonToUtm(
-        point.map(coor => web3.utils.toWei(coor.toString(), 'ether')),
-        7,
-        {
-          from: deployer
-        }
-      );
+      const etherPoint = point.map(coor => web3.utils.toWei(coor.toString(), 'ether'));
+      console.log(etherPoint);
 
+      const res = await this.mockLandUtils.latLonToUtm(etherPoint, {
+        from: deployer
+      });
+
+      assert.equal(true, false);
       assert.deepEqual(res.logs[0].args.result.toString(10), shouldBeUtm);
     });
   });
@@ -186,7 +186,7 @@ function toUtm(_lat, _lon) {
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
-  
+
   console.log('LogVar', 'F', φ);
   console.log('LogVar', 't', τ);
   console.log('LogVar', 'o', σ);
@@ -232,7 +232,7 @@ function toUtm(_lat, _lon) {
   // ---- scale: Karney 2011 Eq 25
 
   const sinφ = Math.sin(φ);
-  const kʹ = (Math.sqrt(1 - e * e * (sinφ ** 2)) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
+  const kʹ = (Math.sqrt(1 - e * e * sinφ ** 2) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
   const kʺ = (A / a) * Math.sqrt(pʹ * pʹ + qʹ * qʹ);
 
   const k = k0 * kʹ * kʺ;
