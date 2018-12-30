@@ -278,12 +278,10 @@ library LandUtils {
       L0 += TrigonometryUtils.degreeToRad(6 ether);
     }
 
-    int F = TrigonometryUtils.degreeToRad(_lat);
     // latitude ± from equator
-    int L = TrigonometryUtils.degreeToRad(_lon) - L0;
     // longitude ± from central meridian
 
-    int a = this.datum.ellipsoid.a;
+    int aa = this.datum.ellipsoid.a;
     int f = this.datum.ellipsoid.f;
     // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
 
@@ -294,38 +292,17 @@ library LandUtils {
 
     int e = MathUtils.sqrtInt(f * (2 - f));
     // eccentricity
-    int n = f / (2 - f);
-    // 3rd flattening
-    int n2 = n * n;
-    int n3 = n * n2;
-    int n4 = n * n3;
-    int n5 = n * n4;
-    int n6 = n * n5;
+
+    (int A, int[7] a) = getUTM_Aa(aa, f);
     // TODO: compare Horner-form accuracy?
 
-    int cosL = TrigonometryUtils.cos(L);
-    int sinL = TrigonometryUtils.sin(L);
-    int tanL = TrigonometryUtils.tan(L);
+    (int tanL, int Ei, int ni) = getUTM_tanL_Ei_ni(_lon, L0, ti);
 
     int t = TrigonometryUtils.tan(F);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
     int o = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh(e * t / MathUtils.sqrtInt(1 + t * t)));
 
     int ti = t * MathUtils.sqrtInt(1 + o * o) - o * MathUtils.sqrtInt(1 + t * t);
-
-    int Ei = TrigonometryUtils.atan2(ti, cosL);
-    int ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
-
-    int A = a / (1 + n) * (1 + 1 / 4 * n2 + 1 / 64 * n4 + 1 / 256 * n6);
-    // 2πA is the circumference of a meridian
-
-    int a = [0, // note a is one-based array (6th order Krüger expressions)
-    1 / 2 * n - 2 / 3 * n2 + 5 / 16 * n3 + 41 / 180 * n4 - 127 / 288 * n5 + 7891 / 37800 * n6,
-    13 / 48 * n2 - 3 / 5 * n3 + 557 / 1440 * n4 + 281 / 630 * n5 - 1983433 / 1935360 * n6,
-    61 / 240 * n3 - 103 / 140 * n4 + 15061 / 26880 * n5 + 167603 / 181440 * n6,
-    49561 / 161280 * n4 - 179 / 168 * n5 + 6601661 / 7257600 * n6,
-    34729 / 80640 * n5 - 3418889 / 1995840 * n6,
-    212378941 / 319334400 * n6];
 
     int E = Ei;
     for (int j = 1; j <= 6; j++) {
@@ -337,32 +314,16 @@ library LandUtils {
       n += a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
     }
 
-    int x = k0 * A * n;
-    int y = k0 * A * E;
+    x = k0 * A * n;
+    y = k0 * A * E;
 
     // ---- convergence: Karney 2011 Eq 23, 24
 
-    int pi = 1;
-    for (int j = 1; j <= 6; j++) {
-      pi += 2 * j * a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
-    }
-    int qi = 0;
-    for (int j = 1; j <= 6; j++) {
-      qi += 2 * j * a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
-    }
-
-    int Vi = TrigonometryUtils.atan(ti / MathUtils.sqrtInt(1 + ti * ti) * tanL);
-    int Vii = TrigonometryUtils.atan2(qi, pi);
-
-    int V = Vi + Vii;
+    int V = getUTM_V(ti, tanL, getUTM_qi(a, j, Ei, ni), getUTM_pi(a, j, Ei, ni));
 
     // ---- scale: Karney 2011 Eq 25
 
-    int sinF = TrigonometryUtils.sin(F);
-    int ki = MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL);
-    int kii = A / a * MathUtils.sqrtInt(pi * pi + qi * qi);
-
-    int k = k0 * ki * kii;
+    int k = getUTM_k(_lat, e, t, ti, cosLm, aa, A, pi, qi);
 
     // ------------
 
@@ -379,12 +340,74 @@ library LandUtils {
     // nm precision
     y = MathUtils.toFixedInt(y, 6);
     // nm precision
-    int convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(V), 9);
-    int scale = MathUtils.toFixedInt(k, 12);
+    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(V), 9);
+    scale = MathUtils.toFixedInt(k, 12);
 
-    string h = _lat >= 0 ? 'N' : 'S';
+    h = _lat >= 0 ? 'N' : 'S';
     // hemisphere
 
     return (zone, h, x, y, this.datum, convergence, scale);
+  }
+
+  function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) returns(int tanL, int Ei, int ni) {
+    int L = TrigonometryUtils.degreeToRad(_lon) - L0;
+    int cosL = TrigonometryUtils.cos(L);
+    int sinL = TrigonometryUtils.sin(L);
+    tanL = TrigonometryUtils.tan(L);
+
+    Ei = TrigonometryUtils.atan2(ti, cosL);
+    ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
+  }
+  
+  function getUTM_Aa(int aa, int f) returns(int A, int[7] a) {
+    int n = f / (2 - f);
+    // 3rd flattening
+    int n2 = n * n;
+    int n3 = n * n2;
+    int n4 = n * n3;
+    int n5 = n * n4;
+    int n6 = n * n5;
+
+    A = aa / (1 + n) * (1 + 1 / 4 * n2 + 1 / 64 * n4 + 1 / 256 * n6);
+    // 2πA is the circumference of a meridian
+
+    a = [0, // note a is one-based array (6th order Krüger expressions)
+      1 / 2 * n - 2 / 3 * n2 + 5 / 16 * n3 + 41 / 180 * n4 - 127 / 288 * n5 + 7891 / 37800 * n6,
+      13 / 48 * n2 - 3 / 5 * n3 + 557 / 1440 * n4 + 281 / 630 * n5 - 1983433 / 1935360 * n6,
+      61 / 240 * n3 - 103 / 140 * n4 + 15061 / 26880 * n5 + 167603 / 181440 * n6,
+      49561 / 161280 * n4 - 179 / 168 * n5 + 6601661 / 7257600 * n6,
+      34729 / 80640 * n5 - 3418889 / 1995840 * n6,
+      212378941 / 319334400 * n6];
+  }
+
+  function getUTM_pi(int[7] memory a, int j, int Ei, int ni) returns(int pi) {
+    pi = 1;
+    for (int j = 1; j <= 6; j++) {
+      pi += 2 * j * a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
+    }
+  }
+
+  function getUTM_qi(int[7] memory a, int j, int Ei, int ni) returns(int pi) {
+    pi = 1;
+    for (int j = 1; j <= 6; j++) {
+      qi += 2 * j * a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
+    }
+  }
+
+  function getUTM_V(int ti, int tanL, int qi, int pi) returns(int) {
+    int Vi = TrigonometryUtils.atan(ti / MathUtils.sqrtInt(1 + ti * ti) * tanL);
+    int Vii = TrigonometryUtils.atan2(qi, pi);
+
+    return Vi + Vii;
+  }
+  
+  function getUTM_k(int _lat, int e, int t, int ti, int cosLm, int aa, int A, int pi, int qi) returns(int) {
+    int sinF = TrigonometryUtils.sin(TrigonometryUtils.degreeToRad(_lat));
+//    int ki = MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL);
+//    int kii = A / a * MathUtils.sqrtInt(pi * pi + qi * qi);
+
+    return k0 
+      * MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL) 
+      * A / aa * MathUtils.sqrtInt(pi * pi + qi * qi);
   }
 }
