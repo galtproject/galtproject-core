@@ -5,9 +5,7 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {
-    "geodesy": "^1.1.3"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/utils": "0.9.1",

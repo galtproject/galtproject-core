@@ -239,181 +239,168 @@ library LandUtils {
   int constant k0 = 999600000000000000;
   // UTM scale on the central meridian
   
-  function latLonToUtm(int256 _lat, int256 _lon) public returns (
-    int zone, 
-    string h,
-    int x,
-    int y, 
-    int convergence, 
-    int scale
-  ) {
-    require(-80 <= _lat && _lat <= 84, "Outside UTM limits");
-
-    int zone = ((_lon + 180 ether) / 6 ether) + 1;
-    // longitudinal zone
-    int L0 = TrigonometryUtils.degreeToRad((zone - 1) * (6 - 180 + 3) * 1 ether);
-    // longitude of central meridian
-
-    // ---- handle Norway/Svalbard exceptions
-    // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
-    int latBand = _lat / 8 ether + 10;
-    // adjust zone & central meridian for Norway
-    if (zone == 31 && latBand == 17 && _lon >= 3) {
-      zone++;
-      L0 += TrigonometryUtils.degreeToRad(6 ether); //TODO: move to constant
-    }
-    // adjust zone & central meridian for Svalbard
-    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon < 9) {
-      zone--;
-      L0 -= TrigonometryUtils.degreeToRad(6 ether);
-    }
-    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon >= 9) {
-      zone++;
-      L0 += TrigonometryUtils.degreeToRad(6 ether);
-    }
-    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon < 21) {
-      zone--;
-      L0 -= TrigonometryUtils.degreeToRad(6 ether);
-    }
-    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon >= 21) {
-      zone++;
-      L0 += TrigonometryUtils.degreeToRad(6 ether);
-    }
-    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon < 33) {
-      zone--;
-      L0 -= TrigonometryUtils.degreeToRad(6 ether);
-    }
-    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon >= 33) {
-      zone++;
-      L0 += TrigonometryUtils.degreeToRad(6 ether);
-    }
-
-    // latitude ± from equator
-    // longitude ± from central meridian
-
-    // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
-
-    int e = MathUtils.sqrtInt(ellipsoidalF * (2 - ellipsoidalF)); //TODO: move to constant
-    // eccentricity
-
-    (int A, int[7] memory a) = getUTM_Aa(); // TODO: move to constant
-    // compare Horner-form accuracy?
-
-    int F = TrigonometryUtils.degreeToRad(_lat);
-    int t = TrigonometryUtils.tan(F);
-    // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-    int o = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh(e * t / MathUtils.sqrtInt(1 + t * t)));
-
-    int ti = t * MathUtils.sqrtInt(1 + o * o) - o * MathUtils.sqrtInt(1 + t * t);
-
-    (int tanL, int cosL, int Ei, int ni) = getUTM_tanL_Ei_ni(_lon, L0, ti);
-    
-    int E = Ei;
-    for (int j = 1; j <= 6; j++) {
-      E += a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
-    }
-
-    int n = ni;
-    for (int j = 1; j <= 6; j++) {
-      n += a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
-    }
-
-    x = k0 * A * n;
-    y = k0 * A * E;
-
-    // ---- convergence: Karney 2011 Eq 23, 24
-
-    int qi = getUTM_qi(a, Ei, ni);
-    int pi = getUTM_pi(a, Ei, ni);
-    int V = getUTM_V(ti, tanL, qi, pi);
-
-    // ---- scale: Karney 2011 Eq 25
-
-    int k = getUTM_k(_lat, e, t, ti, cosL, A, pi, qi);
-
-    // ------------
-
-    // shift x/y to false origins
-    x = x + falseEasting;
-    // make x relative to false easting
-    if (y < 0) {
-      y = y + falseNorthing;
-      // make y in southern hemisphere relative to false northing
-    }
-
-    // round to reasonable precision
-    x = MathUtils.toFixedInt(x, 6);
-    // nm precision
-    y = MathUtils.toFixedInt(y, 6);
-    // nm precision
-    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(V), 9);
-    scale = MathUtils.toFixedInt(k, 12);
-
-    h = _lat >= 0 ? 'N' : 'S';
-    // hemisphere
-
-    return (zone, h, x, y, convergence, scale);
-  }
-
-  function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) returns(int tanL, int cosL, int Ei, int ni) {
-    int L = TrigonometryUtils.degreeToRad(_lon) - L0;
-    cosL = TrigonometryUtils.cos(L);
-    int sinL = TrigonometryUtils.sin(L);
-    tanL = TrigonometryUtils.tan(L);
-
-    Ei = TrigonometryUtils.atan2(ti, cosL);
-    ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
-  }
-  
-  function getUTM_Aa() returns(int A, int[7] a) {
-    int n = ellipsoidalF / (2 - ellipsoidalF); //TODO: move to constant
-    // 3rd flattening
-    int n2 = n * n;
-    int n3 = n * n2;
-    int n4 = n * n3;
-    int n5 = n * n4;
-    int n6 = n * n5;
-
-    A = ellipsoidalA / (1 + n) * (1 + 1 / 4 * n2 + 1 / 64 * n4 + 1 / 256 * n6);
-    // 2πA is the circumference of a meridian
-
-    a = [0, // note a is one-based array (6th order Krüger expressions)
-      1 / 2 * n - 2 / 3 * n2 + 5 / 16 * n3 + 41 / 180 * n4 - 127 / 288 * n5 + 7891 / 37800 * n6,
-      13 / 48 * n2 - 3 / 5 * n3 + 557 / 1440 * n4 + 281 / 630 * n5 - 1983433 / 1935360 * n6,
-      61 / 240 * n3 - 103 / 140 * n4 + 15061 / 26880 * n5 + 167603 / 181440 * n6,
-      49561 / 161280 * n4 - 179 / 168 * n5 + 6601661 / 7257600 * n6,
-      34729 / 80640 * n5 - 3418889 / 1995840 * n6,
-      212378941 / 319334400 * n6];
-  }
-
-  function getUTM_pi(int[7] memory a, int Ei, int ni) returns(int pi) {
-    pi = 1;
-    for (int j = 1; j <= 6; j++) {
-      pi += 2 * j * a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
-    }
-  }
-
-  function getUTM_qi(int[7] memory a, int Ei, int ni) returns(int qi) {
-    qi = 1;
-    for (int j = 1; j <= 6; j++) {
-      qi += 2 * j * a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
-    }
-  }
-
-  function getUTM_V(int ti, int tanL, int qi, int pi) returns(int) {
-    int Vi = TrigonometryUtils.atan(ti / MathUtils.sqrtInt(1 + ti * ti) * tanL);
-    int Vii = TrigonometryUtils.atan2(qi, pi);
-
-    return Vi + Vii;
-  }
-  
-  function getUTM_k(int F, int e, int t, int ti, int cosL, int A, int pi, int qi) returns(int) {
-    int sinF = TrigonometryUtils.sin(F);
-//    int ki = MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL);
-//    int kii = A / a * MathUtils.sqrtInt(pi * pi + qi * qi);
-
-    return k0 
-      * MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL) 
-      * A / ellipsoidalA * MathUtils.sqrtInt(pi * pi + qi * qi);
-  }
+//  function latLonToUtm(int256 _lat, int256 _lon) public returns (
+//    int zone, 
+//    string h,
+//    int x,
+//    int y, 
+//    int convergence, 
+//    int scale
+//  ) {
+//    require(-80 <= _lat && _lat <= 84, "Outside UTM limits");
+//
+//    int zone = ((_lon + 180 ether) / 6 ether) + 1;
+//    // longitudinal zone
+//    int L0 = TrigonometryUtils.degreeToRad((zone - 1) * (6 - 180 + 3) * 1 ether);
+//    // longitude of central meridian
+//
+//    // ---- handle Norway/Svalbard exceptions
+//    // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
+//    int latBand = _lat / 8 ether + 10;
+//    // adjust zone & central meridian for Norway
+//    if (zone == 31 && latBand == 17 && _lon >= 3) {
+//      zone++;
+//      L0 += TrigonometryUtils.degreeToRad(6 ether); //TODO: move to constant
+//    }
+//    // adjust zone & central meridian for Svalbard
+//    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon < 9) {
+//      zone--;
+//      L0 -= TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//    if (zone == 32 && (latBand == 19 || latBand == 20) && _lon >= 9) {
+//      zone++;
+//      L0 += TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon < 21) {
+//      zone--;
+//      L0 -= TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//    if (zone == 34 && (latBand == 19 || latBand == 20) && _lon >= 21) {
+//      zone++;
+//      L0 += TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon < 33) {
+//      zone--;
+//      L0 -= TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//    if (zone == 36 && (latBand == 19 || latBand == 20) && _lon >= 33) {
+//      zone++;
+//      L0 += TrigonometryUtils.degreeToRad(6 ether);
+//    }
+//
+//    // latitude ± from equator
+//    // longitude ± from central meridian
+//
+//    // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
+//
+//    int e = MathUtils.sqrtInt(ellipsoidalF * (2 - ellipsoidalF)); //TODO: move to constant
+//    // eccentricity
+//
+//    (int A, int[7] memory a) = getUTM_Aa(); // TODO: move to constant
+//    // compare Horner-form accuracy?
+//
+//    int F = TrigonometryUtils.degreeToRad(_lat);
+//    int t = TrigonometryUtils.tan(F);
+//    // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
+//    int o = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh(e * t / MathUtils.sqrtInt(1 + t * t)));
+//
+//    int ti = t * MathUtils.sqrtInt(1 + o * o) - o * MathUtils.sqrtInt(1 + t * t);
+//
+//    (int tanL, int cosL, int Ei, int ni) = getUTM_tanL_Ei_ni(_lon, L0, ti);
+//    
+//    int E = Ei;
+//    for (int j = 1; j <= 6; j++) {
+//      E += a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
+//    }
+//
+//    int n = ni;
+//    for (int j = 1; j <= 6; j++) {
+//      n += a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
+//    }
+//
+//    x = k0 * A * n;
+//    y = k0 * A * E;
+//
+//    // ---- convergence: Karney 2011 Eq 23, 24
+//
+//    int qi = getUTM_qi(a, Ei, ni);
+//    int pi = getUTM_pi(a, Ei, ni);
+//    int V = getUTM_V(ti, tanL, qi, pi);
+//
+//    // ---- scale: Karney 2011 Eq 25
+//
+//    int k = getUTM_k(_lat, e, t, ti, cosL, A, pi, qi);
+//
+//    // ------------
+//
+//    // shift x/y to false origins
+//    x = x + falseEasting;
+//    // make x relative to false easting
+//    if (y < 0) {
+//      y = y + falseNorthing;
+//      // make y in southern hemisphere relative to false northing
+//    }
+//
+//    // round to reasonable precision
+//    x = MathUtils.toFixedInt(x, 6);
+//    // nm precision
+//    y = MathUtils.toFixedInt(y, 6);
+//    // nm precision
+//    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(V), 9);
+//    scale = MathUtils.toFixedInt(k, 12);
+//
+//    h = _lat >= 0 ? 'N' : 'S';
+//    // hemisphere
+//
+//    return (zone, h, x, y, convergence, scale);
+//  }
+//
+//  function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) returns(int tanL, int cosL, int Ei, int ni) {
+//    int L = TrigonometryUtils.degreeToRad(_lon) - L0;
+//    cosL = TrigonometryUtils.cos(L);
+//    int sinL = TrigonometryUtils.sin(L);
+//    tanL = TrigonometryUtils.tan(L);
+//
+//    Ei = TrigonometryUtils.atan2(ti, cosL);
+//    ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
+//  }
+//  
+//  function getUTM_Aa() returns(int A, int[7] a) {
+//    A = 6367449145823415000000000;
+//    // 2πA is the circumference of a meridian
+//
+//    // note a is one-based array (6th order Krüger expressions)
+//    a = [int(0), 837731820624470, 760852777357, 1197645503, 2429171, 5712, 15];
+//  }
+//
+//  function getUTM_pi(int[7] memory a, int Ei, int ni) returns(int pi) {
+//    pi = 1;
+//    for (int j = 1; j <= 6; j++) {
+//      pi += 2 * j * a[j] * TrigonometryUtils.cos(2 * j * Ei) * TrigonometryUtils.cosh(2 * j * ni);
+//    }
+//  }
+//
+//  function getUTM_qi(int[7] memory a, int Ei, int ni) returns(int qi) {
+//    qi = 1;
+//    for (int j = 1; j <= 6; j++) {
+//      qi += 2 * j * a[j] * TrigonometryUtils.sin(2 * j * Ei) * TrigonometryUtils.sinh(2 * j * ni);
+//    }
+//  }
+//
+//  function getUTM_V(int ti, int tanL, int qi, int pi) returns(int) {
+//    int Vi = TrigonometryUtils.atan(ti / MathUtils.sqrtInt(1 + ti * ti) * tanL);
+//    int Vii = TrigonometryUtils.atan2(qi, pi);
+//
+//    return Vi + Vii;
+//  }
+//  
+//  function getUTM_k(int F, int e, int t, int ti, int cosL, int A, int pi, int qi) returns(int) {
+//    int sinF = TrigonometryUtils.sin(F);
+////    int ki = MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL);
+////    int kii = A / a * MathUtils.sqrtInt(pi * pi + qi * qi);
+//
+//    return k0 
+//      * MathUtils.sqrtInt(1 - e * e * sinF * sinF) * MathUtils.sqrtInt(1 + t * t) / MathUtils.sqrtInt(ti * ti + cosL * cosL) 
+//      * A / ellipsoidalA * MathUtils.sqrtInt(pi * pi + qi * qi);
+//  }
 }
