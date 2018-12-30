@@ -59,6 +59,7 @@ library MathUtils {
       y = z;
       z = (x / z + z) / 2;
     }
+    y *= 10 ** 9;
   }
   
   function floorInt(int x) internal pure returns (int) {

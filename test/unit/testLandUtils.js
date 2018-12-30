@@ -83,7 +83,7 @@ contract('LandUtils', ([deployer]) => {
 
       const shouldBeUtm = toUtm(point[0], point[1]);
 
-      console.log('shouldBeUtm', shouldBeUtm);
+      // console.log('shouldBeUtm', shouldBeUtm);
       assert.equal(shouldBeUtm.zone, 48);
       assert.equal(shouldBeUtm.h, 'N');
       assert.equal(shouldBeUtm.x, 445889.489065);
@@ -105,7 +105,7 @@ contract('LandUtils', ([deployer]) => {
          */
 
       const etherPoint = point.map(coor => web3.utils.toWei(coor.toString(), 'ether'));
-      console.log(etherPoint);
+      // console.log(etherPoint);
 
       const res = await this.mockLandUtils.latLonToUtm(etherPoint, {
         from: deployer
@@ -184,15 +184,19 @@ function toUtm(_lat, _lon) {
 
   const τ = Math.tan(φ); // τ ≡ tanφ, τʹ ≡ tanφʹ; prime (ʹ) indicates angles on the conformal sphere
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
+  console.log('Sqrt', 'input', 1 + τ * τ);
+  console.log('Sqrt', 'output', Math.sqrt(1 + τ * τ));
+  console.log('Atanh', 'input divider 1', e * τ);
+  console.log('Atanh', 'input divider 2', Math.sqrt(1 + τ * τ));
   console.log('Atanh', 'input', (e * τ) / Math.sqrt(1 + τ * τ));
   console.log('Atanh', 'output', Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
 
-  console.log('LogVar', 'F', φ);
-  console.log('LogVar', 't', τ);
-  console.log('LogVar', 'o', σ);
-  console.log('LogVar', 'ti', τʹ);
+  // console.log('LogVar', 'F', φ);
+  // console.log('LogVar', 't', τ);
+  // console.log('LogVar', 'o', σ);
+  // console.log('LogVar', 'ti', τʹ);
 
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
