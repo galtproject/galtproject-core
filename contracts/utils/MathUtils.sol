@@ -65,10 +65,10 @@ library MathUtils {
     return (x / 1 ether) * 1 ether;
   }
   
-//  function toFixedInt(int x, int precision) internal pure returns (int) {
-//    if(precision == 18) {
-//      return x;
-//    }
-//    return (x / (10 ** (18 - precision))) * (10 ** (18 - precision));
-//  }
+  function toFixedInt(int x, int precision) internal pure returns (int) {
+    if(precision == 18) {
+      return x;
+    }
+    return (x / int(uint(10) ** uint(18 - precision))) * int(uint(10) ** uint(18 - precision));
+  }
 }

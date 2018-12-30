@@ -91,6 +91,7 @@ contract('LandUtils', ([deployer]) => {
       assert.equal(shouldBeUtm.convergence, -0.010007613);
       assert.equal(shouldBeUtm.scale, 0.999636244047);
 
+      assert.equal(true, false);
       return;
 
       /**
@@ -173,6 +174,7 @@ function toUtm(_lat, _lon) {
   // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
 
   const e = Math.sqrt(f * (2 - f)); // eccentricity
+  console.log('e', web3.utils.toWei(e.toString(), 'ether'));
 
   const cosλ = Math.cos(λ);
 
@@ -184,6 +186,11 @@ function toUtm(_lat, _lon) {
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
+  
+  console.log('LogVar', 'F', φ);
+  console.log('LogVar', 't', τ);
+  console.log('LogVar', 'o', σ);
+  console.log('LogVar', 'ti', τʹ);
 
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
@@ -225,7 +232,7 @@ function toUtm(_lat, _lon) {
   // ---- scale: Karney 2011 Eq 25
 
   const sinφ = Math.sin(φ);
-  const kʹ = (Math.sqrt(1 - e * e * sinφ * sinφ) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
+  const kʹ = (Math.sqrt(1 - e * e * (sinφ ** 2)) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
   const kʺ = (A / a) * Math.sqrt(pʹ * pʹ + qʹ * qʹ);
 
   const k = k0 * kʹ * kʺ;

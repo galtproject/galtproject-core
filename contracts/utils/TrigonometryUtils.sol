@@ -70,11 +70,11 @@ library TrigonometryUtils {
   function atan(int256 radians) internal returns (int256) {
     return 0;
   }
-  function atan2(int256 radians) internal returns (int256) {
+  function atan2(int256 radians1, int256 radians2) internal returns (int256) {
     return 0;
   }
   function sin(int256 radians) internal returns (int256) {
-    return 0;
+    return getSinOfRad(radians);
   }
   function cos(int256 radians) internal returns (int256) {
     return 0;
