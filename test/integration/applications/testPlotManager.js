@@ -320,7 +320,7 @@ contract('PlotManager', accounts => {
 
         // assertions
         for (let i = 0; i < res3.length; i++) {
-          asser.equal(res3[i].toString(10), this.initContour[i]);
+          assert.equal(res3[i].toString(10), this.initContour[i]);
         }
 
         assert.equal(res2.status, 1);
