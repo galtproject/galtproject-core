@@ -4,9 +4,6 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -31,9 +28,6 @@ Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
@@ -176,7 +170,7 @@ contract('PlotManager', accounts => {
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
-  it.only('should be initialized successfully', async function() {
+  it('should be initialized successfully', async function() {
     assert.equal(await this.plotManagerWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
   });
 
@@ -326,7 +320,7 @@ contract('PlotManager', accounts => {
 
         // assertions
         for (let i = 0; i < res3.length; i++) {
-          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initContour[i]);
+          asser.equal(res3[i].toString(10), this.initContour[i]);
         }
 
         assert.equal(res2.status, 1);
@@ -415,8 +409,9 @@ contract('PlotManager', accounts => {
           res = await this.plotManagerWeb3.methods.getApplicationFees(aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(res.currency, Currency.GALT);
-          res.oraclesReward.should.be.a.bignumber.eq(new BN('22620000000000000000'));
-          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('3380000000000000000'));
+
+          assert.equal(res.oraclesReward, 22620000000000000000);
+          assert.equal(res.galtSpaceReward, 3380000000000000000);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
           assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), ['cat', 'dog', 'human']);
@@ -825,24 +820,12 @@ contract('PlotManager', accounts => {
 
         // assertions
         for (let i = 0; i < res3.length; i++) {
-          galt.numberToGeohash(res3[i].toString(10)).should.be.equal(this.initContour[i]);
+          assert.equal(res3[i].toString(10), this.initContour[i]);
         }
 
         assert.equal(res2.status, 1);
         assert.equal(res2.applicant.toLowerCase(), alice);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
-      });
-
-      // eslint-disable-next-line
-      it("should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address", async function() {
-        let res = await this.spaceToken.totalSupply();
-        assert.equal(res.toString(), 1);
-        res = await this.spaceToken.balanceOf(this.plotManager.address);
-        assert.equal(res.toString(), 1);
-        res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
-        assert.equal(res, this.plotManager.address);
-        res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert(res, 1);
       });
 
       describe('payable', () => {
@@ -883,16 +866,15 @@ contract('PlotManager', accounts => {
         it('should calculate corresponding oracle and coreTeam rewards in Eth', async function() {
           const res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
-
-          res.oraclesReward.should.be.a.bignumber.eq(new BN('1340000000000000000'));
-          res.galtSpaceReward.should.be.a.bignumber.eq(new BN('660000000000000000'));
+          assert.equal(res.oraclesReward, 1340000000000000000);
+          assert.equal(res.galtSpaceReward, 660000000000000000);
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(res.currency, Currency.ETH);
-          res.oraclesReward.should.be.a.bignumber.eq(new BN('1340000000000000000'));
+          assert.equal(res.oraclesReward, 1340000000000000000);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), ['cat', 'dog', 'human']);
@@ -1205,18 +1187,18 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
-      it('should transfer package to an applicant', async function() {
-        const packId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      // eslint-disable-next-line
+      it("should mint a pack, geohash, swap the geohash into the pack and keep it at PlotManager address", async function() {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-
-        let res = await this.spaceToken.ownerOf(packId);
-        assert.equal(res, this.plotManager.address);
-
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
 
-        res = await this.spaceToken.ownerOf(packId);
-        assert.equal(res, alice);
+        let res = await this.spaceToken.totalSupply();
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.balanceOf(this.plotManager.address);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
+        assert.equal(res, this.plotManager.address);
       });
 
       it('should deny a oracle approve application if hash doesnt match', async function() {
@@ -1361,6 +1343,39 @@ contract('PlotManager', accounts => {
         await assertRevert(this.plotManager.rejectApplication(this.aId, 'another reason', { from: bob }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVERTED);
+      });
+    });
+
+    describe('#claimSpaceToken()', () => {
+      beforeEach(async function() {
+        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
+      });
+
+      // eslint-disable-next-line
+      it('should transfer SpaceToken to the applicant', async function() {
+        await this.plotManager.claimSpaceToken(this.aId, { from: alice });
+
+        let res = await this.spaceToken.totalSupply();
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.balanceOf(this.plotManager.address);
+        assert.equal(res.toString(), 0);
+        res = await this.spaceToken.balanceOf(alice);
+        assert.equal(res.toString(), 1);
+        res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
+        assert.equal(res, alice);
+      });
+
+      it('should NOT transfer SpaceToken to non-applicant', async function() {
+        await assertRevert(this.plotManager.claimSpaceToken(this.aId, { from: bob }));
       });
     });
 
