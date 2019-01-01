@@ -18,7 +18,7 @@ const {
   zeroAddress,
   deploySplitMerge,
   clearLibCache
-} = require('../helpers');
+} = require('../../helpers');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -176,7 +176,7 @@ contract('PlotManager', accounts => {
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
-  it('should be initialized successfully', async function() {
+  it.only('should be initialized successfully', async function() {
     assert.equal(await this.plotManagerWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
   });
 

@@ -16,12 +16,12 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./Oracles.sol";
+import "../AbstractApplication.sol";
+import "../AbstractOracleApplication.sol";
+import "../SpaceToken.sol";
+import "../SplitMerge.sol";
+import "../Oracles.sol";
 import "./PlotManagerLib.sol";
-import "./AbstractOracleApplication.sol";
 
 
 contract PlotManager is AbstractOracleApplication {
