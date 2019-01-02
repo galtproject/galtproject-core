@@ -354,6 +354,7 @@ contract('PlotClarificationManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+      await this.plotManager.claimSpaceToken(this.aId, { from: alice });
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
 
@@ -727,6 +728,7 @@ contract('PlotClarificationManager', (accounts) => {
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
+      await this.plotManager.claimSpaceToken(this.aId, { from: alice });
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
 
