@@ -56,34 +56,11 @@ library TrigonometryUtils {
   event Atanh(string v, int a);
   function atanh(int256 x) internal returns (int256 output) {
     emit Atanh("input", x);
-    output = log(((1 ether + x) * 1 ether)/(1 ether - x)) / 2 ether;
+    output = MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)) << 128) / 2 ether;
+//    output = int256(MathUtils.fpDiv(uint256(MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)))), 2 ether));
     emit Atanh("output", output);
   }
-  
-  event Log(string v, int a);
-  function log(int256 x) internal returns (int256) {
-    emit Log("input", x);
-    int LOG = 0;
-    while (x >= 1500000) {
-      LOG = LOG + 405465;
-      x = x * 2 / 3;
-    }
-    
-    x = x - 1000000;
-    int y = x;
-    int i = 1;
-    
-    while (i < 10) {
-      LOG = LOG + (y / i);
-      i = i + 1;
-      y = y * x / 1000000;
-      LOG = LOG - (y / i);
-      i = i + 1;
-      y = y * x / 1000000;
-    }
-    emit Log("output", LOG);
-    return LOG;
-  }
+
   function cosh(int256 radians) internal returns (int256) {
     return 0;
   }

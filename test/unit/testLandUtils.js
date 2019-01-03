@@ -191,7 +191,7 @@ function toUtm(_lat, _lon) {
   console.log('Atanh', 'input', (e * τ) / Math.sqrt(1 + τ * τ));
   const X = (e * τ) / Math.sqrt(1 + τ * τ);
   console.log('Log input', (1 + X) / (1 - X));
-  console.log('Log output', log((1 + X) / (1 - X)));
+  console.log('Log output', Math.log((1 + X) / (1 - X)));
   console.log('Atanh', 'output', Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
