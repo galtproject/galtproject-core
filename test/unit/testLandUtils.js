@@ -190,8 +190,8 @@ function toUtm(_lat, _lon) {
   // console.log('Atanh', 'input divider 2', Math.sqrt(1 + τ * τ));
   console.log('Atanh', 'input', (e * τ) / Math.sqrt(1 + τ * τ));
   const X = (e * τ) / Math.sqrt(1 + τ * τ);
-  console.log('Log input', (1+X)/(1-X));
-  console.log('Log output', Math.log((1+X)/(1-X)));
+  console.log('Log input', (1 + X) / (1 - X));
+  console.log('Log output', log((1 + X) / (1 - X)));
   console.log('Atanh', 'output', Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
@@ -280,4 +280,26 @@ if (typeof Number.prototype.toDegrees === 'undefined') {
   Number.prototype.toDegrees = function() {
     return this * (180 / Math.PI);
   };
+}
+
+function log(x) {
+  let LOG = 0;
+  while (x >= 1500000) {
+    LOG += 405465;
+    x = (x * 2) / 3;
+  }
+
+  x -= 1000000;
+  let y = x;
+  let i = 1;
+
+  while (i < 10) {
+    LOG += y / i;
+    i += 1;
+    y = (y * x) / 1000000;
+    LOG -= y / i;
+    i += 1;
+    y = (y * x) / 1000000;
+  }
+  return LOG;
 }
