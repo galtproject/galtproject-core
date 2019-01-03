@@ -27,7 +27,7 @@ contract('MathUtils', ([coreTeam]) => {
     this.mockMathUtils = await MockMathUtils.new({ from: coreTeam });
   });
 
-  describe.only('#sqrtInt()', () => {
+  describe('#sqrtInt()', () => {
     it('should correctly get sqrt', async function() {
       const input = 100456;
       const res = await this.mockMathUtils.sqrtInt(Web3.utils.toWei(input.toString(), 'ether'));
