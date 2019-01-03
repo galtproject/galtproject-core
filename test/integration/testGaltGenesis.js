@@ -1,6 +1,6 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
-const GaltDex = artifacts.require('./GaltDex.sol');
 const MockGaltGenesis = artifacts.require('./MockGaltGenesis.sol');
+const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -19,14 +19,15 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
+contract.only('GaltGenesis', ([coreTeam, galtDexAddress, alice, bob, dan, eve, nana]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.galtDex = await GaltDex.new({ from: coreTeam });
-    this.galtGenesis = await MockGaltGenesis.new(this.galtToken.address, this.galtDex.address, { from: coreTeam });
-    await this.galtDex.initialize(szabo(1), szabo(15), szabo(15), this.galtToken.address, this.galtGenesis.address);
+    this.etherToken = await EtherToken.new({ from: coreTeam });
+    this.galtGenesis = await MockGaltGenesis.new(this.galtToken.address, galtDexAddress, this.etherToken.address, {
+      from: coreTeam
+    });
   });
 
   it('should be started successfully', async function() {
@@ -75,7 +76,7 @@ contract('GaltGenesis', ([coreTeam, alice, bob, dan, eve, nana]) => {
 
       await this.galtGenesis.finish({ from: eve });
 
-      assert.equal((await web3.eth.getBalance(this.galtDex.address)).toString(), ether(1 + 2 + 3 + 4).toString());
+      assert.equal((await this.etherToken.balanceOf(galtDexAddress)).toString(), ether(1 + 2 + 3 + 4).toString());
 
       let res = await this.galtGenesis.claim({ from: alice });
       const aliceClaimedAmount = res.logs[0].args.galtValue;

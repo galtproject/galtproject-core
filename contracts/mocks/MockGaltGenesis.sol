@@ -7,7 +7,7 @@ import "../GaltDex.sol";
 
 contract MockGaltGenesis is GaltGenesis {
 
-  constructor(GaltToken _galtToken, GaltDex _galtDex) public GaltGenesis(_galtToken, _galtDex) {
+  constructor(GaltToken _galtToken, GaltDex _galtDex, IWETH _weth) public GaltGenesis(_galtToken, _galtDex, _weth) {
   }
 
   function hackClose() public {
