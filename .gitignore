@@ -5,4 +5,4 @@ coverage
 build
 .nyc_output
 deployed/*.json
-reports/*.csv
+report/*.csv
