@@ -52,11 +52,12 @@ library TrigonometryUtils {
   function radToDegree(int256 radians) internal returns (int256) {
     return radians * (180 / PI) * 1 ether;
   }
-  
+  //  0.0033
+  //128.128
   event Atanh(string v, int a);
   function atanh(int256 x) internal returns (int256 output) {
     emit Atanh("input", x);
-    output = MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)) << 128) / 2 ether;
+    output = MathUtils.logE(((1 ether + x) * 1 ether)/(1 ether - x)) / 2 ether;
 //    output = int256(MathUtils.fpDiv(uint256(MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)))), 2 ether));
     emit Atanh("output", output);
   }

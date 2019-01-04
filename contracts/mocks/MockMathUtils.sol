@@ -15,4 +15,24 @@ contract MockMathUtils {
     result = MathUtils.sqrtInt(etherValue);
     emit LogIntResult(result);
   }
+
+  function logE(int256 etherValue) public returns(int result) {
+    result = MathUtils.logE(etherValue);
+    emit LogIntResult(result);
+  }
+
+  function logAny(int256 etherValue, int256 base) public returns(int result) {
+    result = MathUtils.logAny(etherValue, base);
+    emit LogIntResult(result);
+  }
+
+  function log2(int256 etherValue) public returns(int result) {
+    result = MathUtils.log2(etherValue);
+    emit LogIntResult(result);
+  }
+
+  function log10(int256 etherValue) public returns(int result) {
+    result = MathUtils.log10(etherValue);
+    emit LogIntResult(result);
+  }
 }
