@@ -19,7 +19,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('GaltGenesis', ([coreTeam, galtDexAddress, alice, bob, dan, eve, nana]) => {
+contract('GaltGenesis', ([coreTeam, galtDexAddress, alice, bob, dan, eve, nana]) => {
   before(clearLibCache);
 
   beforeEach(async function() {
