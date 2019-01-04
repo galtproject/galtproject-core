@@ -29,11 +29,13 @@ module.exports = async function(callback) {
   const accounts = await web3.eth.getAccounts();
   const coreTeam = accounts[0];
 
+  const debug = true;
+
   const gasPriceLimitValue = '22000000000';
   const converterMaxFee = '1000000';
 
-  const galtWeight = '1';
-  const etherWeight = '3';
+  const galtWeight = '10';
+  const etherWeight = '1';
 
   const galtTotalSupply = 60 * 10 ** 6;
   const ethSpentOnGaltGenesis = 10 * 10 ** 3;
@@ -96,17 +98,23 @@ module.exports = async function(callback) {
   await galtGenesis.hackClose();
   await galtGenesis.finish({ from: coreTeam });
 
+  const totalGalt = weiToEtherRound(await galtGenesis.totalGalt());
+  const totalPaid = weiToEtherRound(await galtGenesis.totalPaid());
+  const galtGenesisGaltPerEth = totalGalt / totalPaid;
+
   const galtDexGalt = weiToEtherRound(await galtToken.balanceOf(bancorGaltDex.address));
   const galtDexEth = weiToEtherRound(await etherToken.balanceOf(bancorGaltDex.address));
 
   let csv = '';
-  csv += `galtDex GALT balance,${galtDexGalt},,\n`;
-  csv += `galtDex ETH balance,${galtDexEth},,\n`;
-  csv += ',,,\n';
-  csv += `galtWeight,${galtWeight},,\n`;
-  csv += `etherWeight,${etherWeight},,\n`;
-  csv += ',,,\n';
-  csv += 'ethSpent,galtReceived,galtPerEth,restGalt\n';
+  addLineToCsv(`galtGenesis GALT per ETH,${galtGenesisGaltPerEth},,`);
+  addLineToCsv(',,,');
+  addLineToCsv(`galtDex GALT balance,${galtDexGalt},,`);
+  addLineToCsv(`galtDex ETH balance,${galtDexEth},,`);
+  addLineToCsv(',,,');
+  addLineToCsv(`galtWeight,${galtWeight},,`);
+  addLineToCsv(`etherWeight,${etherWeight},,`);
+  addLineToCsv(',,,');
+  addLineToCsv('ethSpent,galtReceived,galtPerEth,restGalt');
 
   await etherToken.deposit({ from: coreTeam, value: ether(ethToConvert * iterations) });
   await etherToken.approve(bancorGaltDex.address, ether(ethToConvert * iterations), { from: coreTeam });
@@ -123,8 +131,14 @@ module.exports = async function(callback) {
     const restGalt = weiToEtherRound(await galtToken.balanceOf(bancorGaltDex.address));
     const galtPerEth = roundToPrecision(galtReceived / ethToConvert);
 
-    csv += `${ethToConvert},${galtReceived},${galtPerEth},${restGalt}\n`;
-    console.log(`${ethToConvert},${galtReceived},${galtPerEth},${restGalt}`);
+    addLineToCsv(`${ethToConvert},${galtReceived},${galtPerEth},${restGalt}`);
+  }
+
+  function addLineToCsv(str) {
+    csv += `${str}\n`;
+    if (debug) {
+      console.log(str);
+    }
   }
 
   fs.writeFile(`${__dirname}/bancorGaltDex.csv`, csv, callback);
