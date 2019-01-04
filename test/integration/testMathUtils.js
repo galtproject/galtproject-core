@@ -20,7 +20,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('MathUtils', ([coreTeam]) => {
+contract('MathUtils', ([coreTeam]) => {
   beforeEach(async function() {
     this.MathUtils = await MathUtils.new({ from: coreTeam });
     MockMathUtils.link('MathUtils', this.MathUtils.address);
@@ -64,6 +64,18 @@ contract.only('MathUtils', ([coreTeam]) => {
       const log10Res = parseInt(res.logs[0].args.result.toString(10), 10) / 10 ** 18;
 
       assert.isBelow(Math.abs(log10Res - Math.log10(input)), 0.00000000001);
+    });
+  });
+
+  describe.only('#exp()', () => {
+    it('should correctly get exp', async function() {
+      const input = 1.0033726130081486;
+      const res = await this.mockMathUtils.exp(Web3.utils.toWei(input.toString(), 'ether'));
+      console.log(res.logs[0].args.result.toString(10));
+      console.log(Math.exp(input));
+      const sqrtRes = parseInt(res.logs[0].args.result.toString(10), 10) / 10 ** 18;
+
+      assert.isBelow(Math.abs(sqrtRes - Math.exp(input)), 0.000000001);
     });
   });
 });

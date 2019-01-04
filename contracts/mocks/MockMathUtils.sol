@@ -6,6 +6,7 @@ import "../utils/MathUtils.sol";
 
 contract MockMathUtils {
   event LogIntResult(int result);
+  event LogUintResult(uint result);
   
   constructor() public {
 
@@ -34,5 +35,10 @@ contract MockMathUtils {
   function log10(int256 etherValue) public returns(int result) {
     result = MathUtils.log10(etherValue);
     emit LogIntResult(result);
+  }
+
+  function exp(uint etherValue) public returns(uint result) {
+    result = MathUtils.exp(etherValue);
+    emit LogUintResult(result);
   }
 }

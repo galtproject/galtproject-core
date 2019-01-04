@@ -57,7 +57,7 @@ library TrigonometryUtils {
   event Atanh(string v, int a);
   function atanh(int256 x) internal returns (int256 output) {
     emit Atanh("input", x);
-    output = MathUtils.logE(((1 ether + x) * 1 ether)/(1 ether - x)) / 2 ether;
+    output = MathUtils.logE(((1 ether + x) * 1 ether)/(1 ether - x)) / 2;
 //    output = int256(MathUtils.fpDiv(uint256(MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)))), 2 ether));
     emit Atanh("output", output);
   }

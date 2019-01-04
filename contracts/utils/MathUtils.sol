@@ -25,6 +25,8 @@ library MathUtils {
   int256 constant ln_2 = 693147180559945300;
   int256 constant ln_10 = 2302585092994046000;
   
+  uint256 constant e = 2718281828459045000;
+  
   function INT256_MIN() internal pure returns (int256) {
     return int256((uint256(1) << 255));
   }
@@ -144,5 +146,24 @@ library MathUtils {
     }
     if(v % fixed_1 >= fixed_1 / 2) v = v + fixed_1 - v % fixed_1;
     return v * sign;
+  }
+  
+  function exp (uint v) public view returns (uint) {
+    return pow(e, v);
+  }
+  
+//  function toFp(uint etherValue) internal view returns (uint) {
+//    return etherValue * 2^128;
+//  }
+//
+//  function fromFp(uint fpValue) internal view returns (uint) {
+//    return fpValue / 2^128;
+//  }
+
+  function pow (uint256 _a, uint256 _b) internal view returns (uint256 _result) {
+    uint integerPart = _b / 1 ether;
+    result = _a ** _b;
+    uint floatPart = _b - integerPart * 1 ether;
+    
   }
 }
