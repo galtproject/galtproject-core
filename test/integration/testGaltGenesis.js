@@ -5,7 +5,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, initHelperArtifacts, ether, szabo, assertRevert, clearLibCache } = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, ether, assertRevert, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);

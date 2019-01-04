@@ -16,10 +16,10 @@ const BancorConverterUpgrader = artifacts.require(
 );
 const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
 
+const fs = require('fs');
 const Web3 = require('web3');
 const { initHelperWeb3, initHelperArtifacts, weiToEtherRound, ether, roundToPrecision } = require('../test/helpers');
 
-const fs = require('fs');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 
