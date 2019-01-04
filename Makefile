@@ -1,4 +1,4 @@
-.PHONY: test benchmark
+.PHONY: test benchmark report
 
 cleanup:
 	rm -rf ./build
