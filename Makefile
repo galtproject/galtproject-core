@@ -30,6 +30,9 @@ check-size:
 	
 benchmark:
 	for file in `ls ./benchmark`; do echo \\n$${file}\\n; ./node_modules/.bin/truffle exec benchmark/$${file} --network test -c; done
+	
+report:
+	for file in `ls ./report | grep js`; do echo \\n$${file}\\n; ./node_modules/.bin/truffle exec report/$${file} --network test -c; done
 
 deploy-ganache:
 	rm -rf build && truffle migrate --network ganache && ./node_modules/.bin/surge ./deployed $$DOMAIN
