@@ -20,7 +20,6 @@ const fs = require('fs');
 const Web3 = require('web3');
 const { initHelperWeb3, initHelperArtifacts, weiToEtherRound, ether, roundToPrecision } = require('../test/helpers');
 
-
 const web3 = new Web3(GaltToken.web3.currentProvider);
 
 initHelperWeb3(web3);
