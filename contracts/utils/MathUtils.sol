@@ -148,22 +148,13 @@ library MathUtils {
     return v * sign;
   }
   
-  function exp (uint v) public view returns (uint) {
-    return pow(e, v);
-  }
-  
-//  function toFp(uint etherValue) internal view returns (uint) {
-//    return etherValue * 2^128;
-//  }
-//
-//  function fromFp(uint fpValue) internal view returns (uint) {
-//    return fpValue / 2^128;
-//  }
+  function exp (uint x) public view returns (uint) {
+    uint sum = 1 ether;
 
-  function pow (uint256 _a, uint256 _b) internal view returns (uint256 _result) {
-    uint integerPart = _b / 1 ether;
-    result = _a ** _b;
-    uint floatPart = _b - integerPart * 1 ether;
-    
+    for (uint i = 15 - 1; i > 0; --i ) {
+      sum = 1 ether + x * sum / (i * 1 ether);
+    }
+
+    return sum;
   }
 }

@@ -67,12 +67,10 @@ contract('MathUtils', ([coreTeam]) => {
     });
   });
 
-  describe.only('#exp()', () => {
+  describe('#exp()', () => {
     it('should correctly get exp', async function() {
       const input = 1.0033726130081486;
       const res = await this.mockMathUtils.exp(Web3.utils.toWei(input.toString(), 'ether'));
-      console.log(res.logs[0].args.result.toString(10));
-      console.log(Math.exp(input));
       const sqrtRes = parseInt(res.logs[0].args.result.toString(10), 10) / 10 ** 18;
 
       assert.isBelow(Math.abs(sqrtRes - Math.exp(input)), 0.000000001);
