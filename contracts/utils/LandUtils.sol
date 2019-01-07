@@ -276,7 +276,7 @@ library LandUtils {
     emit LogVar("input divider 2", MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether));
     variables[2] = TrigonometryUtils.sinh((e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether))) / 1 ether);
 
-    variables[3] = variables[1] * MathUtils.sqrtInt(1 + variables[2] * variables[2]) - variables[2] * MathUtils.sqrtInt(1 + variables[1] * variables[1]);
+    variables[3] = (variables[1] * MathUtils.sqrtInt(1 ether + (variables[2] * variables[2]) / 1 ether)) / 1 ether - (variables[2] * MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether)) / 1 ether;
 
     emit LogVar("F", variables[0]);
     emit LogVar("t", variables[1]);
