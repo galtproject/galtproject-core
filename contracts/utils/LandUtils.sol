@@ -270,11 +270,11 @@ library LandUtils {
     variables[0] = TrigonometryUtils.degreeToRad(_lat);
     variables[1] = TrigonometryUtils.tan(variables[0]);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-//    emit LogVar("Sqrt input", 1 ether + (variables[1] * variables[1]) / 1 ether);
-//    emit LogVar("Sqrt output", MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether));
+    emit LogVar("Sinh input", (e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether))) / 1 ether);
+    emit LogVar("Sinh output", TrigonometryUtils.sinh((e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether))) / 1 ether));
     emit LogVar("input divider 1", e * variables[1]);
     emit LogVar("input divider 2", MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether));
-    variables[2] = TrigonometryUtils.sinh(e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether)));
+    variables[2] = TrigonometryUtils.sinh((e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether))) / 1 ether);
 
     variables[3] = variables[1] * MathUtils.sqrtInt(1 + variables[2] * variables[2]) - variables[2] * MathUtils.sqrtInt(1 + variables[1] * variables[1]);
 

@@ -148,11 +148,11 @@ library MathUtils {
     return v * sign;
   }
   
-  function exp (uint x) public view returns (uint) {
-    uint sum = 1 ether;
+  function exp (int x) internal view returns (int) {
+    int sum = 1 ether;
 
     for (uint i = 15 - 1; i > 0; --i ) {
-      sum = 1 ether + x * sum / (i * 1 ether);
+      sum = 1 ether + x * sum / int(i * 1 ether);
     }
 
     return sum;

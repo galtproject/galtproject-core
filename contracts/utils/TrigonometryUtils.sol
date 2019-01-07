@@ -66,10 +66,10 @@ library TrigonometryUtils {
     return 0;
   }
   function sinh(int256 radians) internal returns (int256) {
-    return 0;
+    return (MathUtils.exp(radians) - MathUtils.exp(-radians)) / 2;
   }
   function asinh(int256 radians) internal returns (int256) {
-    return 0;
+    return (MathUtils.exp(radians) - MathUtils.exp(-radians)) / 2;
   }
   function tan(int256 radians) internal returns (int256) {
     return (sin(radians) * 1 ether) / cos(radians);

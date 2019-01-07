@@ -37,8 +37,8 @@ contract MockMathUtils {
     emit LogIntResult(result);
   }
 
-  function exp(uint etherValue) public returns(uint result) {
+  function exp(int etherValue) public returns(int result) {
     result = MathUtils.exp(etherValue);
-    emit LogUintResult(result);
+    emit LogIntResult(result);
   }
 }

@@ -77,7 +77,7 @@ contract('LandUtils', ([deployer]) => {
     });
   });
 
-  describe('#latLonToUtm()', () => {
+  describe.only('#latLonToUtm()', () => {
     it('should correctly convert lat lon to utm', async function() {
       const point = [1.1789703369140625, 104.51362609863281];
 
@@ -188,11 +188,11 @@ function toUtm(_lat, _lon) {
   // console.log('Sqrt', 'output', Math.sqrt(1 + τ * τ));
   // console.log('Atanh', 'input divider 1', e * τ);
   // console.log('Atanh', 'input divider 2', Math.sqrt(1 + τ * τ));
-  console.log('Atanh', 'input', (e * τ) / Math.sqrt(1 + τ * τ));
+  console.log('Sinh', 'input', e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
   const X = (e * τ) / Math.sqrt(1 + τ * τ);
   console.log('Log input', (1 + X) / (1 - X));
   console.log('Log output', Math.log((1 + X) / (1 - X)));
-  console.log('Atanh', 'output', Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
+  console.log('Sinh', 'output', σ);
 
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
 
