@@ -184,25 +184,15 @@ function toUtm(_lat, _lon) {
 
   const τ = Math.tan(φ); // τ ≡ tanφ, τʹ ≡ tanφʹ; prime (ʹ) indicates angles on the conformal sphere
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
-  // console.log('Sqrt', 'input', 1 + τ * τ);
-  // console.log('Sqrt', 'output', Math.sqrt(1 + τ * τ));
-  // console.log('Atanh', 'input divider 1', e * τ);
-  // console.log('Atanh', 'input divider 2', Math.sqrt(1 + τ * τ));
-  console.log('Sinh', 'input', e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
-  const X = (e * τ) / Math.sqrt(1 + τ * τ);
-  console.log('Log input', (1 + X) / (1 - X));
-  console.log('Log output', Math.log((1 + X) / (1 - X)));
-  console.log('Sinh', 'output', σ);
-
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
-
-  console.log('LogVar', 'F', φ);
-  console.log('LogVar', 't', τ);
-  console.log('LogVar', 'o', σ);
-  console.log('LogVar', 'ti', τʹ);
-
+  
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
+  
+  console.log('LogVar', 'tanλ', tanλ);
+  console.log('LogVar', 'cosλ', cosλ);
+  console.log('LogVar', 'ξʹ', ξʹ);
+  console.log('LogVar', 'ηʹ', ηʹ);
 
   const A = 6367449.145823415; // 2πA is the circumference of a meridian
 
