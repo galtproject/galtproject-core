@@ -78,7 +78,10 @@ library TrigonometryUtils {
     return 0;
 //    return (MathUtils.exp(radians) - MathUtils.exp(-radians)) / 2;
   }
+  event TLogVar(string v, int a);
   function tan(int256 radians) internal returns (int256) {
+    emit TLogVar("tan input", radians);
+    emit TLogVar("tan output", (sin(radians) * 1 ether) / cos(radians));
     return (sin(radians) * 1 ether) / cos(radians);
   }
   function atan(int256 radians) internal returns (int256) {

@@ -337,7 +337,7 @@ library LandUtils {
   function getUTM_L0_zone(int _lat, int _lon) public returns(int zone, int L0) {
     zone = ((_lon + 180 ether) / 6 ether) + 1;
     // longitudinal zone
-    L0 = TrigonometryUtils.degreeToRad((zone - 1) * (6 - 180 + 3) * 1 ether);
+    L0 = TrigonometryUtils.degreeToRad(((zone - 1) * 6 ether) - 180 ether + 3 ether);
     // longitude of central meridian
 
     // ---- handle Norway/Svalbard exceptions
@@ -376,6 +376,7 @@ library LandUtils {
     }
   }
 //
+  
   function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) public returns(int tanL, int cosL, int Ei, int ni) {
     int L = TrigonometryUtils.degreeToRad(_lon) - L0;
     cosL = TrigonometryUtils.cos(L);
