@@ -278,8 +278,6 @@ library LandUtils {
     //  variables[6] - Ei
     //  variables[7] - ni
     (variables[4], variables[5], variables[6], variables[7]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
-    emit LogVar("tanL", variables[4]);
-    emit LogVar("cosL", variables[5]);
     emit LogVar("Ei", variables[6]);
     emit LogVar("ni", variables[7]);
 //
@@ -383,6 +381,8 @@ library LandUtils {
     int sinL = TrigonometryUtils.sin(L);
     tanL = TrigonometryUtils.tan(L);
 
+    emit LogVar("ti", ti);
+    emit LogVar("cosL", cosL);
     Ei = TrigonometryUtils.atan2(ti, cosL);
     ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
   }

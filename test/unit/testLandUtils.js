@@ -77,7 +77,7 @@ contract('LandUtils', ([deployer]) => {
     });
   });
 
-  describe.only('#latLonToUtm()', () => {
+  describe('#latLonToUtm()', () => {
     it('should correctly convert lat lon to utm', async function() {
       const point = [1.1789703369140625, 104.51362609863281];
 
@@ -186,12 +186,13 @@ function toUtm(_lat, _lon) {
   const τ = Math.tan(φ); // τ ≡ tanφ, τʹ ≡ tanφʹ; prime (ʹ) indicates angles on the conformal sphere
   const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
   const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
-  
+
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
 
-  console.log('LogVar', 'tanλ', tanλ);
+  console.log('LogVar', 'τʹ', τʹ);
   console.log('LogVar', 'cosλ', cosλ);
+  console.log('LogVar', 'ξʹ my_atan2', my_atan2(τʹ, cosλ));
   console.log('LogVar', 'ξʹ', ξʹ);
   console.log('LogVar', 'ηʹ', ηʹ);
 
@@ -293,4 +294,55 @@ function log(x) {
     y = (y * x) / 1000000;
   }
   return LOG;
+}
+
+function my_atan2(y, x) {
+  console.log('atan input', y / x);
+  console.log('atan output', Math.atan(y / x));
+  console.log('my_atan output', my_atan(y / x));
+  let u = Math.atan(y / x, 50);
+  if (x < 0.0) {
+    // 2nd, 3rd quadrant
+    if (u > 0.0)
+      // will go to 3rd quadrant
+      u -= Math.PI;
+    else u += Math.PI;
+  }
+  return u;
+}
+
+function my_atan(x) {
+  const n = 50;
+  let a = 0.0; // 1st term
+  let sum = 0.0;
+
+  // special cases
+  if (x === 1.0) return Math.PI / 4.0;
+  if (x === -1.0) return -Math.PI / 4.0;
+
+  if (n > 0) {
+    if (x < -1.0 || x > 1.0) {
+      // constant term
+      if (x > 1.0) sum = Math.PI / 2.0;
+      else sum = -Math.PI / 2.0;
+      // initial value of a
+      a = -1.0 / x;
+      for (let j = 1; j <= n; j++) {
+        sum += a;
+        a *= (-1.0 * (2.0 * j - 1)) / ((2.0 * j + 1) * x * x); // next term from last
+      }
+    } // -1 < x < 1
+    else {
+      // constant term
+      sum = 0.0;
+      // initial value of a
+      a = x;
+      for (let j = 1; j <= n; j++) {
+        sum += a;
+        a *= (-1.0 * (2.0 * j - 1) * x * x) / (2.0 * j + 1); // next term from last
+      }
+    }
+  }
+
+  return sum;
 }
