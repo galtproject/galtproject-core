@@ -125,18 +125,11 @@ function toUtm(_lat, _lon) {
   const falseNorthing = 10000e3;
 
   let zone = Math.floor((_lon + 180) / 6) + 1; // longitudinal zone
-  console.log('LogVar', 'zone', zone);
-
-    console.log('LogVar', 'λ0 left', (zone - 1) * 6);
-    console.log('LogVar', 'λ0 right', 180 + 3);
-    console.log('LogVar', 'degreeToRad input', ((zone - 1) * 6 - 180 + 3));
   let λ0 = ((zone - 1) * 6 - 180 + 3).toRadians(); // longitude of central meridian
-  console.log('LogVar', 'zone λ0', λ0);
 
   // ---- handle Norway/Svalbard exceptions
   // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
   const latBand = Math.floor(_lat / 8 + 10);
-    console.log('LogVar', 'latBand', latBand);
   // adjust zone & central meridian for Norway
   if (zone === 31 && latBand === 17 && _lon >= 3) {
     zone++;
@@ -170,9 +163,6 @@ function toUtm(_lat, _lon) {
 
   const φ = _lat.toRadians(); // latitude ± from equator
 
-    console.log('LogVar', '_lon', _lon);
-    console.log('LogVar', 'TrigonometryUtils.degreeToRad(_lon)', _lon.toRadians());
-    console.log('LogVar', 'λ0', λ0);
   const λ = _lon.toRadians() - λ0; // longitude ± from central meridian
 
   const a = 6378137;
@@ -200,8 +190,6 @@ function toUtm(_lat, _lon) {
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
 
-  console.log('LogVar', 'tan input', λ);
-  console.log('LogVar', 'tan output', tanλ);
   console.log('LogVar', 'tanλ', tanλ);
   console.log('LogVar', 'cosλ', cosλ);
   console.log('LogVar', 'ξʹ', ξʹ);
