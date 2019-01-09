@@ -16,9 +16,16 @@ pragma experimental "v0.5.0";
 
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
+import "./collections/ArraySet.sol";
+import "./interfaces/ISRA.sol";
 
 
 contract SpaceLocker {
+  using ArraySet for ArraySet.AddressSet;
+
+  event ReputationMinted(address sra);
+  event ReputationBurned(address sra);
+
   address public owner;
 
   SpaceToken public spaceToken;
@@ -27,6 +34,8 @@ contract SpaceLocker {
   uint256 public spaceTokenId;
   uint256 public reputation;
   bool public tokenDeposited;
+
+  ArraySet.AddressSet sras;
 
   constructor(SpaceToken _spaceToken, SplitMerge _splitMerge, address _owner) public {
     owner = _owner;
@@ -52,6 +61,7 @@ contract SpaceLocker {
 
   function withdraw(uint256 _spaceTokenId) external onlyOwner {
     require(tokenDeposited, "Token not deposited");
+    require(sras.size() == 0, "SRAs counter not 0");
 
     spaceTokenId = 0;
     reputation = 0;
@@ -60,7 +70,33 @@ contract SpaceLocker {
     spaceToken.safeTransferFrom(address(this), msg.sender, _spaceTokenId);
   }
 
-  function isOwner() public view returns(bool) {
+  function approveMint(ISRA _sra) external onlyOwner {
+    require(_sra.ping() == bytes32("pong"), "Handshake failed");
+
+    sras.add(_sra);
+  }
+
+  function burn(ISRA _sra) external onlyOwner {
+    require(_sra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
+
+    sras.remove(address(_sra));
+  }
+
+  // GETTERS
+
+  function isMinted(address _sra) external returns (bool) {
+    return sras.has(_sra);
+  }
+
+  function getSras() external returns (address[]) {
+    return sras.elements();
+  }
+
+  function getSrasCount() external returns (uint256) {
+    return sras.size();
+  }
+
+  function isOwner() public view returns (bool) {
     return msg.sender == owner;
   }
 }
