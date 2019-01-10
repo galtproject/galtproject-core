@@ -61,69 +61,14 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     });
   });
 
-  describe.only('#atan()', () => {
+  describe('#atan()', () => {
     it('should correctly get atan', async function() {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const radians = this.toRadians(angle);
         const res = await this.mockTrigonometryUtils.atan(Web3.utils.toWei(radians.toString(), 'ether'));
-        const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
-        console.log(radians);
-        console.log(sinResult, my_atan(radians), taylor_atan(radians), Math.atan(radians));
-        assert.isBelow(Math.abs(sinResult - Math.atan(radians)), 0.0000000001);
+        const atanResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        assert.isBelow(Math.abs(atanResult - Math.atan(radians)), 0.0000000001);
       });
     });
   });
 });
-
-function my_atan(x) {
-  const n = 50;
-  let a = 0.0; // 1st term
-  let sum = 0.0;
-
-  // special cases
-  if (x === 1.0) return Math.PI / 4.0;
-  if (x === -1.0) return -Math.PI / 4.0;
-
-  if (n > 0) {
-    if (x < -1.0 || x > 1.0) {
-      // constant term
-      if (x > 1.0) {
-        sum = Math.PI / 2.0;
-        console.log('x > 1.0', sum);
-      } else {
-        sum = -Math.PI / 2.0;
-      }
-      // initial value of a
-      a = -1.0 / x;
-      for (let j = 1; j <= n; j++) {
-        sum += a;
-        a *= (-1.0 * (2.0 * j - 1)) / ((2.0 * j + 1) * x * x); // next term from last
-        console.log('a', a);
-      }
-    } // -1 < x < 1
-    else {
-      // constant term
-      sum = 0.0;
-      // initial value of a
-      a = x;
-      for (let j = 1; j <= n; j++) {
-        sum += a;
-        a *= (-1.0 * (2.0 * j - 1) * x * x) / (2.0 * j + 1); // next term from last
-      }
-    }
-  }
-
-  return sum;
-}
-
-
-function taylor_atan(x) {
-  let tSeries = 0;
-  let t1, t2;
-    for (let n = 0; n <= 50; n++) {
-        t1 = (Math.pow(x, 2 * n + 1)) * Math.pow(-1, n);
-        t2 = t1 / (2 * n + 1);
-        tSeries += t2;
-    }
-    return tSeries;
-}

@@ -56,7 +56,6 @@ library TrigonometryUtils {
   }
   //  0.0033
   //128.128
-  event Atanh(string v, int a);
 
   function atanh(int256 x) internal returns (int256 output) {
     output = MathUtils.logE(((1 ether + x) * 1 ether) / (1 ether - x)) / 2;
@@ -105,10 +104,10 @@ library TrigonometryUtils {
         else
           sum = -PI / 2;
         // initial value of a
-        a = -1 ether / x;
+        a = -(1 ether ** 2) / x;
         for (int j = 1; j <= n; j++) {
           sum += a;
-          a *= -1 * (2 * j - 1) / ((2 * j + 1) * ((x * x) / 1 ether));
+          a *= -1 * ((2 * j - 1) * 1 ether ** 2) / ((2 * j + 1) * ((x * x) / 1 ether));
           a /= 1 ether;
           // next term from last
         }
