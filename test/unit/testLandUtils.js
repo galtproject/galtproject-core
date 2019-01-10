@@ -1,6 +1,7 @@
 const LandUtils = artifacts.require('./utils/LandUtils.sol');
 const MockLandUtils = artifacts.require('./mocks/MockLandUtils.sol');
 
+const pIteration = require('p-iteration');
 const Web3 = require('web3');
 const { assertRevert } = require('../helpers');
 
@@ -79,310 +80,51 @@ contract('LandUtils', ([deployer]) => {
 
   describe.only('#latLonToUtm()', () => {
     it('should correctly convert lat lon to utm', async function() {
-      const point = [1.1789703369140625, 104.51362609863281];
+      const latLonToCheck = [
+        [-74.0550677213, -90.318972094],
+        [25.5888986977, -125.9639064827],
+        [11.9419456134, 30.6196556841],
+        [66.9375384427, -9.6290061374],
+        [-1.9773564645, 134.3986143967]
+      ];
 
-      const shouldBeUtm = toUtm(point[0], point[1]);
+      const shouldBeUtmByIndex = [
+        { zone: 15, h: 'S', x: 582184.914156, y: 1779969.098105, convergence: -2.578020654, scale: 0.99968257906 },
+        { zone: 10, h: 'N', x: 202270.551102, y: 2833486.274605, convergence: -1.281088775, scale: 1.000694737455 },
+        { zone: 36, h: 'N', x: 240753.909523, y: 1321248.884905, convergence: -0.492818697, scale: 1.000431591336 },
+        { zone: 29, h: 'N', x: 472503.837058, y: 7424555.961089, convergence: -0.578738506, scale: 0.999609252979 },
+        { zone: 53, h: 'S', x: 433119.186937, y: 9781429.716413, convergence: 0.020751304, scale: 0.999655369864 }
+      ];
 
-      // console.log('shouldBeUtm', shouldBeUtm);
-      assert.equal(shouldBeUtm.zone, 48);
-      assert.equal(shouldBeUtm.h, 'N');
-      assert.equal(shouldBeUtm.x, 445889.489065);
-      assert.equal(shouldBeUtm.y, 130316.555968);
-      assert.equal(shouldBeUtm.convergence, -0.010007613);
-      assert.equal(shouldBeUtm.scale, 0.999636244047);
+      await pIteration.forEach(latLonToCheck, async (point, index) => {
+        const shouldBeUtm = shouldBeUtmByIndex[index];
 
-      // assert.equal(true, false);
-      // return;
+        const etherPoint = point.map(coor => web3.utils.toWei(coor.toString(), 'ether'));
 
-      /**
- { zone: 48,
-  h: 'N',
-  x: 445889.489065,
-  y: 130316.555968,
-  convergence: -0.010007613,
-  scale: 0.999636244047 }
+        const res = await this.mockLandUtils.latLonToUtm(etherPoint, {
+          from: deployer
+        });
 
-         */
+        const result = res.logs[0].args;
+        const xResult = result.x / 10 ** 18;
+        const yResult = result.y / 10 ** 18;
+        const scaleResult = result.scale / 10 ** 18;
+        const convergenceResult = result.convergence / 10 ** 18;
 
-      const etherPoint = point.map(coor => web3.utils.toWei(coor.toString(), 'ether'));
-      // console.log(etherPoint);
+        // console.log('xDiff', Math.abs(xResult - shouldBeUtm.x));
+        // console.log('yDiff', Math.abs(yResult - shouldBeUtm.y));
+        // console.log('scaleDiff', Math.abs(scaleResult - shouldBeUtm.scale));
+        // console.log('convergenceDiff', Math.abs(convergenceResult - shouldBeUtm.convergence));
+        //
+        // console.log('gasUsed', res.receipt.gasUsed);
 
-      const res = await this.mockLandUtils.latLonToUtm(etherPoint, {
-        from: deployer
+        assert.isBelow(Math.abs(xResult - shouldBeUtm.x), 0.007);
+        assert.isBelow(Math.abs(yResult - shouldBeUtm.y), 0.007);
+        assert.isBelow(Math.abs(scaleResult - shouldBeUtm.scale), 0.001);
+        // assert.isBelow(Math.abs(convergenceResult - shouldBeUtm.convergence), 0.001);
+        assert.equal(result.zone.toString(10), shouldBeUtm.zone.toString(10));
+        assert.equal(result.isNorth ? 'N' : 'S', shouldBeUtm.h);
       });
-
-      const result = res.logs[0].args;
-      const xResult = result.x / 10 ** 18;
-      const yResult = result.y / 10 ** 18;
-      const scaleResult = result.scale / 10 ** 18;
-      const convergenceResult = result.convergence / 10 ** 18;
-
-      console.log('xDiff', Math.abs(xResult - shouldBeUtm.x));
-      console.log('yDiff', Math.abs(yResult - shouldBeUtm.y));
-      console.log('scaleDiff', Math.abs(scaleResult - shouldBeUtm.scale));
-      console.log('convergenceDiff', Math.abs(convergenceResult - shouldBeUtm.convergence));
-
-      console.log('gasUsed', res.receipt.gasUsed);
-
-      // assert.equal(true, false);
-
-      assert.isBelow(Math.abs(xResult - shouldBeUtm.x), 0.001);
-      assert.isBelow(Math.abs(yResult - shouldBeUtm.y), 0.001);
-      assert.isBelow(Math.abs(scaleResult - shouldBeUtm.scale), 0.001);
-      // assert.isBelow(Math.abs(convergenceResult - shouldBeUtm.convergence), 0.001);
-      assert.equal(result.zone.toString(10), shouldBeUtm.zone.toString(10));
-      assert.equal(result.isNorth ? 'N' : 'S', shouldBeUtm.h);
     });
   });
 });
-
-function toUtm(_lat, _lon) {
-  if (!(_lat >= -80 && _lat <= 84)) throw new Error('Outside UTM limits');
-
-  const falseEasting = 500e3;
-
-  const falseNorthing = 10000e3;
-
-  let zone = Math.floor((_lon + 180) / 6) + 1; // longitudinal zone
-  let λ0 = ((zone - 1) * 6 - 180 + 3).toRadians(); // longitude of central meridian
-
-  // ---- handle Norway/Svalbard exceptions
-  // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
-  const latBand = Math.floor(_lat / 8 + 10);
-  // adjust zone & central meridian for Norway
-  if (zone === 31 && latBand === 17 && _lon >= 3) {
-    zone++;
-    λ0 += (6).toRadians();
-  }
-  // adjust zone & central meridian for Svalbard
-  if (zone === 32 && (latBand === 19 || latBand === 20) && _lon < 9) {
-    zone--;
-    λ0 -= (6).toRadians();
-  }
-  if (zone === 32 && (latBand === 19 || latBand === 20) && _lon >= 9) {
-    zone++;
-    λ0 += (6).toRadians();
-  }
-  if (zone === 34 && (latBand === 19 || latBand === 20) && _lon < 21) {
-    zone--;
-    λ0 -= (6).toRadians();
-  }
-  if (zone === 34 && (latBand === 19 || latBand === 20) && _lon >= 21) {
-    zone++;
-    λ0 += (6).toRadians();
-  }
-  if (zone === 36 && (latBand === 19 || latBand === 20) && _lon < 33) {
-    zone--;
-    λ0 -= (6).toRadians();
-  }
-  if (zone === 36 && (latBand === 19 || latBand === 20) && _lon >= 33) {
-    zone++;
-    λ0 += (6).toRadians();
-  }
-
-  const φ = _lat.toRadians(); // latitude ± from equator
-
-  const λ = _lon.toRadians() - λ0; // longitude ± from central meridian
-
-  const a = 6378137;
-
-  const f = 1 / 298.257223563;
-  // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
-
-  const k0 = 0.9996; // UTM scale on the central meridian
-
-  // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
-
-  const e = Math.sqrt(f * (2 - f)); // eccentricity
-  // console.log('e', web3.utils.toWei(e.toString(), 'ether'));
-
-  const cosλ = Math.cos(λ);
-
-  const sinλ = Math.sin(λ);
-
-  const tanλ = Math.tan(λ);
-
-  const τ = Math.tan(φ); // τ ≡ tanφ, τʹ ≡ tanφʹ; prime (ʹ) indicates angles on the conformal sphere
-  const σ = Math.sinh(e * Math.atanh((e * τ) / Math.sqrt(1 + τ * τ)));
-  const τʹ = τ * Math.sqrt(1 + σ * σ) - σ * Math.sqrt(1 + τ * τ);
-
-  const ξʹ = Math.atan2(τʹ, cosλ);
-  const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
-  //
-  // console.log('LogVar', 'τʹ', τʹ);
-  // console.log('LogVar', 'cosλ', cosλ);
-  // console.log('LogVar', 'ξʹ my_atan2', my_atan2(τʹ, cosλ));
-  // console.log('LogVar', 'ξi', ξʹ);
-  // console.log('LogVar', 'ηi', ηʹ);
-
-  const A = 6367449.145823415; // 2πA is the circumference of a meridian
-
-  // console.log('A', web3.utils.toWei(A.toString(), 'ether'));
-  const α = [
-    null,
-    837731820624470 / 10 ** 18,
-    760852777357 / 10 ** 18,
-    1197645503 / 10 ** 18,
-    2429171 / 10 ** 18,
-    5712 / 10 ** 18,
-    15 / 10 ** 18
-  ];
-
-  let ξ = ξʹ;
-  for (let j = 1; j <= 6; j++) {
-    // console.log("a[uint(j)]", a[j]);
-    // console.log("2 * j * variables[7]", 2 * j * variables[7]);
-    // console.log("TrigonometryUtils.sin(2 * j * variables[7])", TrigonometryUtils.sin(2 * j * variables[7]));
-    // console.log("TrigonometryUtils.cosh(2 * j * variables[7])", TrigonometryUtils.cosh(2 * j * variables[7]));
-    // console.log('LogVar', 'ξ', ξ);
-    ξ += α[j] * Math.sin(2 * j * ξʹ) * Math.cosh(2 * j * ηʹ);
-  }
-  // console.log('LogVar', 'E', ξ);
-
-  let η = ηʹ;
-  for (let j = 1; j <= 6; j++) η += α[j] * Math.cos(2 * j * ξʹ) * Math.sinh(2 * j * ηʹ);
-
-  // console.log('LogVar', 'n', η);
-  let x = k0 * A * η;
-  let y = k0 * A * ξ;
-  // console.log('Javascript:');
-  // console.log('LogVar', 'x', x);
-  // console.log('LogVar', 'y', y);
-
-  // ---- convergence: Karney 2011 Eq 23, 24
-
-  let pʹ = 1;
-  for (let j = 1; j <= 6; j++) pʹ += 2 * j * α[j] * Math.cos(2 * j * ξʹ) * Math.cosh(2 * j * ηʹ);
-  let qʹ = 0;
-  for (let j = 1; j <= 6; j++) qʹ += 2 * j * α[j] * Math.sin(2 * j * ξʹ) * Math.sinh(2 * j * ηʹ);
-
-  const γʹ = Math.atan((τʹ / Math.sqrt(1 + τʹ * τʹ)) * tanλ);
-  const γʺ = Math.atan2(qʹ, pʹ);
-  console.log('MathUtils.sqrtInt(1 ether + (ti * ti) / 1 ether)', Math.sqrt(1 + τʹ * τʹ));
-    console.log('(sqrt * tanL) / 1 ether', Math.sqrt(1 + τʹ * τʹ));
-    console.log('LogVar', 'γʹ', γʹ);
-    console.log('LogVar', 'γʺ', γʺ);
-
-  const γ = γʹ + γʺ;
-    console.log('LogVar', 'pʹ', pʹ);
-    console.log('LogVar', 'qʹ', qʹ);
-    console.log('LogVar', 'γ', γ);
-
-  // ---- scale: Karney 2011 Eq 25
-
-  const sinφ = Math.sin(φ);
-  const kʹ = (Math.sqrt(1 - e * e * sinφ ** 2) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
-    console.log('LogVar', 'kʹ', kʹ);
-  const kʺ = (A / a) * Math.sqrt(pʹ * pʹ + qʹ * qʹ);
-
-  const k = k0 * kʹ * kʺ;
-    console.log('LogVar', 'k', k);
-
-  // ------------
-
-  // shift x/y to false origins
-  x += falseEasting; // make x relative to false easting
-  if (y < 0) y += falseNorthing; // make y in southern hemisphere relative to false northing
-
-  // round to reasonable precision
-  x = Number(x.toFixed(6)); // nm precision
-  y = Number(y.toFixed(6)); // nm precision
-  const convergence = Number(γ.toDegrees().toFixed(9));
-  const scale = Number(k.toFixed(12));
-
-  const h = _lat >= 0 ? 'N' : 'S'; // hemisphere
-
-  return {
-    zone,
-    h,
-    x,
-    y,
-    convergence,
-    scale
-  };
-}
-
-if (typeof Number.prototype.toRadians === 'undefined') {
-  Number.prototype.toRadians = function() {
-    return (this * Math.PI) / 180;
-  };
-}
-
-if (typeof Number.prototype.toDegrees === 'undefined') {
-  Number.prototype.toDegrees = function() {
-    return this * (180 / Math.PI);
-  };
-}
-
-function log(x) {
-  let LOG = 0;
-  while (x >= 1500000) {
-    LOG += 405465;
-    x = (x * 2) / 3;
-  }
-
-  x -= 1000000;
-  let y = x;
-  let i = 1;
-
-  while (i < 10) {
-    LOG += y / i;
-    i += 1;
-    y = (y * x) / 1000000;
-    LOG -= y / i;
-    i += 1;
-    y = (y * x) / 1000000;
-  }
-  return LOG;
-}
-
-function my_atan2(y, x) {
-  console.log('atan input', y / x);
-  console.log('atan output', Math.atan(y / x));
-  console.log('my_atan output', my_atan(y / x));
-  let u = Math.atan(y / x, 50);
-  if (x < 0.0) {
-    // 2nd, 3rd quadrant
-    if (u > 0.0)
-      // will go to 3rd quadrant
-      u -= Math.PI;
-    else u += Math.PI;
-  }
-  return u;
-}
-
-function my_atan(x) {
-  const n = 50;
-  let a = 0.0; // 1st term
-  let sum = 0.0;
-
-  // special cases
-  if (x === 1.0) return Math.PI / 4.0;
-  if (x === -1.0) return -Math.PI / 4.0;
-
-  if (n > 0) {
-    if (x < -1.0 || x > 1.0) {
-      // constant term
-      if (x > 1.0) sum = Math.PI / 2.0;
-      else sum = -Math.PI / 2.0;
-      // initial value of a
-      a = -1.0 / x;
-      for (let j = 1; j <= n; j++) {
-        sum += a;
-        a *= (-1.0 * (2.0 * j - 1)) / ((2.0 * j + 1) * x * x); // next term from last
-      }
-    } // -1 < x < 1
-    else {
-      // constant term
-      sum = 0.0;
-      // initial value of a
-      a = x;
-      for (let j = 1; j <= n; j++) {
-        sum += a;
-        a *= (-1.0 * (2.0 * j - 1) * x * x) / (2.0 * j + 1); // next term from last
-      }
-    }
-  }
-
-  return sum;
-}
