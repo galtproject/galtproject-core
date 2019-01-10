@@ -89,10 +89,6 @@ contract('BancorGaltDex', ([coreTeam, alice, bob, feeFund]) => {
     await this.bancorGaltDex.acceptTokenOwnership();
   });
 
-  it('should be initialized successfully', async function() {
-    (await this.bancorGaltDex.registry()).should.be.eq(this.galtDexRegistry.address);
-  });
-
   describe('custom ETH and GALT mint', async () => {
     beforeEach(async function() {
       await this.etherToken.deposit({ from: coreTeam, value: ether(etherTokenGaltDexBalance) });
