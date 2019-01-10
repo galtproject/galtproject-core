@@ -22,9 +22,9 @@ contract MockLandUtils {
     emit LogGeohash5Result(geohash5);
   }
 
-  event ResultUtm(int x, int y);
+  event ResultUtm(int x, int y, int scale, int zone, bool isNorth, int convergence);
   function latLonToUtm(int256[2] point) public returns(uint256 geohash5) {
-    (int x, int y, , , , ) = LandUtils.latLonToUtm(point[0], point[1]);
-    emit ResultUtm(x, y);
+    (int x, int y, int scale, int zone, bool isNorth, int convergence) = LandUtils.latLonToUtm(point[0], point[1]);
+    emit ResultUtm(x, y, scale, zone, isNorth, convergence);
   }
 }

@@ -114,14 +114,24 @@ contract('LandUtils', ([deployer]) => {
       const result = res.logs[0].args;
       const xResult = result.x / 10 ** 18;
       const yResult = result.y / 10 ** 18;
+      const scaleResult = result.scale / 10 ** 18;
+      const convergenceResult = result.convergence / 10 ** 18;
 
       console.log('xDiff', Math.abs(xResult - shouldBeUtm.x));
       console.log('yDiff', Math.abs(yResult - shouldBeUtm.y));
+      console.log('scaleDiff', Math.abs(scaleResult - shouldBeUtm.scale));
+      console.log('convergenceDiff', Math.abs(convergenceResult - shouldBeUtm.convergence));
 
       console.log('gasUsed', res.receipt.gasUsed);
 
+      // assert.equal(true, false);
+
       assert.isBelow(Math.abs(xResult - shouldBeUtm.x), 0.001);
       assert.isBelow(Math.abs(yResult - shouldBeUtm.y), 0.001);
+      assert.isBelow(Math.abs(scaleResult - shouldBeUtm.scale), 0.001);
+      // assert.isBelow(Math.abs(convergenceResult - shouldBeUtm.convergence), 0.001);
+      assert.equal(result.zone.toString(10), shouldBeUtm.zone.toString(10));
+      assert.equal(result.isNorth ? 'N' : 'S', shouldBeUtm.h);
     });
   });
 });
@@ -235,9 +245,9 @@ function toUtm(_lat, _lon) {
   // console.log('LogVar', 'n', η);
   let x = k0 * A * η;
   let y = k0 * A * ξ;
-    // console.log('Javascript:');
-    // console.log('LogVar', 'x', x);
-    // console.log('LogVar', 'y', y);
+  // console.log('Javascript:');
+  // console.log('LogVar', 'x', x);
+  // console.log('LogVar', 'y', y);
 
   // ---- convergence: Karney 2011 Eq 23, 24
 
@@ -248,16 +258,25 @@ function toUtm(_lat, _lon) {
 
   const γʹ = Math.atan((τʹ / Math.sqrt(1 + τʹ * τʹ)) * tanλ);
   const γʺ = Math.atan2(qʹ, pʹ);
+  console.log('MathUtils.sqrtInt(1 ether + (ti * ti) / 1 ether)', Math.sqrt(1 + τʹ * τʹ));
+    console.log('(sqrt * tanL) / 1 ether', Math.sqrt(1 + τʹ * τʹ));
+    console.log('LogVar', 'γʹ', γʹ);
+    console.log('LogVar', 'γʺ', γʺ);
 
   const γ = γʹ + γʺ;
+    console.log('LogVar', 'pʹ', pʹ);
+    console.log('LogVar', 'qʹ', qʹ);
+    console.log('LogVar', 'γ', γ);
 
   // ---- scale: Karney 2011 Eq 25
 
   const sinφ = Math.sin(φ);
   const kʹ = (Math.sqrt(1 - e * e * sinφ ** 2) * Math.sqrt(1 + τ * τ)) / Math.sqrt(τʹ * τʹ + cosλ * cosλ);
+    console.log('LogVar', 'kʹ', kʹ);
   const kʺ = (A / a) * Math.sqrt(pʹ * pʹ + qʹ * qʹ);
 
   const k = k0 * kʹ * kʺ;
+    console.log('LogVar', 'k', k);
 
   // ------------
 
