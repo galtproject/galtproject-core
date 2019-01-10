@@ -263,7 +263,7 @@ library LandUtils {
     
     // note a is one-based array (6th order Krüger expressions)
     int[7] memory a = [int(0), 837731820624470, 760852777357, 1197645503, 2429171, 5712, 15];
-    int[14] memory variables;
+    int[15] memory variables;
     
     //  variables[0] - F
     //  variables[1] - t
@@ -272,14 +272,15 @@ library LandUtils {
     variables[0] = TrigonometryUtils.degreeToRad(_lat);
     variables[1] = TrigonometryUtils.tan(variables[0]);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-    variables[2] = TrigonometryUtils.sinh((e * TrigonometryUtils.atanh((e * variables[1]) / MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether))) / 1 ether);
-    variables[3] = (variables[1] * MathUtils.sqrtInt(1 ether + (variables[2] * variables[2]) / 1 ether)) / 1 ether - (variables[2] * MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether)) / 1 ether;
+    variables[14] = MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether);
+    variables[2] = TrigonometryUtils.sinh((e * TrigonometryUtils.atanh((e * variables[1]) / variables[14])) / 1 ether);
+    variables[3] = (variables[1] * MathUtils.sqrtInt(1 ether + (variables[2] * variables[2]) / 1 ether)) / 1 ether - (variables[2] * variables[14]) / 1 ether;
 
     //  variables[4] - tanL
-    //  variables[5] - cosL
+    //  variables[5] - MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether))
     //  variables[6] - Ei
     //  variables[7] - ni
-    (variables[4], variables[5], variables[6], variables[7]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
+    (variables[4], variables[6], variables[7], variables[5]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
 //    emit LogVar("Ei", variables[6]);
 //    emit LogVar("ni", variables[7]);
 
@@ -331,7 +332,7 @@ library LandUtils {
     // ---- scale: Karney 2011 Eq 25
 
     //  variables[13] - k
-    variables[13] = getUTM_k(variables[0], variables[1], variables[3], variables[5], variables[11], variables[10]);
+    variables[13] = getUTM_k(variables[0], variables[14], variables[11], variables[10], variables[5]);
     emit LogVar("k", variables[13]);
 
     convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
@@ -394,13 +395,14 @@ library LandUtils {
   }
 //
   
-  function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) public returns(int tanL, int cosL, int Ei, int ni) {
+  function getUTM_tanL_Ei_ni(int _lon, int L0, int ti) public returns(int tanL, int Ei, int ni, int si) {
     int L = TrigonometryUtils.degreeToRad(_lon) - L0;
-    cosL = TrigonometryUtils.cos(L);
+    int cosL = TrigonometryUtils.cos(L);
     tanL = TrigonometryUtils.tan(L);
 
     Ei = TrigonometryUtils.atan2(ti, cosL);
-    ni = TrigonometryUtils.asinh((TrigonometryUtils.sin(L) * 1 ether) / MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether)));
+    si = MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether));
+    ni = TrigonometryUtils.asinh((TrigonometryUtils.sin(L) * 1 ether) / si);
   }
   
   function getUTM_pi(int[7] memory a, int Ei, int ni) public returns(int) {
@@ -432,10 +434,10 @@ library LandUtils {
     return TrigonometryUtils.atan((((ti * 1 ether) / MathUtils.sqrtInt(1 ether + (ti * ti) / 1 ether)) * tanL) / 1 ether) + TrigonometryUtils.atan2(qi, pi);
   }
 
-  function getUTM_k(int F, int t, int ti, int cosL, int pi, int qi) public returns(int) {
+  function getUTM_k(int F, int st, int pi, int qi, int si) public returns(int) {
     int sinF = TrigonometryUtils.sin(F);
     return (k0 * (
-      (((((MathUtils.sqrtInt(1 ether - (((e * e) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * MathUtils.sqrtInt(1 ether + (t * t) / 1 ether)) / MathUtils.sqrtInt((ti * ti) / 1 ether + (cosL * cosL) / 1 ether)) * A) / ellipsoidalA) 
+      (((((MathUtils.sqrtInt(1 ether - (((e * e) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA) 
       * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
     )) / 1 ether;
   }
