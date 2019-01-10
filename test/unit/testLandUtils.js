@@ -77,7 +77,7 @@ contract('LandUtils', ([deployer]) => {
     });
   });
 
-  describe('#latLonToUtm()', () => {
+  describe.only('#latLonToUtm()', () => {
     it('should correctly convert lat lon to utm', async function() {
       const point = [1.1789703369140625, 104.51362609863281];
 
@@ -175,7 +175,7 @@ function toUtm(_lat, _lon) {
   // ---- easting, northing: Karney 2011 Eq 7-14, 29, 35:
 
   const e = Math.sqrt(f * (2 - f)); // eccentricity
-  console.log('e', web3.utils.toWei(e.toString(), 'ether'));
+  // console.log('e', web3.utils.toWei(e.toString(), 'ether'));
 
   const cosλ = Math.cos(λ);
 
@@ -189,16 +189,16 @@ function toUtm(_lat, _lon) {
 
   const ξʹ = Math.atan2(τʹ, cosλ);
   const ηʹ = Math.asinh(sinλ / Math.sqrt(τʹ * τʹ + cosλ * cosλ));
-
-  console.log('LogVar', 'τʹ', τʹ);
-  console.log('LogVar', 'cosλ', cosλ);
-  console.log('LogVar', 'ξʹ my_atan2', my_atan2(τʹ, cosλ));
-  console.log('LogVar', 'ξʹ', ξʹ);
-  console.log('LogVar', 'ηʹ', ηʹ);
+  //
+  // console.log('LogVar', 'τʹ', τʹ);
+  // console.log('LogVar', 'cosλ', cosλ);
+  // console.log('LogVar', 'ξʹ my_atan2', my_atan2(τʹ, cosλ));
+  // console.log('LogVar', 'ξi', ξʹ);
+  // console.log('LogVar', 'ηi', ηʹ);
 
   const A = 6367449.145823415; // 2πA is the circumference of a meridian
 
-  console.log('A', web3.utils.toWei(A.toString(), 'ether'));
+  // console.log('A', web3.utils.toWei(A.toString(), 'ether'));
   const α = [
     null,
     837731820624470 / 10 ** 18,
@@ -210,13 +210,25 @@ function toUtm(_lat, _lon) {
   ];
 
   let ξ = ξʹ;
-  for (let j = 1; j <= 6; j++) ξ += α[j] * Math.sin(2 * j * ξʹ) * Math.cosh(2 * j * ηʹ);
+  for (let j = 1; j <= 6; j++) {
+      // console.log("a[uint(j)]", a[j]);
+      // console.log("2 * j * variables[7]", 2 * j * variables[7]);
+      // console.log("TrigonometryUtils.sin(2 * j * variables[7])", TrigonometryUtils.sin(2 * j * variables[7]));
+      // console.log("TrigonometryUtils.cosh(2 * j * variables[7])", TrigonometryUtils.cosh(2 * j * variables[7]));
+    // console.log('LogVar', 'ξ', ξ);
+    ξ += α[j] * Math.sin(2 * j * ξʹ) * Math.cosh(2 * j * ηʹ);
+  }
+    // console.log('LogVar', 'E', ξ);
 
   let η = ηʹ;
   for (let j = 1; j <= 6; j++) η += α[j] * Math.cos(2 * j * ξʹ) * Math.sinh(2 * j * ηʹ);
 
+    // console.log('LogVar', 'n', η);
   let x = k0 * A * η;
   let y = k0 * A * ξ;
+    console.log('Javascript:');
+    console.log('LogVar', 'x', x);
+    console.log('LogVar', 'y', y);
 
   // ---- convergence: Karney 2011 Eq 23, 24
 

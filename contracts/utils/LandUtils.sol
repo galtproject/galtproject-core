@@ -278,23 +278,28 @@ library LandUtils {
     //  variables[6] - Ei
     //  variables[7] - ni
     (variables[4], variables[5], variables[6], variables[7]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
-    emit LogVar("Ei", variables[6]);
-    emit LogVar("ni", variables[7]);
-//
-//    //  variables[8] - E
-//    variables[8] = variables[6];
-//    for (int j = 1; j <= 6; j++) {
-//      variables[8] += a[uint(j)] * TrigonometryUtils.sin(2 * j * variables[7]) * TrigonometryUtils.cosh(2 * j * variables[7]);
-//    }
-//
-//    //  variables[9] - n
-//    variables[9] = variables[7];
-//    for (int j = 1; j <= 6; j++) {
-//      variables[9] += a[uint(j)] * TrigonometryUtils.cos(2 * j * variables[6]) * TrigonometryUtils.sinh(2 * j * variables[7]);
-//    }
-//
-//    x = k0 * A * variables[9];
-//    y = k0 * A * variables[8];
+//    emit LogVar("Ei", variables[6]);
+//    emit LogVar("ni", variables[7]);
+
+    //  variables[8] - E
+    variables[8] = variables[6];
+    for (int j = 1; j <= 6; j++) {
+      variables[8] += (a[uint(j)] * (TrigonometryUtils.sin(2 * j * variables[6]) * TrigonometryUtils.cosh(2 * j * variables[7])) / 1 ether) / 1 ether;
+    }
+//    emit LogVar("E", variables[8]);
+
+
+    //  variables[9] - n
+    variables[9] = variables[7];
+    for (int j = 1; j <= 6; j++) {
+      variables[9] += (a[uint(j)] * ((TrigonometryUtils.cos(2 * j * variables[6]) * TrigonometryUtils.sinh(2 * j * variables[7])) / 1 ether)) / 1 ether;
+    }
+//    emit LogVar("n", variables[9]);
+
+    x = (((k0 * A) / 1 ether) * variables[9]) / 1 ether;
+    y = (((k0 * A) / 1 ether) * variables[8]) / 1 ether;
+    emit LogVar("x", x);
+    emit LogVar("y", y);
 //
 //    // ---- convergence: Karney 2011 Eq 23, 24
 //
@@ -381,10 +386,8 @@ library LandUtils {
     int sinL = TrigonometryUtils.sin(L);
     tanL = TrigonometryUtils.tan(L);
 
-    emit LogVar("ti", ti);
-    emit LogVar("cosL", cosL);
     Ei = TrigonometryUtils.atan2(ti, cosL);
-    ni = TrigonometryUtils.asinh(sinL / MathUtils.sqrtInt(ti * ti + cosL * cosL));
+    ni = TrigonometryUtils.asinh((sinL * 1 ether) / MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether)));
   }
   
   function getUTM_pi(int[7] memory a, int Ei, int ni) public returns(int pi) {

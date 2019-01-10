@@ -74,8 +74,8 @@ library TrigonometryUtils {
     return (MathUtils.exp(radians) - MathUtils.exp(- radians)) / 2;
   }
 
-  function asinh(int256 radians) internal returns (int256) {
-    return 0;
+  function asinh(int256 x) internal returns (int256) {
+    return MathUtils.logE(x + MathUtils.sqrtInt((x * x) / 1 ether + 1 ether));
   }
 
   event TLogVar(string v, int a);
@@ -131,9 +131,9 @@ library TrigonometryUtils {
   event AtanLog(string s, int256 v);
   
   function atan2(int256 y, int256 x) internal returns (int256) {
-    emit AtanLog("input", (y * 1 ether) / x);
+//    emit AtanLog("input", (y * 1 ether) / x);
     int u = atan((y * 1 ether) / x);
-    emit AtanLog("output", u);
+//    emit AtanLog("output", u);
     if (x < 0) { // 2nd, 3rd quadrant
       if (u > 0) // will go to 3rd quadrant
         u -= PI;
