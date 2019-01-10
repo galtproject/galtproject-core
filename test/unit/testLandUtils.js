@@ -111,8 +111,17 @@ contract('LandUtils', ([deployer]) => {
         from: deployer
       });
 
-      assert.equal(true, false);
-      assert.deepEqual(res.logs[0].args.result.toString(10), shouldBeUtm);
+      const result = res.logs[0].args;
+      const xResult = result.x / 10 ** 18;
+      const yResult = result.y / 10 ** 18;
+
+      console.log('xDiff', Math.abs(xResult - shouldBeUtm.x));
+      console.log('yDiff', Math.abs(yResult - shouldBeUtm.y));
+
+      console.log('gasUsed', res.receipt.gasUsed);
+
+      assert.isBelow(Math.abs(xResult - shouldBeUtm.x), 0.001);
+      assert.isBelow(Math.abs(yResult - shouldBeUtm.y), 0.001);
     });
   });
 });
@@ -211,24 +220,24 @@ function toUtm(_lat, _lon) {
 
   let ξ = ξʹ;
   for (let j = 1; j <= 6; j++) {
-      // console.log("a[uint(j)]", a[j]);
-      // console.log("2 * j * variables[7]", 2 * j * variables[7]);
-      // console.log("TrigonometryUtils.sin(2 * j * variables[7])", TrigonometryUtils.sin(2 * j * variables[7]));
-      // console.log("TrigonometryUtils.cosh(2 * j * variables[7])", TrigonometryUtils.cosh(2 * j * variables[7]));
+    // console.log("a[uint(j)]", a[j]);
+    // console.log("2 * j * variables[7]", 2 * j * variables[7]);
+    // console.log("TrigonometryUtils.sin(2 * j * variables[7])", TrigonometryUtils.sin(2 * j * variables[7]));
+    // console.log("TrigonometryUtils.cosh(2 * j * variables[7])", TrigonometryUtils.cosh(2 * j * variables[7]));
     // console.log('LogVar', 'ξ', ξ);
     ξ += α[j] * Math.sin(2 * j * ξʹ) * Math.cosh(2 * j * ηʹ);
   }
-    // console.log('LogVar', 'E', ξ);
+  // console.log('LogVar', 'E', ξ);
 
   let η = ηʹ;
   for (let j = 1; j <= 6; j++) η += α[j] * Math.cos(2 * j * ξʹ) * Math.sinh(2 * j * ηʹ);
 
-    // console.log('LogVar', 'n', η);
+  // console.log('LogVar', 'n', η);
   let x = k0 * A * η;
   let y = k0 * A * ξ;
-    console.log('Javascript:');
-    console.log('LogVar', 'x', x);
-    console.log('LogVar', 'y', y);
+    // console.log('Javascript:');
+    // console.log('LogVar', 'x', x);
+    // console.log('LogVar', 'y', y);
 
   // ---- convergence: Karney 2011 Eq 23, 24
 

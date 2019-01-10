@@ -82,7 +82,7 @@ library MathUtils {
     if(precision == 18) {
       return x;
     }
-    return (x / int(uint(10) ** uint(18 - precision))) * int(uint(10) ** uint(18 - precision));
+    return (x / int(10 ** uint(18 - precision))) * int(10 ** uint(18 - precision));
   }
 
   function logE (int256 v) internal returns (int256) {

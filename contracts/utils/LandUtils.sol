@@ -234,8 +234,8 @@ library LandUtils {
   int constant ellipsoidalB = 6356752314245000000000000;
   int constant ellipsoidalF = 3352810664747481;
   
-  int constant falseEasting = 500000;
-  int constant falseNorthing = 10000000;
+  int constant falseEasting = 500000 ether;
+  int constant falseNorthing = 10000000 ether;
   int constant k0 = 999600000000000000;
 
   // 2πA is the circumference of a meridian
@@ -246,14 +246,15 @@ library LandUtils {
   // UTM scale on the central meridian
   // latitude ± from equator
   // longitude ± from central meridian
-  event LogVar(string v, int a);
+  event ResultUtm(int x, int y);
+  event LogVar(string s, int v);
   function latLonToUtm(int256 _lat, int256 _lon) public returns (
+    int x,
+    int y,
+    int scale,
     int zone, 
     string h,
-    int x,
-    int y, 
-    int convergence, 
-    int scale
+    int convergence
   ) {
     require(-80 ether <= _lat && _lat <= 84 ether, "Outside UTM limits");
 
@@ -288,7 +289,6 @@ library LandUtils {
     }
 //    emit LogVar("E", variables[8]);
 
-
     //  variables[9] - n
     variables[9] = variables[7];
     for (int j = 1; j <= 6; j++) {
@@ -298,10 +298,24 @@ library LandUtils {
 
     x = (((k0 * A) / 1 ether) * variables[9]) / 1 ether;
     y = (((k0 * A) / 1 ether) * variables[8]) / 1 ether;
-    emit LogVar("x", x);
-    emit LogVar("y", y);
-//
-//    // ---- convergence: Karney 2011 Eq 23, 24
+//    emit LogVar("x", x);
+//    emit LogVar("y", y);
+    // ------------
+
+    // shift x/y to false origins
+    x = x + falseEasting;
+    // make x relative to false easting
+    if (y < 0) {
+      y = y + falseNorthing;
+      // make y in southern hemisphere relative to false northing
+    }
+
+    // round to reasonable precision
+    x = MathUtils.toFixedInt(x, 6);
+    // nm precision
+    y = MathUtils.toFixedInt(y, 6);
+
+    // ---- convergence: Karney 2011 Eq 23, 24
 //
 //    //  variables[10] - qi
 //    //  variables[11] - pi
@@ -315,21 +329,7 @@ library LandUtils {
 //    //  variables[13] - k
 //    variables[13] = getUTM_k(variables[0], variables[1], variables[3], variables[5], variables[11], variables[10]);
 //
-//    // ------------
 //
-//    // shift x/y to false origins
-//    x = x + falseEasting;
-//    // make x relative to false easting
-//    if (y < 0) {
-//      y = y + falseNorthing;
-//      // make y in southern hemisphere relative to false northing
-//    }
-//
-//    // round to reasonable precision
-//    x = MathUtils.toFixedInt(x, 6);
-//    // nm precision
-//    y = MathUtils.toFixedInt(y, 6);
-//    // nm precision
 //    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
 //    scale = MathUtils.toFixedInt(variables[13], 12);
 //
