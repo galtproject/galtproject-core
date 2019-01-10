@@ -15,9 +15,9 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library MathUtils {
-  int256 constant public longer_fixed_log_e_1_5 =    405465108108164381978013115464349137;
-  int256 constant public longer_fixed_1 =            1000000000000000000000000000000000000;
-  int256 constant public longer_fixed_log_e_10 =     2302585092994045684017991454684364208;
+  int256 constant public longer_fixed_log_e_1_5 = 405465108108164381978013115464349137;
+  int256 constant public longer_fixed_1 = 1000000000000000000000000000000000000;
+  int256 constant public longer_fixed_log_e_10 = 2302585092994045684017991454684364208;
 
   int256 constant fixed_1 = 1000000000000000000;
   int256 constant fixed_e = 2718281828459045400;
@@ -26,7 +26,7 @@ library MathUtils {
   int256 constant ln_10 = 2302585092994046000;
   
   uint256 constant e = 2718281828459045000;
-  
+
   function INT256_MIN() internal pure returns (int256) {
     return int256((uint256(1) << 255));
   }
@@ -73,40 +73,41 @@ library MathUtils {
     }
     y *= 10 ** 9;
   }
-  
+
   function floorInt(int x) internal view returns (int) {
     return (x / 1 ether) * 1 ether;
   }
-  
+
   function toFixedInt(int x, int precision) internal view returns (int) {
-    if(precision == 18) {
+    if (precision == 18) {
       return x;
     }
     return (x / int(10 ** uint(18 - precision))) * int(10 ** uint(18 - precision));
   }
 
-  function logE (int256 v) internal returns (int256) {
+  function logE(int256 x) internal returns (int256) {
     int256 r = 0;
-    while(v <= fixed_1 / 10) {
+    int256 v = x;
+    while (v <= fixed_1 / 10) {
       v = v * 10;
       r -= longer_fixed_log_e_10;
     }
-    while(v >= 10 * fixed_1) {
+    while (v >= 10 * fixed_1) {
       v = v / 10;
       r += longer_fixed_log_e_10;
     }
-    while(v < fixed_1) {
+    while (v < fixed_1) {
       v = v * fixed_e;
       r -= longer_fixed_1;
     }
-    while(v > fixed_e) {
+    while (v > fixed_e) {
       v = v / fixed_e;
       r += longer_fixed_1;
     }
-    if(v == fixed_1) {
+    if (v == fixed_1) {
       return round_off(r) / fixed_1;
     }
-    if(v == fixed_e) {
+    if (v == fixed_e) {
       return fixed_1 + round_off(r) / fixed_1;
     }
     v *= fixed_1;
@@ -116,11 +117,11 @@ library MathUtils {
     r = r + 2 * m;
     int256 m_2 = m * m / longer_fixed_1;
     uint8 i = 3;
-    while(true) {
+    while (true) {
       m = m * m_2 / longer_fixed_1;
       r = r + 2 * m / int256(i);
       i += 2;
-      if(i >= 3 + 2 * 18) 
+      if (i >= 3 + 2 * 18)
         break;
     }
     return round_off(r) / fixed_1;
@@ -138,20 +139,22 @@ library MathUtils {
     return (logE(v) * 1 ether) / ln_10;
   }
 
-  function round_off(int256 v) public view returns (int256) {
+  function round_off(int256 x) public view returns (int256) {
     int8 sign = 1;
-    if(v < 0) {
-      sign = -1;
-      v = 0 - v;
+    int v = x;
+    if (v < 0) {
+      sign = - 1;
+      v = - v;
     }
-    if(v % fixed_1 >= fixed_1 / 2) v = v + fixed_1 - v % fixed_1;
+    if (v % fixed_1 >= fixed_1 / 2) 
+      v = v + fixed_1 - v % fixed_1;
     return v * sign;
   }
-  
-  function exp (int x) internal view returns (int) {
+
+  function exp(int x) internal view returns (int) {
     int sum = 1 ether;
 
-    for (uint i = 15 - 1; i > 0; --i ) {
+    for (uint i = 15 - 1; i > 0; --i) {
       sum = 1 ether + x * sum / int(i * 1 ether);
     }
 

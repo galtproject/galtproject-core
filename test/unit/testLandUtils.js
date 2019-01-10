@@ -109,7 +109,7 @@ contract('LandUtils', ([deployer]) => {
         const xResult = result.x / 10 ** 18;
         const yResult = result.y / 10 ** 18;
         const scaleResult = result.scale / 10 ** 18;
-        const convergenceResult = result.convergence / 10 ** 18;
+        // const convergenceResult = result.convergence / 10 ** 18;
 
         // console.log('xDiff', Math.abs(xResult - shouldBeUtm.x));
         // console.log('yDiff', Math.abs(yResult - shouldBeUtm.y));

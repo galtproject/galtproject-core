@@ -246,14 +246,18 @@ library LandUtils {
   // UTM scale on the central meridian
   // latitude ± from equator
   // longitude ± from central meridian
-  function latLonToUtm(int256 _lat, int256 _lon) public returns (
+  function latLonToUtm(int256 _lat, int256 _lon) 
+    public 
+    returns 
+  (
     int x,
     int y,
     int scale,
     int zone,
     bool isNorth,
     int convergence
-  ) {
+  ) 
+  {
     require(- 80 ether <= _lat && _lat <= 84 ether, "Outside UTM limits");
 
     int L0;
@@ -307,24 +311,28 @@ library LandUtils {
     variables[36] = TrigonometryUtils.sinh(2 * 4 * variables[7]);
     variables[37] = TrigonometryUtils.sinh(2 * 5 * variables[7]);
     variables[38] = TrigonometryUtils.sinh(2 * 6 * variables[7]);
-    
+
     //  variables[8] - E
+    /* solium-disable-next-line */
     variables[8] = variables[6]
-      + (a[1] * (variables[15] * variables[21]) / 1 ether) / 1 ether
-      + (a[2] * (variables[16] * variables[22]) / 1 ether) / 1 ether
-      + (a[3] * (variables[17] * variables[23]) / 1 ether) / 1 ether
-      + (a[4] * (variables[18] * variables[24]) / 1 ether) / 1 ether
-      + (a[5] * (variables[19] * variables[25]) / 1 ether) / 1 ether
-      + (a[6] * (variables[20] * variables[26]) / 1 ether) / 1 ether;
+     + (a[1] * (variables[15] * variables[21]) / 1 ether) / 1 ether
+     + (a[2] * (variables[16] * variables[22]) / 1 ether) / 1 ether
+     + (a[3] * (variables[17] * variables[23]) / 1 ether) / 1 ether
+     + (a[4] * (variables[18] * variables[24]) / 1 ether) / 1 ether
+     + (a[5] * (variables[19] * variables[25]) / 1 ether) / 1 ether
+    /* solium-disable-next-line */
+     + (a[6] * (variables[20] * variables[26]) / 1 ether) / 1 ether;
 
     //  variables[9] - n
+    /* solium-disable-next-line */
     variables[9] = variables[7]
-      + (a[1] * ((variables[27] * variables[33]) / 1 ether)) / 1 ether
-      + (a[2] * ((variables[28] * variables[34]) / 1 ether)) / 1 ether
-      + (a[3] * ((variables[29] * variables[35]) / 1 ether)) / 1 ether
-      + (a[4] * ((variables[30] * variables[36]) / 1 ether)) / 1 ether
-      + (a[5] * ((variables[31] * variables[37]) / 1 ether)) / 1 ether
-      + (a[6] * ((variables[32] * variables[38]) / 1 ether)) / 1 ether;
+     + (a[1] * ((variables[27] * variables[33]) / 1 ether)) / 1 ether
+     + (a[2] * ((variables[28] * variables[34]) / 1 ether)) / 1 ether
+     + (a[3] * ((variables[29] * variables[35]) / 1 ether)) / 1 ether
+     + (a[4] * ((variables[30] * variables[36]) / 1 ether)) / 1 ether
+     + (a[5] * ((variables[31] * variables[37]) / 1 ether)) / 1 ether
+    /* solium-disable-next-line */
+     + (a[6] * ((variables[32] * variables[38]) / 1 ether)) / 1 ether;
 
     x = (((k0 * A) / 1 ether) * variables[9]) / 1 ether;
     y = (((k0 * A) / 1 ether) * variables[8]) / 1 ether;
@@ -348,21 +356,25 @@ library LandUtils {
     //  variables[10] - pi
     //  variables[11] - qi
     //  variables[12] - V
+    /* solium-disable-next-line */
     variables[10] = 1 ether
-      + 2 * 1 * ((a[1] * (variables[27] * variables[21]) / 1 ether) / 1 ether)
-      + 2 * 2 * ((a[2] * (variables[28] * variables[22]) / 1 ether) / 1 ether)
-      + 2 * 3 * ((a[3] * (variables[29] * variables[23]) / 1 ether) / 1 ether)
-      + 2 * 4 * ((a[4] * (variables[30] * variables[24]) / 1 ether) / 1 ether)
-      + 2 * 5 * ((a[5] * (variables[31] * variables[25]) / 1 ether) / 1 ether)
-      + 2 * 6 * ((a[6] * (variables[32] * variables[26]) / 1 ether) / 1 ether);
-    
+     + 2 * 1 * ((a[1] * (variables[27] * variables[21]) / 1 ether) / 1 ether)
+     + 2 * 2 * ((a[2] * (variables[28] * variables[22]) / 1 ether) / 1 ether)
+     + 2 * 3 * ((a[3] * (variables[29] * variables[23]) / 1 ether) / 1 ether)
+     + 2 * 4 * ((a[4] * (variables[30] * variables[24]) / 1 ether) / 1 ether)
+     + 2 * 5 * ((a[5] * (variables[31] * variables[25]) / 1 ether) / 1 ether)
+    /* solium-disable-next-line */
+     + 2 * 6 * ((a[6] * (variables[32] * variables[26]) / 1 ether) / 1 ether);
+
+    /* solium-disable-next-line */
     variables[11] = 2 * 1 * ((a[1] * ((variables[15] * variables[33]) / 1 ether)) / 1 ether)
-      + 2 * 2 * ((a[2] * ((variables[16] * variables[34]) / 1 ether)) / 1 ether)
-      + 2 * 3 * ((a[3] * ((variables[17] * variables[35]) / 1 ether)) / 1 ether)
-      + 2 * 4 * ((a[4] * ((variables[18] * variables[36]) / 1 ether)) / 1 ether)
-      + 2 * 5 * ((a[5] * ((variables[19] * variables[37]) / 1 ether)) / 1 ether)
-      + 2 * 6 * ((a[6] * ((variables[20] * variables[38]) / 1 ether)) / 1 ether);
-    
+     + 2 * 2 * ((a[2] * ((variables[16] * variables[34]) / 1 ether)) / 1 ether)
+     + 2 * 3 * ((a[3] * ((variables[17] * variables[35]) / 1 ether)) / 1 ether)
+     + 2 * 4 * ((a[4] * ((variables[18] * variables[36]) / 1 ether)) / 1 ether)
+     + 2 * 5 * ((a[5] * ((variables[19] * variables[37]) / 1 ether)) / 1 ether)
+    /* solium-disable-next-line */
+     + 2 * 6 * ((a[6] * ((variables[20] * variables[38]) / 1 ether)) / 1 ether);
+
     variables[12] = getUTM_V(variables[3], variables[4], variables[11], variables[10]);
 
     // ---- scale: Karney 2011 Eq 25
@@ -370,7 +382,7 @@ library LandUtils {
     //  variables[13] - k
     variables[13] = getUTM_k(variables[0], variables[14], variables[11], variables[10], variables[5]);
 
-//    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
+    //    convergence = MathUtils.toFixedInt(TrigonometryUtils.radToDegree(variables[12]), 9);
     scale = MathUtils.toFixedInt(variables[13], 12);
 
     isNorth = _lat >= 0;
@@ -445,8 +457,9 @@ library LandUtils {
   function getUTM_k(int F, int st, int pi, int qi, int si) public returns (int) {
     int sinF = TrigonometryUtils.sin(F);
     return (k0 * (
-    (((((MathUtils.sqrtInt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
-    * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
+     /* solium-disable-next-line */
+     (((((MathUtils.sqrtInt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
+     * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
     )) / 1 ether;
   }
 }

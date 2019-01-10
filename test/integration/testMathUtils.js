@@ -1,7 +1,6 @@
 const MathUtils = artifacts.require('./utils/MathUtils.sol');
 const MockMathUtils = artifacts.require('./mocks/MockMathUtils.sol');
 
-const pIteration = require('p-iteration');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
