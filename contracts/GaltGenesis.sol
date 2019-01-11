@@ -18,12 +18,14 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./GaltToken.sol";
 import "./GaltDex.sol";
+import "./interfaces/IWETH.sol";
 
 contract GaltGenesis is Ownable {
   using SafeMath for uint256;
 
   GaltToken galtToken;
   GaltDex galtDex;
+  IWETH weth;
 
   uint256 public totalGalt;
 
@@ -41,9 +43,10 @@ contract GaltGenesis is Ownable {
   event Claimed(address account, uint256 galtValue);
   event Finished(uint256 ethBalance, uint256 finishingTime);
 
-  constructor (GaltToken _galtToken, GaltDex _galtDex) public {
+  constructor (GaltToken _galtToken, GaltDex _galtDex, IWETH _weth) public {
     galtToken = _galtToken;
     galtDex = _galtDex;
+    weth = _weth;
   }
 
   function start(uint256 period) external onlyOwner {
@@ -61,10 +64,13 @@ contract GaltGenesis is Ownable {
     require(openingTime > 0, "Not started");
     require(block.timestamp >= closingTime, "Too soon");
     finished = true;
+    
+    uint256 finalEthBalance = address(this).balance;
 
-    emit Finished(address(this).balance, block.timestamp);
+    emit Finished(finalEthBalance, block.timestamp);
 
-    address(galtDex).transfer(address(this).balance);
+    weth.deposit.value(finalEthBalance)();
+    weth.transfer(address(galtDex), finalEthBalance);
   }
 
   function pay() public payable {
