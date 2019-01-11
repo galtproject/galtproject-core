@@ -16,12 +16,12 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./Oracles.sol";
+import "../AbstractApplication.sol";
+import "../AbstractOracleApplication.sol";
+import "../SpaceToken.sol";
+import "../SplitMerge.sol";
+import "../Oracles.sol";
 import "./PlotManagerLib.sol";
-import "./AbstractOracleApplication.sol";
 
 
 contract PlotManager is AbstractOracleApplication {
@@ -83,6 +83,9 @@ contract PlotManager is AbstractOracleApplication {
   struct ApplicationDetails {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
+    int256 level;
+    uint256[] packageContour;
+    int256[] heights;
   }
 
   // rate per one 12-symbol geohash in GALT
@@ -221,8 +224,6 @@ contract PlotManager is AbstractOracleApplication {
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
     a.applicant = msg.sender;
-    // TODO: should depend on plot area
-    a.spaceTokenId = splitMerge.initPackage(address(this));
 
     calculateAndStoreFee(a, fee);
 
@@ -236,15 +237,14 @@ contract PlotManager is AbstractOracleApplication {
 
     applications[_id].details = ApplicationDetails({
       ledgerIdentifier: _ledgerIdentifier,
-      credentialsHash: _credentialsHash
+      credentialsHash: _credentialsHash,
+      level: _level,
+      packageContour: _packageContour,
+      heights: _heights
     });
 
     applications[_id].fees.latestCommittedFee = fee;
     assignRequiredOracleTypesAndRewards(applications[_id]);
-
-    splitMerge.setPackageContour(a.spaceTokenId, _packageContour);
-    splitMerge.setPackageHeights(a.spaceTokenId, _heights);
-    splitMerge.setPackageLevel(a.spaceTokenId, _level);
 
     return _id;
   }
@@ -406,8 +406,27 @@ contract PlotManager is AbstractOracleApplication {
 
     if (allApproved) {
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
-      spaceToken.transferFrom(address(this), a.applicant, a.spaceTokenId);
+      mintToken(a);
     }
+  }
+
+  function claimSpaceToken(bytes32 _aId) external onlyApplicant(_aId) {
+    Application storage a = applications[_aId];
+    require(
+      a.status == ApplicationStatus.APPROVED,
+      "Application status should be APPROVED");
+
+    spaceToken.transferFrom(address(this), a.applicant, a.spaceTokenId);
+  }
+
+  function mintToken(Application storage a) internal {
+    uint256 tokenId = splitMerge.initPackage(address(this));
+
+    a.spaceTokenId = tokenId;
+
+    splitMerge.setPackageContour(tokenId, a.details.packageContour);
+    splitMerge.setPackageHeights(tokenId, a.details.heights);
+    splitMerge.setPackageLevel(tokenId, a.details.level);
   }
 
   function rejectApplication(
