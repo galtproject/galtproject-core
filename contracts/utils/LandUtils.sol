@@ -37,9 +37,12 @@ library LandUtils {
   struct LatLonData {
     mapping(uint256 => int256[2]) latLonByGeohash;
     mapping(bytes32 => mapping(uint8 => uint256)) geohashByLatLonHash;
+    
+    mapping(uint256 => int256[4]) utmByGeohash;
+    mapping(bytes32 => int256[4]) utmByLatLonHash;
   }
 
-  function geohash5Precision(uint256 _geohash5) public pure returns (uint256) {
+  function geohash5Precision(uint256 _geohash5) public pure returns (uint8) {
     if (_geohash5 == 0) {
       return 0;
     } else if (_geohash5 <= C1_GEOHASH) {
@@ -254,8 +257,7 @@ library LandUtils {
     int y,
     int scale,
     int zone,
-    bool isNorth,
-    int convergence
+    bool isNorth
   ) 
   {
     require(- 80 ether <= _lat && _lat <= 84 ether, "Outside UTM limits");

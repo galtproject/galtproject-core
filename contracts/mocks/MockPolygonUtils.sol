@@ -8,18 +8,19 @@ import "../utils/PolygonUtils.sol";
 contract MockPolygonUtils {
   event LogAreaResult(uint256 result);
   
-  PolygonUtils.CoorsPolygon polygon;
+  PolygonUtils.UtmPolygon polygon;
   
   constructor() public {
 
   }
   
   function addPoint(int256[2] point) public {
-    polygon.points.push(point);
+    (int x, int y, int scale, int zone,) = LandUtils.latLonToUtm(point[0], point[1]);
+    polygon.points.push([x, y, scale, zone]);
   }
   
   function getArea() public returns(uint256 area) {
-    area = PolygonUtils.getArea(polygon);
+    area = PolygonUtils.getUtmArea(polygon);
     emit LogAreaResult(area);
   }
 }

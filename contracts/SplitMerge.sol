@@ -87,8 +87,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function initPackage(address spaceTokenOwner)
-  public onlyGeoDataManager()
-  returns (uint256)
+    public onlyGeoDataManager()
+    returns (uint256)
   {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
 
@@ -98,7 +98,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour)
-  public onlyGeoDataManager()
+    public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -118,7 +118,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
-  public onlyGeoDataManager()
+    public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
@@ -126,7 +126,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function setPackageLevel(uint256 _packageTokenId, int256 _level)
-  public onlyGeoDataManager()
+    public onlyGeoDataManager()
   {
     packageToLevel[_packageTokenId] = _level;
   }
@@ -134,13 +134,34 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function cacheGeohashToLatLon(uint256 _geohash) public returns (int256[2]) {
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
     bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
-    latLonData.geohashByLatLonHash[pointHash][12] = _geohash;
+    latLonData.geohashByLatLonHash[pointHash][LandUtils.geohash5Precision(_geohash)] = _geohash;
     return latLonData.latLonByGeohash[_geohash];
   }
 
   function cacheGeohashListToLatLon(uint256[] _geohashList) public {
     for (uint i = 0; i < _geohashList.length; i++) {
       cacheGeohashToLatLon(_geohashList[i]);
+    }
+  }
+
+  function cacheGeohashToLatLonAndUtm(uint256 _geohash) public returns (int256[4]) {
+    latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
+    bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
+    latLonData.geohashByLatLonHash[pointHash][LandUtils.geohash5Precision(_geohash)] = _geohash;
+    
+    (latLonData.utmByLatLonHash[pointHash][0], 
+      latLonData.utmByLatLonHash[pointHash][1], 
+      latLonData.utmByLatLonHash[pointHash][2], 
+      latLonData.utmByLatLonHash[pointHash][3], ) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
+
+    latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
+    
+    return latLonData.utmByGeohash[_geohash];
+  }
+
+  function cacheGeohashListToLatLonAndUtm(uint256[] _geohashList) public {
+    for (uint i = 0; i < _geohashList.length; i++) {
+      cacheGeohashToLatLonAndUtm(_geohashList[i]);
     }
   }
 
@@ -170,9 +191,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _spaceTokenId,
     uint256[] _clippingContour
   )
-  external
-  onlySpaceTokenOwner(_spaceTokenId)
-  returns (address)
+    external
+    onlySpaceTokenOwner(_spaceTokenId)
+    returns (address)
   {
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
@@ -254,9 +275,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256 _destinationPackageTokenId,
     uint256[] _destinationPackageContour
   )
-  external
-  onlySpaceTokenOwner(_sourcePackageTokenId)
-  onlySpaceTokenOwner(_destinationPackageTokenId)
+    external
+    onlySpaceTokenOwner(_sourcePackageTokenId)
+    onlySpaceTokenOwner(_destinationPackageTokenId)
   {
     require(
       getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
@@ -316,17 +337,17 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function calculateContourArea(uint256[] contour) external returns (uint256 area) {
-    PolygonUtils.CoorsPolygon memory p;
-    p.points = new int256[2][](contour.length);
+    PolygonUtils.UtmPolygon memory p;
+    p.points = new int256[4][](contour.length);
 
     for (uint i = 0; i < contour.length; i++) {
-      if (latLonData.latLonByGeohash[contour[i]][0] != 0 && latLonData.latLonByGeohash[contour[i]][1] != 0) {
-        p.points[i] = latLonData.latLonByGeohash[contour[i]];
+      if (latLonData.utmByGeohash[contour[i]][0] != 0) {
+        p.points[i] = latLonData.utmByGeohash[contour[i]];
       } else {
-        p.points[i] = cacheGeohashToLatLon(contour[i]);
+        p.points[i] = cacheGeohashToLatLonAndUtm(contour[i]);
       }
     }
-    area = PolygonUtils.getArea(p);
+    area = PolygonUtils.getUtmArea(p);
     emit ContourAreaCalculate(contour, area);
   }
 

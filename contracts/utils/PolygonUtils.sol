@@ -25,6 +25,10 @@ library PolygonUtils {
   struct CoorsPolygon {
     int256[2][] points;
   }
+  
+  struct UtmPolygon {
+    int256[4][] points;
+  }
 
   int constant RADIUS = 6378137;
   int constant PI = 3141592653589793300;
@@ -88,37 +92,15 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  function getArea(CoorsPolygon memory _polygon) internal returns (uint) {
-    int[2] memory p1;
-    int[2] memory p2;
-    int[2] memory p3;
-    int area = 0;
+  function getUtmArea(UtmPolygon memory _polygon) internal returns (uint) {
+    int area = 0;         // Accumulates area in the loop
+    uint j = _polygon.points.length - 1;  // The last vertex is the 'previous' one to the first
 
-    if (_polygon.points.length <= 2) {
-      return 0;
+    for (uint i=0; i < _polygon.points.length; i++) { 
+      area += ((_polygon.points[j][0] + _polygon.points[i][0]) * (_polygon.points[j][1] - _polygon.points[i][1])) / 1 ether;
+      j = i;  //j is previous vertex to i
     }
-
-    for (uint i = 0; i < _polygon.points.length; i++) {
-      if (i == _polygon.points.length - 2) {// i = N-2
-        p1 = _polygon.points[_polygon.points.length - 2];
-        p2 = _polygon.points[_polygon.points.length - 1];
-        p3 = _polygon.points[0];
-      } else if (i == _polygon.points.length - 1) {// i = N-1
-        p1 = _polygon.points[_polygon.points.length - 1];
-        p2 = _polygon.points[0];
-        p3 = _polygon.points[1];
-      } else {// i = 0 to N-3
-        p1 = _polygon.points[i];
-        p2 = _polygon.points[i + 1];
-        p3 = _polygon.points[i + 2];
-      }
-
-      area += ((rad(p3[0]) - rad(p1[0])) * TrigonometryUtils.getSinOfDegree(p2[1]));
-    }
-
-    area = (area / 2 ether) * RADIUS * RADIUS;
-
-    return uint(area > 0 ? area : area * - 1);
+    return uint(area / 2);
   }
   
   function rad(int angle) internal returns (int) {
