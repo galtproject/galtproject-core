@@ -299,4 +299,53 @@ contract('SpaceReputationAccounting', accounts => {
       await locker.withdraw(token1, { from: alice });
     });
   });
+
+  describe('SpaceLocker burn', () => {
+    it('should deny minting reputation', async function() {
+      this.multiSigFactory = await deployMultiSigFactory(
+        this.galtToken.address,
+        this.oracles,
+        claimManager,
+        this.multiSigRegistry,
+        this.spaceReputationAccounting.address,
+        coreTeam
+      );
+      await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
+      await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
+
+      let res = await this.spaceToken.mint(alice, { from: minter });
+      const token1 = res.logs[0].args.tokenId.toNumber();
+
+      // HACK
+      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
+
+      // CREATE LOCKER
+      await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
+      res = await this.spaceLockerFactory.build({ from: alice });
+      const lockerAddress = res.logs[0].args.locker;
+
+      const locker = await SpaceLocker.at(lockerAddress);
+
+      // DEPOSIT SPACE TOKEN
+      await this.spaceToken.approve(lockerAddress, token1, { from: alice });
+      await locker.deposit(token1, { from: alice });
+
+      await locker.approveMint(this.spaceReputationAccounting.address, { from: alice });
+
+      // SHOULD PREVENT DOUBLE MINT
+      await assertRevert(locker.approveMint(this.spaceReputationAccounting.address, { from: alice }));
+
+      await this.spaceReputationAccounting.mint(lockerAddress, { from: alice });
+      await this.spaceReputationAccounting.approveBurn(lockerAddress, { from: alice });
+      await locker.burn(this.spaceReputationAccounting.address, { from: alice });
+
+      // Pass in a keccak256 of the token ID to prevent accidental calls
+      await locker.burnToken(web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256', parseInt(token1, 10))), {
+        from: alice
+      });
+
+      // APPROVE
+      await assertRevert(locker.approveMint(this.spaceReputationAccounting.address, { from: alice }));
+    });
+  });
 });

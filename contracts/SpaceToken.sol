@@ -73,7 +73,9 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     return _tokenId;
   }
 
-  function burn(uint256 _tokenId) external onlyBurner {
+  function burn(uint256 _tokenId) external {
+    require(ownerOf(_tokenId) == msg.sender || hasRole(msg.sender, ROLE_BURNER), "Either owner or burner role allowed");
+
     super._burn(ownerOf(_tokenId), _tokenId);
   }
 
