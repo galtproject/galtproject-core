@@ -7,7 +7,7 @@ contract SplitMergeSandbox is SplitMerge {
 
   constructor() public {}
 
-  function initPackage(address spaceTokenOwner) returns (uint256) {
+  function initPackage(address spaceTokenOwner) public returns (uint256) {
     uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
 
     emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
