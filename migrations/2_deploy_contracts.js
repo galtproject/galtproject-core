@@ -30,6 +30,7 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
+const SplitMergeSandbox = artifacts.require('./sandbox/SplitMergeSandbox');
 const Geodesic = artifacts.require('./Geodesic');
 const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
 const SplitMergeLib = artifacts.require('./SplitMergeLib');
@@ -96,7 +97,7 @@ module.exports = async function(deployer, network, accounts) {
 
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
-    const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
+    const splitMergeSandbox = await SplitMergeSandbox.new({ from: coreTeam });
 
     Geodesic.link('LandUtils', landUtils.address);
     Geodesic.link('PolygonUtils', polygonUtils.address);
@@ -231,7 +232,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log('Initialize contracts...');
 
     await splitMerge.initialize(spaceToken.address, { from: coreTeam });
-    await splitMergeSandbox.initialize(spaceToken.address, { from: coreTeam });
+    await splitMergeSandbox.initialize(spaceTokenSandbox.address, { from: coreTeam });
 
     await plotManager.initialize(spaceToken.address, splitMerge.address, oracles.address, galtToken.address, coreTeam, {
       from: coreTeam
