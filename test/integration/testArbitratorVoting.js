@@ -338,14 +338,26 @@ contract('ArbitratorVoting', accounts => {
       await locker5.deposit(x5, { from: bob });
       await locker6.deposit(x6, { from: charlie });
 
-      // STAKE TOKENS AT SRA
+      // APPROVE REPUTATION MINT AT ASRA
       p = [
-        this.spaceReputationAccounting.mint(x1, lockerAddress1, { from: alice }),
-        this.spaceReputationAccounting.mint(x2, lockerAddress2, { from: alice }),
-        this.spaceReputationAccounting.mint(x3, lockerAddress3, { from: bob }),
-        this.spaceReputationAccounting.mint(x4, lockerAddress4, { from: bob }),
-        this.spaceReputationAccounting.mint(x5, lockerAddress5, { from: bob }),
-        this.spaceReputationAccounting.mint(x6, lockerAddress6, { from: charlie })
+        locker1.approveMint(this.spaceReputationAccounting.address, { from: alice }),
+        locker2.approveMint(this.spaceReputationAccounting.address, { from: alice }),
+        locker3.approveMint(this.spaceReputationAccounting.address, { from: bob }),
+        locker4.approveMint(this.spaceReputationAccounting.address, { from: bob }),
+        locker5.approveMint(this.spaceReputationAccounting.address, { from: bob }),
+        locker6.approveMint(this.spaceReputationAccounting.address, { from: charlie })
+      ];
+
+      await Promise.all(p);
+
+      // MINT REPUTATION TOKENS AT ASRA
+      p = [
+        this.spaceReputationAccounting.mint(lockerAddress1, { from: alice }),
+        this.spaceReputationAccounting.mint(lockerAddress2, { from: alice }),
+        this.spaceReputationAccounting.mint(lockerAddress3, { from: bob }),
+        this.spaceReputationAccounting.mint(lockerAddress4, { from: bob }),
+        this.spaceReputationAccounting.mint(lockerAddress5, { from: bob }),
+        this.spaceReputationAccounting.mint(lockerAddress6, { from: charlie })
       ];
 
       await Promise.all(p);

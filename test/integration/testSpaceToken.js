@@ -93,12 +93,10 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
       );
     });
 
-    it('should deny burn a token to an owner of the token', async function() {
-      await assertRevert(
-        this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
-          from: alice
-        })
-      );
+    it('should allow burn a token to an owner of the token', async function() {
+      this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
+        from: alice
+      });
     });
   });
 
