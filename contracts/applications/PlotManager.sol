@@ -727,7 +727,6 @@ contract PlotManager is AbstractOracleApplication {
     return (
       m.details.credentialsHash,
       m.details.ledgerIdentifier,
-      m.details.credentialsHash,
       m.details.level,
       m.details.packageContour,
       m.details.heights
