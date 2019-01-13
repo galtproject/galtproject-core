@@ -22,6 +22,7 @@ import "../collections/SweepLineRedBlackTree.sol";
 import "../collections/SweepQueueLinkedList.sol";
 import "../collections/LinkedList.sol";
 
+// TODO: try to use direct search of intersections instead of MartinezRueda
 library MartinezRueda {
   int256 internal constant EPS = 1000000000;
 
