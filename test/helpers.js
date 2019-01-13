@@ -180,7 +180,6 @@ const Helpers = {
     if (!requireCache[path]) {
       requireCache[path] = artifacts.require(path);
     }
-    console.log(path, requireCache[path]);
     return requireCache[path];
   },
   async getSegmentUtilsLib() {

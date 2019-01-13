@@ -67,9 +67,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
       await this.splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10), {
-        from: coreTeam
-      });
+      await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
       return tokenId;
     };
 
