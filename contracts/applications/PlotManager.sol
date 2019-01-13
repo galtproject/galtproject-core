@@ -703,6 +703,37 @@ contract PlotManager is AbstractOracleApplication {
     );
   }
 
+
+  /**
+   * @dev Get application details
+   */
+  function getApplicationDetailsById(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      bytes32 credentialsHash,
+      bytes32 ledgerIdentifier,
+      int256 level,
+      uint256[] packageContour,
+      int256[] heights
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (
+      m.details.credentialsHash,
+      m.details.ledgerIdentifier,
+      m.details.credentialsHash,
+      m.details.level,
+      m.details.packageContour,
+      m.details.heights
+    );
+  }
+
   function getApplicationOperator(bytes32 _aId) public view returns (address) {
     return applications[_aId].operator;
   }
