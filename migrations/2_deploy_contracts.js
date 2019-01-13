@@ -1,9 +1,8 @@
 const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
-const ArrayUtils = artifacts.require('./utils/ArrayUtils');
 const LandUtils = artifacts.require('./utils/LandUtils');
 const PolygonUtils = artifacts.require('./utils/PolygonUtils');
-const SegmentUtils = artifacts.require('./utils/SegmentUtils');
+const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
 const LinkedList = artifacts.require('./collections/LinkedList');
 const SweepQueueLinkedList = artifacts.require('./collections/SweepQueueLinkedList');
 const RedBlackTree = artifacts.require('./collections/RedBlackTree');
@@ -31,6 +30,7 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const SplitMerge = artifacts.require('./SplitMerge');
+const Geodesic = artifacts.require('./Geodesic');
 const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
 const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
@@ -69,10 +69,7 @@ module.exports = async function(deployer, network, accounts) {
     const spaceTokenSandbox = await SpaceToken.new('Space Token Sandbox', 'SPACE-S', { from: coreTeam });
 
     const landUtils = await LandUtils.new({ from: coreTeam });
-    const arrayUtils = await ArrayUtils.new({ from: coreTeam });
     PolygonUtils.link('LandUtils', landUtils.address);
-    SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('ArrayUtils', arrayUtils.address);
 
     const linkedList = await LinkedList.new({ from: coreTeam });
     SweepQueueLinkedList.link('LinkedList', linkedList.address);
@@ -95,20 +92,20 @@ module.exports = async function(deployer, network, accounts) {
     WeilerAtherton.link('PolygonUtils', polygonUtils.address);
     const weilerAtherton = await WeilerAtherton.new({ from: coreTeam });
 
-    SplitMergeLib.link('ArrayUtils', arrayUtils.address);
     const splitMergeLib = await SplitMergeLib.new({ from: coreTeam });
 
-    const segmentUtils = await SegmentUtils.new({ from: coreTeam });
-    SplitMerge.link('LandUtils', landUtils.address);
-    SplitMerge.link('PolygonUtils', polygonUtils.address);
-    SplitMerge.link('WeilerAtherton', weilerAtherton.address);
-    SplitMerge.link('SegmentUtils', segmentUtils.address);
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
     const splitMergeSandbox = await SplitMerge.new({ from: coreTeam });
 
+    Geodesic.link('LandUtils', landUtils.address);
+    Geodesic.link('PolygonUtils', polygonUtils.address);
+
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
+
+    const geodesic = await Geodesic.new();
+    await splitMerge.setGeodesic(geodesic.address);
 
     const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
     await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
@@ -116,8 +113,9 @@ module.exports = async function(deployer, network, accounts) {
     const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
     await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
 
+    const etherToken = await EtherToken.new({ from: coreTeam });
     const galtDex = await GaltDex.new({ from: coreTeam });
-    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, { from: coreTeam });
+    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, etherToken.address);
 
     const oracles = await Oracles.new({ from: coreTeam });
 
@@ -277,6 +275,7 @@ module.exports = async function(deployer, network, accounts) {
     await plotEscrow.initialize(
       spaceToken.address,
       plotCustodian.address,
+      spaceCustodianRegistry.address,
       oracles.address,
       galtToken.address,
       coreTeam,
@@ -397,6 +396,10 @@ module.exports = async function(deployer, network, accounts) {
             galtTokenAbi: galtToken.abi,
             spaceTokenAddress: spaceToken.address,
             spaceTokenAbi: spaceToken.abi,
+            etherTokenAddress: etherToken.address,
+            etherTokenAbi: etherToken.abi,
+            geodesicAddress: geodesic.address,
+            geodesicAbi: geodesic.abi,
             splitMergeAddress: splitMerge.address,
             splitMergeAbi: splitMerge.abi,
             // eslint-disable-next-line
@@ -409,6 +412,8 @@ module.exports = async function(deployer, network, accounts) {
             plotValuationAbi: plotValuation.abi,
             plotCustodianAddress: plotCustodian.address,
             plotCustodianAbi: plotCustodian.abi,
+            spaceCustodianRegistryAddress: spaceCustodianRegistry.address,
+            spaceCustodianRegistryAbi: spaceCustodianRegistry.abi,
             plotEscrowAddress: plotEscrow.address,
             plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
