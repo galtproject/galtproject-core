@@ -92,15 +92,27 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  function getUtmArea(UtmPolygon memory _polygon) internal returns (uint) {
+  event Scale(uint v);
+  
+  function getUtmArea(UtmPolygon memory _polygon) internal returns (uint result) {
     int area = 0;         // Accumulates area in the loop
     uint j = _polygon.points.length - 1;  // The last vertex is the 'previous' one to the first
 
+    int scaleSum = 0;
     for (uint i=0; i < _polygon.points.length; i++) { 
+      require(_polygon.points[0][3] == _polygon.points[i][3], "All points should belongs to same zone");
+      
       area += ((_polygon.points[j][0] + _polygon.points[i][0]) * (_polygon.points[j][1] - _polygon.points[i][1])) / 1 ether;
+      scaleSum += (_polygon.points[j][2] + _polygon.points[j][2]) / 2;
       j = i;  //j is previous vertex to i
     }
-    return uint(area / 2);
+    if(area < 0) {
+      area *= -1;
+    }
+
+    emit Scale(uint(scaleSum / int(_polygon.points.length)) ** uint(2));
+
+    result = (uint(area * 1 ether) / ((uint(scaleSum / int(_polygon.points.length)) ** uint(2)) / 1 ether)) / 2;
   }
   
   function rad(int angle) internal returns (int) {
