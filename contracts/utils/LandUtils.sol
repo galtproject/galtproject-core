@@ -38,8 +38,8 @@ library LandUtils {
     mapping(uint256 => int256[2]) latLonByGeohash;
     mapping(bytes32 => mapping(uint8 => uint256)) geohashByLatLonHash;
     
-    mapping(uint256 => int256[4]) utmByGeohash;
-    mapping(bytes32 => int256[4]) utmByLatLonHash;
+    mapping(uint256 => int256[3]) utmByGeohash;
+    mapping(bytes32 => int256[3]) utmByLatLonHash;
   }
 
   function geohash5Precision(uint256 _geohash5) public pure returns (uint8) {

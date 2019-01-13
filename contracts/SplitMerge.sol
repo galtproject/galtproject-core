@@ -144,16 +144,17 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
   }
 
-  function cacheGeohashToLatLonAndUtm(uint256 _geohash) public returns (int256[4]) {
+  function cacheGeohashToLatLonAndUtm(uint256 _geohash) public returns (int256[3]) {
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
     bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
     latLonData.geohashByLatLonHash[pointHash][LandUtils.geohash5Precision(_geohash)] = _geohash;
     
-    (latLonData.utmByLatLonHash[pointHash][0], 
-      latLonData.utmByLatLonHash[pointHash][1], 
-      latLonData.utmByLatLonHash[pointHash][2], 
-      latLonData.utmByLatLonHash[pointHash][3], ) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
+    (int x, int y, int scale, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
 
+    latLonData.utmByLatLonHash[pointHash][0] = x;
+    latLonData.utmByLatLonHash[pointHash][1] = y;
+    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 1 szabo) + (int(isNorth ? 1 : 0) * 1 ether * 1 finney);
+    
     latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
     
     return latLonData.utmByGeohash[_geohash];
@@ -338,7 +339,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   function calculateContourArea(uint256[] contour) external returns (uint256 area) {
     PolygonUtils.UtmPolygon memory p;
-    p.points = new int256[4][](contour.length);
+    p.points = new int256[3][](contour.length);
 
     for (uint i = 0; i < contour.length; i++) {
       if (latLonData.utmByGeohash[contour[i]][0] != 0) {

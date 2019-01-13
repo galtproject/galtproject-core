@@ -499,10 +499,13 @@ contract('SplitMerge', ([coreTeam, alice]) => {
   });
 
   it('should calculate contour area correctly', async function() {
-    const contour = ['w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
-    await this.splitMerge.cacheGeohashListToLatLon(contour);
-    const res = await this.splitMerge.calculateContourArea(contour);
-    console.log('gasUsed', res.receipt.gasUsed);
-    assert.equal(res.logs[0].args.area.toFixed(), 12554128688986059590510318);
+    const contour = ['k6wnu5q1jh44', 'k6wnu7d6tj8x', 'k6wnu6umb4b4', 'k6wnu60xk405', 'k6wnu4m0pvxy'].map(
+      galt.geohashToGeohash5
+    );
+    let res = await this.splitMerge.cacheGeohashListToLatLonAndUtm(contour);
+    console.log('gasUsed for cache', res.receipt.gasUsed);
+    res = await this.splitMerge.calculateContourArea(contour);
+    console.log('gasUsed for calculate', res.receipt.gasUsed);
+    assert.isBelow(Math.abs(res.logs[0].args.area.toFixed() / 10 ** 18 - 500882.5), 1.5);
   });
 });
