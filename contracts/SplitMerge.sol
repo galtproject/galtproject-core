@@ -19,11 +19,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./SpaceToken.sol";
 import "./traits/Initializable.sol";
 import "./traits/Permissionable.sol";
-import "./utils/LandUtils.sol";
+import "./interfaces/IGeodesic.sol";
+import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SplitMergeLib.sol";
-import "./interfaces/ISpaceSplitOperationFactory.sol";
-import "./utils/PolygonUtils.sol";
+import "./utils/GeohashUtils.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
@@ -34,8 +34,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
   string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
-  SpaceToken spaceToken;
-  ISpaceSplitOperationFactory splitOperationFactory;
+  SpaceToken public spaceToken;
+  IGeodesic public geodesic;
+  ISpaceSplitOperationFactory public splitOperationFactory;
 
   event PackageInit(bytes32 id, address owner);
   event PackageHeightsSet(bytes32 id, int256[] heights);
@@ -43,7 +44,6 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   event PackageLevelSet(bytes32 id, int256 level);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
   event NewSplitSpaceToken(uint256 id);
-  event ContourAreaCalculate(uint256[] contour, uint256 area);
 
   mapping(uint256 => uint256[]) public packageToContour;
   mapping(uint256 => int256[]) public packageToHeights;
@@ -56,14 +56,16 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
   address[] public allSplitOperations;
 
-  LandUtils.LatLonData private latLonData;
-
   function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;
   }
 
   function setSplitOperationFactory(address _splitOperationFactory) external onlyOwner {
     splitOperationFactory = ISpaceSplitOperationFactory(_splitOperationFactory);
+  }
+
+  function setGeodesic(address _geodesic) external onlyOwner {
+    geodesic = IGeodesic(_geodesic);
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
@@ -97,7 +99,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _packageTokenId, uint256[] _geohashesContour)
+  function setPackageContour(uint256 _spaceTokenId, uint256[] _geohashesContour)
     public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
@@ -109,12 +111,12 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     for (uint8 i = 0; i < _geohashesContour.length; i++) {
       require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
       require(
-        LandUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION,
+        GeohashUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION,
         "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision"
       );
     }
 
-    packageToContour[_packageTokenId] = _geohashesContour;
+    packageToContour[_spaceTokenId] = _geohashesContour;
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
@@ -129,62 +131,6 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     public onlyGeoDataManager()
   {
     packageToLevel[_packageTokenId] = _level;
-  }
-
-  function cacheGeohashToLatLon(uint256 _geohash) public returns (int256[2]) {
-    latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
-    bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
-    latLonData.geohashByLatLonHash[pointHash][LandUtils.geohash5Precision(_geohash)] = _geohash;
-    return latLonData.latLonByGeohash[_geohash];
-  }
-
-  function cacheGeohashListToLatLon(uint256[] _geohashList) public {
-    for (uint i = 0; i < _geohashList.length; i++) {
-      cacheGeohashToLatLon(_geohashList[i]);
-    }
-  }
-
-  function cacheGeohashToLatLonAndUtm(uint256 _geohash) public returns (int256[3]) {
-    latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
-    bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
-    latLonData.geohashByLatLonHash[pointHash][LandUtils.geohash5Precision(_geohash)] = _geohash;
-    
-    (int x, int y, int scale, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
-
-    latLonData.utmByLatLonHash[pointHash][0] = x;
-    latLonData.utmByLatLonHash[pointHash][1] = y;
-    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 1 szabo) + (int(isNorth ? 1 : 0) * 1 ether * 1 finney);
-    
-    latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
-    
-    return latLonData.utmByGeohash[_geohash];
-  }
-
-  function cacheGeohashListToLatLonAndUtm(uint256[] _geohashList) public {
-    for (uint i = 0; i < _geohashList.length; i++) {
-      cacheGeohashToLatLonAndUtm(_geohashList[i]);
-    }
-  }
-
-  function getCachedLatLonByGeohash(uint256 _geohash) public returns (int256[2]) {
-    return latLonData.latLonByGeohash[_geohash];
-  }
-
-  function cacheLatLonToGeohash(int256[2] point, uint8 precision) public returns (uint256) {
-    bytes32 pointHash = keccak256(abi.encode(point));
-    latLonData.geohashByLatLonHash[pointHash][precision] = LandUtils.latLonToGeohash5(point[0], point[1], precision);
-    return latLonData.geohashByLatLonHash[pointHash][precision];
-  }
-
-  function cacheLatLonListToGeohash(int256[2][] _pointList, uint8 precision) public {
-    for (uint i = 0; i < _pointList.length; i++) {
-      cacheLatLonToGeohash(_pointList[i], precision);
-    }
-  }
-
-  function getCachedGeohashByLatLon(int256[2] point, uint8 precision) public returns (uint256) {
-    bytes32 pointHash = keccak256(abi.encode(point));
-    return latLonData.geohashByLatLonHash[pointHash][precision];
   }
 
   // TODO: add SpaceSplitOperationFactory for migrations between versions
@@ -272,39 +218,39 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function mergePackage(
-    uint256 _sourcePackageTokenId,
-    uint256 _destinationPackageTokenId,
-    uint256[] _destinationPackageContour
+    uint256 _sourceSpaceTokenId,
+    uint256 _destinationSpaceTokenId,
+    uint256[] _destinationSpaceContour
   )
     external
-    onlySpaceTokenOwner(_sourcePackageTokenId)
-    onlySpaceTokenOwner(_destinationPackageTokenId)
+    onlySpaceTokenOwner(_sourceSpaceTokenId)
+    onlySpaceTokenOwner(_destinationSpaceTokenId)
   {
     require(
-      getPackageLevel(_sourcePackageTokenId) == getPackageLevel(_destinationPackageTokenId),
+      getPackageLevel(_sourceSpaceTokenId) == getPackageLevel(_destinationSpaceTokenId),
       "Space tokens levels should be equal"
     );
     SplitMergeLib.checkMergeContours(
-      getPackageContour(_sourcePackageTokenId),
-      getPackageContour(_destinationPackageTokenId),
-      _destinationPackageContour
+      getPackageContour(_sourceSpaceTokenId),
+      getPackageContour(_destinationSpaceTokenId),
+      _destinationSpaceContour
     );
 
-    packageToContour[_destinationPackageTokenId] = _destinationPackageContour;
+    packageToContour[_destinationSpaceTokenId] = _destinationSpaceContour;
 
-    int256[] memory sourcePackageHeights = getPackageHeights(_sourcePackageTokenId);
+    int256[] memory sourcePackageHeights = getPackageHeights(_sourceSpaceTokenId);
 
-    int256[] memory packageHeights = new int256[](_destinationPackageContour.length);
-    for (uint i = 0; i < _destinationPackageContour.length; i++) {
+    int256[] memory packageHeights = new int256[](_destinationSpaceContour.length);
+    for (uint i = 0; i < _destinationSpaceContour.length; i++) {
       if (i + 1 > sourcePackageHeights.length) {
-        packageHeights[i] = packageToHeights[_destinationPackageTokenId][i - sourcePackageHeights.length];
+        packageHeights[i] = packageToHeights[_destinationSpaceTokenId][i - sourcePackageHeights.length];
       } else {
         packageHeights[i] = sourcePackageHeights[i];
       }
     }
-    packageToHeights[_destinationPackageTokenId] = packageHeights;
+    packageToHeights[_destinationSpaceTokenId] = packageHeights;
 
-    spaceToken.burn(_sourcePackageTokenId);
+    spaceToken.burn(_sourceSpaceTokenId);
   }
 
   function checkMergeContours(
@@ -312,7 +258,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256[] memory mergeContour,
     uint256[] memory resultContour
   )
-  public
+    public
   {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
@@ -328,40 +274,29 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function getPackageLevel(uint256 _packageTokenId) public view returns (int256) {
     return packageToLevel[_packageTokenId];
   }
+  
+  function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
+    return geodesic.calculateContourArea(packageToContour[_spaceTokenId]);
+  }
 
   function setTokenArea(uint256 _spaceTokenId, uint256 _area) external onlyGeoDataManager {
     tokenArea[_spaceTokenId] = _area;
   }
 
-  function getContourArea(uint256 _packageTokenId) external view returns (uint256) {
-    return tokenArea[_packageTokenId];
+  function getContourArea(uint256 _spaceTokenId) external view returns (uint256) {
+    return tokenArea[_spaceTokenId];
   }
 
-  function calculateContourArea(uint256[] contour) external returns (uint256 area) {
-    PolygonUtils.UtmPolygon memory p;
-    p.points = new int256[3][](contour.length);
-
-    for (uint i = 0; i < contour.length; i++) {
-      if (latLonData.utmByGeohash[contour[i]][0] != 0) {
-        p.points[i] = latLonData.utmByGeohash[contour[i]];
-      } else {
-        p.points[i] = cacheGeohashToLatLonAndUtm(contour[i]);
-      }
-    }
-    area = PolygonUtils.getUtmArea(p);
-    emit ContourAreaCalculate(contour, area);
-  }
-
-  function getPackageGeoData(uint256 _packageTokenId) public view returns (
+  function getPackageGeoData(uint256 _spaceTokenId) public view returns (
     uint256[] contour,
     int256[] heights,
     int256 level
   )
   {
     return (
-    getPackageContour(_packageTokenId),
-    getPackageHeights(_packageTokenId),
-    getPackageLevel(_packageTokenId)
+      getPackageContour(_spaceTokenId),
+      getPackageHeights(_spaceTokenId),
+      getPackageLevel(_spaceTokenId)
     );
   }
 }

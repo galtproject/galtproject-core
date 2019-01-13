@@ -20,6 +20,7 @@ import "./utils/PolygonUtils.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
+import "./Geodesic.sol";
 
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
@@ -43,8 +44,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   Stage public doneStage;
 
-  SplitMerge private splitMerge;
-  SpaceToken private spaceToken;
+  SplitMerge public splitMerge;
+  SpaceToken public spaceToken;
+  Geodesic public geodesic;
 
   address public subjectTokenOwner;
   uint256 public subjectTokenId;
@@ -57,6 +59,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] _subjectContour, uint256[] _clippingContour) public {
     splitMerge = SplitMerge(_splitMerge);
     spaceToken = SpaceToken(_spaceToken);
+    geodesic = Geodesic(splitMerge.geodesic());
 
     subjectTokenOwner = _subjectTokenOwner;
     subjectTokenId = _subjectTokenId;
@@ -112,9 +115,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     int256[2] memory point;
     for (uint i = 0; i < geohashesContour.length; i++) {
-      point = splitMerge.getCachedLatLonByGeohash(geohashesContour[i]);
+      point = geodesic.getCachedLatLonByGeohash(geohashesContour[i]);
       if (point[0] == 0 && point[1] == 0) {
-        point = splitMerge.cacheGeohashToLatLon(geohashesContour[i]);
+        point = geodesic.cacheGeohashToLatLon(geohashesContour[i]);
       }
       resultPolygon.points.push(point);
     }
@@ -243,9 +246,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     uint256 geohash;
     for (uint i = 0; i < latLonPolygon.points.length; i++) {
-      geohash = splitMerge.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
+      geohash = geodesic.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
       if (geohash == 0) {
-        geohash = splitMerge.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
+        geohash = geodesic.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
       }
 
       geohashContour[i] = geohash;
