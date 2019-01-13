@@ -1,15 +1,10 @@
-const SpaceToken = artifacts.require('./SpaceToken.sol');
-const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 
-const web3 = new Web3(SpaceToken.web3.currentProvider);
-
-const { BN } = Web3.utils;
-const { assertRevert, deployGeodesic, initHelperArtifacts, clearLibCache } = require('../helpers');
+const { deployGeodesic, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
 
@@ -28,7 +23,7 @@ contract('Geodesic', () => {
     this.geodesic = await deployGeodesic();
   });
 
-  it.only('should calculate contour area correctly', async function() {
+  it('should calculate contour area correctly', async function() {
     const contour = ['k6wnu5q1jh44', 'k6wnu7d6tj8x', 'k6wnu6umb4b4', 'k6wnu60xk405', 'k6wnu4m0pvxy'].map(
       galt.geohashToGeohash5
     );
