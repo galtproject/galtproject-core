@@ -1,3 +1,4 @@
+const Geodesic = artifacts.require('./Geodesic.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
@@ -29,6 +30,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+
+    this.geodesic = Geodesic.at(await this.splitMerge.geodesic());
 
     await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
@@ -494,16 +497,5 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), subjectContour);
       assert.equal(await this.spaceToken.exists.call(clippingSpaceTokensIds[0]), false);
     });
-  });
-
-  it('should calculate contour area correctly', async function() {
-    const contour = ['k6wnu5q1jh44', 'k6wnu7d6tj8x', 'k6wnu6umb4b4', 'k6wnu60xk405', 'k6wnu4m0pvxy'].map(
-      galt.geohashToGeohash5
-    );
-    let res = await this.splitMerge.cacheGeohashListToLatLonAndUtm(contour);
-    console.log('gasUsed for cache', res.receipt.gasUsed);
-    res = await this.splitMerge.calculateContourArea(contour);
-    console.log('gasUsed for calculate', res.receipt.gasUsed);
-    assert.isBelow(Math.abs(res.logs[0].args.area.toFixed() / 10 ** 18 - 500882.5), 1.5);
   });
 });
