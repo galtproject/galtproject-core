@@ -25,7 +25,7 @@ library PolygonUtils {
   struct CoorsPolygon {
     int256[2][] points;
   }
-  
+
   struct UtmPolygon {
     int256[3][] points;
   }
@@ -92,12 +92,11 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  event Scale(uint v);
-  event ParsedUtm(int isNorth, int zone, int scale);
-  
   function getUtmArea(UtmPolygon memory _polygon) internal returns (uint result) {
-    int area = 0;         // Accumulates area in the loop
-    uint j = _polygon.points.length - 1;  // The last vertex is the 'previous' one to the first
+    int area = 0;
+    // Accumulates area in the loop
+    uint j = _polygon.points.length - 1;
+    // The last vertex is the 'previous' one to the first
 
     int scaleSum = 0;
     for (uint i = 0; i < _polygon.points.length; i++) {
@@ -105,22 +104,20 @@ library PolygonUtils {
 
       int isNorth = _polygon.points[i][2] / (1 ether * 1 finney);
       int zone = _polygon.points[i][2] / (1 ether * 1 szabo) - isNorth * 10 ** 3;
-      
-      require(zone == zone, "All points should belongs to same zone");
-      
-      scaleSum += _polygon.points[i][2] - (isNorth * 1 ether * 1 finney) - (zone * 1 ether * 1 szabo);
-      emit ParsedUtm(isNorth, zone, _polygon.points[i][2] - (isNorth * 1 ether * 1 finney) - (zone * 1 ether * 1 szabo));
-      j = i;  //j is previous vertex to i
-    }
-    if(area < 0) {
-      area *= -1;
-    }
 
-    emit Scale(uint(scaleSum / int(_polygon.points.length)) ** uint(2));
+      require(zone == zone, "All points should belongs to same zone");
+
+      scaleSum += _polygon.points[i][2] - (isNorth * 1 ether * 1 finney) - (zone * 1 ether * 1 szabo);
+      j = i;
+      //j is previous vertex to i
+    }
+    if (area < 0) {
+      area *= - 1;
+    }
 
     result = (uint(area * 1 ether) / ((uint(scaleSum / int(_polygon.points.length)) ** uint(2)) / 1 ether)) / 2;
   }
-  
+
   function rad(int angle) internal returns (int) {
     return angle * PI / 180 / 1 ether;
   }
