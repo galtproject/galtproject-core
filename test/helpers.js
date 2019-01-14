@@ -180,7 +180,6 @@ const Helpers = {
     if (!requireCache[path]) {
       requireCache[path] = artifacts.require(path);
     }
-    console.log(path, requireCache[path]);
     return requireCache[path];
   },
   async getSegmentUtilsLib() {
@@ -306,16 +305,24 @@ const Helpers = {
     libCache.SplitMergeLib = await SplitMergeLib.new();
     return libCache.SplitMergeLib;
   },
+  async deployGeodesic() {
+    const Geodesic = Helpers.requireContract('./Geodesic.sol');
+
+    const landUtils = await Helpers.getLandUtilsLib();
+    const polygonUtils = await Helpers.getPolygonUtilsLib();
+    Geodesic.link('LandUtils', landUtils.address);
+    Geodesic.link('PolygonUtils', polygonUtils.address);
+    return Geodesic.new();
+  },
   async deploySplitMerge(spaceTokenAddress) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
-    const landUtils = await Helpers.getLandUtilsLib();
-    const polygonUtils = await Helpers.getPolygonUtilsLib();
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
     const splitMergeLib = await Helpers.getSplitMergeLib();
 
-    SplitMerge.link('LandUtils', landUtils.address);
+    const polygonUtils = await Helpers.getPolygonUtilsLib();
+
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
 
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
@@ -325,6 +332,9 @@ const Helpers = {
 
     const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceTokenAddress, splitMerge.address);
     await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
+
+    const geodesic = await Helpers.deployGeodesic();
+    await splitMerge.setGeodesic(geodesic.address);
 
     return splitMerge;
   },
