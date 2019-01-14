@@ -18,7 +18,6 @@ import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./traits/Permissionable.sol";
 import "./traits/Initializable.sol";
-import "./SpaceReputationAccounting.sol";
 
 
 /*

@@ -19,7 +19,6 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./collections/ArraySet.sol";
 import "./traits/Permissionable.sol";
 import "./SpaceToken.sol";
-import "./multisig/ArbitratorVoting.sol";
 import "./registries/SpaceLockerRegistry.sol";
 
 

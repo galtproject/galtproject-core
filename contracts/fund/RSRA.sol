@@ -18,14 +18,27 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../collections/ArraySet.sol";
 import "../LiquidReputationAccounting.sol";
+import "./FundStorage.sol";
+import "./applications/IProposalManager.sol";
 
 
 contract RSRA is LiquidReputationAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  FundStorage fundStorage;
+
   // Delegate => locked amount
   mapping(address => uint256) private _locks;
+
+  constructor(
+    SpaceToken _spaceToken,
+    SpaceLockerRegistry _spaceLockerRegistry
+  )
+    public
+    LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)
+  {
+  }
 
   // PermissionED
   function revokeLocked(address _delegate, uint256 _amount) external {
@@ -37,9 +50,7 @@ contract RSRA is LiquidReputationAccounting {
     _delegations[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
 
-//    multiSigRegistry
-//      .getArbitratorVoting(_multiSig)
-//      .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
+    _notifyLockedBalanceChanged(msg.sender);
   }
 
   // PermissionED
@@ -49,9 +60,7 @@ contract RSRA is LiquidReputationAccounting {
     _balances[msg.sender] -= _amount;
     _locks[msg.sender] += _amount;
 
-//    multiSigRegistry
-//      .getArbitratorVoting(_multiSig)
-//      .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
+    _notifyLockedBalanceChanged(msg.sender);
   }
 
   // PermissionED
@@ -66,9 +75,17 @@ contract RSRA is LiquidReputationAccounting {
     _locks[msg.sender] -= _amount;
     _balances[msg.sender] += _amount;
 
-//    multiSigRegistry
-//      .getArbitratorVoting(_multiSig)
-//      .onDelegateReputationChanged(msg.sender, afterUnlock);
+    _notifyLockedBalanceChanged(msg.sender);
+  }
+
+  function _notifyLockedBalanceChanged(address _delegate) internal {
+    uint256 newBalance = _locks[_delegate];
+
+    address[] memory contractsToNotify = fundStorage.getWhiteListedContracts();
+
+    for (uint256 i = 0; i < contractsToNotify.length; i++) {
+      IProposalManager(contractsToNotify[i]).onLockChanged(_delegate, newBalance);
+    }
   }
 
   // GETTERS

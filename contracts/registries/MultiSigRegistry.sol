@@ -18,6 +18,7 @@ import "../traits/Permissionable.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
 import "../multisig/ArbitratorVoting.sol";
 import "../multisig/OracleStakesAccounting.sol";
+import "../collections/ArraySet.sol";
 
 
 contract MultiSigRegistry is Permissionable {
