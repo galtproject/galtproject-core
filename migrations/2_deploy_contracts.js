@@ -97,6 +97,7 @@ module.exports = async function(deployer, network, accounts) {
 
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     const splitMerge = await SplitMerge.new({ from: coreTeam });
+    SplitMergeSandbox.link('SplitMergeLib', splitMergeLib.address);
     const splitMergeSandbox = await SplitMergeSandbox.new({ from: coreTeam });
 
     Geodesic.link('LandUtils', landUtils.address);
