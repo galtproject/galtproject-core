@@ -418,6 +418,9 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
       a.status == ApplicationStatus.ACCEPTED,
       "Application status should be ACCEPTED");
     require(assignedCustodians[a.spaceTokenId].has(msg.sender), "Not in assigned list");
+    require(!a.lockedCustodians.has(msg.sender), "Already locked");
+
+    a.lockedCustodians.add(msg.sender);
 
     // TODO: add/replace with event
     applicationsByOracle[msg.sender].push(_aId);
