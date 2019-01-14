@@ -20,7 +20,6 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "../GaltToken.sol";
 import "../Oracles.sol";
 import "../multisig/OracleStakesAccounting.sol";
-import "../SpaceReputationAccounting.sol";
 
 
 contract OracleStakesAccountingFactory is Ownable {

@@ -14,8 +14,22 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-interface IProposalManager {
-  function onLockChanged(address _delegate, uint256 _newLockedBalance) external;
-  function balanceOf(address _delegate) external view returns (uint256);
+// This contract will be included into the current one
+import "../../fund/proposals/ModifyConfigProposalManager.sol";
+
+
+contract ModifyConfigProposalManagerFactory is Ownable {
+  function build()
+    external
+    returns (ModifyConfigProposalManager)
+  {
+    ModifyConfigProposalManager modifyConfigProposalManager = new ModifyConfigProposalManager();
+
+    modifyConfigProposalManager.addRoleTo(msg.sender, "role_manager");
+    modifyConfigProposalManager.removeRoleFrom(address(this), "role_manager");
+
+    return modifyConfigProposalManager;
+  }
 }

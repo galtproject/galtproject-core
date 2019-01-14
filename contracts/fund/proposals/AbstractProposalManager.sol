@@ -17,7 +17,6 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../../collections/ArraySet.sol";
-import "../../LiquidReputationAccounting.sol";
 import "../../traits/Permissionable.sol";
 import "../FundStorage.sol";
 import "./IProposalManager.sol";
@@ -32,7 +31,7 @@ contract AbstractProposalManager is IProposalManager, Permissionable {
 
   string public constant RSRA_CONTRACT = "rsra_contract";
 
-  mapping(address => uint256) internal balances;
+  mapping(address => uint256) internal _balances;
 
   function onLockChanged(
     address _delegate,
@@ -41,9 +40,14 @@ contract AbstractProposalManager is IProposalManager, Permissionable {
     external
     onlyRole(RSRA_CONTRACT)
   {
-    balances[_delegate] = _newLockedBalance;
+    _balances[_delegate] = _newLockedBalance;
 
     // TODO: perform some logic in case when delegate participating in some proposal
     // TODO: there could be many proposals at a time, so it's not possible to change percent of delegate there
+  }
+
+  // GETTERS
+  function balanceOf(address _delegate) external view returns (uint256) {
+    return _balances[_delegate];
   }
 }

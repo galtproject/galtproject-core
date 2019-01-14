@@ -19,12 +19,14 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../collections/ArraySet.sol";
 import "../LiquidReputationAccounting.sol";
 import "./FundStorage.sol";
-import "./applications/IProposalManager.sol";
+import "./proposals/IProposalManager.sol";
 
 
 contract RSRA is LiquidReputationAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
+
+  event LockedBalanceChanged(address delegate, uint256 balanceAfter);
 
   FundStorage fundStorage;
 
@@ -33,11 +35,13 @@ contract RSRA is LiquidReputationAccounting {
 
   constructor(
     SpaceToken _spaceToken,
-    SpaceLockerRegistry _spaceLockerRegistry
+    SpaceLockerRegistry _spaceLockerRegistry,
+    FundStorage _fundStorage
   )
     public
     LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)
   {
+    fundStorage = _fundStorage;
   }
 
   // PermissionED
@@ -50,7 +54,7 @@ contract RSRA is LiquidReputationAccounting {
     _delegations[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
 
-    _notifyLockedBalanceChanged(msg.sender);
+    _notifyLockedBalanceChanged(_delegate);
   }
 
   // PermissionED
@@ -86,6 +90,8 @@ contract RSRA is LiquidReputationAccounting {
     for (uint256 i = 0; i < contractsToNotify.length; i++) {
       IProposalManager(contractsToNotify[i]).onLockChanged(_delegate, newBalance);
     }
+
+    emit LockedBalanceChanged(_delegate, newBalance);
   }
 
   // GETTERS

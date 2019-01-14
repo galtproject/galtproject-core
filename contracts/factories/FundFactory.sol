@@ -22,13 +22,19 @@ import "../factories/fund/FundStorageFactory.sol";
 import "../fund/RSRA.sol";
 import "../SpaceToken.sol";
 import "../registries/SpaceLockerRegistry.sol";
+import "./fund/ModifyConfigProposalManagerFactory.sol";
+import "./fund/NewMemberProposalManagerFactory.sol";
 
 
 contract FundFactory is Ownable {
   event FundCreated(
     address rsra,
-    address fundStorage
+    address fundStorage,
+    address modifyConfigProposalManager,
+    address newMemberProposalManager
   );
+
+  string public constant RSRA_CONTRACT = "rsra_contract";
 
   ERC20 galtToken;
   SpaceToken spaceToken;
@@ -36,6 +42,8 @@ contract FundFactory is Ownable {
 
   RSRAFactory rsraFactory;
   FundStorageFactory fundStorageFactory;
+  ModifyConfigProposalManagerFactory modifyConfigProposalManagerFactory;
+  NewMemberProposalManagerFactory newMemberProposalManagerFactory;
 
   uint256 commission;
 
@@ -44,7 +52,9 @@ contract FundFactory is Ownable {
     SpaceToken _spaceToken,
     SpaceLockerRegistry _spaceLockerRegistry,
     RSRAFactory _rsraFactory,
-    FundStorageFactory _fundStorageFactory
+    FundStorageFactory _fundStorageFactory,
+    ModifyConfigProposalManagerFactory _modifyConfigProposalManagerFactory,
+    NewMemberProposalManagerFactory _newMemberProposalManagerFactory
   ) public {
     commission = 10 ether;
 
@@ -54,6 +64,8 @@ contract FundFactory is Ownable {
 
     rsraFactory = _rsraFactory;
     fundStorageFactory = _fundStorageFactory;
+    modifyConfigProposalManagerFactory = _modifyConfigProposalManagerFactory;
+    newMemberProposalManagerFactory = _newMemberProposalManagerFactory;
   }
 
   function build(
@@ -65,11 +77,10 @@ contract FundFactory is Ownable {
     uint256 _fineMemberThreshold
   )
     external
-    returns (RSRA, FundStorage)
+    returns (RSRA, FundStorage, ModifyConfigProposalManager, NewMemberProposalManager)
   {
     galtToken.transferFrom(msg.sender, address(this), commission);
 
-    RSRA rsra = rsraFactory.build(spaceToken, spaceLockerRegistry);
     FundStorage fundStorage = fundStorageFactory.build(
       _isPrivate,
       _manageWhiteListThreshold,
@@ -78,15 +89,24 @@ contract FundFactory is Ownable {
       _expelMemberThreshold,
       _fineMemberThreshold
     );
+    RSRA rsra = rsraFactory.build(spaceToken, spaceLockerRegistry, fundStorage);
+
+    ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build();
+    NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build();
 
     // TODO: if is private, then build additional proposal manager
     // TODO: attach roles
 
-//    arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
-//    arbitratorVoting.removeRoleFrom(address(this), "role_manager");
-//    oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
+    modifyConfigProposalManager.addRoleTo(rsra, RSRA_CONTRACT);
+    newMemberProposalManager.addRoleTo(rsra, RSRA_CONTRACT);
 
-    emit FundCreated(rsra, fundStorage);
+    fundStorage.addRoleTo(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
+    fundStorage.addWhiteListedContract(modifyConfigProposalManager);
+    fundStorage.addWhiteListedContract(newMemberProposalManager);
+    fundStorage.removeRoleFrom(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
+
+    // TODO: figure out what to do with contract permissions
+    emit FundCreated(rsra, fundStorage, modifyConfigProposalManager, newMemberProposalManager);
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

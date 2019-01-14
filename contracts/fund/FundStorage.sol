@@ -17,10 +17,11 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../collections/ArraySet.sol";
-import "../LiquidReputationAccounting.sol";
 import "../traits/Permissionable.sol";
 
 contract FundStorage is Permissionable {
+  using ArraySet for ArraySet.AddressSet;
+
   // TODO: crud config
   // TODO: crud contract whitelist
   // TODO: crud fines
@@ -32,8 +33,6 @@ contract FundStorage is Permissionable {
   bytes32 public constant EXPEL_MEMBER_THRESHOLD = bytes32("expel_member_threshold");
   bytes32 public constant FINE_MEMBER_THRESHOLD = bytes32("fine_member_threshold");
   bytes32 public constant IS_PRIVATE = bytes32("is_private");
-
-  using ArraySet for ArraySet.AddressSet;
 
   ArraySet.AddressSet private whiteListedContracts;
   mapping(bytes32 => uint256) public uintConfigs;

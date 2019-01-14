@@ -14,8 +14,12 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../../collections/ArraySet.sol";
+import "./AbstractProposalManager.sol";
 
-interface IProposalManager {
-  function onLockChanged(address _delegate, uint256 _newLockedBalance) external;
-  function balanceOf(address _delegate) external view returns (uint256);
+
+contract NewMemberProposalManager is AbstractProposalManager {
+  
 }

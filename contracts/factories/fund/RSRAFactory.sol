@@ -23,14 +23,16 @@ import "../../fund/RSRA.sol";
 contract RSRAFactory is Ownable {
   function build(
     SpaceToken spaceToken,
-    SpaceLockerRegistry spaceLockerRegistry
+    SpaceLockerRegistry spaceLockerRegistry,
+    FundStorage fundStorage
   )
     external
     returns (RSRA)
   {
     RSRA rsra = new RSRA(
       spaceToken,
-      spaceLockerRegistry
+      spaceLockerRegistry,
+      fundStorage
     );
 
     rsra.addRoleTo(msg.sender, "role_manager");

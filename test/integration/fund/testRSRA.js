@@ -5,18 +5,19 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
+const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
+const ModifyConfigProposalManagerFactory = artifacts.require('./ModifyConfigProposalManagerFactory.sol');
 const FundStorageFactory = artifacts.require('./FundStorageFactory.sol');
 const RSRAFactory = artifacts.require('./RSRAFactory.sol');
 const FundFactory = artifacts.require('./FundFactory.sol');
 const RSRA = artifacts.require('./RSRA.sol');
 const FundStorage = artifacts.require('./FundStorage.sol');
+const IProposalManager = artifacts.require('./IProposalManager.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(SpaceReputationAccounting.web3.currentProvider);
 
@@ -26,7 +27,7 @@ initHelperArtifacts(artifacts);
 chai.use(chaiAsPromised);
 
 contract('RSRA', accounts => {
-  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager] = accounts;
+  const [coreTeam, minter, alice, bob, charlie, geoDateManagement] = accounts;
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
@@ -51,17 +52,23 @@ contract('RSRA', accounts => {
 
     // fund factory contracts
 
+    this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
+    this.modifyConfigProposalManagerFactory = await ModifyConfigProposalManagerFactory.new();
     this.rsraFactory = await RSRAFactory.new();
     this.fundStorageFactory = await FundStorageFactory.new();
+
     this.fundFactory = await FundFactory.new(
       this.galtToken.address,
       this.spaceToken.address,
       this.spaceLockerRegistry.address,
       this.rsraFactory.address,
       this.fundStorageFactory.address,
+      this.newMemberProposalManagerFactory.address,
+      this.modifyConfigProposalManagerFactory.address,
       { from: coreTeam }
     );
 
+    // assign roles
     this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     this.spaceLockerRegistry.addRoleTo(this.spaceLockerFactory.address, await this.spaceLockerRegistry.ROLE_FACTORY(), {
       from: coreTeam
@@ -76,7 +83,9 @@ contract('RSRA', accounts => {
     await this.galtToken.approve(this.fundFactory.address, ether(100), { from: alice });
     const res = await this.fundFactory.build(false, 60, 50, 60, 60, 60, { from: alice });
     this.rsraX = await RSRA.at(res.logs[0].args.rsra);
-    this.fundStorageX = FundStorage(res.logs[0].args.fundStorage);
+    this.fundStorageX = FundStorage.at(res.logs[0].args.fundStorage);
+    this.modifyConfigProposalManagerX = IProposalManager.at(res.logs[0].args.modifyConfigProposalManager);
+    this.newMemberProposalManagerX = IProposalManager.at(res.logs[0].args.newMemberProposalManager);
 
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
@@ -88,10 +97,18 @@ contract('RSRA', accounts => {
     );
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
     this.rsraXWeb3 = new web3.eth.Contract(this.rsraX.abi, this.rsraX.address);
+    this.modifyConfigProposalManagerXWeb3 = new web3.eth.Contract(
+      this.modifyConfigProposalManagerX.abi,
+      this.modifyConfigProposalManagerX.address
+    );
+    this.newMemberProposalManagerXWeb3 = new web3.eth.Contract(
+      this.newMemberProposalManagerX.abi,
+      this.newMemberProposalManagerX.address
+    );
   });
 
   describe('transfer', () => {
-    it.only('should handle basic reputation transfer case', async function() {
+    it('should handle basic reputation transfer case', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
 
@@ -230,27 +247,9 @@ contract('RSRA', accounts => {
     });
   });
 
-  describe.skip('revokeLocked', () => {
-    it('should allow revoking locked reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.galtToken.address,
-        this.oracles,
-        claimManager,
-        this.multiSigRegistry,
-        this.spaceReputationAccounting.address,
-        coreTeam
-      );
-      await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
-      let res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-
-      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigY = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-
-      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-
-      res = await this.spaceToken.mint(alice, { from: minter });
+  describe('lock/unlock by delegate', () => {
+    it('should allow update balances of all whitelisted proposal contracts', async function() {
+      let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
@@ -268,58 +267,116 @@ contract('RSRA', accounts => {
       await locker.deposit(token1, { from: alice });
 
       // APPROVE
-      await locker.approveMint(this.spaceReputationAccounting.address, { from: alice });
+      await locker.approveMint(this.rsraX.address, { from: alice });
 
       // STAKE
-      await this.spaceReputationAccounting.mint(lockerAddress, { from: alice });
-      await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
-      await this.spaceReputationAccounting.delegate(charlie, alice, 100, { from: bob });
-      await this.spaceReputationAccounting.delegate(alice, alice, 50, { from: charlie });
+      await this.rsraX.mint(lockerAddress, { from: alice });
+      await this.rsraX.delegate(bob, alice, 350, { from: alice });
+      await this.rsraX.delegate(charlie, alice, 100, { from: bob });
+      await this.rsraX.delegate(alice, alice, 50, { from: charlie });
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
+      res = await this.rsraXWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 500);
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(bob).call();
+      res = await this.rsraXWeb3.methods.balanceOf(bob).call();
       assert.equal(res, 250);
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
+      res = await this.rsraXWeb3.methods.balanceOf(charlie).call();
       assert.equal(res, 50);
 
-      // Bob stakes reputation in multiSigA
-      await this.spaceReputationAccounting.lockReputation(abMultiSigX.address, 100, { from: bob });
-      await this.spaceReputationAccounting.lockReputation(abMultiSigY.address, 30, { from: bob });
-      await this.spaceReputationAccounting.lockReputation(abMultiSigZ.address, 70, { from: bob });
+      await this.rsraX.lockReputation(100, { from: alice });
+      await this.rsraX.lockReputation(30, { from: bob });
+      await this.rsraX.lockReputation(50, { from: charlie });
 
-      // Alice can revoke only 50 unlocked reputation tokens
-      await assertRevert(this.spaceReputationAccounting.revoke(bob, 51, { from: alice }));
-      await this.spaceReputationAccounting.revoke(bob, 50, { from: alice });
+      // TODO: check balances
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 100);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 100);
 
-      // To revoke locked reputation Alice uses #revokeLocked() and explicitly
-      // specifies multiSig to revoke reputation from
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 100, { from: bob }));
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 100, { from: alice });
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 70, { from: bob }));
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
-      await this.spaceReputationAccounting.revoke(charlie, 50, { from: alice });
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 30);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 30);
 
-      // ATTEMPT TO BURN
-      await assertRevert(locker.burn(this.spaceReputationAccounting.address, { from: alice }));
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 50);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 50);
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
+      // Alice can revoke only 220 unlocked reputation tokens
+      await assertRevert(this.rsraX.revoke(bob, 221, { from: alice }));
+      await this.rsraX.revoke(bob, 220, { from: alice });
+
+      // Alice can us revokeLocked for the rest of the delegated amount
+      await assertRevert(this.rsraX.revokeLocked(bob, 31, { from: alice }));
+      await this.rsraX.revokeLocked(bob, 30, { from: alice });
+
+      // Charlie partially unlocks his reputation
+      await assertRevert(this.rsraX.unlockReputation(51, { from: charlie }));
+      await this.rsraX.unlockReputation(25, { from: charlie });
+
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 100);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 100);
+
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 0);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 25);
+      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 25);
+
+      res = await this.rsraXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 650);
+
+      res = await this.rsraXWeb3.methods.balanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.rsraXWeb3.methods.balanceOf(charlie).call();
+      assert.equal(res, 25);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(alice).call();
+      assert.equal(res, 100);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(charlie).call();
+      assert.equal(res, 25);
+
+      await this.rsraX.revokeLocked(charlie, 25, { from: alice });
+      await this.rsraX.revoke(charlie, 25, { from: alice });
+      await this.rsraX.unlockReputation(100, { from: alice });
+
+      res = await this.rsraXWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 800);
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(bob).call();
+      res = await this.rsraXWeb3.methods.balanceOf(bob).call();
       assert.equal(res, 0);
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
+      res = await this.rsraXWeb3.methods.balanceOf(charlie).call();
       assert.equal(res, 0);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(alice).call();
+      assert.equal(res, 0);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.rsraXWeb3.methods.lockedBalanceOf(charlie).call();
+      assert.equal(res, 0);
+
+      // ATTEMPT TO BURN
+      await assertRevert(locker.burn(this.rsraX.address, { from: alice }));
 
       // APPROVE BURN AND TRY AGAIN
-      await this.spaceReputationAccounting.approveBurn(lockerAddress, { from: alice });
-      await locker.burn(this.spaceReputationAccounting.address, { from: alice });
+      await this.rsraX.approveBurn(lockerAddress, { from: alice });
+      await locker.burn(this.rsraX.address, { from: alice });
 
       // Withdraw token
       await locker.withdraw(token1, { from: alice });
