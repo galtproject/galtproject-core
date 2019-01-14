@@ -15,7 +15,7 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library ArrayUtils {
-  function uintSome(uint[] arr, uint el) public view returns (bool) {
+  function uintSome(uint[] arr, uint el) internal view returns (bool) {
     for (uint j = 0; j < arr.length; j++) {
       if (el == arr[j]) {
         return true;
@@ -24,7 +24,7 @@ library ArrayUtils {
     return false;
   }
 
-  function uintFind(uint[] arr, uint el) public view returns (int) {
+  function uintFind(uint[] arr, uint el) internal view returns (int) {
     for (uint j = 0; j < arr.length; j++) {
       if (el == arr[j]) {
         return int(j);
@@ -33,7 +33,7 @@ library ArrayUtils {
     return - 1;
   }
 
-  function intEqual(int[] arr1, int[] arr2) public view returns (bool) {
+  function intEqual(int[] arr1, int[] arr2) internal view returns (bool) {
     for (uint i = 0; i < arr1.length; i++) {
       if (arr1[i] != arr2[i]) {
         return false;
