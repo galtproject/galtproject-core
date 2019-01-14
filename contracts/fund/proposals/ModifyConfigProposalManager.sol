@@ -20,6 +20,6 @@ import "../../collections/ArraySet.sol";
 import "./AbstractProposalManager.sol";
 
 
-contract ModifyConfigProposals is AbstractProposalManager {
+contract ModifyConfigProposalManager is AbstractProposalManager {
   
 }
