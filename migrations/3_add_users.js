@@ -153,7 +153,17 @@ module.exports = async function(deployer, network, accounts) {
       DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7'
     };
 
-    const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin', 'DevNick', 'DevNick2', 'DevNickAdmin'];
+    const adminsList = [
+      'Jonybang',
+      'Nikita',
+      'Igor',
+      'Nik',
+      'Nik2',
+      'NickAdmin',
+      'DevNick',
+      'DevNick2',
+      'DevNickAdmin'
+    ];
 
     const allRoles = [
       PM_CADASTRAL_ORACLE_TYPE,
