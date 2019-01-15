@@ -91,6 +91,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       );
 
       const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
+
+      const clippingContourResponse = await splitOperation.getClippingContour();
+      assert.deepEqual(
+        clippingContourResponse.map(g => g.toString(10)),
+        clippingContour.map(g => galt.geohashToGeohash5(g).toString())
+      );
       await splitOperation.prepareAndInitAllPolygons();
       await splitOperation.addSubjectPolygonSegments();
       await splitOperation.addClippingPolygonSegments();
