@@ -14,18 +14,23 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../../collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+
+// This contract will be included into the current one
+import "./MockModifyConfigProposalManager.sol";
 import "../../interfaces/IRSRA.sol";
-import "../FundStorage.sol";
-import "./AbstractProposalManager.sol";
 
 
-contract NewMemberProposalManager is AbstractProposalManager {
-  constructor(IRSRA _rsra, FundStorage _fundStorage) public AbstractProposalManager(_rsra, _fundStorage) {
-  }
+contract MockModifyConfigProposalManagerFactory is Ownable {
+  function build(IRSRA _rsra, FundStorage _fundStorage)
+    external
+    returns (MockModifyConfigProposalManager)
+  {
+    MockModifyConfigProposalManager modifyConfigProposalManager = new MockModifyConfigProposalManager(_rsra, _fundStorage);
 
-  function _execute(uint256 _proposalId) internal {
+    modifyConfigProposalManager.addRoleTo(msg.sender, "role_manager");
+    modifyConfigProposalManager.removeRoleFrom(address(this), "role_manager");
+
+    return modifyConfigProposalManager;
   }
 }

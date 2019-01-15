@@ -18,11 +18,12 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../collections/ArraySet.sol";
 import "../LiquidReputationAccounting.sol";
+import "../interfaces/IRSRA.sol";
 import "./FundStorage.sol";
 import "./proposals/IProposalManager.sol";
 
 
-contract RSRA is LiquidReputationAccounting {
+contract RSRA is LiquidReputationAccounting, IRSRA   {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -30,8 +31,10 @@ contract RSRA is LiquidReputationAccounting {
 
   FundStorage fundStorage;
 
+  uint256 _totalLockedSupply;
+
   // Delegate => locked amount
-  mapping(address => uint256) private _locks;
+  mapping(address => uint256) internal _locks;
 
   constructor(
     SpaceToken _spaceToken,
@@ -53,6 +56,7 @@ contract RSRA is LiquidReputationAccounting {
     _locks[_delegate] -= _amount;
     _delegations[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
+    _totalLockedSupply -= _amount;
 
     _notifyLockedBalanceChanged(_delegate);
   }
@@ -61,10 +65,7 @@ contract RSRA is LiquidReputationAccounting {
   function lockReputation(uint256 _amount) external {
     require(_balances[msg.sender] >= _amount, "Insufficient amount to lock");
 
-    _balances[msg.sender] -= _amount;
-    _locks[msg.sender] += _amount;
-
-    _notifyLockedBalanceChanged(msg.sender);
+    _lockReputation(msg.sender, _amount);
   }
 
   // PermissionED
@@ -78,9 +79,12 @@ contract RSRA is LiquidReputationAccounting {
 
     _locks[msg.sender] -= _amount;
     _balances[msg.sender] += _amount;
+    _totalLockedSupply -= _amount;
 
     _notifyLockedBalanceChanged(msg.sender);
   }
+
+  // INTERNAL
 
   function _notifyLockedBalanceChanged(address _delegate) internal {
     uint256 newBalance = _locks[_delegate];
@@ -94,9 +98,32 @@ contract RSRA is LiquidReputationAccounting {
     emit LockedBalanceChanged(_delegate, newBalance);
   }
 
+  function _lockReputation(address _locker, uint256 _amount) internal {
+
+    _balances[_locker] -= _amount;
+    _locks[_locker] += _amount;
+    _totalLockedSupply += _amount;
+
+    _notifyLockedBalanceChanged(_locker);
+  }
+
   // GETTERS
 
-  function lockedBalanceOf(address _owner) public view returns (uint256) {
+  function getShare(address[] _addresses) external view returns (uint256) {
+    uint256 aggregator = 0;
+
+    for (uint256 i = 0; i < _addresses.length; i++) {
+      aggregator += _locks[_addresses[i]];
+    }
+
+    return aggregator * 100 / _totalLockedSupply;
+  }
+
+  function lockedBalanceOf(address _owner) external view returns (uint256) {
     return _locks[_owner];
+  }
+
+  function totalLockedSupply() external view returns (uint256) {
+    return _totalLockedSupply;
   }
 }

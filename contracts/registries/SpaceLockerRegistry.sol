@@ -15,9 +15,6 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "../traits/Permissionable.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitratorVoting.sol";
-import "../multisig/OracleStakesAccounting.sol";
 import "../SpaceLocker.sol";
 
 

@@ -18,6 +18,9 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
 import "../../fund/RSRA.sol";
+import "../../fund/FundStorage.sol";
+import "../../registries/SpaceLockerRegistry.sol";
+import "../../SpaceToken.sol";
 
 
 contract RSRAFactory is Ownable {

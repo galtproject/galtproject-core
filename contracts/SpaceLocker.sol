@@ -15,9 +15,9 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./SpaceToken.sol";
-import "./SplitMerge.sol";
 import "./collections/ArraySet.sol";
 import "./interfaces/ISRA.sol";
+import "./interfaces/ISplitMerge.sol";
 
 
 contract SpaceLocker {
@@ -30,7 +30,7 @@ contract SpaceLocker {
   address public owner;
 
   SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  ISplitMerge public splitMerge;
 
   uint256 public spaceTokenId;
   uint256 public reputation;
@@ -39,7 +39,7 @@ contract SpaceLocker {
 
   ArraySet.AddressSet sras;
 
-  constructor(SpaceToken _spaceToken, SplitMerge _splitMerge, address _owner) public {
+  constructor(SpaceToken _spaceToken, ISplitMerge _splitMerge, address _owner) public {
     owner = _owner;
 
     spaceToken = _spaceToken;

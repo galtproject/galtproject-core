@@ -14,18 +14,6 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../../collections/ArraySet.sol";
-import "../../interfaces/IRSRA.sol";
-import "../FundStorage.sol";
-import "./AbstractProposalManager.sol";
-
-
-contract NewMemberProposalManager is AbstractProposalManager {
-  constructor(IRSRA _rsra, FundStorage _fundStorage) public AbstractProposalManager(_rsra, _fundStorage) {
-  }
-
-  function _execute(uint256 _proposalId) internal {
-  }
+interface ISplitMerge {
+  function getContourArea(uint256 _tokenId) external view returns (uint256);
 }

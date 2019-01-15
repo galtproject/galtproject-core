@@ -20,9 +20,10 @@ import "./collections/ArraySet.sol";
 import "./traits/Permissionable.sol";
 import "./SpaceToken.sol";
 import "./registries/SpaceLockerRegistry.sol";
+import "./interfaces/ISRA.sol";
 
 
-contract LiquidReputationAccounting is Permissionable {
+contract LiquidReputationAccounting is ISRA, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -71,20 +72,14 @@ contract LiquidReputationAccounting is Permissionable {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
     address owner = _spaceLocker.owner();
-
     require(msg.sender == owner, "Not owner of the locker");
 
     uint256 spaceTokenId = _spaceLocker.spaceTokenId();
-
     require(reputationMinted[spaceTokenId] == false, "Reputation already minted");
 
     uint256 reputation = _spaceLocker.reputation();
 
-    totalStakedSpace += reputation;
-
-    _balances[msg.sender] += reputation;
-    _delegations[msg.sender][msg.sender] += reputation;
-    reputationMinted[spaceTokenId] = true;
+    _mint(owner, reputation, spaceTokenId);
   }
 
   // Burn space token total reputation
@@ -121,16 +116,8 @@ contract LiquidReputationAccounting is Permissionable {
   function delegate(address _to, address _owner, uint256 _amount) external {
     require(_balances[msg.sender] >= _amount, "Not enough funds");
     require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
-    // TODO: check space owner
 
-    _balances[msg.sender] -= _amount;
-    _delegations[_owner][msg.sender] -= _amount;
-
-    assert(_balances[msg.sender] >= 0);
-    assert(_delegations[_owner][msg.sender] >= 0);
-
-    _balances[_to] += _amount;
-    _delegations[_owner][_to] += _amount;
+    _delegate(_to, msg.sender, _owner, _amount);
   }
 
   // PermissionED
@@ -146,6 +133,29 @@ contract LiquidReputationAccounting is Permissionable {
 
     _balances[msg.sender] += _amount;
     _delegations[msg.sender][msg.sender] += _amount;
+  }
+
+  // INTERNAL
+
+  function _mint(address _beneficiary, uint256 _amount, uint256 _spaceTokenId) internal {
+    totalStakedSpace += _amount;
+
+    _balances[_beneficiary] += _amount;
+    _delegations[_beneficiary][_beneficiary] += _amount;
+    reputationMinted[_spaceTokenId] = true;
+  }
+
+  function _delegate(address _to, address _from, address _owner, uint256 _amount) internal {
+    // TODO: check space owner
+
+    _balances[_from] -= _amount;
+    _delegations[_owner][_from] -= _amount;
+
+    assert(_balances[_from] >= 0);
+    assert(_delegations[_owner][_from] >= 0);
+
+    _balances[_to] += _amount;
+    _delegations[_owner][_to] += _amount;
   }
 
   // GETTERS

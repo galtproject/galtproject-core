@@ -11,21 +11,23 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity ^0.4.24;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../../collections/ArraySet.sol";
+import "../../fund/proposals/ModifyConfigProposalManager.sol";
 import "../../interfaces/IRSRA.sol";
-import "../FundStorage.sol";
-import "./AbstractProposalManager.sol";
 
 
-contract NewMemberProposalManager is AbstractProposalManager {
-  constructor(IRSRA _rsra, FundStorage _fundStorage) public AbstractProposalManager(_rsra, _fundStorage) {
+contract MockModifyConfigProposalManager is ModifyConfigProposalManager {
+  constructor(IRSRA _rsra, FundStorage _fundStorage) public ModifyConfigProposalManager(_rsra, _fundStorage) {
   }
 
-  function _execute(uint256 _proposalId) internal {
+  function ayeHack(uint256 _votingId, address _voter) external {
+    _aye(_votingId, _voter);
+  }
+
+  function ayeAllHack(uint256 _votingId, address[] _voters) external {
+    for (uint256 i = 0; i < _voters.length; i++) {
+      _aye(_votingId, _voters[i]);
+    }
   }
 }

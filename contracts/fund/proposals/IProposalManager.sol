@@ -17,5 +17,5 @@ pragma experimental "v0.5.0";
 
 interface IProposalManager {
   function onLockChanged(address _delegate, uint256 _newLockedBalance) external;
-  function balanceOf(address _delegate) external view returns (uint256);
+//  function balanceOf(address _delegate) external view returns (uint256);
 }

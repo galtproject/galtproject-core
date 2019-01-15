@@ -18,14 +18,16 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
 import "../../fund/proposals/ModifyConfigProposalManager.sol";
+import "../../fund/FundStorage.sol";
+import "../../interfaces/IRSRA.sol";
 
 
 contract ModifyConfigProposalManagerFactory is Ownable {
-  function build()
+  function build(IRSRA _rsra, FundStorage _fundStorage)
     external
     returns (ModifyConfigProposalManager)
   {
-    ModifyConfigProposalManager modifyConfigProposalManager = new ModifyConfigProposalManager();
+    ModifyConfigProposalManager modifyConfigProposalManager = new ModifyConfigProposalManager(_rsra, _fundStorage);
 
     modifyConfigProposalManager.addRoleTo(msg.sender, "role_manager");
     modifyConfigProposalManager.removeRoleFrom(address(this), "role_manager");

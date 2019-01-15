@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "../GaltToken.sol";
 import "../registries/SpaceLockerRegistry.sol";
 import "../SpaceLocker.sol";
-import "../SplitMerge.sol";
+import "../interfaces/ISplitMerge.sol";
 
 
 contract SpaceLockerFactory is Ownable {
@@ -27,7 +27,7 @@ contract SpaceLockerFactory is Ownable {
   SpaceLockerRegistry spaceLockerRegistry;
   GaltToken galtToken;
   SpaceToken spaceToken;
-  SplitMerge splitMerge;
+  ISplitMerge splitMerge;
 
   uint256 commission;
 
@@ -35,7 +35,7 @@ contract SpaceLockerFactory is Ownable {
     SpaceLockerRegistry _spaceLockerRegistry,
     GaltToken _galtToken,
     SpaceToken _spaceToken,
-    SplitMerge _splitMerge
+    ISplitMerge _splitMerge
   ) public {
     commission = 10 ether;
 

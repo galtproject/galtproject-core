@@ -26,6 +26,7 @@ contract FundStorage is Permissionable {
   // TODO: crud contract whitelist
   // TODO: crud fines
   string public constant CONTRACT_WHITELIST_MANAGER = "wl_manager";
+  string public constant CONTRACT_CONFIG_MANAGER = "wl_manager";
 
   bytes32 public constant MANAGE_WL_THRESHOLD = bytes32("manage_wl_threshold");
   bytes32 public constant MODIFY_CONFIG_THRESHOLD = bytes32("modify_config_threshold");
@@ -35,7 +36,7 @@ contract FundStorage is Permissionable {
   bytes32 public constant IS_PRIVATE = bytes32("is_private");
 
   ArraySet.AddressSet private whiteListedContracts;
-  mapping(bytes32 => uint256) public uintConfigs;
+  mapping(bytes32 => bytes32) private config;
 
   constructor (
     bool _isPrivate,
@@ -45,12 +46,16 @@ contract FundStorage is Permissionable {
     uint256 _expelMemberThreshold,
     uint256 _fineMemberThreshold
   ) public {
-    uintConfigs[IS_PRIVATE] = _isPrivate ? 1 : 0;
-    uintConfigs[MANAGE_WL_THRESHOLD] = _manageWhiteListThreshold;
-    uintConfigs[MODIFY_CONFIG_THRESHOLD] = _modifyConfigThreshold;
-    uintConfigs[NEW_MEMBER_THRESHOLD] = _newMemberThreshold;
-    uintConfigs[EXPEL_MEMBER_THRESHOLD] = _expelMemberThreshold;
-    uintConfigs[FINE_MEMBER_THRESHOLD] = _fineMemberThreshold;
+    config[IS_PRIVATE] = bytes32(_isPrivate ? 1 : 0);
+    config[MANAGE_WL_THRESHOLD] = bytes32(_manageWhiteListThreshold);
+    config[MODIFY_CONFIG_THRESHOLD] = bytes32(_modifyConfigThreshold);
+    config[NEW_MEMBER_THRESHOLD] = bytes32(_newMemberThreshold);
+    config[EXPEL_MEMBER_THRESHOLD] = bytes32(_expelMemberThreshold);
+    config[FINE_MEMBER_THRESHOLD] = bytes32(_fineMemberThreshold);
+  }
+
+  function setConfigValue(bytes32 _key, bytes32 _value) external onlyRole(CONTRACT_CONFIG_MANAGER) {
+    config[_key] = _value;
   }
 
   function addWhiteListedContract(address _contract) external onlyRole(CONTRACT_WHITELIST_MANAGER) {
@@ -59,6 +64,11 @@ contract FundStorage is Permissionable {
 
   function removeWhiteListedContract(address _contract) external onlyRole(CONTRACT_WHITELIST_MANAGER) {
     whiteListedContracts.add(_contract);
+  }
+
+  // GETTERS
+  function getConfigValue(bytes32 _key) external view returns(bytes32) {
+    return config[_key];
   }
 
   function getWhiteListedContracts() external view returns(address[]) {

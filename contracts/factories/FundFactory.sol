@@ -19,7 +19,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../fund/FundStorage.sol";
 import "../factories/fund/RSRAFactory.sol";
 import "../factories/fund/FundStorageFactory.sol";
-import "../fund/RSRA.sol";
+import "../interfaces/IRSRA.sol";
 import "../SpaceToken.sol";
 import "../registries/SpaceLockerRegistry.sol";
 import "./fund/ModifyConfigProposalManagerFactory.sol";
@@ -77,7 +77,7 @@ contract FundFactory is Ownable {
     uint256 _fineMemberThreshold
   )
     external
-    returns (RSRA, FundStorage, ModifyConfigProposalManager, NewMemberProposalManager)
+    returns (IRSRA, FundStorage, ModifyConfigProposalManager, NewMemberProposalManager)
   {
     galtToken.transferFrom(msg.sender, address(this), commission);
 
@@ -89,10 +89,10 @@ contract FundFactory is Ownable {
       _expelMemberThreshold,
       _fineMemberThreshold
     );
-    RSRA rsra = rsraFactory.build(spaceToken, spaceLockerRegistry, fundStorage);
+    IRSRA rsra = rsraFactory.build(spaceToken, spaceLockerRegistry, fundStorage);
 
-    ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build();
-    NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build();
+    ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build(rsra, fundStorage);
+    NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build(rsra, fundStorage);
 
     // TODO: if is private, then build additional proposal manager
     // TODO: attach roles
@@ -104,6 +104,8 @@ contract FundFactory is Ownable {
     fundStorage.addWhiteListedContract(modifyConfigProposalManager);
     fundStorage.addWhiteListedContract(newMemberProposalManager);
     fundStorage.removeRoleFrom(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
+
+    fundStorage.addRoleTo(modifyConfigProposalManager, fundStorage.CONTRACT_CONFIG_MANAGER());
 
     // TODO: figure out what to do with contract permissions
     emit FundCreated(rsra, fundStorage, modifyConfigProposalManager, newMemberProposalManager);
