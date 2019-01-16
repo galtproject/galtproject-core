@@ -113,7 +113,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      return res.logs.map(log => log.args.id);
+      return res.logs.filter(log => log.event === 'NewSplitSpaceToken').map(log => log.args.id);
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {
