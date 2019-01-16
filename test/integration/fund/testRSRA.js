@@ -288,22 +288,6 @@ contract('RSRA', accounts => {
       await this.rsraX.lockReputation(30, { from: bob });
       await this.rsraX.lockReputation(50, { from: charlie });
 
-      // TODO: check balances
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 100);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 100);
-
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(bob).call();
-      assert.equal(res, 30);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(bob).call();
-      assert.equal(res, 30);
-
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(charlie).call();
-      assert.equal(res, 50);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(charlie).call();
-      assert.equal(res, 50);
-
       // Alice can revoke only 220 unlocked reputation tokens
       await assertRevert(this.rsraX.revoke(bob, 221, { from: alice }));
       await this.rsraX.revoke(bob, 220, { from: alice });
@@ -315,21 +299,6 @@ contract('RSRA', accounts => {
       // Charlie partially unlocks his reputation
       await assertRevert(this.rsraX.unlockReputation(51, { from: charlie }));
       await this.rsraX.unlockReputation(25, { from: charlie });
-
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 100);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 100);
-
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(bob).call();
-      assert.equal(res, 0);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(bob).call();
-      assert.equal(res, 0);
-
-      res = await this.modifyConfigProposalManagerXWeb3.methods.balanceOf(charlie).call();
-      assert.equal(res, 25);
-      res = await this.newMemberProposalManagerXWeb3.methods.balanceOf(charlie).call();
-      assert.equal(res, 25);
 
       res = await this.rsraXWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 650);
