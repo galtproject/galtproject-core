@@ -60,6 +60,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 role, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
+  event Approve(uint256 approveCount, uint256 required);
 
   struct Application {
     bytes32 id;
@@ -107,9 +108,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   }
 
   mapping(bytes32 => Application) private applications;
-
-  // TODO: do not store in the application contract
-  mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
 
   SpaceToken public spaceToken;
   SplitMerge public splitMerge;
@@ -342,16 +340,16 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     uint256 len = _custodiansToModify.length;
 
-    require((assignedCustodians[_spaceTokenId].size() + len) < TOTAL_CUSTODIAN_LIMIT, "Exceed total custodian limit");
+    require((spaceCustodianRegistry.spaceCustodianCount(_spaceTokenId) + len) < TOTAL_CUSTODIAN_LIMIT, "Exceed total custodian limit");
 
     for (uint256 i = 0; i < len; i++) {
       address custodian = _custodiansToModify[i];
       oracles.requireOracleActiveWithAssignedActiveOracleType(custodian, PC_CUSTODIAN_ORACLE_TYPE);
 
       if (_action == Action.ATTACH) {
-        require(!assignedCustodians[_spaceTokenId].has(custodian), "Custodian already locked a slot");
+        require(!spaceCustodianRegistry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian already locked a slot");
       } else {
-        require(assignedCustodians[_spaceTokenId].has(custodian), "Custodian doesn't have slot");
+        require(spaceCustodianRegistry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian doesn't have slot");
       }
 
       _a.custodiansToModify.add(custodian);
@@ -371,7 +369,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
       "Application status should be SUBMITTED or ACCEPTED");
     require(
       a.custodiansToModify.has(msg.sender) ||
-      assignedCustodians[a.spaceTokenId].has(msg.sender),
+      spaceCustodianRegistry.spaceCustodianAssigned(a.spaceTokenId, msg.sender),
       "Not valid custodian");
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
@@ -398,7 +396,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     applicationsByOracle[msg.sender].push(_aId);
 
     if (a.acceptedCustodians.size() == a.custodiansToModify.size()) {
-      if (assignedCustodians[a.spaceTokenId].size() == 0) {
+      if (spaceCustodianRegistry.spaceCustodianCount(a.spaceTokenId) == 0) {
         changeApplicationStatus(a, ApplicationStatus.LOCKED);
       } else {
         changeApplicationStatus(a, ApplicationStatus.ACCEPTED);
@@ -417,7 +415,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.status == ApplicationStatus.ACCEPTED,
       "Application status should be ACCEPTED");
-    require(assignedCustodians[a.spaceTokenId].has(msg.sender), "Not in assigned list");
+    require(spaceCustodianRegistry.spaceCustodianAssigned(a.spaceTokenId, msg.sender), "Not in assigned list");
     require(!a.lockedCustodians.has(msg.sender), "Already locked");
 
     a.lockedCustodians.add(msg.sender);
@@ -425,7 +423,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     // TODO: add/replace with event
     applicationsByOracle[msg.sender].push(_aId);
 
-    if (assignedCustodians[a.spaceTokenId].size() == a.lockedCustodians.size()) {
+    if (spaceCustodianRegistry.spaceCustodianCount(a.spaceTokenId) == a.lockedCustodians.size()) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -493,7 +491,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     }
 
     a.voting.approveCount = 0;
-    a.voting.required = 0;
 
     a.custodianDocuments = _documents;
   }
@@ -533,6 +530,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     v.approveCount += 1;
     v.approvals[msg.sender] = true;
+
+    emit Approve(v.approveCount, v.required);
 
     if (v.approveCount == v.required) {
       if (a.action == Action.DETACH) {
