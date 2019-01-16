@@ -23,7 +23,7 @@ import "./FundStorage.sol";
 import "./proposals/IProposalManager.sol";
 
 
-contract RSRA is LiquidReputationAccounting, IRSRA   {
+contract RSRA is LiquidReputationAccounting, IRSRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 

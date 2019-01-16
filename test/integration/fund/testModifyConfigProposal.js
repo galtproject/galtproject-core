@@ -27,7 +27,7 @@ const ProposalStatus = {
 };
 
 contract('ModifyConfigProposal', accounts => {
-  const [coreTeam, alice, bob, charlie, dan, eve, frank, splitMergeAddress, spaceLockerRegistryAddress] = accounts;
+  const [coreTeam, alice, bob, charlie, dan, eve, frank, spaceLockerRegistryAddress] = accounts;
 
   beforeEach(async function() {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
@@ -85,10 +85,7 @@ contract('ModifyConfigProposal', accounts => {
       this.newMemberProposalManagerX.abi,
       this.newMemberProposalManagerX.address
     );
-    this.fundStorageXWeb3 = new web3.eth.Contract(
-      this.fundStorageX.abi,
-      this.fundStorageX.address
-    );
+    this.fundStorageXWeb3 = new web3.eth.Contract(this.fundStorageX.abi, this.fundStorageX.address);
 
     this.beneficiaries = [bob, charlie, dan, eve, frank];
   });

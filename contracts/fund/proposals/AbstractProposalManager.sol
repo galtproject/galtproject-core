@@ -181,8 +181,8 @@ contract AbstractProposalManager is Permissionable, IProposalManager {
     returns (
       ProposalStatus status,
       address[] ayes,
-      address[] nays
-  ) {
+      address[] nays)
+  {
     ProposalVoting storage p = _proposalVotings[_proposalId];
 
     return (p.status, p.ayes.elements(), p.nays.elements());
