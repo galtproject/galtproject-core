@@ -83,13 +83,15 @@ contract('PlotCustodianManager', (accounts) => {
     multiSigX,
     stakesNotifier,
     applicationTypeManager,
+    manualCustodianManager,
     oracleManager,
     alice,
     bob,
     charlie,
     dan,
     eve,
-    frank
+    frank,
+    george
   ] = accounts;
 
   beforeEach(async function() {
@@ -187,6 +189,14 @@ contract('PlotCustodianManager', (accounts) => {
     });
     await this.spaceCustodianRegistry.addRoleTo(
       this.plotCustodianManager.address,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
+
+    await this.spaceCustodianRegistry.addRoleTo(
+      manualCustodianManager,
       await this.spaceCustodianRegistry.ROLE_APPLICATION(),
       {
         from: coreTeam
@@ -762,7 +772,10 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, frank, 'Dan', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+        from: oracleManager
+      });
+      await this.oracles.addOracle(multiSigX, george, 'George', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -791,6 +804,9 @@ contract('PlotCustodianManager', (accounts) => {
         from: stakesNotifier
       });
       await this.oracles.onOracleStakeChanged(multiSigX, frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+        from: stakesNotifier
+      });
+      await this.oracles.onOracleStakeChanged(multiSigX, george, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
 
@@ -1469,11 +1485,143 @@ contract('PlotCustodianManager', (accounts) => {
     });
 
     describe('with current custodians exist', () => {
-      describe('attach', () => {
-        it('should deny ');
+      beforeEach(async function() {
+        await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], { from: manualCustodianManager });
+        const res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
+        assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank]);
       });
 
-      describe('detach', () => {});
+      describe('attach', () => {
+        describe('#submit()', () => {
+          it('should deny attaching existing custodians', async function() {
+            await assertRevert(
+              this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, frank], 0, {
+                from: alice,
+                value: ether(7)
+              })
+            );
+          });
+
+          it('should allow submitting non existing custodians', async function() {
+            await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
+              from: alice,
+              value: ether(7)
+            });
+          });
+        });
+
+        it('should allow simple pipeline', async function() {
+          let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
+            from: alice,
+            value: ether(7)
+          });
+          this.aId = res.logs[0].args.id;
+          await this.plotCustodianManager.accept(this.aId, { from: bob });
+          await this.plotCustodianManager.accept(this.aId, { from: george });
+          await this.plotCustodianManager.lock(this.aId, { from: charlie });
+          await this.plotCustodianManager.lock(this.aId, { from: frank });
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
+          await this.plotCustodianManager.attachToken(this.aId, { from: alice });
+          await this.plotCustodianManager.auditorLock(this.aId, { from: eve });
+
+          await this.plotCustodianManager.approve(this.aId, { from: charlie });
+          await this.plotCustodianManager.approve(this.aId, { from: eve });
+          await this.plotCustodianManager.approve(this.aId, { from: alice });
+          await this.plotCustodianManager.approve(this.aId, { from: bob });
+
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.REVIEW);
+
+          await this.plotCustodianManager.approve(this.aId, { from: george });
+          await this.plotCustodianManager.approve(this.aId, { from: frank });
+
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.APPROVED);
+
+          res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
+          assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank, bob, george]);
+        });
+      });
+
+      describe('detach', () => {
+        describe('#submit()', () => {
+          it('should deny detaching non-existing custodians', async function() {
+            await assertRevert(
+              this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [bob, frank], 0, {
+                from: alice,
+                value: ether(7)
+              })
+            );
+          });
+
+          it('should allow detaching existing custodians', async function() {
+            const res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
+            assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank]);
+            await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, frank], 0, {
+              from: alice,
+              value: ether(7)
+            });
+          });
+        });
+
+        it('should allow simple pipeline', async function() {
+          await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], { from: manualCustodianManager });
+          let res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
+          assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank, bob, george]);
+
+          // Now there are 4 custodians: [charlie, frank, bob, george]
+          res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, george], 0, {
+            from: alice,
+            value: ether(7)
+          });
+          this.aId = res.logs[0].args.id;
+
+          await this.plotCustodianManager.accept(this.aId, { from: charlie });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.SUBMITTED);
+
+          await this.plotCustodianManager.accept(this.aId, { from: george });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.ACCEPTED);
+
+          await this.plotCustodianManager.lock(this.aId, { from: charlie });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.ACCEPTED);
+
+          await this.plotCustodianManager.lock(this.aId, { from: george });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.ACCEPTED);
+
+          await this.plotCustodianManager.lock(this.aId, { from: bob });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.ACCEPTED);
+
+          await this.plotCustodianManager.lock(this.aId, { from: frank });
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.LOCKED);
+
+          await this.spaceToken.approve(this.plotCustodianManager.address, this.spaceTokenId, { from: alice });
+          await this.plotCustodianManager.attachToken(this.aId, { from: alice });
+          await this.plotCustodianManager.auditorLock(this.aId, { from: eve });
+
+          await this.plotCustodianManager.approve(this.aId, { from: charlie });
+          await this.plotCustodianManager.approve(this.aId, { from: eve });
+          await this.plotCustodianManager.approve(this.aId, { from: alice });
+          await this.plotCustodianManager.approve(this.aId, { from: bob });
+
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.REVIEW);
+
+          await this.plotCustodianManager.approve(this.aId, { from: george });
+          await this.plotCustodianManager.approve(this.aId, { from: frank });
+
+          res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
+          assert.equal(res.status, applicationStatus.APPROVED);
+
+          res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
+          assert.sameMembers(res.map(a => a.toLowerCase()), [frank, bob]);
+        });
+      });
     });
   });
 });
