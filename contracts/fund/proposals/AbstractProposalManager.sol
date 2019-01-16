@@ -77,6 +77,7 @@ contract AbstractProposalManager is Permissionable, IProposalManager {
 
   // Should be implemented inside descendant
   function _execute(uint256 _proposalId) internal;
+  function getThreshold() public view returns (uint256);
 
   // Method #1 ONLY:
   function onLockChanged(
@@ -167,10 +168,6 @@ contract AbstractProposalManager is Permissionable, IProposalManager {
   // Method #2 ONLY:
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
     return rsra.getShare(_proposalVotings[_proposalId].nays.elements());
-  }
-
-  function getThreshold() public view returns (uint256) {
-    return uint256(fundStorage.getConfigValue(fundStorage.MODIFY_CONFIG_THRESHOLD()));
   }
 
   function getProposalVoting(

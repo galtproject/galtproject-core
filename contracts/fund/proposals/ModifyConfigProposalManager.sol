@@ -50,15 +50,19 @@ contract ModifyConfigProposalManager is AbstractProposalManager {
     proposalVoting.status = ProposalStatus.ACTIVE;
   }
 
+  function _execute(uint256 _proposalId) internal {
+    Proposal storage p = _proposals[_proposalId];
+
+    fundStorage.setConfigValue(p.key, p.value);
+  }
+
   function getProposal(uint256 _proposalId) external view returns (bytes32 key, bytes32 value, string description) {
     Proposal storage p = _proposals[_proposalId];
 
     return (p.key, p.value, p.description);
   }
 
-  function _execute(uint256 _proposalId) internal {
-    Proposal storage p = _proposals[_proposalId];
-
-    fundStorage.setConfigValue(p.key, p.value);
+  function getThreshold() public view returns (uint256) {
+    return uint256(fundStorage.getConfigValue(fundStorage.MODIFY_CONFIG_THRESHOLD()));
   }
 }

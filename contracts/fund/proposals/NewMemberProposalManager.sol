@@ -23,9 +23,44 @@ import "./AbstractProposalManager.sol";
 
 
 contract NewMemberProposalManager is AbstractProposalManager {
+  struct Proposal {
+    uint256 spaceTokenId;
+    string description;
+  }
+
+  mapping(uint256 => Proposal) private _proposals;
+
   constructor(IRSRA _rsra, FundStorage _fundStorage) public AbstractProposalManager(_rsra, _fundStorage) {
   }
 
+  function propose(uint256 _spaceTokenId, string _description) external {
+    uint256 id = idCounter.next();
+
+    _proposals[id] = Proposal({
+      spaceTokenId: _spaceTokenId,
+      description: _description
+    });
+
+    emit NewProposal(id, msg.sender);
+
+    ProposalVoting storage proposalVoting = _proposalVotings[id];
+
+    proposalVoting.status = ProposalStatus.ACTIVE;
+  }
+
   function _execute(uint256 _proposalId) internal {
+    Proposal storage p = _proposals[_proposalId];
+
+    fundStorage.approveMint(p.spaceTokenId);
+  }
+
+  function getThreshold() public view returns (uint256) {
+    return uint256(fundStorage.getConfigValue(fundStorage.NEW_MEMBER_THRESHOLD()));
+  }
+
+  function getProposal(uint256 _proposalId) external view returns (uint256 spaceTokenId, string description) {
+    Proposal storage p = _proposals[_proposalId];
+
+    return (p.spaceTokenId, p.description);
   }
 }

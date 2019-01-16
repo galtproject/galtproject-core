@@ -106,6 +106,7 @@ contract FundFactory is Ownable {
     fundStorage.removeRoleFrom(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
 
     fundStorage.addRoleTo(modifyConfigProposalManager, fundStorage.CONTRACT_CONFIG_MANAGER());
+    fundStorage.addRoleTo(newMemberProposalManager, fundStorage.CONTRACT_NEW_MEMBER_MANAGER());
 
     // TODO: figure out what to do with contract permissions
     emit FundCreated(rsra, fundStorage, modifyConfigProposalManager, newMemberProposalManager);

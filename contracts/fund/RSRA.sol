@@ -47,6 +47,16 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
     fundStorage = _fundStorage;
   }
 
+  function mint(
+    SpaceLocker _spaceLocker
+  )
+    public
+  {
+    uint256 spaceTokenId = _spaceLocker.spaceTokenId();
+    require(fundStorage.isMintApproved(spaceTokenId), "No mint permissions");
+    super.mint(_spaceLocker);
+  }
+
   // PermissionED
   function revokeLocked(address _delegate, uint256 _amount) external {
     require(_delegations[msg.sender][_delegate] >= _amount, "Not enough funds");

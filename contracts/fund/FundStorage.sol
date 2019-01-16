@@ -27,6 +27,7 @@ contract FundStorage is Permissionable {
   // TODO: crud fines
   string public constant CONTRACT_WHITELIST_MANAGER = "wl_manager";
   string public constant CONTRACT_CONFIG_MANAGER = "wl_manager";
+  string public constant CONTRACT_NEW_MEMBER_MANAGER = "wl_manager";
 
   bytes32 public constant MANAGE_WL_THRESHOLD = bytes32("manage_wl_threshold");
   bytes32 public constant MODIFY_CONFIG_THRESHOLD = bytes32("modify_config_threshold");
@@ -36,7 +37,8 @@ contract FundStorage is Permissionable {
   bytes32 public constant IS_PRIVATE = bytes32("is_private");
 
   ArraySet.AddressSet private whiteListedContracts;
-  mapping(bytes32 => bytes32) private config;
+  mapping(bytes32 => bytes32) private _config;
+  mapping(uint256 => bool) private _mintApprovals;
 
   constructor (
     bool _isPrivate,
@@ -46,16 +48,20 @@ contract FundStorage is Permissionable {
     uint256 _expelMemberThreshold,
     uint256 _fineMemberThreshold
   ) public {
-    config[IS_PRIVATE] = bytes32(_isPrivate ? 1 : 0);
-    config[MANAGE_WL_THRESHOLD] = bytes32(_manageWhiteListThreshold);
-    config[MODIFY_CONFIG_THRESHOLD] = bytes32(_modifyConfigThreshold);
-    config[NEW_MEMBER_THRESHOLD] = bytes32(_newMemberThreshold);
-    config[EXPEL_MEMBER_THRESHOLD] = bytes32(_expelMemberThreshold);
-    config[FINE_MEMBER_THRESHOLD] = bytes32(_fineMemberThreshold);
+    _config[IS_PRIVATE] = bytes32(_isPrivate ? 1 : 0);
+    _config[MANAGE_WL_THRESHOLD] = bytes32(_manageWhiteListThreshold);
+    _config[MODIFY_CONFIG_THRESHOLD] = bytes32(_modifyConfigThreshold);
+    _config[NEW_MEMBER_THRESHOLD] = bytes32(_newMemberThreshold);
+    _config[EXPEL_MEMBER_THRESHOLD] = bytes32(_expelMemberThreshold);
+    _config[FINE_MEMBER_THRESHOLD] = bytes32(_fineMemberThreshold);
   }
 
   function setConfigValue(bytes32 _key, bytes32 _value) external onlyRole(CONTRACT_CONFIG_MANAGER) {
-    config[_key] = _value;
+    _config[_key] = _value;
+  }
+
+  function approveMint(uint256 _spaceTokenId) external onlyRole(CONTRACT_NEW_MEMBER_MANAGER) {
+    _mintApprovals[_spaceTokenId] = true;
   }
 
   function addWhiteListedContract(address _contract) external onlyRole(CONTRACT_WHITELIST_MANAGER) {
@@ -68,10 +74,18 @@ contract FundStorage is Permissionable {
 
   // GETTERS
   function getConfigValue(bytes32 _key) external view returns(bytes32) {
-    return config[_key];
+    return _config[_key];
   }
 
   function getWhiteListedContracts() external view returns(address[]) {
     return whiteListedContracts.elements();
+  }
+
+  function isMintApproved(uint256 _spaceTokenId) external view returns(bool) {
+    if (_config[IS_PRIVATE] == 1) {
+      return _mintApprovals[_spaceTokenId];
+    } else {
+      return true;
+    }
   }
 }

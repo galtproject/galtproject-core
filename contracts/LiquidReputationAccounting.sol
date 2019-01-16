@@ -67,7 +67,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function mint(
     SpaceLocker _spaceLocker
   )
-    external
+    public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
