@@ -15,8 +15,8 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./PlotManager.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
+import "../SpaceToken.sol";
+import "../SplitMerge.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 

@@ -32,7 +32,10 @@ const Helpers = {
     return web3.utils.toWei(number.toString(), 'ether');
   },
   roundToPrecision(number, precision = 4) {
-    return Math.round(number / 10 ** precision) * 10 ** precision;
+    return Math.round(number * 10 ** precision) / 10 ** precision;
+  },
+  weiToEtherRound(wei, precision = 4) {
+    return Helpers.roundToPrecision(parseFloat(web3.utils.fromWei(wei.toFixed(), 'ether')), precision);
   },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
@@ -302,16 +305,24 @@ const Helpers = {
     libCache.SplitMergeLib = await SplitMergeLib.new();
     return libCache.SplitMergeLib;
   },
+  async deployGeodesic() {
+    const Geodesic = Helpers.requireContract('./Geodesic.sol');
+
+    const landUtils = await Helpers.getLandUtilsLib();
+    const polygonUtils = await Helpers.getPolygonUtilsLib();
+    Geodesic.link('LandUtils', landUtils.address);
+    Geodesic.link('PolygonUtils', polygonUtils.address);
+    return Geodesic.new();
+  },
   async deploySplitMerge(spaceTokenAddress) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
-    const landUtils = await Helpers.getLandUtilsLib();
-    const polygonUtils = await Helpers.getPolygonUtilsLib();
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
     const splitMergeLib = await Helpers.getSplitMergeLib();
 
-    SplitMerge.link('LandUtils', landUtils.address);
+    const polygonUtils = await Helpers.getPolygonUtilsLib();
+
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
 
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
@@ -322,7 +333,81 @@ const Helpers = {
     const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceTokenAddress, splitMerge.address);
     await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
 
+    const geodesic = await Helpers.deployGeodesic();
+    await splitMerge.setGeodesic(geodesic.address);
+
     return splitMerge;
+  },
+
+  // TODO: fix Error: Invalid number of arguments to Solidity function
+  async deployBancorGaltDex(
+    galtTokenAddress,
+    etherTokenAddress,
+    galtWeight,
+    etherWeight,
+    maxConversionFee,
+    gasPriceLimitValue
+  ) {
+    const SmartToken = Helpers.requireContract('bancor-contracts/solidity/contracts/token/SmartToken.sol');
+    const ContractRegistry = Helpers.requireContract(
+      'bancor-contracts/solidity/contracts/utility/ContractRegistry.sol'
+    );
+    const ContractIds = Helpers.requireContract('bancor-contracts/solidity/contracts/ContractIds.sol');
+    const ContractFeatures = Helpers.requireContract(
+      'bancor-contracts/solidity/contracts/utility/ContractFeatures.sol'
+    );
+    const BancorGasPriceLimit = Helpers.requireContract(
+      'bancor-contracts/solidity/contracts/converter/BancorGasPriceLimit.sol'
+    );
+    const BancorFormula = Helpers.requireContract('bancor-contracts/solidity/contracts/converter/BancorFormula.sol');
+    const BancorNetwork = Helpers.requireContract('bancor-contracts/solidity/contracts/BancorNetwork.sol');
+    const BancorConverterFactory = Helpers.requireContract(
+      'bancor-contracts/solidity/contracts/converter/BancorConverterFactory.sol'
+    );
+    const BancorConverterUpgrader = Helpers.requireContract(
+      'bancor-contracts/solidity/contracts/converter/BancorConverterUpgrader.sol'
+    );
+    const BancorGaltDex = Helpers.requireContract('./BancorGaltDex.sol');
+
+    const galtDexToken = await SmartToken.new('GaltDex Token', 'GDT', '18');
+    const galtDexRegistry = await ContractRegistry.new();
+    const contractIds = await ContractIds.new();
+    const contractFeatures = await ContractFeatures.new();
+    const gasPriceLimit = await BancorGasPriceLimit.new(gasPriceLimitValue);
+    const formula = await BancorFormula.new();
+    const bancorNetwork = await BancorNetwork.new(galtDexRegistry.address);
+    const factory = await BancorConverterFactory.new();
+    const upgrader = await BancorConverterUpgrader.new(galtDexRegistry.address);
+
+    const bancorGaltDex = await BancorGaltDex.new(
+      galtDexToken.address,
+      galtDexRegistry.address,
+      maxConversionFee,
+      galtTokenAddress,
+      galtWeight
+    );
+
+    const contractsOwner = await bancorGaltDex.manager();
+
+    await galtDexRegistry.registerAddress(await contractIds.CONTRACT_FEATURES.call(), contractFeatures.address);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_GAS_PRICE_LIMIT.call(), gasPriceLimit.address);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_FORMULA.call(), formula.address);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_NETWORK.call(), bancorNetwork.address);
+    await bancorNetwork.setSignerAddress(contractsOwner);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_CONVERTER_FACTORY.call(), factory.address);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_CONVERTER_UPGRADER.call(), upgrader.address);
+
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_X.call(), contractsOwner);
+
+    await bancorGaltDex.addConnector(etherTokenAddress, etherWeight, false);
+
+    await galtDexToken.transferOwnership(bancorGaltDex.address);
+    await bancorGaltDex.acceptTokenOwnership();
   }
 };
 

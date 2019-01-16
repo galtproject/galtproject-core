@@ -13,32 +13,22 @@
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
+//pragma experimental ABIEncoderV2;
 
-library ArrayUtils {
-  function uintSome(uint[] arr, uint el) internal view returns (bool) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return true;
-      }
-    }
-    return false;
-  }
+contract IWETH {
+  mapping (address => uint)                       public  balanceOf;
+  mapping (address => mapping (address => uint))  public  allowance;
+  
+  function() external payable;
+  
+  function deposit() public payable;
+  function withdraw(uint wad) public;
 
-  function uintFind(uint[] arr, uint el) internal view returns (int) {
-    for (uint j = 0; j < arr.length; j++) {
-      if (el == arr[j]) {
-        return int(j);
-      }
-    }
-    return - 1;
-  }
+  function totalSupply() public view returns (uint);
 
-  function intEqual(int[] arr1, int[] arr2) internal view returns (bool) {
-    for (uint i = 0; i < arr1.length; i++) {
-      if (arr1[i] != arr2[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
+  function approve(address guy, uint wad) public returns (bool);
+
+  function transfer(address dst, uint wad) public returns (bool);
+
+  function transferFrom(address src, address dst, uint wad) public returns (bool);
 }

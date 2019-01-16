@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const MockGaltGenesis = artifacts.require('./MockGaltGenesis.sol');
 const BancorGaltDex = artifacts.require('./BancorGaltDex.sol');
 const SmartToken = artifacts.require('bancor-contracts/solidity/contracts/token/SmartToken.sol');
 const ContractRegistry = artifacts.require('bancor-contracts/solidity/contracts/utility/ContractRegistry.sol');
@@ -32,10 +33,10 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('BancorGaltDex', ([coreTeam, alice, feeFund]) => {
+contract('BancorGaltDex', ([coreTeam, alice, bob, feeFund]) => {
   before(clearLibCache);
 
-  const gasPriceLimit = '22000000000';
+  const gasPriceLimitValue = '22000000000';
   const converterMaxFee = '1000000';
 
   const galtTokenGaltDexBalance = 500000;
@@ -46,132 +47,164 @@ contract('BancorGaltDex', ([coreTeam, alice, feeFund]) => {
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.galtDexToken = await SmartToken.new('GaltDex Token', 'GDT', '18', { from: coreTeam });
-    this.galtDexRegistry = await ContractRegistry.new({ from: coreTeam });
-    this.contractIds = await ContractIds.new({ from: coreTeam });
-    this.contractFeatures = await ContractFeatures.new({ from: coreTeam });
-    this.gasPriceLimit = await BancorGasPriceLimit.new(gasPriceLimit, { from: coreTeam });
-    this.formula = await BancorFormula.new({ from: coreTeam });
-    this.bancorNetwork = await BancorNetwork.new(this.galtDexRegistry.address, { from: coreTeam });
-    this.factory = await BancorConverterFactory.new({ from: coreTeam });
-    this.upgrader = await BancorConverterUpgrader.new(this.galtDexRegistry.address, { from: coreTeam });
+
+    this.etherToken = await EtherToken.new();
+
+    const galtDexToken = await SmartToken.new('GaltDex Token', 'GDT', '18');
+    const galtDexRegistry = await ContractRegistry.new();
+    const contractIds = await ContractIds.new();
+    const contractFeatures = await ContractFeatures.new();
+    const gasPriceLimit = await BancorGasPriceLimit.new(gasPriceLimitValue);
+    const formula = await BancorFormula.new();
+    const bancorNetwork = await BancorNetwork.new(galtDexRegistry.address);
+    const factory = await BancorConverterFactory.new();
+    const upgrader = await BancorConverterUpgrader.new(galtDexRegistry.address);
 
     this.bancorGaltDex = await BancorGaltDex.new(
-      this.galtDexToken.address,
-      this.galtDexRegistry.address,
+      galtDexToken.address,
+      galtDexRegistry.address,
       converterMaxFee,
       this.galtToken.address,
-      galtWeight,
-      { from: coreTeam }
+      galtWeight
     );
 
-    await this.galtDexRegistry.registerAddress(
-      await this.contractIds.CONTRACT_FEATURES.call(),
-      this.contractFeatures.address
-    );
+    await galtDexRegistry.registerAddress(await contractIds.CONTRACT_FEATURES.call(), contractFeatures.address);
 
-    await this.galtDexRegistry.registerAddress(
-      await this.contractIds.BANCOR_GAS_PRICE_LIMIT.call(),
-      this.gasPriceLimit.address
-    );
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_GAS_PRICE_LIMIT.call(), gasPriceLimit.address);
 
-    await this.galtDexRegistry.registerAddress(await this.contractIds.BANCOR_FORMULA.call(), this.formula.address);
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_FORMULA.call(), formula.address);
 
-    await this.galtDexRegistry.registerAddress(
-      await this.contractIds.BANCOR_NETWORK.call(),
-      this.bancorNetwork.address
-    );
-    await this.bancorNetwork.setSignerAddress(coreTeam);
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_NETWORK.call(), bancorNetwork.address);
+    await bancorNetwork.setSignerAddress(coreTeam);
 
-    await this.galtDexRegistry.registerAddress(
-      await this.contractIds.BANCOR_CONVERTER_FACTORY.call(),
-      this.factory.address
-    );
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_CONVERTER_FACTORY.call(), factory.address);
 
-    await this.galtDexRegistry.registerAddress(
-      await this.contractIds.BANCOR_CONVERTER_UPGRADER.call(),
-      this.upgrader.address
-    );
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_CONVERTER_UPGRADER.call(), upgrader.address);
 
-    await this.galtDexRegistry.registerAddress(await this.contractIds.BANCOR_X.call(), coreTeam);
-
-    this.etherToken = await EtherToken.new({ from: coreTeam });
+    await galtDexRegistry.registerAddress(await contractIds.BANCOR_X.call(), coreTeam);
 
     await this.bancorGaltDex.addConnector(this.etherToken.address, etherWeight, false);
 
-    await this.etherToken.deposit({ from: coreTeam, value: ether(etherTokenGaltDexBalance) });
-    await this.etherToken.transfer(this.bancorGaltDex.address, ether(etherTokenGaltDexBalance), { from: coreTeam });
-
-    await this.galtToken.mint(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
-
-    await this.galtDexToken.issue(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
-    await this.galtDexToken.transferOwnership(this.bancorGaltDex.address);
+    await galtDexToken.transferOwnership(this.bancorGaltDex.address);
     await this.bancorGaltDex.acceptTokenOwnership();
   });
 
-  it('should be initialized successfully', async function() {
-    (await this.bancorGaltDex.registry()).should.be.eq(this.galtDexRegistry.address);
-  });
+  describe('custom ETH and GALT mint', async () => {
+    beforeEach(async function() {
+      await this.etherToken.deposit({ from: coreTeam, value: ether(etherTokenGaltDexBalance) });
+      await this.etherToken.transfer(this.bancorGaltDex.address, ether(etherTokenGaltDexBalance), { from: coreTeam });
 
-  describe('#convert()', async () => {
-    it('should be change the rate on buy', async function() {
-      await this.etherToken.deposit({ from: alice, value: ether(100) });
+      await this.galtToken.mint(this.bancorGaltDex.address, ether(galtTokenGaltDexBalance));
+    });
 
-      await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
+    describe('#convert()', async () => {
+      it('should be change the rate on buy', async function() {
+        await this.etherToken.deposit({ from: alice, value: ether(100) });
 
-      const etherBalance = (await this.etherToken.balanceOf(alice)).toString(10);
-      etherBalance.should.be.eq(ether(100).toString(10));
+        await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
 
-      const etherToExchange = 1;
+        const etherBalance = (await this.etherToken.balanceOf(alice)).toString(10);
+        etherBalance.should.be.eq(ether(100).toString(10));
 
-      let lastRate;
-      for (let i = 0; i < 20; i++) {
-        // eslint-disable-next-line
-        const res = await this.bancorGaltDex.convert(
-          this.etherToken.address,
-          this.galtToken.address,
-          ether(etherToExchange),
-          '1',
-          {
-            from: alice,
-            gasPrice: gasPriceLimit
+        const etherToExchange = 1;
+
+        let lastRate;
+        for (let i = 0; i < 20; i++) {
+          // eslint-disable-next-line
+          const res = await this.bancorGaltDex.convert(
+            this.etherToken.address,
+            this.galtToken.address,
+            ether(etherToExchange),
+            '1',
+            {
+              from: alice,
+              gasPrice: gasPriceLimitValue
+            }
+          );
+
+          // eslint-disable-next-line
+          const fromEther = web3.utils.fromWei(res.logs[0].args._amount.toString(10), 'ether');
+          // eslint-disable-next-line
+          const toGalt = web3.utils.fromWei(res.logs[0].args._return.toString(10), 'ether');
+
+          const rate = toGalt / fromEther;
+          if (i > 0) {
+            assert.isBelow(rate, lastRate);
           }
-        );
-
-        // eslint-disable-next-line
-        const fromEther = web3.utils.fromWei(res.logs[0].args._amount.toString(10), 'ether');
-        // eslint-disable-next-line
-        const toGalt = web3.utils.fromWei(res.logs[0].args._return.toString(10), 'ether');
-
-        const rate = toGalt / fromEther;
-        if (i > 0) {
-          assert.isBelow(rate, lastRate);
+          // console.log('fromEther', fromEther, 'toGalt', toGalt, 'rate', rate, 'rateDiff', lastRate - rate);
+          lastRate = rate;
         }
-        // console.log('fromEther', fromEther, 'toGalt', toGalt, 'rate', rate, 'rateDiff', lastRate - rate);
-        lastRate = rate;
-      }
+      });
+    });
+
+    describe('#claimFeeToFund()', async () => {
+      it('should be fee taken', async function() {
+        await this.bancorGaltDex.setConversionFee('1000'); // 0.2%
+        await this.bancorGaltDex.setFeeFund(feeFund);
+
+        await this.etherToken.deposit({ from: alice, value: ether(100) });
+        await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
+
+        const res = await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(1), '1', {
+          from: alice,
+          gasPrice: gasPriceLimitValue
+        });
+
+        // eslint-disable-next-line
+        const feeTaken = res.logs[0].args._conversionFee.toFixed();
+        assert.isAbove(parseInt(feeTaken, 10), 0);
+
+        await this.bancorGaltDex.claimFeeToFund(this.galtToken.address);
+
+        assert.equal((await this.galtToken.balanceOf(feeFund)).toFixed(), feeTaken);
+      });
     });
   });
 
-  describe('#claimFeeToFund()', async () => {
-    it('should be fee taken', async function() {
-      await this.bancorGaltDex.setConversionFee('1000'); // 0.2%
-      await this.bancorGaltDex.setFeeFund(feeFund);
+  describe('GaltGenesis then GaltDex', async () => {
+    beforeEach(async function() {
+      const galtTotalSupply = 60 * 10 ** 6;
+      const ethSpentOnGaltGenesis = 10 * 10 ** 3;
 
-      await this.etherToken.deposit({ from: alice, value: ether(100) });
-      await this.etherToken.approve(this.bancorGaltDex.address, ether(100), { from: alice });
+      this.galtGenesis = await MockGaltGenesis.new(
+        this.galtToken.address,
+        this.bancorGaltDex.address,
+        this.etherToken.address,
+        {
+          from: coreTeam
+        }
+      );
 
-      const res = await this.bancorGaltDex.convert(this.etherToken.address, this.galtToken.address, ether(1), '1', {
-        from: alice,
-        gasPrice: gasPriceLimit
-      });
+      await this.galtToken.mint(this.galtGenesis.address, ether(galtTotalSupply * 0.05));
+      await this.galtToken.mint(this.bancorGaltDex.address, ether(galtTotalSupply * 0.75));
+      await this.galtToken.mint(coreTeam, ether(galtTotalSupply * 0.2));
+
+      await this.galtGenesis.start(3600);
+      await this.galtGenesis.pay({ from: alice, value: ether(ethSpentOnGaltGenesis) });
+      await this.galtGenesis.hackClose();
+      await this.galtGenesis.finish({ from: alice });
+    });
+
+    it('should be correct continue with supply of ETH and GALT from GaltGenesis', async function() {
+      const ethToConvert = 200;
+
+      await this.etherToken.deposit({ from: bob, value: ether(ethToConvert) });
+      await this.etherToken.approve(this.bancorGaltDex.address, ether(ethToConvert), { from: bob });
+
+      const res = await this.bancorGaltDex.convert(
+        this.etherToken.address,
+        this.galtToken.address,
+        ether(ethToConvert),
+        '1',
+        {
+          from: bob,
+          gasPrice: gasPriceLimitValue
+        }
+      );
+
       // eslint-disable-next-line
-      const feeTaken = res.logs[0].args._conversionFee.toFixed();
-      assert.isAbove(parseInt(feeTaken, 10), 0);
-
-      await this.bancorGaltDex.claimFeeToFund(this.galtToken.address);
-
-      assert.equal((await this.galtToken.balanceOf(feeFund)).toFixed(), feeTaken);
+      const galtReceived = res.logs[0].args._return.toFixed();
+      assert.isAbove(parseInt(galtReceived, 10), 0);
     });
   });
 });

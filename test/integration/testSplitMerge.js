@@ -1,3 +1,4 @@
+const Geodesic = artifacts.require('./Geodesic.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
@@ -29,6 +30,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+
+    this.geodesic = Geodesic.at(await this.splitMerge.geodesic());
 
     await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
@@ -67,9 +70,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
       await this.splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10), {
-        from: coreTeam
-      });
+      await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
       return tokenId;
     };
 
@@ -496,13 +497,5 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       assert.deepEqual(await this.getGeohashesContour(subjectSpaceTokenId), subjectContour);
       assert.equal(await this.spaceToken.exists.call(clippingSpaceTokensIds[0]), false);
     });
-  });
-
-  it('should calculate contour area correctly', async function() {
-    const contour = ['w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
-    await this.splitMerge.cacheGeohashListToLatLon(contour);
-    const res = await this.splitMerge.calculateContourArea(contour);
-    console.log('gasUsed', res.receipt.gasUsed);
-    assert.equal(res.logs[0].args.area.toFixed(), 12554128688986059590510318);
   });
 });

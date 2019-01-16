@@ -1,5 +1,6 @@
 const SpaceSplitOperation = artifacts.require('../contracts/SpaceSplitOperation.sol');
 const SpaceToken = artifacts.require('../contracts/mocks/SpaceToken.sol');
+const Geodesic = artifacts.require('../contracts/mocks/Geodesic.sol');
 
 const _ = require('lodash');
 const pIteration = require('p-iteration');
@@ -10,13 +11,7 @@ const { BN } = Web3.utils;
 
 const web3 = new Web3(SpaceSplitOperation.web3.currentProvider);
 
-const {
-  initHelperWeb3,
-  initHelperArtifacts,
-  zeroAddress,
-  deploySplitMerge,
-  clearLibCache
-} = require('../test/helpers');
+const { initHelperWeb3, initHelperArtifacts, deploySplitMerge, clearLibCache } = require('../test/helpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -30,14 +25,14 @@ module.exports = async function(callback) {
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
   const splitMerge = await deploySplitMerge(spaceToken.address);
 
-  await splitMerge.initialize(spaceToken.address, zeroAddress, { from: coreTeam });
-  await spaceToken.initialize('SpaceToken', 'SPACE', { from: coreTeam });
+  await splitMerge.initialize(spaceToken.address, { from: coreTeam });
+
+  const geodesic = Geodesic.at(await splitMerge.geodesic());
 
   await spaceToken.addRoleTo(splitMerge.address, 'minter');
   await spaceToken.addRoleTo(splitMerge.address, 'burner');
-  await spaceToken.addRoleTo(splitMerge.address, 'operator');
 
-  await splitMerge.addRoleTo(coreTeam, 'geo_data_manager');
+  await splitMerge.addRoleTo(coreTeam, await splitMerge.GEO_DATA_MANAGER());
 
   const spaceTokenId = await mintSpaceTokenId(['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80']);
   await splitSpaceTokenByClipping(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'], true);
@@ -51,10 +46,12 @@ module.exports = async function(callback) {
 
     if (_cacheGeohashes) {
       const geohashesForCache = _.uniq(_clippingGeohashContour.concat(oldSpaceTokenContour));
-      const res = await splitMerge.cacheGeohashListToLatLon(geohashesForCache.map(galt.geohashToNumber));
+      const res = await geodesic.cacheGeohashListToLatLon(geohashesForCache.map(galt.geohashToNumber));
       console.log('      geohashToLatLonCache gasUsed', res.receipt.gasUsed);
       console.log('');
     }
+
+    await spaceToken.approve(splitMerge.address, _spaceTokenId);
 
     let res = await splitMerge.startSplitOperation(_spaceTokenId, _clippingGeohashContour.map(galt.geohashToNumber));
     console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
@@ -116,9 +113,7 @@ module.exports = async function(callback) {
     const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
     await splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-    await splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10), {
-      from: coreTeam
-    });
+    await splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
     return tokenId;
   }
 

@@ -32,10 +32,10 @@ contract('TrigonometryUtils', ([coreTeam]) => {
 
     this.degreesToCheck = [
       1.2291728239506483,
-      104.51007032766938,
       1.2037726398557425,
-      104.50989866629243,
       1.2036009784787893,
+      104.51007032766938,
+      104.50989866629243,
       104.53199403360486
     ];
   });
@@ -57,6 +57,17 @@ contract('TrigonometryUtils', ([coreTeam]) => {
         const res = await this.mockTrigonometryUtils.getSinOfDegree(Web3.utils.toWei(angle.toString(), 'ether'));
         const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
         assert.isBelow(Math.abs(sinResult - Math.sin(this.toRadians(angle))), 0.000000000001);
+      });
+    });
+  });
+
+  describe('#atan()', () => {
+    it('should correctly get atan', async function() {
+      await pIteration.forEachSeries(this.degreesToCheck, async angle => {
+        const radians = this.toRadians(angle);
+        const res = await this.mockTrigonometryUtils.atan(Web3.utils.toWei(radians.toString(), 'ether'));
+        const atanResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        assert.isBelow(Math.abs(atanResult - Math.atan(radians)), 0.0000000001);
       });
     });
   });
