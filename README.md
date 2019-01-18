@@ -1,7 +1,7 @@
 # Galt Project Contracts
 
 [![Build Status](https://travis-ci.org/galtspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-contracts)
-[![Contracts Version](https://img.shields.io/badge/version-0.4.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
+[![Contracts Version](https://img.shields.io/badge/version-0.6.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
 [![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
 
