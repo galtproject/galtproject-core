@@ -91,6 +91,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       );
 
       const splitOperation = await SpaceSplitOperation.at(res.logs[0].args.splitOperation);
+
+      const clippingContourResponse = await splitOperation.getClippingContour();
+      assert.deepEqual(
+        clippingContourResponse.map(g => g.toString(10)),
+        clippingContour.map(g => galt.geohashToGeohash5(g).toString())
+      );
       await splitOperation.prepareAndInitAllPolygons();
       await splitOperation.addSubjectPolygonSegments();
       await splitOperation.addClippingPolygonSegments();
@@ -107,7 +113,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         from: alice
       });
 
-      return res.logs.map(log => log.args.id);
+      return res.logs.filter(log => log.event === 'NewSplitSpaceToken').map(log => log.args.id);
     };
 
     this.mergePackage = async (firstContour, secondContour, resultContour) => {

@@ -153,7 +153,17 @@ module.exports = async function(deployer, network, accounts) {
       DevNickAdmin: '0x7c1523a06cf76de0eb49de797f088c7cb40ea9c7'
     };
 
-    const adminsList = ['Jonybang', 'Nikita', 'Igor', 'Nik', 'Nik2', 'NickAdmin', 'DevNik', 'DevNik2', 'DevNickAdmin'];
+    const adminsList = [
+      'Jonybang',
+      'Nikita',
+      'Igor',
+      'Nik',
+      'Nik2',
+      'NickAdmin',
+      'DevNick',
+      'DevNick2',
+      'DevNickAdmin'
+    ];
 
     const allRoles = [
       PM_CADASTRAL_ORACLE_TYPE,
@@ -185,8 +195,8 @@ module.exports = async function(deployer, network, accounts) {
       Nik3: [PV_APPRAISER_ORACLE_TYPE],
       Nik4: [PV_APPRAISER2_ORACLE_TYPE],
       Nik5: [PV_AUDITOR_ORACLE_TYPE],
-      DevNik: allRoles,
-      DevNik2: allRoles,
+      DevNick: allRoles,
+      DevNick2: allRoles,
       DevNickValidator: allRoles,
       DevNickValidator2: allRoles,
       DevNickValidator3: allRoles,
@@ -261,8 +271,6 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
-        // TODO: make plotManager rolable too
-        // promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotValuation.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));

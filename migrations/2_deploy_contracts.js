@@ -108,11 +108,15 @@ module.exports = async function(deployer, network, accounts) {
 
     const geodesic = await Geodesic.new();
     await splitMerge.setGeodesic(geodesic.address);
+    await splitMergeSandbox.setGeodesic(geodesic.address);
 
     const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
     await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
 
-    const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(spaceToken.address, splitMerge.address);
+    const splitOperationSandboxFactory = await SpaceSplitOperationFactory.new(
+      spaceTokenSandbox.address,
+      splitMergeSandbox.address
+    );
     await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
 
     const etherToken = await EtherToken.new({ from: coreTeam });

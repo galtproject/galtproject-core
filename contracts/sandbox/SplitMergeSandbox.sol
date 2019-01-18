@@ -31,12 +31,14 @@ contract SplitMergeSandbox is SplitMerge {
     }
 
     packageToContour[_spaceTokenId] = _geohashesContour;
+    emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
   function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList) public {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
     packageToHeights[_packageTokenId] = _heightsList;
+    emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
   }
 
   function createPackage(address spaceTokenOwner, uint256[] _geohashesContour, int256[] _heightsList) public returns (uint256) {

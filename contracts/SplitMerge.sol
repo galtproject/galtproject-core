@@ -39,9 +39,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   ISpaceSplitOperationFactory public splitOperationFactory;
 
   event PackageInit(bytes32 id, address owner);
-  event PackageHeightsSet(bytes32 id, int256[] heights);
-  event PackageContourSet(bytes32 id, uint256[] contour);
-  event PackageLevelSet(bytes32 id, int256 level);
+  event SpaceTokenHeightsChange(bytes32 id, int256[] heights);
+  event SpaceTokenContourChange(bytes32 id, uint256[] contour);
+  event SpaceTokenLevelChange(bytes32 id, int256 level);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
   event NewSplitSpaceToken(uint256 id);
 
@@ -117,20 +117,23 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
 
     packageToContour[_spaceTokenId] = _geohashesContour;
+    emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
-  function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList)
+  function setPackageHeights(uint256 _spaceTokenId, int256[] _heightsList)
     public onlyGeoDataManager()
   {
-    require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
+    require(_heightsList.length == getPackageContour(_spaceTokenId).length, "Number of height elements should be equal contour length");
 
-    packageToHeights[_packageTokenId] = _heightsList;
+    packageToHeights[_spaceTokenId] = _heightsList;
+    emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), _heightsList);
   }
 
-  function setPackageLevel(uint256 _packageTokenId, int256 _level)
+  function setPackageLevel(uint256 _spaceTokenId, int256 _level)
     public onlyGeoDataManager()
   {
-    packageToLevel[_packageTokenId] = _level;
+    packageToLevel[_spaceTokenId] = _level;
+    emit SpaceTokenLevelChange(bytes32(_spaceTokenId), _level);
   }
 
   // TODO: add SpaceSplitOperationFactory for migrations between versions
@@ -173,6 +176,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
 
     packageToContour[_spaceTokenId] = subjectContourOutput;
+    emit SpaceTokenContourChange(bytes32(_spaceTokenId), subjectContourOutput);
 
     int256 minHeight = packageToHeights[_spaceTokenId][0];
 
@@ -189,17 +193,24 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
 
     packageToHeights[_spaceTokenId] = subjectPackageHeights;
+    emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), subjectPackageHeights);
 
     spaceToken.transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
 
     for (uint j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken.mint(subjectTokenOwner);
+      
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
+      emit SpaceTokenContourChange(bytes32(newPackageId), packageToContour[newPackageId]);
 
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
         packageToHeights[newPackageId].push(minHeight);
       }
+      emit SpaceTokenHeightsChange(bytes32(newPackageId), packageToHeights[newPackageId]);
+      
       packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
+      emit SpaceTokenLevelChange(bytes32(newPackageId), packageToLevel[newPackageId]);
+      
       emit NewSplitSpaceToken(newPackageId);
     }
 
@@ -237,6 +248,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     );
 
     packageToContour[_destinationSpaceTokenId] = _destinationSpaceContour;
+    emit SpaceTokenContourChange(bytes32(_destinationSpaceTokenId), _destinationSpaceContour);
 
     int256[] memory sourcePackageHeights = getPackageHeights(_sourceSpaceTokenId);
 
@@ -249,7 +261,17 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       }
     }
     packageToHeights[_destinationSpaceTokenId] = packageHeights;
+    emit SpaceTokenHeightsChange(bytes32(_destinationSpaceTokenId), packageToHeights[_destinationSpaceTokenId]);
+    
+    delete packageToContour[_sourceSpaceTokenId];
+    emit SpaceTokenContourChange(bytes32(_sourceSpaceTokenId), packageToContour[_sourceSpaceTokenId]);
+    
+    delete packageToHeights[_sourceSpaceTokenId];
+    emit SpaceTokenHeightsChange(bytes32(_sourceSpaceTokenId), packageToHeights[_sourceSpaceTokenId]);
 
+    delete packageToLevel[_sourceSpaceTokenId];
+    emit SpaceTokenLevelChange(bytes32(_sourceSpaceTokenId), packageToLevel[_sourceSpaceTokenId]);
+    
     spaceToken.burn(_sourceSpaceTokenId);
   }
 
