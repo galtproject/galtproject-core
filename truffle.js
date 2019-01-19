@@ -41,11 +41,13 @@ const config = {
       network_id: '*'
     }
   },
-  solc: {
-    version: '0.4.24',
-    optimizer: {
-      enabled: true,
-      runs: 200
+  compilers: {
+    solc: {
+      version: 'native',
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
     }
   }
 };
