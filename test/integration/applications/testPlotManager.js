@@ -324,7 +324,7 @@ contract('PlotManager', accounts => {
         }
 
         assert.equal(res2.status, 1);
-        assert.equal(res2.applicant.toLowerCase(), alice);
+        assert.equal(res2.applicant, alice);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
     });
@@ -824,7 +824,7 @@ contract('PlotManager', accounts => {
         }
 
         assert.equal(res2.status, 1);
-        assert.equal(res2.applicant.toLowerCase(), alice);
+        assert.equal(res2.applicant, alice);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
 
@@ -954,15 +954,15 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
-        assert.equal(res.oracle.toLowerCase(), eve);
+        assert.equal(res.oracle, eve);
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
@@ -1052,15 +1052,15 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
-        assert.equal(res.oracle.toLowerCase(), zeroAddress);
+        assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
@@ -1148,7 +1148,7 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), zeroAddress);
+        assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
@@ -1159,7 +1159,7 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
     });
@@ -1274,15 +1274,15 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.REVERTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.APPROVED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
-        assert.equal(res.oracle.toLowerCase(), eve);
+        assert.equal(res.oracle, eve);
         assert.equal(res.status, ValidationStatus.REVERTED);
       });
 
@@ -1322,12 +1322,12 @@ contract('PlotManager', accounts => {
         assert.equal(res.status, ApplicationStatus.REJECTED);
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.REJECTED);
         assert.equal(res.message, 'my reason');
 
         res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
         assert.equal(res.message, '');
       });

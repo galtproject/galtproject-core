@@ -722,19 +722,19 @@ contract('PlotValuation', (accounts) => {
         res = await this.plotValuationWeb3.methods
           .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
           .call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotValuationWeb3.methods
           .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
           .call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotValuationWeb3.methods
           .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
           .call();
-        assert.equal(res.oracle.toLowerCase(), zeroAddress);
+        assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 

@@ -543,27 +543,27 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 0).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.text, 'hi');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 1).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.text, 'hey');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 2).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), alice);
+        assert.equal(res.from, alice);
         assert.equal(res.text, 'hello');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 3).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), charlie);
+        assert.equal(res.from, charlie);
         assert.equal(res.text, 'you');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 4).call();
         assert.equal(res.timestamp, 0);
-        assert.equal(res.from.toLowerCase(), zeroAddress);
+        assert.equal(res.from, zeroAddress);
         assert.equal(res.text, '');
       });
     });
@@ -611,21 +611,21 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsTaken, 2);
 
         res = await this.claimManagerWeb3.methods.getProposals(this.cId).call();
-        assert.sameMembers(res.map(a => a.toLowerCase()), [pId1, pId2]);
+        assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.message, 'good enough');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.oracles, [dan]);
         assert.sameMembers(res.oracleTypes.map(web3.utils.hexToString), [PC_AUDITOR_ORACLE_TYPE]);
         assert.sameMembers(res.fines, [ether(20)]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
-        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.from, dan);
         assert.equal(res.message, 'looks good');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [bob, eve]);
+        assert.sameMembers(res.oracles, [bob, eve]);
         assert.sameMembers(res.oracleTypes.map(web3.utils.hexToString), [
           PC_AUDITOR_ORACLE_TYPE,
           PC_AUDITOR_ORACLE_TYPE
@@ -700,12 +700,12 @@ contract("ClaimManager", (accounts) => {
         assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.message, 'NOT good enough');
         assert.equal(res.action, Action.REJECT);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
-        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.from, dan);
         assert.equal(res.message, 'odd');
         assert.equal(res.action, Action.REJECT);
       });
@@ -764,13 +764,13 @@ contract("ClaimManager", (accounts) => {
       it('should automatically count proposer voice', async function() {
         // empty array since the vote reassigned to pId3
         let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+        assert.sameMembers(res.votesFor, []);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.votesFor, [dan]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.votesFor, [bob]);
       });
 
       it('should reassign slots according a last vote', async function() {
@@ -781,7 +781,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+        assert.sameMembers(res.votesFor, [bob, dan]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, []);
@@ -799,9 +799,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId1, { from: dan });
 
         let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+        assert.sameMembers(res.votesFor, [bob, dan]);
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+        assert.sameMembers(res.votesFor, []);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId1);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
@@ -810,9 +810,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.votesFor, [dan]);
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.votesFor, [bob]);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId2);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
@@ -837,9 +837,9 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.totalSlots, 5);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan, bob, charlie]);
+        assert.sameMembers(res.votesFor, [dan, bob, charlie]);
       });
 
       it('should new porposals voting if status is not SUBMITTED', async function() {
@@ -1001,12 +1001,12 @@ contract("ClaimManager", (accounts) => {
 
         const txId = '0';
         res = await this.abMultiSigXWeb3.methods.transactions(txId).call();
-        assert.equal(res.destination.toLowerCase(), this.galtToken.address);
+        assert.equal(res.destination, this.galtToken.address);
         assert.equal(res.value, 0);
         assert.equal(
           res.data,
           `0xa9059cbb000000000000000000000000${alice
-            .toLowerCase()
+            
             .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
@@ -1017,7 +1017,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.abMultiSigXWeb3.methods.getConfirmationCount(txId).call();
         assert.equal(res, 0);
         res = await this.abMultiSigXWeb3.methods.getOwners().call();
-        assert.sameMembers(res.map(a => a.toLowerCase()), [bob, charlie, dan, eve, frank]);
+        assert.sameMembers(res, [bob, charlie, dan, eve, frank]);
 
         const aliceInitialBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 

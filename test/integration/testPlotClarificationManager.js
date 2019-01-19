@@ -758,7 +758,7 @@ contract('PlotClarificationManager', (accounts) => {
         const res2 = await this.plotClarificationManagerWeb3.methods.getApplicationPayloadById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.spaceTokenId, this.spaceTokenId);
-        assert.equal(res.applicant.toLowerCase(), alice);
+        assert.equal(res.applicant, alice);
         assert.equal(res.currency, Currency.ETH);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
       });
@@ -877,15 +877,15 @@ contract('PlotClarificationManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
         res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
-        assert.equal(res.oracle.toLowerCase(), zeroAddress);
+        assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 

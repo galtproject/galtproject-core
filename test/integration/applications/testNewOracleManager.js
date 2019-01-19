@@ -450,7 +450,7 @@ contract('NewOracleManager', (accounts) => {
 
         res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(res.applicant.toLowerCase(), alice);
+        assert.equal(res.applicant, alice);
         assert.sameMembers(res.arbitrators, []);
         assert.equal(res.m, 3);
         assert.equal(res.n, 5);
@@ -458,7 +458,7 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(res.nayCount, 0);
 
         res = await this.newOracleWeb3.methods.getApplicationOracle(this.aId).call();
-        assert.equal(res.addr.toLowerCase(), bob);
+        assert.equal(res.addr, bob);
         assert.equal(hexToUtf8(res.name), 'Bob');
         assert.sameMembers(res.descriptionHashes.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
         assert.sameMembers(res.oracleTypes.map(web3.utils.hexToUtf8), [
@@ -648,7 +648,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: bob });
 
         const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
-        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.arbitrators, [bob]);
       });
 
       it('should deny locking more slots than n', async function() {
@@ -660,7 +660,7 @@ contract('NewOracleManager', (accounts) => {
         await assertRevert(this.newOracle.lock(this.aId, { from: henrey }));
 
         const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
-        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob, charlie, dan, frank, george]);
+        assert.sameMembers(res.arbitrators, [bob, charlie, dan, frank, george]);
       });
 
       it('should deny non-arbitrator locking an application', async function() {

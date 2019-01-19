@@ -25,16 +25,16 @@ const {
 } = require('../../helpers');
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
-const { BN } = Web3.utils;
+const { BN, utf8ToHex } = Web3.utils;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const PV_APPRAISER_ORACLE_TYPE = 'PV_APPRAISER_ORACLE_TYPE';
-const PV_APPRAISER2_ORACLE_TYPE = 'PV_APPRAISER2_ORACLE_TYPE';
-const PV_AUDITOR_ORACLE_TYPE = 'PV_AUDITOR_ORACLE_TYPE';
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
+const PV_APPRAISER_ORACLE_TYPE = utf8ToHex('PV_APPRAISER_ORACLE_TYPE');
+const PV_APPRAISER2_ORACLE_TYPE = utf8ToHex('PV_APPRAISER2_ORACLE_TYPE');
+const PV_AUDITOR_ORACLE_TYPE = utf8ToHex('PV_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = utf8ToHex('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR_ORACLE_TYPE = utf8ToHex('PC_AUDITOR_ORACLE_TYPE');
 
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
@@ -921,18 +921,18 @@ contract('PlotCustodianManager', (accounts) => {
 
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, applicationStatus.SUBMITTED);
-          assert.sameMembers(res.custodiansToModify.map(a => a.toLowerCase()), [bob, charlie]);
-          assert.sameMembers(res.acceptedCustodians.map(a => a.toLowerCase()), [bob]);
-          assert.sameMembers(res.lockedCustodians.map(a => a.toLowerCase()), []);
+          assert.sameMembers(res.custodiansToModify, [bob, charlie]);
+          assert.sameMembers(res.acceptedCustodians, [bob]);
+          assert.sameMembers(res.lockedCustodians, []);
 
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
 
           // bypasses ACCEPTED status since current custodian array size is 0
           res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, applicationStatus.LOCKED);
-          assert.sameMembers(res.custodiansToModify.map(a => a.toLowerCase()), [bob, charlie]);
-          assert.sameMembers(res.acceptedCustodians.map(a => a.toLowerCase()), [bob, charlie]);
-          assert.sameMembers(res.lockedCustodians.map(a => a.toLowerCase()), []);
+          assert.sameMembers(res.custodiansToModify, [bob, charlie]);
+          assert.sameMembers(res.acceptedCustodians, [bob, charlie]);
+          assert.sameMembers(res.lockedCustodians, []);
         });
 
         it('should deny a non-chosen custodian accepting an  application', async function() {
@@ -991,9 +991,9 @@ contract('PlotCustodianManager', (accounts) => {
 
           const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, applicationStatus.SUBMITTED);
-          assert.sameMembers(res.custodiansToModify.map(a => a.toLowerCase()), [bob]);
-          assert.sameMembers(res.acceptedCustodians.map(a => a.toLowerCase()), []);
-          assert.sameMembers(res.lockedCustodians.map(a => a.toLowerCase()), []);
+          assert.sameMembers(res.custodiansToModify, [bob]);
+          assert.sameMembers(res.acceptedCustodians, []);
+          assert.sameMembers(res.lockedCustodians, []);
         });
 
         it('should allow an applicant to resubmit an application with different payload', async function() {
@@ -1005,9 +1005,9 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.SUBMITTED);
           assert.equal(res.action, Action.ATTACH);
 
-          assert.sameMembers(res.custodiansToModify.map(a => a.toLowerCase()), [charlie, frank]);
-          assert.sameMembers(res.acceptedCustodians.map(a => a.toLowerCase()), []);
-          assert.sameMembers(res.lockedCustodians.map(a => a.toLowerCase()), []);
+          assert.sameMembers(res.custodiansToModify, [charlie, frank]);
+          assert.sameMembers(res.acceptedCustodians, []);
+          assert.sameMembers(res.lockedCustodians, []);
         });
 
         it('should deny a non-applicant resubmitting an  application', async function() {
@@ -1040,7 +1040,7 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.REVIEW);
 
           res = await this.spaceToken.ownerOf(this.spaceTokenId);
-          assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
+          assert.equal(res, this.plotCustodianManager.address);
         });
 
         it('should deny a non-oracle attaching token to an application', async function() {
@@ -1112,7 +1112,7 @@ contract('PlotCustodianManager', (accounts) => {
 
             const res = await this.plotCustodianManagerWeb3.methods.getApplicationById(this.aId).call();
             assert.equal(res.status, applicationStatus.REVIEW);
-            assert.equal(res.auditor.toLowerCase(), eve);
+            assert.equal(res.auditor, eve);
           });
 
           it('should deny a non-auditor locking the application', async function() {
@@ -1151,7 +1151,7 @@ contract('PlotCustodianManager', (accounts) => {
           let res = await this.plotCustodianManagerWeb3.methods.getApplicationVoting(this.aId).call();
           assert.equal(res.approveCount, 0);
           assert.equal(res.required, 4);
-          assert.sameMembers(res.voters.map(v => v.toLowerCase()), [alice, bob, charlie, eve]);
+          assert.sameMembers(res.voters.map(v => v), [alice, bob, charlie, eve]);
 
           await this.plotCustodianManager.approve(this.aId, { from: charlie });
           await this.plotCustodianManager.approve(this.aId, { from: eve });
@@ -1164,10 +1164,10 @@ contract('PlotCustodianManager', (accounts) => {
           res = await this.plotCustodianManagerWeb3.methods.getApplicationVoting(this.aId).call();
           assert.equal(res.approveCount, 4);
           assert.equal(res.required, 4);
-          assert.sameMembers(res.voters.map(v => v.toLowerCase()), [alice, bob, charlie, eve]);
+          assert.sameMembers(res.voters.map(v => v), [alice, bob, charlie, eve]);
 
           res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-          assert.sameMembers(res.map(c => c.toLowerCase()), [bob, charlie]);
+          assert.sameMembers(res, [bob, charlie]);
         });
 
         it('should keep application status in REVIEW if not all participants voted yet', async function() {
@@ -1240,7 +1240,7 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.COMPLETED);
 
           res = await this.spaceToken.ownerOf(this.spaceTokenId);
-          assert.equal(res.toLowerCase(), alice);
+          assert.equal(res, alice);
         });
 
         it('should deny non-applicant withdraw the token', async function() {
@@ -1250,7 +1250,7 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.APPROVED);
 
           res = await this.spaceToken.ownerOf(this.spaceTokenId);
-          assert.equal(res.toLowerCase(), this.plotCustodianManager.address);
+          assert.equal(res, this.plotCustodianManager.address);
         });
       });
 
@@ -1301,7 +1301,7 @@ contract('PlotCustodianManager', (accounts) => {
             assert.equal(res.status, applicationStatus.CLOSED);
 
             res = await this.spaceToken.ownerOf(this.spaceTokenId);
-            assert.equal(res.toLowerCase(), alice);
+            assert.equal(res, alice);
           });
 
           it('should deny non-applicant closing the application', async function() {
@@ -1488,7 +1488,7 @@ contract('PlotCustodianManager', (accounts) => {
       beforeEach(async function() {
         await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], { from: manualCustodianManager });
         const res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-        assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank]);
+        assert.sameMembers(res, [charlie, frank]);
       });
 
       describe('attach', () => {
@@ -1539,7 +1539,7 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.APPROVED);
 
           res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-          assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank, bob, george]);
+          assert.sameMembers(res, [charlie, frank, bob, george]);
         });
       });
 
@@ -1556,7 +1556,7 @@ contract('PlotCustodianManager', (accounts) => {
 
           it('should allow detaching existing custodians', async function() {
             const res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-            assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank]);
+            assert.sameMembers(res, [charlie, frank]);
             await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, frank], 0, {
               from: alice,
               value: ether(7)
@@ -1567,7 +1567,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should allow simple pipeline', async function() {
           await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], { from: manualCustodianManager });
           let res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-          assert.sameMembers(res.map(a => a.toLowerCase()), [charlie, frank, bob, george]);
+          assert.sameMembers(res, [charlie, frank, bob, george]);
 
           // Now there are 4 custodians: [charlie, frank, bob, george]
           res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, george], 0, {
@@ -1619,7 +1619,7 @@ contract('PlotCustodianManager', (accounts) => {
           assert.equal(res.status, applicationStatus.APPROVED);
 
           res = await this.spaceCustodianRegistryWeb3.methods.spaceCustodians(this.spaceTokenId).call();
-          assert.sameMembers(res.map(a => a.toLowerCase()), [frank, bob]);
+          assert.sameMembers(res, [frank, bob]);
         });
       });
     });

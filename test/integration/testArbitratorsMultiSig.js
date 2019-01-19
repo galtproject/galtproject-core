@@ -38,7 +38,7 @@ contract('ArbitratorsMultiSig', accounts => {
       res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
       res = await this.abMultiSigWeb3.methods.getOwners().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [alice, bob, charlie]);
+      assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#removeOwner()', async function() {
@@ -48,7 +48,7 @@ contract('ArbitratorsMultiSig', accounts => {
       res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
       res = await this.abMultiSigWeb3.methods.getOwners().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [alice, bob, charlie]);
+      assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#replaceOwner()', async function() {
@@ -58,7 +58,7 @@ contract('ArbitratorsMultiSig', accounts => {
       res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
       res = await this.abMultiSigWeb3.methods.getOwners().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [alice, bob, charlie]);
+      assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#changeRequirement()', async function() {
@@ -68,7 +68,7 @@ contract('ArbitratorsMultiSig', accounts => {
       res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
       res = await this.abMultiSigWeb3.methods.getOwners().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [alice, bob, charlie]);
+      assert.sameMembers(res, [alice, bob, charlie]);
     });
   });
 });

@@ -494,7 +494,7 @@ contract("PlotEscrow", (accounts) => {
           assert.equal(res.escrowCurrency, EscrowCurrency.ETH);
           assert.equal(res.tokenContract, zeroAddress);
           assert.equal(res.spaceTokenId, this.spaceTokenId);
-          assert.equal(res.seller.toLowerCase(), alice);
+          assert.equal(res.seller, alice);
 
           assert(parseInt(res.createdAt, 10) > 1538291634);
         });
@@ -516,9 +516,9 @@ contract("PlotEscrow", (accounts) => {
           assert.equal(res.id, this.rId);
           assert.equal(res.ask, ether(50));
           assert.equal(res.escrowCurrency, EscrowCurrency.ERC20);
-          assert.equal(res.tokenContract.toLowerCase(), this.galtToken.address);
+          assert.equal(res.tokenContract, this.galtToken.address);
           assert.equal(res.spaceTokenId, this.spaceTokenId);
-          assert.equal(res.seller.toLowerCase(), alice);
+          assert.equal(res.seller, alice);
 
           assert(parseInt(res.createdAt, 10) > 1538291634);
         });
@@ -1335,7 +1335,7 @@ contract("PlotEscrow", (accounts) => {
           assert.equal(res.status, SaleOfferStatus.MATCH);
 
           res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
-          assert.equal(res.toLowerCase(), this.plotEscrow.address);
+          assert.equal(res, this.plotEscrow.address);
         });
 
         it('should reject if token not approved', async function() {
@@ -1567,7 +1567,7 @@ contract("PlotEscrow", (accounts) => {
           await this.plotEscrow.withdrawTokenFromCustodianContract(this.rId, bob, { from: alice });
 
           res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
-          assert.equal(res.toLowerCase(), this.plotEscrow.address);
+          assert.equal(res, this.plotEscrow.address);
 
           res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
           assert.equal(res.status, SaleOfferStatus.ESCROW);
@@ -1626,7 +1626,7 @@ contract("PlotEscrow", (accounts) => {
 
           res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
           assert.equal(res.status, ValidationStatus.LOCKED);
-          assert.equal(res.addr.toLowerCase(), eve);
+          assert.equal(res.addr, eve);
         });
 
         it('should allow auditor lock a rejected application', async function() {
@@ -1641,7 +1641,7 @@ contract("PlotEscrow", (accounts) => {
 
           res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
           assert.equal(res.status, ValidationStatus.LOCKED);
-          assert.equal(res.addr.toLowerCase(), dan);
+          assert.equal(res.addr, dan);
         });
 
         it('should reject non-auditors', async function() {
@@ -1674,7 +1674,7 @@ contract("PlotEscrow", (accounts) => {
 
           res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
           assert.equal(res.status, ValidationStatus.REJECTED);
-          assert.equal(res.addr.toLowerCase(), eve);
+          assert.equal(res.addr, eve);
         });
 
         it('should deny non-auditors', async function() {
@@ -1707,7 +1707,7 @@ contract("PlotEscrow", (accounts) => {
 
           res = await this.plotEscrowWeb3.methods.getSaleOfferAudit(this.rId, bob).call();
           assert.equal(res.status, ValidationStatus.APPROVED);
-          assert.equal(res.addr.toLowerCase(), eve);
+          assert.equal(res.addr, eve);
         });
 
         it('should deny non-auditors', async function() {
@@ -1812,7 +1812,7 @@ contract("PlotEscrow", (accounts) => {
             assert.equal(res.status, SaleOfferStatus.RESOLVED);
 
             res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
-            assert.equal(res.toLowerCase(), bob);
+            assert.equal(res, bob);
           });
 
           it('should allow seller claim payment he earned', async function() {
@@ -1973,7 +1973,7 @@ contract("PlotEscrow", (accounts) => {
             await this.plotEscrow.withdrawSpaceToken(this.rId, bob, { from: alice });
 
             let res = await this.spaceTokenWeb3.methods.ownerOf(this.spaceTokenId).call();
-            assert.equal(res.toLowerCase(), alice);
+            assert.equal(res, alice);
 
             res = await this.plotEscrowWeb3.methods.getSaleOffer(this.rId, bob).call();
             assert.equal(res.status, SaleOfferStatus.EMPTY);
