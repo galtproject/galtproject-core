@@ -36,6 +36,8 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
   // Delegate => locked amount
   mapping(address => uint256) internal _locks;
 
+  mapping(uint256 => bool) internal _tokensToExpel;
+
   constructor(
     SpaceToken _spaceToken,
     SpaceLockerRegistry _spaceLockerRegistry,
@@ -78,6 +80,37 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
     _totalLockedSupply -= _amount;
 
     _notifyLockedBalanceChanged(_delegate);
+  }
+
+  function burnExpelled(uint256 _spaceTokenId, address _delegate, address _owner, uint256 _amount) external {
+    require(_delegations[_owner][_delegate] >= _amount, "Not enough funds");
+    require(_balances[_delegate] >= _amount, "Not enough funds");
+
+    bool completelyBurned = fundStorage.decrementExpelledTokenReputation(_spaceTokenId, _amount);
+
+    _delegations[_owner][_delegate] -= _amount;
+    _balances[_delegate] -= _amount;
+    totalStakedSpace -= _amount;
+
+    if (completelyBurned) {
+      reputationMinted[_spaceTokenId] = false;
+    }
+  }
+
+  function burnExpelledAndLocked(uint256 _spaceTokenId, address _delegate, address _owner, uint256 _amount) external {
+    require(_delegations[_owner][_delegate] >= _amount, "Not enough funds");
+    require(_locks[_delegate] >= _amount, "Not enough funds");
+
+    bool completelyBurned = fundStorage.decrementExpelledTokenReputation(_spaceTokenId, _amount);
+
+    _delegations[_owner][_delegate] -= _amount;
+    _locks[_delegate] -= _amount;
+    _totalLockedSupply -= _amount;
+    totalStakedSpace -= _amount;
+
+    if (completelyBurned) {
+      reputationMinted[_spaceTokenId] = false;
+    }
   }
 
   // PermissionED

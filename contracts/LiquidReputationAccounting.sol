@@ -161,8 +161,12 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // GETTERS
 
   // ERC20 compatible
-  function balanceOf(address owner) public view returns (uint256) {
-    return _balances[owner];
+  function balanceOf(address _owner) public view returns (uint256) {
+    return _balances[_owner];
+  }
+
+  function delegatedBalanceOf(address _delegate, address _owner) public view returns (uint256) {
+    return _delegations[_owner][_delegate];
   }
 
   // ERC20 compatible

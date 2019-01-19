@@ -25,8 +25,10 @@ contract FundStorage is Permissionable {
   string public constant CONTRACT_WHITELIST_MANAGER = "wl_manager";
   string public constant CONTRACT_CONFIG_MANAGER = "config_manager";
   string public constant CONTRACT_NEW_MEMBER_MANAGER = "new_member_manager";
+  string public constant CONTRACT_EXPEL_MEMBER_MANAGER = "expel_member_manager";
   string public constant CONTRACT_FINE_MEMBER_INCREMENT_MANAGER = "fine_member_increment_manager";
   string public constant CONTRACT_FINE_MEMBER_DECREMENT_MANAGER = "fine_member_decrement_manager";
+  string public constant CONTRACT_RSRA = "rsra";
 
   bytes32 public constant MANAGE_WL_THRESHOLD = bytes32("manage_wl_threshold");
   bytes32 public constant MODIFY_CONFIG_THRESHOLD = bytes32("modify_config_threshold");
@@ -36,10 +38,16 @@ contract FundStorage is Permissionable {
   bytes32 public constant IS_PRIVATE = bytes32("is_private");
 
   ArraySet.AddressSet private whiteListedContracts;
+
   mapping(bytes32 => bytes32) private _config;
+  // spaceTokenId => isMintApproved
   mapping(uint256 => bool) private _mintApprovals;
   // spaceTokenId => amount
   mapping(uint256 => uint256) private _fines;
+  // spaceTokenId => isExpelled
+  mapping(uint256 => bool) private _expelledTokens;
+  // spaceTokenId => availableAmountToBurn
+  mapping(uint256 => uint256) private _expelledTokenReputation;
 
   constructor (
     bool _isPrivate,
@@ -63,6 +71,28 @@ contract FundStorage is Permissionable {
 
   function approveMint(uint256 _spaceTokenId) external onlyRole(CONTRACT_NEW_MEMBER_MANAGER) {
     _mintApprovals[_spaceTokenId] = true;
+  }
+
+  function expel(uint256 _spaceTokenId, uint256 _amount) external onlyRole(CONTRACT_EXPEL_MEMBER_MANAGER) {
+    require(_expelledTokens[_spaceTokenId] == false, "Already Expelled");
+
+    _expelledTokens[_spaceTokenId] = true;
+    _expelledTokenReputation[_spaceTokenId] = _amount;
+  }
+
+  function decrementExpelledTokenReputation(
+    uint256 _spaceTokenId,
+    uint256 _amount
+  )
+    external
+    onlyRole(CONTRACT_RSRA)
+    returns (bool completelyBurned)
+  {
+    require(_amount > 0 && _amount <= _expelledTokenReputation[_spaceTokenId], "Invalid reputation amount");
+
+    _expelledTokenReputation[_spaceTokenId] = _expelledTokenReputation[_spaceTokenId] - _amount;
+
+    completelyBurned = (_expelledTokenReputation[_spaceTokenId] == 0);
   }
 
   function incrementFine(uint256 _spaceTokenId, uint256 _amount) external onlyRole(CONTRACT_FINE_MEMBER_INCREMENT_MANAGER) {
@@ -90,11 +120,19 @@ contract FundStorage is Permissionable {
     return _fines[_spaceTokenId];
   }
 
+  function getExpelledToken(uint256 _spaceTokenId) external view returns (bool isExpelled, uint256 amount) {
+    return (_expelledTokens[_spaceTokenId], _expelledTokenReputation[_spaceTokenId]);
+  }
+
   function getWhiteListedContracts() external view returns(address[]) {
     return whiteListedContracts.elements();
   }
 
   function isMintApproved(uint256 _spaceTokenId) external view returns(bool) {
+    if (_expelledTokens[_spaceTokenId] == true) {
+      return false;
+    }
+
     if (_config[IS_PRIVATE] == 1) {
       return _mintApprovals[_spaceTokenId];
     } else {

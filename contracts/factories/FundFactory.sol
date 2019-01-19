@@ -28,6 +28,7 @@ import "./fund/FundControllerFactory.sol";
 import "./fund/ModifyConfigProposalManagerFactory.sol";
 import "./fund/NewMemberProposalManagerFactory.sol";
 import "./fund/FineMemberProposalManagerFactory.sol";
+import "./fund/ExpelMemberProposalManagerFactory.sol";
 
 
 contract FundFactory is Ownable {
@@ -66,6 +67,7 @@ contract FundFactory is Ownable {
   ModifyConfigProposalManagerFactory modifyConfigProposalManagerFactory;
   NewMemberProposalManagerFactory newMemberProposalManagerFactory;
   FineMemberProposalManagerFactory fineMemberProposalManagerFactory;
+  ExpelMemberProposalManagerFactory expelMemberProposalManagerFactory;
 
   enum Step {
     FIRST,
@@ -93,7 +95,8 @@ contract FundFactory is Ownable {
     FundControllerFactory _fundControllerFactory,
     ModifyConfigProposalManagerFactory _modifyConfigProposalManagerFactory,
     NewMemberProposalManagerFactory _newMemberProposalManagerFactory,
-    FineMemberProposalManagerFactory _fineMemberProposalManagerFactory
+    FineMemberProposalManagerFactory _fineMemberProposalManagerFactory,
+    ExpelMemberProposalManagerFactory _expelMemberProposalManagerFactory
   ) public {
     commission = 10 ether;
 
@@ -108,6 +111,7 @@ contract FundFactory is Ownable {
     modifyConfigProposalManagerFactory = _modifyConfigProposalManagerFactory;
     newMemberProposalManagerFactory = _newMemberProposalManagerFactory;
     fineMemberProposalManagerFactory = _fineMemberProposalManagerFactory;
+    expelMemberProposalManagerFactory = _expelMemberProposalManagerFactory;
   }
 
   function buildFirstStep(
@@ -165,7 +169,7 @@ contract FundFactory is Ownable {
     ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build(_rsra, _fundStorage);
     NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build(_rsra, _fundStorage);
     FineMemberProposalManager fineMemberProposalManager = fineMemberProposalManagerFactory.build(_rsra, _fundStorage);
-    FineMemberProposalManager expelMemberProposalManager = fineMemberProposalManagerFactory.build(_rsra, _fundStorage);
+    ExpelMemberProposalManager expelMemberProposalManager = expelMemberProposalManagerFactory.build(_rsra, _fundStorage, spaceToken);
 
     modifyConfigProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
     newMemberProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
@@ -178,6 +182,8 @@ contract FundFactory is Ownable {
     _fundStorage.addRoleTo(modifyConfigProposalManager, _fundStorage.CONTRACT_CONFIG_MANAGER());
     _fundStorage.addRoleTo(newMemberProposalManager, _fundStorage.CONTRACT_NEW_MEMBER_MANAGER());
     _fundStorage.addRoleTo(fineMemberProposalManager, _fundStorage.CONTRACT_FINE_MEMBER_INCREMENT_MANAGER());
+    _fundStorage.addRoleTo(expelMemberProposalManager, _fundStorage.CONTRACT_EXPEL_MEMBER_MANAGER());
+    _fundStorage.addRoleTo(_rsra, _fundStorage.CONTRACT_RSRA());
     _fundStorage.addRoleTo(_fundController, _fundStorage.CONTRACT_FINE_MEMBER_DECREMENT_MANAGER());
 
     c.currentStep = Step.THIRD;

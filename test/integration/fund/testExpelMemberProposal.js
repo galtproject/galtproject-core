@@ -21,7 +21,7 @@ const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyCo
 
 const MockModifyConfigProposalManager = artifacts.require('./MockModifyConfigProposalManager.sol');
 const NewMemberProposalManager = artifacts.require('./NewMemberProposalManager.sol');
-const FineMemberProposalManager = artifacts.require('./FineMemberProposalManager.sol');
+const ExpelMemberProposalManager = artifacts.require('./ExpelMemberProposalManager.sol');
 
 const Web3 = require('web3');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../../helpers');
@@ -38,7 +38,7 @@ const ProposalStatus = {
   REJECTED: 3
 };
 
-contract('FineFundMemberProposal', accounts => {
+contract('ExpelFundMemberProposal', accounts => {
   const [coreTeam, alice, bob, charlie, dan, eve, frank, minter, geoDateManagement, unauthorized] = accounts;
 
   beforeEach(async function() {
@@ -110,7 +110,7 @@ contract('FineFundMemberProposal', accounts => {
       res.logs[0].args.modifyConfigProposalManager
     );
     this.newMemberProposalManagerX = await NewMemberProposalManager.at(res.logs[0].args.newMemberProposalManager);
-    this.fineMemberProposalManagerX = await FineMemberProposalManager.at(res.logs[0].args.fineMemberProposalManager);
+    this.expelMemberProposalManagerX = await ExpelMemberProposalManager.at(res.logs[0].args.expelMemberProposalManager);
 
     await this.fundFactory.buildThirdStep({ from: alice });
 
@@ -124,9 +124,9 @@ contract('FineFundMemberProposal', accounts => {
       this.modifyConfigProposalManagerX.abi,
       this.modifyConfigProposalManagerX.address
     );
-    this.fineMemberProposalManagerXWeb3 = new web3.eth.Contract(
-      this.fineMemberProposalManagerX.abi,
-      this.fineMemberProposalManagerX.address
+    this.expelMemberProposalManagerXWeb3 = new web3.eth.Contract(
+      this.expelMemberProposalManagerX.abi,
+      this.expelMemberProposalManagerX.address
     );
     this.spaceLockerRegistryWeb3 = new web3.eth.Contract(
       this.spaceLockerRegistry.abi,
@@ -179,59 +179,73 @@ contract('FineFundMemberProposal', accounts => {
       // MINT REPUTATION
       await locker.approveMint(this.rsraX.address, { from: alice });
       await assertRevert(this.rsraX.mint(lockerAddress, { from: minter }));
-      this.rsraX.mint(lockerAddress, { from: alice });
+      await this.rsraX.mint(lockerAddress, { from: alice });
 
-      // FINE
-      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
-      assert.equal(res, 0);
+      // DISTRBIBUTE REPUTATION
+      await this.rsraX.delegate(bob, alice, 300, { from: alice });
+      await this.rsraX.delegate(charlie, alice, 100, { from: bob });
 
-      res = await this.fineMemberProposalManagerX.propose(token1, 350, 'blah', { from: unauthorized });
+      await assertRevert(this.rsraX.burnExpelledAndLocked(token1, bob, alice, 200, { from: unauthorized }));
+      await assertRevert(this.rsraX.burnExpelled(token1, bob, alice, 200, { from: unauthorized }));
+
+      // EXPEL
+      res = await this.expelMemberProposalManagerX.propose(token1, 'blah', { from: unauthorized });
 
       const proposalId = res.logs[0].args.proposalId.toString(10);
 
-      res = await this.fineMemberProposalManagerXWeb3.methods.getProposal(proposalId).call();
+      res = await this.expelMemberProposalManagerXWeb3.methods.getProposal(proposalId).call();
       assert.equal(web3.utils.hexToNumberString(res.spaceTokenId), token1);
       assert.equal(res.description, 'blah');
 
-      await this.fineMemberProposalManagerX.aye(proposalId, { from: bob });
-      await this.fineMemberProposalManagerX.aye(proposalId, { from: charlie });
-      await this.fineMemberProposalManagerX.aye(proposalId, { from: dan });
+      await this.expelMemberProposalManagerX.aye(proposalId, { from: bob });
+      await this.expelMemberProposalManagerX.aye(proposalId, { from: charlie });
+      await this.expelMemberProposalManagerX.aye(proposalId, { from: dan });
 
-      res = await this.fineMemberProposalManagerXWeb3.methods.getAyeShare(proposalId).call();
+      res = await this.expelMemberProposalManagerXWeb3.methods.getAyeShare(proposalId).call();
       assert.equal(res, 60);
-      res = await this.fineMemberProposalManagerXWeb3.methods.getThreshold().call();
+      res = await this.expelMemberProposalManagerXWeb3.methods.getThreshold().call();
       assert.equal(res, 60);
 
-      await this.fineMemberProposalManagerX.triggerApprove(proposalId);
+      res = await this.fundStorageXWeb3.methods.getExpelledToken(token1).call();
+      assert.equal(res.isExpelled, false);
+      assert.equal(res.amount, 0);
 
-      res = await this.fineMemberProposalManagerXWeb3.methods.getProposalVoting(proposalId).call();
+      // ACCEPT PROPOSAL
+      await this.expelMemberProposalManagerX.triggerApprove(proposalId);
+
+      res = await this.fundStorageXWeb3.methods.getExpelledToken(token1).call();
+      assert.equal(res.isExpelled, true);
+      assert.equal(res.amount, 800);
+
+      res = await this.expelMemberProposalManagerXWeb3.methods.getProposalVoting(proposalId).call();
       assert.equal(res.status, ProposalStatus.APPROVED);
 
-      // BURN SHOULD BE REJECTED IF THERE ARE SOME FINES REGARDING THIS TOKEN
-      await assertRevert(this.rsraX.approveBurn(lockerAddress, { from: alice }));
+      // BURNING LOCKED REPUTATION FOR EXPELLED TOKEN
+      await assertRevert(this.rsraX.burnExpelledAndLocked(token1, charlie, alice, 101, { from: unauthorized }));
+      await this.rsraX.burnExpelledAndLocked(token1, charlie, alice, 100, { from: unauthorized });
+      await assertRevert(this.rsraX.burnExpelledAndLocked(token1, bob, alice, 201, { from: unauthorized }));
+      await this.rsraX.burnExpelledAndLocked(token1, bob, alice, 200, { from: unauthorized });
+      await assertRevert(this.rsraX.burnExpelled(token1, alice, alice, 501, { from: unauthorized }));
+      await this.rsraX.burnExpelled(token1, alice, alice, 500, { from: unauthorized });
 
-      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
-      assert.equal(res, 350);
+      res = await this.fundStorageXWeb3.methods.getExpelledToken(token1).call();
+      assert.equal(res.isExpelled, true);
+      assert.equal(res.amount, 0);
 
-      // Pay fee partially
-      await this.galtToken.approve(this.fundControllerX.address, 300, { from: alice });
-      await this.fundControllerX.payFine(token1, 300, { from: alice });
-      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
-      assert.equal(res, 50);
-
-      // STILL UNABLE TO BURN REPUTATION
-      await assertRevert(this.rsraX.approveBurn(lockerAddress, { from: alice }));
-
-      await this.galtToken.approve(this.fundControllerX.address, 51, { from: alice });
-      await assertRevert(this.fundControllerX.payFine(token1, 51, { from: alice }));
-
-      // Pay fee completely
-      await this.fundControllerX.payFine(token1, 50, { from: alice });
-      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
+      res = await this.rsraXWeb3.methods.balanceOf(alice).call();
+      assert.equal(res, 0);
+      res = await this.rsraXWeb3.methods.delegatedBalanceOf(alice, alice).call();
       assert.equal(res, 0);
 
-      // EVENTUALLY BURN REPUTATION
-      await this.rsraX.approveBurn(lockerAddress, { from: alice });
+      // MINT REPUTATION REJECTED
+      await assertRevert(this.rsraX.mint(lockerAddress, { from: alice }));
+
+      // BURN
+      await locker.burn(this.rsraX.address, { from: alice });
+
+      // MINT REPUTATION REJECTED AFTER BURN
+      await locker.approveMint(this.rsraX.address, { from: alice });
+      await assertRevert(this.rsraX.mint(lockerAddress, { from: alice }));
     });
   });
 });

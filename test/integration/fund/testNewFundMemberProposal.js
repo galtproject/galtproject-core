@@ -5,9 +5,6 @@ const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
-const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
-const FineMemberProposalManagerFactory = artifacts.require('./FineMemberProposalManagerFactory.sol');
-const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyConfigProposalManagerFactory.sol');
 const FundStorageFactory = artifacts.require('./FundStorageFactory.sol');
 const FundMultiSigFactory = artifacts.require('./FundMultiSigFactory.sol');
 const FundControllerFactory = artifacts.require('./FundControllerFactory.sol');
@@ -15,8 +12,15 @@ const MockRSRA = artifacts.require('./MockRSRA.sol');
 const MockRSRAFactory = artifacts.require('./MockRSRAFactory.sol');
 const FundFactory = artifacts.require('./FundFactory.sol');
 const FundStorage = artifacts.require('./FundStorage.sol');
+
+const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
+const ExpelMemberProposalManagerFactory = artifacts.require('./ExpelMemberProposalManagerFactory.sol');
+const FineMemberProposalManagerFactory = artifacts.require('./FineMemberProposalManagerFactory.sol');
+const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyConfigProposalManagerFactory.sol');
+
 const MockModifyConfigProposalManager = artifacts.require('./MockModifyConfigProposalManager.sol');
 const NewMemberProposalManager = artifacts.require('./NewMemberProposalManager.sol');
+
 const Web3 = require('web3');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../../helpers');
 
@@ -65,6 +69,7 @@ contract('NewFundMemberProposal', accounts => {
     this.modifyConfigProposalManagerFactory = await MockModifyConfigProposalManagerFactory.new();
     this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
     this.fineMemberProposalManagerFactory = await FineMemberProposalManagerFactory.new();
+    this.expelMemberProposalManagerFactory = await ExpelMemberProposalManagerFactory.new();
 
     this.fundFactory = await FundFactory.new(
       this.galtToken.address,
@@ -77,6 +82,7 @@ contract('NewFundMemberProposal', accounts => {
       this.modifyConfigProposalManagerFactory.address,
       this.newMemberProposalManagerFactory.address,
       this.fineMemberProposalManagerFactory.address,
+      this.expelMemberProposalManagerFactory.address,
       { from: coreTeam }
     );
 

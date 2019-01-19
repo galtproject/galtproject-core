@@ -5,15 +5,21 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
-const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
-const ModifyConfigProposalManagerFactory = artifacts.require('./ModifyConfigProposalManagerFactory.sol');
 const FundStorageFactory = artifacts.require('./FundStorageFactory.sol');
 const RSRAFactory = artifacts.require('./RSRAFactory.sol');
 const FundFactory = artifacts.require('./FundFactory.sol');
-const RSRA = artifacts.require('./RSRA.sol');
+const MockRSRA = artifacts.require('./MockRSRA.sol');
 const FundStorage = artifacts.require('./FundStorage.sol');
-const IProposalManager = artifacts.require('./IProposalManager.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+
+const FundMultiSigFactory = artifacts.require('./FundMultiSigFactory.sol');
+const FundControllerFactory = artifacts.require('./FundControllerFactory.sol');
+
+const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
+const ExpelMemberProposalManagerFactory = artifacts.require('./ExpelMemberProposalManagerFactory.sol');
+const FineMemberProposalManagerFactory = artifacts.require('./FineMemberProposalManagerFactory.sol');
+const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyConfigProposalManagerFactory.sol');
+
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -52,19 +58,28 @@ contract('RSRA', accounts => {
 
     // fund factory contracts
 
-    this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
-    this.modifyConfigProposalManagerFactory = await ModifyConfigProposalManagerFactory.new();
     this.rsraFactory = await RSRAFactory.new();
     this.fundStorageFactory = await FundStorageFactory.new();
+    this.fundMultiSigFactory = await FundMultiSigFactory.new();
+    this.fundControllerFactory = await FundControllerFactory.new();
+
+    this.modifyConfigProposalManagerFactory = await MockModifyConfigProposalManagerFactory.new();
+    this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
+    this.fineMemberProposalManagerFactory = await FineMemberProposalManagerFactory.new();
+    this.expelMemberProposalManagerFactory = await ExpelMemberProposalManagerFactory.new();
 
     this.fundFactory = await FundFactory.new(
       this.galtToken.address,
       this.spaceToken.address,
       this.spaceLockerRegistry.address,
       this.rsraFactory.address,
+      this.fundMultiSigFactory.address,
       this.fundStorageFactory.address,
-      this.newMemberProposalManagerFactory.address,
+      this.fundControllerFactory.address,
       this.modifyConfigProposalManagerFactory.address,
+      this.newMemberProposalManagerFactory.address,
+      this.fineMemberProposalManagerFactory.address,
+      this.expelMemberProposalManagerFactory.address,
       { from: coreTeam }
     );
 
@@ -81,11 +96,11 @@ contract('RSRA', accounts => {
 
     // build fund
     await this.galtToken.approve(this.fundFactory.address, ether(100), { from: alice });
-    const res = await this.fundFactory.build(false, 60, 50, 60, 60, 60, { from: alice });
-    this.rsraX = await RSRA.at(res.logs[0].args.rsra);
-    this.fundStorageX = FundStorage.at(res.logs[0].args.fundStorage);
-    this.modifyConfigProposalManagerX = IProposalManager.at(res.logs[0].args.modifyConfigProposalManager);
-    this.newMemberProposalManagerX = IProposalManager.at(res.logs[0].args.newMemberProposalManager);
+    const res = await this.fundFactory.buildFirstStep(false, 60, 50, 60, 60, 60, [bob, charlie], 2, {
+      from: alice
+    });
+    this.rsraX = await MockRSRA.at(res.logs[0].args.fundRsra);
+    this.fundStorageX = await FundStorage.at(res.logs[0].args.fundStorage);
 
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
@@ -97,14 +112,6 @@ contract('RSRA', accounts => {
     );
     this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
     this.rsraXWeb3 = new web3.eth.Contract(this.rsraX.abi, this.rsraX.address);
-    this.modifyConfigProposalManagerXWeb3 = new web3.eth.Contract(
-      this.modifyConfigProposalManagerX.abi,
-      this.modifyConfigProposalManagerX.address
-    );
-    this.newMemberProposalManagerXWeb3 = new web3.eth.Contract(
-      this.newMemberProposalManagerX.abi,
-      this.newMemberProposalManagerX.address
-    );
   });
 
   describe('transfer', () => {
