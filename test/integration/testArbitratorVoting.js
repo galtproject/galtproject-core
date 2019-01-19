@@ -3090,13 +3090,7 @@ contract('ArbitratorVoting', accounts => {
       assert.equal(res, 900);
 
       res = await votingWeb3.methods.getCandidates().call();
-      assert.sameOrderedMembers(res, [
-        candidateC,
-        candidateB,
-        candidateF,
-        candidateA,
-        candidateE
-      ]);
+      assert.sameOrderedMembers(res, [candidateC, candidateB, candidateF, candidateA, candidateE]);
       res = await votingWeb3.methods.totalSpaceReputation().call();
       assert.equal(res, 5300);
       res = await votingWeb3.methods.getSize().call();

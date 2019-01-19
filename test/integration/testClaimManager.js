@@ -1005,9 +1005,9 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.value, 0);
         assert.equal(
           res.data,
-          `0xa9059cbb000000000000000000000000${alice
-            
-            .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
+          `0xa9059cbb000000000000000000000000${alice.substr(
+            2
+          )}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
         const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.abMultiSigX.address).call();
