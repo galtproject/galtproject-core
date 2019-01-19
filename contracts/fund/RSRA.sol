@@ -57,6 +57,15 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
     super.mint(_spaceLocker);
   }
 
+  function approveBurn(
+    SpaceLocker _spaceLocker
+  )
+    public
+  {
+    require(fundStorage.getFineAmount(_spaceLocker.spaceTokenId()) == 0, "There are pending fines");
+    super.approveBurn(_spaceLocker);
+  }
+
   // PermissionED
   function revokeLocked(address _delegate, uint256 _amount) external {
     require(_delegations[msg.sender][_delegate] >= _amount, "Not enough funds");

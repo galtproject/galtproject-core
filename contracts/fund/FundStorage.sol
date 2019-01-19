@@ -22,12 +22,11 @@ import "../traits/Permissionable.sol";
 contract FundStorage is Permissionable {
   using ArraySet for ArraySet.AddressSet;
 
-  // TODO: crud config
-  // TODO: crud contract whitelist
-  // TODO: crud fines
   string public constant CONTRACT_WHITELIST_MANAGER = "wl_manager";
-  string public constant CONTRACT_CONFIG_MANAGER = "wl_manager";
-  string public constant CONTRACT_NEW_MEMBER_MANAGER = "wl_manager";
+  string public constant CONTRACT_CONFIG_MANAGER = "config_manager";
+  string public constant CONTRACT_NEW_MEMBER_MANAGER = "new_member_manager";
+  string public constant CONTRACT_FINE_MEMBER_INCREMENT_MANAGER = "fine_member_increment_manager";
+  string public constant CONTRACT_FINE_MEMBER_DECREMENT_MANAGER = "fine_member_decrement_manager";
 
   bytes32 public constant MANAGE_WL_THRESHOLD = bytes32("manage_wl_threshold");
   bytes32 public constant MODIFY_CONFIG_THRESHOLD = bytes32("modify_config_threshold");
@@ -39,6 +38,8 @@ contract FundStorage is Permissionable {
   ArraySet.AddressSet private whiteListedContracts;
   mapping(bytes32 => bytes32) private _config;
   mapping(uint256 => bool) private _mintApprovals;
+  // spaceTokenId => amount
+  mapping(uint256 => uint256) private _fines;
 
   constructor (
     bool _isPrivate,
@@ -64,6 +65,14 @@ contract FundStorage is Permissionable {
     _mintApprovals[_spaceTokenId] = true;
   }
 
+  function incrementFine(uint256 _spaceTokenId, uint256 _amount) external onlyRole(CONTRACT_FINE_MEMBER_INCREMENT_MANAGER) {
+    _fines[_spaceTokenId] += _amount;
+  }
+
+  function decrementFine(uint256 _spaceTokenId, uint256 _amount) external onlyRole(CONTRACT_FINE_MEMBER_DECREMENT_MANAGER) {
+    _fines[_spaceTokenId] -= _amount;
+  }
+
   function addWhiteListedContract(address _contract) external onlyRole(CONTRACT_WHITELIST_MANAGER) {
     whiteListedContracts.add(_contract);
   }
@@ -75,6 +84,10 @@ contract FundStorage is Permissionable {
   // GETTERS
   function getConfigValue(bytes32 _key) external view returns(bytes32) {
     return _config[_key];
+  }
+
+  function getFineAmount(uint256 _spaceTokenId) external view returns (uint256) {
+    return _fines[_spaceTokenId];
   }
 
   function getWhiteListedContracts() external view returns(address[]) {

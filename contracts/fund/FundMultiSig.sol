@@ -14,22 +14,27 @@
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "../vendor/MultiSigWallet/MultiSigWallet.sol";
 
-// This contract will be included into the current one
-import "../../fund/proposals/NewMemberProposalManager.sol";
-import "../../fund/FundStorage.sol";
-import "../../interfaces/IRSRA.sol";
-
-
-contract NewMemberProposalManagerFactory is Ownable {
-  function build(IRSRA _rsra, FundStorage _fundStorage)
-    external
-    returns (NewMemberProposalManager newMemberProposalManager)
-  {
-    newMemberProposalManager = new NewMemberProposalManager(_rsra, _fundStorage);
-
-    newMemberProposalManager.addRoleTo(msg.sender, "role_manager");
-    newMemberProposalManager.removeRoleFrom(address(this), "role_manager");
+contract FundMultiSig is MultiSigWallet {
+  modifier forbidden() {
+    assert(false);
+    _;
   }
+
+  constructor(
+    address[] _initialOwners,
+    uint256 _required
+  )
+    public
+    MultiSigWallet(_initialOwners, _required)
+  {
+  }
+
+  function addOwner(address owner) public forbidden {}
+  function removeOwner(address owner) public forbidden {}
+  function replaceOwner(address owner, address newOwner) public forbidden {}
+  function changeRequirement(uint _required) public forbidden {}
+  // TODO: ensure the constructor is forbidden
+
 }

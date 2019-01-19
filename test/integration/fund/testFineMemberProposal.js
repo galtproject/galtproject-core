@@ -15,8 +15,10 @@ const MockRSRA = artifacts.require('./MockRSRA.sol');
 const MockRSRAFactory = artifacts.require('./MockRSRAFactory.sol');
 const FundFactory = artifacts.require('./FundFactory.sol');
 const FundStorage = artifacts.require('./FundStorage.sol');
+const FundController = artifacts.require('./FundController.sol');
 const MockModifyConfigProposalManager = artifacts.require('./MockModifyConfigProposalManager.sol');
 const NewMemberProposalManager = artifacts.require('./NewMemberProposalManager.sol');
+const FineMemberProposalManager = artifacts.require('./FineMemberProposalManager.sol');
 const Web3 = require('web3');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../../helpers');
 
@@ -32,7 +34,7 @@ const ProposalStatus = {
   REJECTED: 3
 };
 
-contract('NewFundMemberProposal', accounts => {
+contract('FinefundMemberProposal', accounts => {
   const [coreTeam, alice, bob, charlie, dan, eve, frank, minter, geoDateManagement, unauthorized] = accounts;
 
   beforeEach(async function() {
@@ -56,7 +58,6 @@ contract('NewFundMemberProposal', accounts => {
     );
 
     // fund factory contracts
-
     this.rsraFactory = await MockRSRAFactory.new();
     this.fundStorageFactory = await FundStorageFactory.new();
     this.fundMultiSigFactory = await FundMultiSigFactory.new();
@@ -92,15 +93,18 @@ contract('NewFundMemberProposal', accounts => {
 
     // build fund
     await this.galtToken.approve(this.fundFactory.address, ether(100), { from: alice });
-    let res = await this.fundFactory.buildFirstStep(true, 60, 50, 30, 60, 60, [bob, charlie, dan], 2, { from: alice });
+    let res = await this.fundFactory.buildFirstStep(false, 60, 50, 30, 60, 60, [bob, charlie, dan], 2, { from: alice });
     this.rsraX = await MockRSRA.at(res.logs[0].args.fundRsra);
     this.fundStorageX = await FundStorage.at(res.logs[0].args.fundStorage);
+    this.fundControllerX = await FundController.at(res.logs[0].args.fundController);
+    this.fundMultiSigXAddress = res.logs[0].args.fundMultiSig;
 
     res = await this.fundFactory.buildSecondStep({ from: alice });
     this.modifyConfigProposalManagerX = await MockModifyConfigProposalManager.at(
       res.logs[0].args.modifyConfigProposalManager
     );
     this.newMemberProposalManagerX = await NewMemberProposalManager.at(res.logs[0].args.newMemberProposalManager);
+    this.fineMemberProposalManagerX = await FineMemberProposalManager.at(res.logs[0].args.fineMemberProposalManager);
 
     await this.fundFactory.buildThirdStep({ from: alice });
 
@@ -114,9 +118,9 @@ contract('NewFundMemberProposal', accounts => {
       this.modifyConfigProposalManagerX.abi,
       this.modifyConfigProposalManagerX.address
     );
-    this.newMemberProposalManagerXWeb3 = new web3.eth.Contract(
-      this.newMemberProposalManagerX.abi,
-      this.newMemberProposalManagerX.address
+    this.fineMemberProposalManagerXWeb3 = new web3.eth.Contract(
+      this.fineMemberProposalManagerX.abi,
+      this.fineMemberProposalManagerX.address
     );
     this.spaceLockerRegistryWeb3 = new web3.eth.Contract(
       this.spaceLockerRegistry.abi,
@@ -169,39 +173,59 @@ contract('NewFundMemberProposal', accounts => {
       // MINT REPUTATION
       await locker.approveMint(this.rsraX.address, { from: alice });
       await assertRevert(this.rsraX.mint(lockerAddress, { from: minter }));
-      await assertRevert(this.rsraX.mint(lockerAddress, { from: alice }));
+      this.rsraX.mint(lockerAddress, { from: alice });
 
-      res = await this.newMemberProposalManagerX.propose(token1, 'blah', { from: unauthorized });
+      // FINE
+      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
+      assert.equal(res, 0);
+
+      res = await this.fineMemberProposalManagerX.propose(token1, 350, 'blah', { from: unauthorized });
 
       const proposalId = res.logs[0].args.proposalId.toString(10);
 
-      res = await this.newMemberProposalManagerXWeb3.methods.getProposal(proposalId).call();
+      res = await this.fineMemberProposalManagerXWeb3.methods.getProposal(proposalId).call();
       assert.equal(web3.utils.hexToNumberString(res.spaceTokenId), token1);
       assert.equal(res.description, 'blah');
 
-      res = await this.fundStorageXWeb3.methods.isMintApproved(token1).call();
-      assert.equal(res, false);
+      await this.fineMemberProposalManagerX.aye(proposalId, { from: bob });
+      await this.fineMemberProposalManagerX.aye(proposalId, { from: charlie });
+      await this.fineMemberProposalManagerX.aye(proposalId, { from: dan });
 
-      await this.newMemberProposalManagerX.aye(proposalId, { from: bob });
-      await this.newMemberProposalManagerX.aye(proposalId, { from: charlie });
+      res = await this.fineMemberProposalManagerXWeb3.methods.getAyeShare(proposalId).call();
+      assert.equal(res, 60);
+      res = await this.fineMemberProposalManagerXWeb3.methods.getThreshold().call();
+      assert.equal(res, 60);
 
-      res = await this.newMemberProposalManagerXWeb3.methods.getAyeShare(proposalId).call();
-      assert.equal(res, 40);
-      res = await this.newMemberProposalManagerXWeb3.methods.getThreshold().call();
-      assert.equal(res, 30);
+      await this.fineMemberProposalManagerX.triggerApprove(proposalId);
 
-      await this.newMemberProposalManagerX.triggerApprove(proposalId);
-
-      res = await this.newMemberProposalManagerXWeb3.methods.getProposalVoting(proposalId).call();
+      res = await this.fineMemberProposalManagerXWeb3.methods.getProposalVoting(proposalId).call();
       assert.equal(res.status, ProposalStatus.APPROVED);
 
-      res = await this.fundStorageXWeb3.methods.isMintApproved(token1).call();
-      assert.equal(res, true);
+      // BURN SHOULD BE REJECTED IF THERE ARE SOME FINES REGARDING THIS TOKEN
+      await assertRevert(this.rsraX.approveBurn(lockerAddress, { from: alice }));
 
-      await this.rsraX.mint(lockerAddress, { from: alice });
+      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
+      assert.equal(res, 350);
 
-      res = await this.rsraXWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 800);
+      // Pay fee partially
+      await this.galtToken.approve(this.fundControllerX.address, 300, { from: alice });
+      await this.fundControllerX.payFine(token1, 300, { from: alice });
+      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
+      assert.equal(res, 50);
+
+      // STILL UNABLE TO BURN REPUTATION
+      await assertRevert(this.rsraX.approveBurn(lockerAddress, { from: alice }));
+
+      await this.galtToken.approve(this.fundControllerX.address, 51, { from: alice });
+      await assertRevert(this.fundControllerX.payFine(token1, 51, { from: alice }));
+
+      // Pay fee completely
+      await this.fundControllerX.payFine(token1, 50, { from: alice });
+      res = await this.fundStorageXWeb3.methods.getFineAmount(token1).call();
+      assert.equal(res, 0);
+
+      // EVENTUALLY BURN REPUTATION
+      await this.rsraX.approveBurn(lockerAddress, { from: alice });
     });
   });
 });

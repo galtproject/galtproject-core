@@ -15,21 +15,31 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 // This contract will be included into the current one
-import "../../fund/proposals/NewMemberProposalManager.sol";
-import "../../fund/FundStorage.sol";
-import "../../interfaces/IRSRA.sol";
+import "../../fund/FundController.sol";
+import "../../fund/FundMultiSig.sol";
 
 
-contract NewMemberProposalManagerFactory is Ownable {
-  function build(IRSRA _rsra, FundStorage _fundStorage)
+contract FundControllerFactory is Ownable {
+  function build(
+    ERC20 _galtToken,
+    FundStorage _fundStorage,
+    FundMultiSig _multiSig
+  )
     external
-    returns (NewMemberProposalManager newMemberProposalManager)
+    returns (FundController)
   {
-    newMemberProposalManager = new NewMemberProposalManager(_rsra, _fundStorage);
+    FundController fundController = new FundController(
+      _galtToken,
+      _fundStorage,
+      _multiSig
+    );
 
-    newMemberProposalManager.addRoleTo(msg.sender, "role_manager");
-    newMemberProposalManager.removeRoleFrom(address(this), "role_manager");
+    fundController.addRoleTo(msg.sender, "role_manager");
+    fundController.removeRoleFrom(address(this), "role_manager");
+
+    return fundController;
   }
 }

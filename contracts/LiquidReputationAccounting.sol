@@ -87,7 +87,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function approveBurn(
     SpaceLocker _spaceLocker
   )
-    external
+    public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
@@ -113,7 +113,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
   // @dev Transfer owned reputation
   // PermissionED
-  function delegate(address _to, address _owner, uint256 _amount) external {
+  function delegate(address _to, address _owner, uint256 _amount) public {
     require(_balances[msg.sender] >= _amount, "Not enough funds");
     require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
 
@@ -121,7 +121,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   }
 
   // PermissionED
-  function revoke(address _from, uint256 _amount) external {
+  function revoke(address _from, uint256 _amount) public {
     require(_balances[_from] >= _amount, "Not enough funds");
     require(_delegations[msg.sender][_from] >= _amount, "Not enough funds");
 

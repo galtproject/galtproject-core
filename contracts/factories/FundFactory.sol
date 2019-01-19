@@ -17,24 +17,43 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../fund/FundStorage.sol";
-import "../factories/fund/RSRAFactory.sol";
-import "../factories/fund/FundStorageFactory.sol";
+import "../fund/FundController.sol";
 import "../interfaces/IRSRA.sol";
 import "../SpaceToken.sol";
 import "../registries/SpaceLockerRegistry.sol";
+import "./fund/RSRAFactory.sol";
+import "./fund/FundStorageFactory.sol";
+import "./fund/FundMultiSigFactory.sol";
+import "./fund/FundControllerFactory.sol";
 import "./fund/ModifyConfigProposalManagerFactory.sol";
 import "./fund/NewMemberProposalManagerFactory.sol";
+import "./fund/FineMemberProposalManagerFactory.sol";
 
 
 contract FundFactory is Ownable {
-  event FundCreated(
-    address rsra,
+  event CreateFundFirstStep(
+    address fundRsra,
+    address fundMultiSig,
     address fundStorage,
+    address fundController
+  );
+
+  event CreateFundSecondStep(
+    address multiSig,
     address modifyConfigProposalManager,
-    address newMemberProposalManager
+    address newMemberProposalManager,
+    address fineMemberProposalManager,
+    address expelMemberProposalManager
+  );
+
+  event CreateFundThirdStep(
+    address multiSig,
+    address whiteListProposalManager
   );
 
   string public constant RSRA_CONTRACT = "rsra_contract";
+
+  uint256 commission;
 
   ERC20 galtToken;
   SpaceToken spaceToken;
@@ -42,19 +61,39 @@ contract FundFactory is Ownable {
 
   RSRAFactory rsraFactory;
   FundStorageFactory fundStorageFactory;
+  FundMultiSigFactory fundMultiSigFactory;
+  FundControllerFactory fundControllerFactory;
   ModifyConfigProposalManagerFactory modifyConfigProposalManagerFactory;
   NewMemberProposalManagerFactory newMemberProposalManagerFactory;
+  FineMemberProposalManagerFactory fineMemberProposalManagerFactory;
 
-  uint256 commission;
+  enum Step {
+    FIRST,
+    SECOND,
+    THIRD
+  }
+
+  struct FirstStepContracts {
+    Step currentStep;
+    IRSRA rsra;
+    FundMultiSig fundMultiSig;
+    FundStorage fundStorage;
+    FundController fundController;
+  }
+
+  mapping(address => FirstStepContracts) private _firstStepContracts;
 
   constructor (
     ERC20 _galtToken,
     SpaceToken _spaceToken,
     SpaceLockerRegistry _spaceLockerRegistry,
     RSRAFactory _rsraFactory,
+    FundMultiSigFactory _fundMultiSigFactory,
     FundStorageFactory _fundStorageFactory,
+    FundControllerFactory _fundControllerFactory,
     ModifyConfigProposalManagerFactory _modifyConfigProposalManagerFactory,
-    NewMemberProposalManagerFactory _newMemberProposalManagerFactory
+    NewMemberProposalManagerFactory _newMemberProposalManagerFactory,
+    FineMemberProposalManagerFactory _fineMemberProposalManagerFactory
   ) public {
     commission = 10 ether;
 
@@ -64,24 +103,33 @@ contract FundFactory is Ownable {
 
     rsraFactory = _rsraFactory;
     fundStorageFactory = _fundStorageFactory;
+    fundMultiSigFactory = _fundMultiSigFactory;
+    fundControllerFactory = _fundControllerFactory;
     modifyConfigProposalManagerFactory = _modifyConfigProposalManagerFactory;
     newMemberProposalManagerFactory = _newMemberProposalManagerFactory;
+    fineMemberProposalManagerFactory = _fineMemberProposalManagerFactory;
   }
 
-  function build(
+  function buildFirstStep(
     bool _isPrivate,
     uint256 _manageWhiteListThreshold,
     uint256 _modifyConfigThreshold,
     uint256 _newMemberThreshold,
     uint256 _expelMemberThreshold,
-    uint256 _fineMemberThreshold
+    uint256 _fineMemberThreshold,
+    address[] _multiSigInitialOwners,
+    uint256 _multiSigRequired
   )
     external
-    returns (IRSRA, FundStorage, ModifyConfigProposalManager, NewMemberProposalManager)
+    returns (IRSRA rsra, FundMultiSig fundMultiSig, FundStorage fundStorage, FundController fundController)
   {
-    galtToken.transferFrom(msg.sender, address(this), commission);
+    FirstStepContracts storage c = _firstStepContracts[msg.sender];
+    require(c.currentStep == Step.FIRST, "Requires first step");
 
-    FundStorage fundStorage = fundStorageFactory.build(
+    _acceptPayment();
+
+    fundMultiSig = fundMultiSigFactory.build(_multiSigInitialOwners, _multiSigRequired);
+    fundStorage = fundStorageFactory.build(
       _isPrivate,
       _manageWhiteListThreshold,
       _modifyConfigThreshold,
@@ -89,27 +137,76 @@ contract FundFactory is Ownable {
       _expelMemberThreshold,
       _fineMemberThreshold
     );
-    IRSRA rsra = rsraFactory.build(spaceToken, spaceLockerRegistry, fundStorage);
+    fundController = fundControllerFactory.build(
+      galtToken,
+      fundStorage,
+      fundMultiSig
+    );
+    rsra = rsraFactory.build(spaceToken, spaceLockerRegistry, fundStorage);
 
-    ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build(rsra, fundStorage);
-    NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build(rsra, fundStorage);
+    c.currentStep = Step.SECOND;
+    c.rsra = rsra;
+    c.fundStorage = fundStorage;
+    c.fundMultiSig = fundMultiSig;
+    c.fundController = fundController;
 
-    // TODO: if is private, then build additional proposal manager
-    // TODO: attach roles
+    emit CreateFundFirstStep(rsra, fundMultiSig, fundStorage, fundController);
+  }
 
-    modifyConfigProposalManager.addRoleTo(rsra, RSRA_CONTRACT);
-    newMemberProposalManager.addRoleTo(rsra, RSRA_CONTRACT);
+  function buildSecondStep() external {
+    FirstStepContracts storage c = _firstStepContracts[msg.sender];
+    require(c.currentStep == Step.SECOND, "Requires second step");
 
-    fundStorage.addRoleTo(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
-    fundStorage.addWhiteListedContract(modifyConfigProposalManager);
-    fundStorage.addWhiteListedContract(newMemberProposalManager);
-    fundStorage.removeRoleFrom(address(this), fundStorage.CONTRACT_WHITELIST_MANAGER());
+    IRSRA _rsra = c.rsra;
+    FundStorage _fundStorage = c.fundStorage;
+    FundMultiSig _fundMultiSig = c.fundMultiSig;
+    FundController _fundController = c.fundController;
 
-    fundStorage.addRoleTo(modifyConfigProposalManager, fundStorage.CONTRACT_CONFIG_MANAGER());
-    fundStorage.addRoleTo(newMemberProposalManager, fundStorage.CONTRACT_NEW_MEMBER_MANAGER());
+    ModifyConfigProposalManager modifyConfigProposalManager = modifyConfigProposalManagerFactory.build(_rsra, _fundStorage);
+    NewMemberProposalManager newMemberProposalManager = newMemberProposalManagerFactory.build(_rsra, _fundStorage);
+    FineMemberProposalManager fineMemberProposalManager = fineMemberProposalManagerFactory.build(_rsra, _fundStorage);
+    FineMemberProposalManager expelMemberProposalManager = fineMemberProposalManagerFactory.build(_rsra, _fundStorage);
 
-    // TODO: figure out what to do with contract permissions
-    emit FundCreated(rsra, fundStorage, modifyConfigProposalManager, newMemberProposalManager);
+    modifyConfigProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
+    newMemberProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
+
+    _fundStorage.addRoleTo(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
+    _fundStorage.addWhiteListedContract(modifyConfigProposalManager);
+    _fundStorage.addWhiteListedContract(newMemberProposalManager);
+    _fundStorage.removeRoleFrom(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
+
+    _fundStorage.addRoleTo(modifyConfigProposalManager, _fundStorage.CONTRACT_CONFIG_MANAGER());
+    _fundStorage.addRoleTo(newMemberProposalManager, _fundStorage.CONTRACT_NEW_MEMBER_MANAGER());
+    _fundStorage.addRoleTo(fineMemberProposalManager, _fundStorage.CONTRACT_FINE_MEMBER_INCREMENT_MANAGER());
+    _fundStorage.addRoleTo(_fundController, _fundStorage.CONTRACT_FINE_MEMBER_DECREMENT_MANAGER());
+
+    c.currentStep = Step.THIRD;
+
+    emit CreateFundSecondStep(
+      _fundMultiSig,
+      modifyConfigProposalManager,
+      newMemberProposalManager,
+      fineMemberProposalManager,
+      expelMemberProposalManager
+    );
+  }
+
+  function buildThirdStep() external {
+    FirstStepContracts storage c = _firstStepContracts[msg.sender];
+    require(c.currentStep == Step.THIRD, "Requires second step");
+
+    FineMemberProposalManager whiteListProposalManager = fineMemberProposalManagerFactory.build(c.rsra, c.fundStorage);
+
+    delete _firstStepContracts[msg.sender];
+
+    emit CreateFundThirdStep(
+      c.fundMultiSig,
+      whiteListProposalManager
+    );
+  }
+
+  function _acceptPayment() internal {
+    galtToken.transferFrom(msg.sender, address(this), commission);
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

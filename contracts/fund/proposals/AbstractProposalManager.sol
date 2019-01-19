@@ -115,7 +115,7 @@ contract AbstractProposalManager is Permissionable, IProposalManager {
     uint256 threshold = getThreshold();
     uint256 ayeShare = getAyeShare(_proposalId);
 
-    require(ayeShare > threshold, "Threshold doesn't reached yet");
+    require(ayeShare >= threshold, "Threshold doesn't reached yet");
 
     proposalVoting.status = ProposalStatus.APPROVED;
 
@@ -133,7 +133,7 @@ contract AbstractProposalManager is Permissionable, IProposalManager {
     uint256 threshold = getThreshold();
     uint256 nayShare = getNayShare(_proposalId);
 
-    require(nayShare > threshold, "Threshold doesn't reached yet");
+    require(nayShare >= threshold, "Threshold doesn't reached yet");
 
     proposalVoting.status = ProposalStatus.REJECTED;
     emit Rejected(nayShare, threshold);

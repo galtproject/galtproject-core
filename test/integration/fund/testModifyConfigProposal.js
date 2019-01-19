@@ -3,13 +3,15 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
 const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
+const FineMemberProposalManagerFactory = artifacts.require('./FineMemberProposalManagerFactory.sol');
 const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyConfigProposalManagerFactory.sol');
 const FundStorageFactory = artifacts.require('./FundStorageFactory.sol');
+const FundMultiSigFactory = artifacts.require('./FundMultiSigFactory.sol');
+const FundControllerFactory = artifacts.require('./FundControllerFactory.sol');
 const MockRSRA = artifacts.require('./MockRSRA.sol');
 const MockRSRAFactory = artifacts.require('./MockRSRAFactory.sol');
 const FundFactory = artifacts.require('./FundFactory.sol');
 const FundStorage = artifacts.require('./FundStorage.sol');
-const IProposalManager = artifacts.require('./IProposalManager.sol');
 const MockModifyConfigProposalManager = artifacts.require('./MockModifyConfigProposalManager.sol');
 const Web3 = require('web3');
 const { ether, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../../helpers');
@@ -41,20 +43,26 @@ contract('ModifyConfigProposal', accounts => {
     );
 
     // fund factory contracts
+    this.rsraFactory = await MockRSRAFactory.new();
+    this.fundStorageFactory = await FundStorageFactory.new();
+    this.fundMultiSigFactory = await FundMultiSigFactory.new();
+    this.fundControllerFactory = await FundControllerFactory.new();
 
     this.modifyConfigProposalManagerFactory = await MockModifyConfigProposalManagerFactory.new();
     this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
-    this.rsraFactory = await MockRSRAFactory.new();
-    this.fundStorageFactory = await FundStorageFactory.new();
+    this.fineMemberProposalManagerFactory = await FineMemberProposalManagerFactory.new();
 
     this.fundFactory = await FundFactory.new(
       this.galtToken.address,
       this.spaceToken.address,
       spaceLockerRegistryAddress,
       this.rsraFactory.address,
+      this.fundMultiSigFactory.address,
       this.fundStorageFactory.address,
+      this.fundControllerFactory.address,
       this.modifyConfigProposalManagerFactory.address,
       this.newMemberProposalManagerFactory.address,
+      this.fineMemberProposalManagerFactory.address,
       { from: coreTeam }
     );
 
@@ -63,13 +71,16 @@ contract('ModifyConfigProposal', accounts => {
 
     // build fund
     await this.galtToken.approve(this.fundFactory.address, ether(100), { from: alice });
-    const res = await this.fundFactory.build(false, 60, 50, 60, 60, 60, { from: alice });
-    this.rsraX = await MockRSRA.at(res.logs[0].args.rsra);
+    let res = await this.fundFactory.buildFirstStep(false, 60, 50, 60, 60, 60, [bob, charlie, dan], 2, { from: alice });
+    this.rsraX = await MockRSRA.at(res.logs[0].args.fundRsra);
     this.fundStorageX = await FundStorage.at(res.logs[0].args.fundStorage);
+
+    res = await this.fundFactory.buildSecondStep({ from: alice });
     this.modifyConfigProposalManagerX = await MockModifyConfigProposalManager.at(
       res.logs[0].args.modifyConfigProposalManager
     );
-    this.newMemberProposalManagerX = await IProposalManager.at(res.logs[0].args.newMemberProposalManager);
+
+    await this.fundFactory.buildThirdStep({ from: alice });
 
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
@@ -80,10 +91,6 @@ contract('ModifyConfigProposal', accounts => {
     this.modifyConfigProposalManagerXWeb3 = new web3.eth.Contract(
       this.modifyConfigProposalManagerX.abi,
       this.modifyConfigProposalManagerX.address
-    );
-    this.newMemberProposalManagerXWeb3 = new web3.eth.Contract(
-      this.newMemberProposalManagerX.abi,
-      this.newMemberProposalManagerX.address
     );
     this.fundStorageXWeb3 = new web3.eth.Contract(this.fundStorageX.abi, this.fundStorageX.address);
 
