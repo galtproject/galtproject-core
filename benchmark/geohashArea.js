@@ -24,7 +24,7 @@ module.exports = async function(callback) {
   async function calculateArea(contour, preCaching = false) {
     const uintContour = contour.map(galt.geohashToGeohash5);
     if (preCaching) {
-      await geodesic.cacheGeohashListToLatLon(uintContour);
+      await geodesic.cacheGeohashListToLatLonAndUtm(uintContour);
     }
     const res = await geodesic.calculateContourArea(uintContour);
     console.log(
