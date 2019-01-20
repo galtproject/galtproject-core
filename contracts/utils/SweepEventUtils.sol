@@ -56,11 +56,11 @@ library SweepEventUtils {
   /**
  * Signed area of the triangle (p0, p1, p2)
  */
-  function signedArea(int256[2] p0, int256[2] p1, int256[2] p2) internal returns(int256) {
+  function signedArea(int256[2] p0, int256[2] p1, int256[2] p2) internal pure returns(int256) {
     return (p0[0] - p2[0]) * (p1[1] - p2[1]) - (p1[0] - p2[0]) * (p0[1] - p2[1]);
   }
 
-  function isBelow(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
+  function isBelow(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal view returns(bool) {
     int256[2] memory p0 = self.point;
     int256[2] memory p1 = store.sweepById[self.otherEvent].point;
     return self.left
@@ -116,14 +116,14 @@ library SweepEventUtils {
     return compareEvents(store, le1, le2) == 1 ? int8(1) : -1;
   }
 
-  function equals(int256[2] p1, int256[2] p2) internal returns (bool) {
+  function equals(int256[2] p1, int256[2] p2) internal pure returns (bool) {
     if (p1[0] == p2[0] && p1[1] == p2[1]) {
       return true;
     }
     return false;
   }
 
-  function isVertical(SweepEvent.Store storage store, SweepEvent.Item storage self) internal returns(bool) {
+  function isVertical(SweepEvent.Store storage store, SweepEvent.Item storage self) internal view returns(bool) {
     return self.point[0] == store.sweepById[self.otherEvent].point[0];
   }
 }

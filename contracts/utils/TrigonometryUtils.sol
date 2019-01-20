@@ -8,7 +8,7 @@ library TrigonometryUtils {
   int constant ONEQTR_PI = 785398163397448300;
   int constant THRQTR_PI = 2356194490192345000;
 
-  function getSinOfRad(int256 x) internal returns (int256) {
+  function getSinOfRad(int256 x) internal pure returns (int256) {
     int q;
     int s = 0;
     int N = 100;
@@ -26,7 +26,7 @@ library TrigonometryUtils {
     return s;
   }
 
-  function getSinOfDegree(int256 degree) internal returns (int256) {
+  function getSinOfDegree(int256 degree) internal pure returns (int256) {
     int q;
     int s = 0;
     int N = 100;
@@ -47,44 +47,19 @@ library TrigonometryUtils {
     return s;
   }
 
-  function degreeToRad(int256 degree) internal returns (int256) {
-    return degree * (PI / 180) / 1 ether;
+  function sin(int256 radians) internal returns (int256) {
+    return getSinOfRad(radians);
   }
 
-  function radToDegree(int256 radians) internal returns (int256) {
-    return radians * (180 / PI) * 1 ether;
+  function cos(int256 radians) internal returns (int256) {
+    return getSinOfRad(radians + (PI / 2));
   }
-  //  0.0033
-  //128.128
-
-  function atanh(int256 x) internal returns (int256 output) {
-    output = MathUtils.logE(((1 ether + x) * 1 ether) / (1 ether - x)) / 2;
-    //    output = int256(MathUtils.fpDiv(uint256(MathUtils.ln(uint256(((1 ether + x) * 1 ether)/(1 ether - x)))), 2 ether));
-  }
-
-  function cosh(int256 radians) internal returns (int256) {
-    //var y = Math.exp(x);
-    //  return (y + 1 / y) / 2;
-    return (MathUtils.exp(radians) + MathUtils.exp(- radians)) / 2;
-  }
-
-  function sinh(int256 radians) internal returns (int256) {
-    //var y = Math.exp(x);
-    //  return (y - 1 / y) / 2;
-    return (MathUtils.exp(radians) - MathUtils.exp(- radians)) / 2;
-  }
-
-  function asinh(int256 x) internal returns (int256) {
-    return MathUtils.logE(x + MathUtils.sqrtInt((x * x) / 1 ether + 1 ether));
-  }
-
-  event TLogVar(string v, int a);
 
   function tan(int256 radians) internal returns (int256) {
     return (sin(radians) * 1 ether) / cos(radians);
   }
 
-  function atan(int256 x) internal returns (int256) {
+  function atan(int256 x) internal pure returns (int256) {
     int a = 0;
     // 1st term
     int sum = 0;
@@ -123,17 +98,12 @@ library TrigonometryUtils {
           // next term from last
         }
       }
-      //      r_err = a;// max. error = 1st term not taken for alternating series
     }
     return sum;
   }
 
-  event AtanLog(string s, int256 v);
-  
-  function atan2(int256 y, int256 x) internal returns (int256) {
-//    emit AtanLog("input", (y * 1 ether) / x);
+  function atan2(int256 y, int256 x) internal pure returns (int256) {
     int u = atan((y * 1 ether) / x);
-//    emit AtanLog("output", u);
     if (x < 0) { // 2nd, 3rd quadrant
       if (u > 0) // will go to 3rd quadrant
         u -= PI;
@@ -143,11 +113,29 @@ library TrigonometryUtils {
     return u;
   }
 
-  function sin(int256 radians) internal returns (int256) {
-    return getSinOfRad(radians);
+  function atanh(int256 x) internal returns (int256 output) {
+    output = MathUtils.logE(((1 ether + x) * 1 ether) / (1 ether - x)) / 2;
   }
 
-  function cos(int256 radians) internal returns (int256) {
-    return getSinOfRad(radians + (PI / 2));
+  function cosh(int256 radians) internal view returns (int256) {
+    //  return (y + 1 / y) / 2;
+    return (MathUtils.exp(radians) + MathUtils.exp(- radians)) / 2;
+  }
+
+  function sinh(int256 radians) internal view returns (int256) {
+    //  return (y - 1 / y) / 2;
+    return (MathUtils.exp(radians) - MathUtils.exp(- radians)) / 2;
+  }
+
+  function asinh(int256 x) internal returns (int256) {
+    return MathUtils.logE(x + MathUtils.sqrtInt((x * x) / 1 ether + 1 ether));
+  }
+
+  function degreeToRad(int256 degree) internal pure returns (int256) {
+    return degree * (PI / 180) / 1 ether;
+  }
+
+  function radToDegree(int256 radians) internal pure returns (int256) {
+    return radians * (180 / PI) * 1 ether;
   }
 }

@@ -45,7 +45,6 @@ library MathUtils {
 
   function EPS() internal pure returns (int256) {
     return 1000000000;
-    //    return 0;
   }
 
   function abs(int number) internal pure returns (int) {
