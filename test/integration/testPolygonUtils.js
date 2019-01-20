@@ -22,7 +22,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('PolygonUtils', ([coreTeam]) => {
+contract.only('PolygonUtils', ([coreTeam]) => {
   beforeEach(async function() {
     this.trigonometryUtils = await TrigonometryUtils.new({ from: coreTeam });
     PolygonUtils.link('TrigonometryUtils', this.trigonometryUtils.address);

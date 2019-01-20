@@ -46,12 +46,12 @@ contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
     bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
     latLonData.geohashByLatLonHash[pointHash][GeohashUtils.geohash5Precision(_geohash)] = _geohash;
-    
-    (int x, int y, int scale, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
+
+    (int x, int y, int scale, int latBand, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
 
     latLonData.utmByLatLonHash[pointHash][0] = x;
     latLonData.utmByLatLonHash[pointHash][1] = y;
-    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 1 szabo) + (int(isNorth ? 1 : 0) * 1 ether * 1 finney);
+    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6);
     
     latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
     
