@@ -152,7 +152,6 @@ library LandUtils {
     return geohash;
   }
 
-  event ParsedUtm(int isNorth, int zone, int latBand);
   function UtmUncompress(int[3] compressedUtm) internal returns (int x, int y, int scale, int latBand, int zone, int isNorth) {
     x = compressedUtm[0];
     y = compressedUtm[1];
@@ -161,15 +160,10 @@ library LandUtils {
     isNorth = compressedUtm[2] / (1 ether * 10 ** 6) - latBand * 10 ** 3;
     zone = compressedUtm[2] / (1 ether * 10 ** 3) - isNorth * 10 ** 3 - latBand * 10 ** 6;
     scale = compressedUtm[2] - (zone * 1 ether * 10 ** 3) - (isNorth * 1 ether * 10 ** 6) - (latBand * 1 ether * 10 ** 9);
-
-    emit ParsedUtm(isNorth, zone, latBand);
   }
 
-  event ConvertedUtm(bool isNorth, int zone, int latBand);
-  function latLonToUtmCompressed(int _lat, int _lon) public returns (int[3]){
+  function latLonToUtmCompressed(int _lat, int _lon) public returns (int[3]) {
     (int x, int y, int scale, int latBand, int zone, bool isNorth) = latLonToUtm(_lat, _lon);
-
-    emit ConvertedUtm(isNorth, zone, latBand);
 
     return [x, y, scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6) + (latBand * 1 ether * 10 ** 9)];
   }

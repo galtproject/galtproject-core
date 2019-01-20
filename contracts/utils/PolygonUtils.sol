@@ -92,8 +92,6 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
-  event ParseUtm(int isNorth, int zone, int latBand);
-  
   function getUtmArea(UtmPolygon memory _polygon) internal returns (uint result) {
     int area = 0;
     // Accumulates area in the loop
@@ -104,8 +102,8 @@ library PolygonUtils {
     int firstPointZone;
     for (uint i = 0; i < _polygon.points.length; i++) {
       area += ((_polygon.points[j][0] + _polygon.points[i][0]) * (_polygon.points[j][1] - _polygon.points[i][1])) / 1 ether;
-      
-      ( , , int scale, int latBand, int zone, int isNorth) = LandUtils.UtmUncompress(_polygon.points[i]);
+
+      (,, int scale,, int zone,) = LandUtils.UtmUncompress(_polygon.points[i]);
 
       if (i == 0) {
         firstPointZone = zone;
