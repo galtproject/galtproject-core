@@ -92,6 +92,8 @@ library PolygonUtils {
     ((thirdPoint[0] - secondPoint[0]) * (thirdPoint[1] + secondPoint[1]))) > 0;
   }
 
+  event ParseUtm(int isNorth, int zone, int latBand);
+  
   function getUtmArea(UtmPolygon memory _polygon) internal returns (uint result) {
     int area = 0;
     // Accumulates area in the loop
@@ -102,16 +104,16 @@ library PolygonUtils {
     int firstPointZone;
     for (uint i = 0; i < _polygon.points.length; i++) {
       area += ((_polygon.points[j][0] + _polygon.points[i][0]) * (_polygon.points[j][1] - _polygon.points[i][1])) / 1 ether;
+      
+      ( , , int scale, int latBand, int zone, int isNorth) = LandUtils.UtmUncompress(_polygon.points[i]);
 
-      int isNorth = _polygon.points[i][2] / (1 ether * 10 ** 6);
-      int zone = _polygon.points[i][2] / (1 ether * 10 ** 3) - isNorth * 10 ** 3;
       if (i == 0) {
         firstPointZone = zone;
       }
 
       require(zone == firstPointZone, "All points should belongs to same zone");
 
-      scaleSum += _polygon.points[i][2] - (isNorth * 1 ether * 10 ** 6) - (zone * 1 ether * 10 ** 3);
+      scaleSum += scale;
       j = i;
       //j is previous vertex to i
     }

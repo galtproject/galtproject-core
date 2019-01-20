@@ -16,13 +16,10 @@ contract MockPolygonUtils {
   
   event UtmPoint(int[3] point);
   event UtmDataToSave(int scale, int zone, int isNorth);
+  event ConvertedUtm(bool isNorth, int zone, int latBand);
   
   function addPoint(int256[2] point) public {
-    (int x, int y, int scale, int latBand, int zone, bool isNorth) = LandUtils.latLonToUtm(point[0], point[1]);
-
-//    emit UtmDataToSave(scale, (zone * 1 ether * 1 szabo), int(isNorth ? 1 : 0) * 1 ether * 1 finney);
-    
-    polygon.points.push([x, y, scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6)]);
+    polygon.points.push(LandUtils.latLonToUtmCompressed(point[0], point[1]));
     emit UtmPoint(polygon.points[polygon.points.length - 1]);
   }
   

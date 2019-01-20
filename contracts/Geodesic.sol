@@ -42,6 +42,8 @@ contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
     }
   }
 
+  event ConvertedUtm(bool isNorth, int zone, int latBand);
+  
   function cacheGeohashToLatLonAndUtm(uint256 _geohash) public returns (int256[3]) {
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
     bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
@@ -49,9 +51,11 @@ contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
 
     (int x, int y, int scale, int latBand, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
 
+    emit ConvertedUtm(isNorth, zone, latBand);
+    
     latLonData.utmByLatLonHash[pointHash][0] = x;
     latLonData.utmByLatLonHash[pointHash][1] = y;
-    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6);
+    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6) + (latBand * 1 ether * 10 ** 9);
     
     latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
     
