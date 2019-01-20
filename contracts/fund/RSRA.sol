@@ -78,8 +78,6 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
     _delegations[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
     _totalLockedSupply -= _amount;
-
-    _notifyLockedBalanceChanged(_delegate);
   }
 
   function burnExpelled(uint256 _spaceTokenId, address _delegate, address _owner, uint256 _amount) external {
@@ -132,31 +130,15 @@ contract RSRA is LiquidReputationAccounting, IRSRA {
     _locks[msg.sender] -= _amount;
     _balances[msg.sender] += _amount;
     _totalLockedSupply -= _amount;
-
-    _notifyLockedBalanceChanged(msg.sender);
   }
 
   // INTERNAL
-
-  function _notifyLockedBalanceChanged(address _delegate) internal {
-    uint256 newBalance = _locks[_delegate];
-
-    address[] memory contractsToNotify = fundStorage.getWhiteListedContracts();
-
-    for (uint256 i = 0; i < contractsToNotify.length; i++) {
-      IProposalManager(contractsToNotify[i]).onLockChanged(_delegate, newBalance);
-    }
-
-    emit LockedBalanceChanged(_delegate, newBalance);
-  }
 
   function _lockReputation(address _locker, uint256 _amount) internal {
 
     _balances[_locker] -= _amount;
     _locks[_locker] += _amount;
     _totalLockedSupply += _amount;
-
-    _notifyLockedBalanceChanged(_locker);
   }
 
   // GETTERS

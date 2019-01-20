@@ -29,6 +29,7 @@ import "./fund/ModifyConfigProposalManagerFactory.sol";
 import "./fund/NewMemberProposalManagerFactory.sol";
 import "./fund/FineMemberProposalManagerFactory.sol";
 import "./fund/ExpelMemberProposalManagerFactory.sol";
+import "./fund/WLProposalManagerFactory.sol";
 
 
 contract FundFactory is Ownable {
@@ -68,6 +69,7 @@ contract FundFactory is Ownable {
   NewMemberProposalManagerFactory newMemberProposalManagerFactory;
   FineMemberProposalManagerFactory fineMemberProposalManagerFactory;
   ExpelMemberProposalManagerFactory expelMemberProposalManagerFactory;
+  WLProposalManagerFactory wlProposalManagerFactory;
 
   enum Step {
     FIRST,
@@ -96,7 +98,8 @@ contract FundFactory is Ownable {
     ModifyConfigProposalManagerFactory _modifyConfigProposalManagerFactory,
     NewMemberProposalManagerFactory _newMemberProposalManagerFactory,
     FineMemberProposalManagerFactory _fineMemberProposalManagerFactory,
-    ExpelMemberProposalManagerFactory _expelMemberProposalManagerFactory
+    ExpelMemberProposalManagerFactory _expelMemberProposalManagerFactory,
+    WLProposalManagerFactory _wlProposalManagerFactory
   ) public {
     commission = 10 ether;
 
@@ -112,6 +115,7 @@ contract FundFactory is Ownable {
     newMemberProposalManagerFactory = _newMemberProposalManagerFactory;
     fineMemberProposalManagerFactory = _fineMemberProposalManagerFactory;
     expelMemberProposalManagerFactory = _expelMemberProposalManagerFactory;
+    wlProposalManagerFactory = _wlProposalManagerFactory;
   }
 
   function buildFirstStep(
@@ -171,12 +175,11 @@ contract FundFactory is Ownable {
     FineMemberProposalManager fineMemberProposalManager = fineMemberProposalManagerFactory.build(_rsra, _fundStorage);
     ExpelMemberProposalManager expelMemberProposalManager = expelMemberProposalManagerFactory.build(_rsra, _fundStorage, spaceToken);
 
-    modifyConfigProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
-    newMemberProposalManager.addRoleTo(_rsra, RSRA_CONTRACT);
-
     _fundStorage.addRoleTo(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
     _fundStorage.addWhiteListedContract(modifyConfigProposalManager);
     _fundStorage.addWhiteListedContract(newMemberProposalManager);
+    _fundStorage.addWhiteListedContract(fineMemberProposalManager);
+    _fundStorage.addWhiteListedContract(expelMemberProposalManager);
     _fundStorage.removeRoleFrom(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
 
     _fundStorage.addRoleTo(modifyConfigProposalManager, _fundStorage.CONTRACT_CONFIG_MANAGER());
@@ -201,13 +204,21 @@ contract FundFactory is Ownable {
     FirstStepContracts storage c = _firstStepContracts[msg.sender];
     require(c.currentStep == Step.THIRD, "Requires second step");
 
-    FineMemberProposalManager whiteListProposalManager = fineMemberProposalManagerFactory.build(c.rsra, c.fundStorage);
+    FundStorage _fundStorage = c.fundStorage;
+
+    WLProposalManager wlProposalManager = wlProposalManagerFactory.build(c.rsra, _fundStorage);
+
+    _fundStorage.addRoleTo(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
+    _fundStorage.addWhiteListedContract(wlProposalManager);
+    _fundStorage.removeRoleFrom(address(this), _fundStorage.CONTRACT_WHITELIST_MANAGER());
+
+    _fundStorage.addRoleTo(wlProposalManager, _fundStorage.CONTRACT_WHITELIST_MANAGER());
 
     delete _firstStepContracts[msg.sender];
 
     emit CreateFundThirdStep(
       c.fundMultiSig,
-      whiteListProposalManager
+      wlProposalManager
     );
   }
 

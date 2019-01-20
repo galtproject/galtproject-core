@@ -15,6 +15,7 @@ const FundStorage = artifacts.require('./FundStorage.sol');
 
 const NewMemberProposalManagerFactory = artifacts.require('./NewMemberProposalManagerFactory.sol');
 const ExpelMemberProposalManagerFactory = artifacts.require('./ExpelMemberProposalManagerFactory.sol');
+const WLProposalManagerFactory = artifacts.require('./WLProposalManagerFactory.sol');
 const FineMemberProposalManagerFactory = artifacts.require('./FineMemberProposalManagerFactory.sol');
 const MockModifyConfigProposalManagerFactory = artifacts.require('./MockModifyConfigProposalManagerFactory.sol');
 
@@ -70,6 +71,7 @@ contract('NewFundMemberProposal', accounts => {
     this.newMemberProposalManagerFactory = await NewMemberProposalManagerFactory.new();
     this.fineMemberProposalManagerFactory = await FineMemberProposalManagerFactory.new();
     this.expelMemberProposalManagerFactory = await ExpelMemberProposalManagerFactory.new();
+    this.wlProposalManagerFactory = await WLProposalManagerFactory.new();
 
     this.fundFactory = await FundFactory.new(
       this.galtToken.address,
@@ -83,6 +85,7 @@ contract('NewFundMemberProposal', accounts => {
       this.newMemberProposalManagerFactory.address,
       this.fineMemberProposalManagerFactory.address,
       this.expelMemberProposalManagerFactory.address,
+      this.wlProposalManagerFactory.address,
       { from: coreTeam }
     );
 

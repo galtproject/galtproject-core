@@ -108,7 +108,7 @@ contract FundStorage is Permissionable {
   }
 
   function removeWhiteListedContract(address _contract) external onlyRole(CONTRACT_WHITELIST_MANAGER) {
-    whiteListedContracts.add(_contract);
+    whiteListedContracts.remove(_contract);
   }
 
   // GETTERS
