@@ -7,9 +7,6 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -26,25 +23,32 @@ const {
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const PV_APPRAISER_ORACLE_TYPE = utf8ToHex('PV_APPRAISER_ORACLE_TYPE');
-const PV_APPRAISER2_ORACLE_TYPE = utf8ToHex('PV_APPRAISER2_ORACLE_TYPE');
-const PV_AUDITOR_ORACLE_TYPE = utf8ToHex('PV_AUDITOR_ORACLE_TYPE');
-const PC_CUSTODIAN_ORACLE_TYPE = utf8ToHex('PC_CUSTODIAN_ORACLE_TYPE');
-const PC_AUDITOR_ORACLE_TYPE = utf8ToHex('PC_AUDITOR_ORACLE_TYPE');
+const PV_APPRAISER_ORACLE_TYPE = bytes32('PV_APPRAISER_ORACLE_TYPE');
+const PV_APPRAISER2_ORACLE_TYPE = bytes32('PV_APPRAISER2_ORACLE_TYPE');
+const PV_AUDITOR_ORACLE_TYPE = bytes32('PV_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+const FOO = bytes32('foo');
+const BAR = bytes32('bar');
+const BUZZ = bytes32('buzz');
+const ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('bob');
+const CHARLIE = bytes32('charlie');
+const DAN = bytes32('dan');
+const EVE = bytes32('eve');
+const FRANK = bytes32('frank');
+const GEORGE = bytes32('george');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ValidationStatus = {
   NOT_EXISTS: 0,
@@ -74,7 +78,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract('PlotCustodianManager', (accounts) => {
+contract.only('PlotCustodianManager', (accounts) => {
   before(clearLibCache);
   const [
     coreTeam,
@@ -310,10 +314,6 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotValuation.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.plotValuation.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -330,10 +330,6 @@ contract('PlotCustodianManager', (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotValuation.setGaltSpaceGaltShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
         await assertRevert(this.plotValuation.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
@@ -348,9 +344,9 @@ contract('PlotCustodianManager', (accounts) => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['foo', 'bar', 'buzz'],
+        [FOO, BAR, BUZZ],
         [50, 25, 25],
-        ['', '', ''],
+        [ES, ES, ES],
         { from: applicationTypeManager }
       );
 
@@ -358,24 +354,24 @@ contract('PlotCustodianManager', (accounts) => {
         VALUATION_APPLICATION,
         [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
         [50, 25, 25],
-        ['', '', ''],
+        [ES, ES, ES],
         { from: applicationTypeManager }
       );
       this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [ES, ES],
         { from: applicationTypeManager }
       );
 
       await this.oracles.addOracle(
         multiSigX,
         bob,
-        'Bob',
-        'MN',
+        BOB,
+        MN,
         [],
-        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'],
+        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
           from: oracleManager
         }
@@ -383,18 +379,18 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.addOracle(
         multiSigX,
         charlie,
-        'Charlie',
-        'MN',
+        CHARLIE,
+        MN,
         [],
-        ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -404,18 +400,18 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
       await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -443,9 +439,9 @@ contract('PlotCustodianManager', (accounts) => {
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.spaceTokenId = res.spaceTokenId;
 
-      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
@@ -723,9 +719,9 @@ contract('PlotCustodianManager', (accounts) => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['foo', 'bar', 'buzz'],
+        [FOO, BAR, BUZZ],
         [50, 25, 25],
-        ['', '', ''],
+        [ES, ES, ES],
         { from: applicationTypeManager }
       );
 
@@ -733,24 +729,24 @@ contract('PlotCustodianManager', (accounts) => {
         VALUATION_APPLICATION,
         [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
         [50, 25, 25],
-        ['', '', ''],
+        [ES, ES, ES],
         { from: applicationTypeManager }
       );
       this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [ES, ES],
         { from: applicationTypeManager }
       );
 
       await this.oracles.addOracle(
         multiSigX,
         bob,
-        'Bob',
-        'MN',
+        BOB,
+        MN,
         [],
-        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, 'foo'],
+        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
           from: oracleManager
         }
@@ -758,24 +754,24 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.addOracle(
         multiSigX,
         charlie,
-        'Charlie',
-        'MN',
+        CHARLIE,
+        MN,
         [],
-        ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, george, 'George', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -785,8 +781,8 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -796,7 +792,7 @@ contract('PlotCustodianManager', (accounts) => {
       await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -830,9 +826,9 @@ contract('PlotCustodianManager', (accounts) => {
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.spaceTokenId = res.spaceTokenId;
 
-      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
