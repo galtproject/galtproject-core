@@ -2067,11 +2067,11 @@ contract("PlotEscrow", (accounts) => {
           CUSTODIAN_APPLICATION,
           [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [60, 40],
-          ['', ''],
+          [_ES, _ES],
           { from: applicationTypeManager }
         );
 
-        await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+        await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [_ES], {
           from: applicationTypeManager
         });
 

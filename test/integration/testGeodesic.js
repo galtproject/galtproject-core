@@ -1,20 +1,8 @@
-const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 
 const { deployGeodesic, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
-
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 contract('Geodesic', () => {
   before(clearLibCache);
@@ -31,6 +19,6 @@ contract('Geodesic', () => {
     console.log('gasUsed for cache', res.receipt.gasUsed);
     res = await this.geodesic.calculateContourArea(contour);
     console.log('gasUsed for calculate', res.receipt.gasUsed);
-    assert.isBelow(Math.abs(res.logs[0].args.area.toFixed() / 10 ** 18 - 500882.5), 1.5);
+    assert.isBelow(Math.abs(parseInt(res.logs[0].args.area.toString(), 10) / 10 ** 18 - 500882.5), 1.5);
   });
 });

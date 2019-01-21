@@ -5,22 +5,11 @@ const MockPolygonUtils = artifacts.require('./mocks/MockPolygonUtils.sol');
 
 const pIteration = require('p-iteration');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3, ether } = require('../helpers');
 
 const web3 = new Web3(MockPolygonUtils.web3.currentProvider);
 
 initHelperWeb3(web3);
-
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 contract('PolygonUtils', ([coreTeam]) => {
   beforeEach(async function() {
@@ -52,7 +41,7 @@ contract('PolygonUtils', ([coreTeam]) => {
 
       const res = await this.mockPolygonUtils.getArea();
 
-      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() / 10 ** 18 - 6841437.7), 1.5);
+      assert.isBelow(Math.abs(res.logs[0].args.result.toString(10) / 10 ** 18 - 6841437.7), 1.5);
     });
 
     it('should correctly get south area', async function() {
@@ -71,7 +60,7 @@ contract('PolygonUtils', ([coreTeam]) => {
 
       const res = await this.mockPolygonUtils.getArea();
 
-      assert.isBelow(Math.abs(res.logs[0].args.result.toFixed() / 10 ** 18 - 500882.5), 1.5);
+      assert.isBelow(Math.abs(res.logs[0].args.result.toString(10) / 10 ** 18 - 500882.5), 1.5);
     });
   });
 });

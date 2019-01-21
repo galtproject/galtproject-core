@@ -151,12 +151,12 @@ contract('BancorGaltDex', ([coreTeam, alice, bob, feeFund]) => {
         });
 
         // eslint-disable-next-line
-        const feeTaken = res.logs[0].args._conversionFee.toFixed();
+        const feeTaken = res.logs[0].args._conversionFee.toString(10);
         assert.isAbove(parseInt(feeTaken, 10), 0);
 
         await this.bancorGaltDex.claimFeeToFund(this.galtToken.address);
 
-        assert.equal((await this.galtToken.balanceOf(feeFund)).toFixed(), feeTaken);
+        assert.equal((await this.galtToken.balanceOf(feeFund)).toString(10), feeTaken);
       });
     });
   });
@@ -203,7 +203,7 @@ contract('BancorGaltDex', ([coreTeam, alice, bob, feeFund]) => {
       );
 
       // eslint-disable-next-line
-      const galtReceived = res.logs[0].args._return.toFixed();
+      const galtReceived = res.logs[0].args._return.toString(10);
       assert.isAbove(parseInt(galtReceived, 10), 0);
     });
   });

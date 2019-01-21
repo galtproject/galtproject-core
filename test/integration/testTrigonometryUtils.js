@@ -3,22 +3,11 @@ const MockTrigonometryUtils = artifacts.require('./mocks/MockTrigonometryUtils.s
 
 const pIteration = require('p-iteration');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { initHelperWeb3 } = require('../helpers');
 
 const web3 = new Web3(MockTrigonometryUtils.web3.currentProvider);
 
 initHelperWeb3(web3);
-
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 contract('TrigonometryUtils', ([coreTeam]) => {
   beforeEach(async function() {
@@ -45,7 +34,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const radians = this.toRadians(angle);
         const res = await this.mockTrigonometryUtils.getSinOfRad(Web3.utils.toWei(radians.toString(), 'ether'));
-        const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        const sinResult = res.logs[0].args.result.toString(10) / 10 ** 18;
         assert.isBelow(Math.abs(sinResult - Math.sin(radians)), 0.000000000001);
       });
     });
@@ -55,7 +44,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
     it('should correctly get sin', async function() {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const res = await this.mockTrigonometryUtils.getSinOfDegree(Web3.utils.toWei(angle.toString(), 'ether'));
-        const sinResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        const sinResult = res.logs[0].args.result.toString(10) / 10 ** 18;
         assert.isBelow(Math.abs(sinResult - Math.sin(this.toRadians(angle))), 0.000000000001);
       });
     });
@@ -66,7 +55,7 @@ contract('TrigonometryUtils', ([coreTeam]) => {
       await pIteration.forEachSeries(this.degreesToCheck, async angle => {
         const radians = this.toRadians(angle);
         const res = await this.mockTrigonometryUtils.atan(Web3.utils.toWei(radians.toString(), 'ether'));
-        const atanResult = res.logs[0].args.result.toFixed() / 10 ** 18;
+        const atanResult = res.logs[0].args.result.toString() / 10 ** 18;
         assert.isBelow(Math.abs(atanResult - Math.atan(radians)), 0.0000000001);
       });
     });
