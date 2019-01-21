@@ -38,6 +38,7 @@ const config = {
         // 7 800 000
         gasLimit: 0x7704c0
       }),
+      skipDryRun: true,
       network_id: '*'
     }
   },
