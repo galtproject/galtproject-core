@@ -43,22 +43,25 @@ contract.only('GaltMath', ([coreTeam]) => {
     log10: 0.00000000001
   };
   _.forEach(funcErrors, (funcError, funcName) => {
-    if (_.includes(['atan2', 'atanh', 'sinh', 'cosh'], funcName)) {
+    if (_.includes(['atan2', 'atanh', 'sinh', 'cosh', 'exp', 'tan'], funcName)) {
       // need to check as exception
       return;
     }
     let inputs;
 
-    if (_.includes(['sqrt', 'exp', 'log', 'log2', 'log10'], funcName)) {
+    if (_.includes(['sqrt', 'log', 'log2', 'log10'], funcName)) {
       // regular math functions
-      inputs = [1.2291728239506483]; // , 104.51007032766938
+      inputs = [1.2291728239506483, 104.51007032766938];
     } else {
       // trigonometry functions
       inputs = [
         -360,
         -353.25640983302395,
         -295.8468666647008,
+        -269,
         -270,
+        -270.5,
+        -271,
         -255.66048229791718,
         -180,
         -125.7200201845722,
@@ -100,6 +103,7 @@ contract.only('GaltMath', ([coreTeam]) => {
     const gasUsedOnFirstCall = res.receipt.gasUsed - txBaseGas;
 
     const firstFuncRes = convertResultToFloat(res);
+    console.log(methodName, 'degree', (etherArgs[0] * 180) / Math.PI);
     console.log(methodName, 'sol', firstFuncRes);
     console.log(methodName, 'js ', expectedResult);
     console.log(methodName, 'diff', Math.abs(firstFuncRes - expectedResult));

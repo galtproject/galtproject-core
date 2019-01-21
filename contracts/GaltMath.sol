@@ -60,12 +60,14 @@ contract GaltMath is Initializable, Ownable, Permissionable {
     return cosCache[input];
   }
 
+  event Input(int256 input);
   function tan(int256 input) public returns (int256) {
-    if(tanCache[input] == 0) {
-      tanCache[input] = TrigonometryUtils.tan(input);
-    }
-    emit CalculateResult(tanCache[input]);
-    return tanCache[input];
+    int256 sinResult = sin(input);
+    int256 cosResult = cos(input);
+    int result = (sinResult * 1 ether) / cosResult;
+    emit CalculateResult(result);
+    emit Input(input);
+    return result;
   }
 
   function atan(int256 input) public returns (int256) {
@@ -77,12 +79,12 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function atan2(int256 y, int256 x) public returns (int256) {
-    int output = atan(y.mul(1 ether).div(x));
+    int result = atan(y.mul(1 ether).div(x));
     if (x < 0) {
-      output = output > 0 ? output.sub(PI) : output.add(PI);
+      result = result > 0 ? result.sub(PI) : result.add(PI);
     }
-    emit CalculateResult(output);
-    return output;
+    emit CalculateResult(result);
+    return result;
   }
 
   function atanh(int256 input) public returns (int256) {

@@ -47,15 +47,19 @@ library TrigonometryUtils {
     return s;
   }
 
-  function sin(int256 radians) internal returns (int256) {
+  function sin(int256 radians) internal pure returns (int256) {
     return getSinOfRad(radians);
   }
 
-  function cos(int256 radians) internal returns (int256) {
+  function cos(int256 radians) internal pure returns (int256) {
     return getSinOfRad(radians + (PI / 2));
   }
 
+  event Tan(string s, int256 v);
   function tan(int256 radians) internal returns (int256) {
+    emit Tan("input", radians);
+    emit Tan("cos", cos(radians));
+    emit Tan("sin", sin(radians) * 1 ether);
     return (sin(radians) * 1 ether) / cos(radians);
   }
 

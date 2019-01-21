@@ -21,7 +21,7 @@ library SweepEventUtils {
 
   int256 internal constant EPS = 1000000000;
 
-  function compareEvents(SweepEvent.Store storage store, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal returns (int8) {
+  function compareEvents(SweepEvent.Store storage store, SweepEvent.Item storage e1, SweepEvent.Item storage e2) internal view returns (int8) {
     // Different x-coordinate
     if (e1.point[0] > e2.point[0])
       return int8(1);
@@ -68,7 +68,7 @@ library SweepEventUtils {
     : (p1[0] - p[0]) * (p0[1] - p[1]) - (p0[0] - p[0]) * (p1[1] - p[1]) > 0;
   }
   
-  function isAbove(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal returns(bool) {
+  function isAbove(SweepEvent.Store storage store, SweepEvent.Item storage self, int256[2] p) internal view returns(bool) {
     return !isBelow(store, self, p);
   }
 
