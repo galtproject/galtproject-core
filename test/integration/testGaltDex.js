@@ -9,6 +9,7 @@ const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
+
 const {
   zeroAddress,
   initHelperWeb3,
@@ -19,11 +20,6 @@ const {
   clearLibCache
 } = require('../helpers');
 
-const web3 = new Web3(GaltToken.web3.currentProvider);
-initHelperWeb3(web3);
-initHelperArtifacts(artifacts);
-const { BN } = Web3.utils;
-
 // TODO: move to helpers
 Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
 Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
@@ -31,6 +27,19 @@ Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
 chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
+
+const web3 = new Web3(GaltToken.web3.currentProvider);
+initHelperWeb3(web3);
+initHelperArtifacts(artifacts);
+const { utf8ToHex, BN } = Web3.utils;
+const bytes32 = utf8ToHex;
+
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
 
 contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, bob, dan, eve]) => {
   before(clearLibCache);
@@ -134,17 +143,9 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: coreTeam });
 
-    await this.oracles.addOracle(
-      multiSigX,
-      bob,
-      BOB,
-      MN,
-      [],
-      [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
-      {
-        from: coreTeam
-      }
-    );
+    await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE], {
+      from: coreTeam
+    });
     await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
@@ -261,10 +262,10 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     const shouldGaltFee = (galtToSend / 100) * fee;
 
     beforeEach(async function() {
-      const ethFeeForAmount = await this.galtDex.getEthFeeForAmount(ethToSend, { from: alice });
+      const ethFeeForAmount = await this.galtDex.getEthFeeForAmount(ethToSend.toString(10), { from: alice });
       ethFeeForAmount.toString(10).should.be.eq(shouldEthFee.toString(10));
 
-      const galtToReceive = await this.galtDex.getExchangeEthAmountForGalt(ethToSend, { from: alice });
+      const galtToReceive = await this.galtDex.getExchangeEthAmountForGalt(ethToSend.toString(10), { from: alice });
       galtToReceive.toString(10).should.be.eq(galtByFirstExchange.toString(10));
 
       await this.galtDex.exchangeEthToGalt({ from: alice, value: ethToSend });
@@ -299,14 +300,14 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
 
       const aliceBalance = await web3.eth.getBalance(alice);
 
-      await this.galtToken.approve(this.galtDex.address, galtToSend, { from: alice });
+      await this.galtToken.approve(this.galtDex.address, galtToSend.toString(10), { from: alice });
 
       const allowance = await this.galtToken.allowance(alice, this.galtDex.address);
       allowance.toString(10).should.be.eq(galtToSend.toString(10));
 
       const shouldReceiveEth = await this.shouldReceiveEth(galtToSend);
 
-      await this.galtDex.exchangeGaltToEth(galtToSend, { from: alice });
+      await this.galtDex.exchangeGaltToEth(galtToSend.toString(10), { from: alice });
 
       const aliceBalanceDiff = (await web3.eth.getBalance(alice)) - aliceBalance;
 
@@ -320,8 +321,8 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     });
 
     it('should receive fee', async function() {
-      await this.galtToken.approve(this.galtDex.address, galtToSend, { from: alice });
-      await this.galtDex.exchangeGaltToEth(galtToSend, { from: alice });
+      await this.galtToken.approve(this.galtDex.address, galtToSend.toString(10), { from: alice });
+      await this.galtDex.exchangeGaltToEth(galtToSend.toString(10), { from: alice });
 
       let ethFeePayout = await this.galtDex.ethFeePayout();
       ethFeePayout.toString(10).should.be.eq(shouldEthFee.toString(10));

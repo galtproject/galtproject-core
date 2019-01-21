@@ -21,18 +21,11 @@ const bytes32 = utf8ToHex;
 
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const FOO = bytes32('foo');
-const BAR = bytes32('bar');
-const BUZZ = bytes32('buzz');
 // eslint-disable-next-line no-underscore-dangle
 const _ES = bytes32('');
 const MN = bytes32('MN');
 const BOB = bytes32('Bob');
-const CHARLIE = bytes32('Charlie');
-const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
-const FRANK = bytes32('Frank');
-const GEORGE = bytes32('George');
 
 initHelperWeb3(web3);
 
