@@ -14,16 +14,25 @@ const Web3 = require('web3');
 const { ether, assertRevert, initHelperWeb3, initHelperArtifacts, deploySplitMerge } = require('../helpers');
 
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 const { deployMultiSigFactory } = require('../deploymentHelpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-const TYPE_A = 'TYPE_A';
-const TYPE_B = 'TYPE_B';
-const TYPE_C = 'TYPE_C';
-
 const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
+
+const TYPE_A = bytes32('TYPE_A');
+const TYPE_B = bytes32('TYPE_B');
+const TYPE_C = bytes32('TYPE_C');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('ArbitratorVoting', accounts => {
@@ -150,7 +159,7 @@ contract('ArbitratorVoting', accounts => {
       MY_APPLICATION,
       [TYPE_A, TYPE_B, TYPE_C],
       [50, 25, 25],
-      ['', '', ''],
+      [_ES, _ES, _ES],
       { from: oracleManager }
     );
 
@@ -158,16 +167,16 @@ contract('ArbitratorVoting', accounts => {
     await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
     await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
 
-    await this.oracles.addOracle(this.abMultiSigX.address, bob, 'Bob', 'MN', [], [TYPE_A], {
+    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, charlie, 'Charlie', 'MN', [], [TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, 'Dan', 'MN', [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigY.address, eve, 'Eve', 'MN', [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
 

@@ -78,7 +78,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only('PlotCustodianManager', (accounts) => {
+contract('PlotCustodianManager', (accounts) => {
   before(clearLibCache);
   const [
     coreTeam,

@@ -113,7 +113,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
       await this.plotValuation.APPLICATION_TYPE(),
       [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
       [50, 25, 25],
-      ['', '', ''],
+      [_ES, _ES, _ES],
       { from: coreTeam }
     );
 
@@ -124,7 +124,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
       await this.plotCustodian.APPLICATION_TYPE(),
       [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [60, 40],
-      ['', ''],
+      [_ES, _ES],
       { from: coreTeam }
     );
 
@@ -137,18 +137,18 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
     await this.oracles.addOracle(
       multiSigX,
       bob,
-      'Bob',
-      'MN',
+      BOB,
+      MN,
       [],
       [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
       {
         from: coreTeam
       }
     );
-    await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
-    await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE], {
       from: coreTeam
     });
 
@@ -203,7 +203,7 @@ contract('GaltDex', ([coreTeam, multiSigX, stakeManager, stakeNotifier, alice, b
 
     // TODO: move to helper
     this.valuatePlot = async (tokenId, price) => {
-      const res = await this.plotValuation.submitApplication(tokenId, [''], 0, {
+      const res = await this.plotValuation.submitApplication(tokenId, [_ES], 0, {
         from: alice,
         value: ether(1)
       });

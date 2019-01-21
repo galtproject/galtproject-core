@@ -9,9 +9,6 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -26,25 +23,33 @@ const {
 } = require('../helpers');
 
 const web3 = new Web3(PlotEscrow.web3.currentProvider);
-// const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const ESCROW_APPLICATION = '0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48';
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const PE_AUDITOR_ORACLE_TYPE = 'PE_AUDITOR_ORACLE_TYPE';
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
+const PE_AUDITOR_ORACLE_TYPE = bytes32('PE_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+const FOO = bytes32('foo');
+const BAR = bytes32('bar');
+const BUZZ = bytes32('buzz');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
+const FRANK = bytes32('Frank');
+const DOG = bytes32('dog');
+const CAT = bytes32('cat');
+const HUMAN = bytes32('human');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const SaleOrderStatus = {
   NOT_EXISTS: 0,
@@ -254,12 +259,12 @@ contract("PlotEscrow", (accounts) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.oracles.setOracleTypeMinimalDeposit('foo', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('bar', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('buzz', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('human', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('dog', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('cat', ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(FOO, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(BAR, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(BUZZ, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(HUMAN, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(DOG, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(CAT, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(PE_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
@@ -335,10 +340,6 @@ contract("PlotEscrow", (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotEscrow.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.plotEscrow.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -355,10 +356,6 @@ contract("PlotEscrow", (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
         await assertRevert(this.plotEscrow.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
@@ -373,9 +370,9 @@ contract("PlotEscrow", (accounts) => {
     beforeEach(async function() {
       await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['foo', 'bar', 'buzz'],
+        [FOO, BAR, BUZZ],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         {
           from: applicationTypeManager
         }
@@ -385,51 +382,51 @@ contract("PlotEscrow", (accounts) => {
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [_ES, _ES],
         { from: applicationTypeManager }
       );
 
-      await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+      await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [_ES], {
         from: applicationTypeManager
       });
 
       // assign oracles
-      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
         from: oracleManager
       });
       await this.oracles.addOracle(
         multiSigX,
         charlie,
-        'Charlie',
-        'MN',
+        CHARLIE,
+        MN,
         [],
-        ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
 
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
       await this.oracles.onOracleStakeChanged(multiSigX, dan, PE_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -460,9 +457,9 @@ contract("PlotEscrow", (accounts) => {
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.spaceTokenId = res.spaceTokenId;
 
-      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
@@ -481,7 +478,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(6) }
           );
@@ -530,7 +527,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               0,
               { from: bob, value: ether(6) }
             )
@@ -543,7 +540,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(6) }
           );
@@ -553,7 +550,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               0,
               { from: alice, value: ether(6) }
             )
@@ -567,7 +564,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               0,
               { from: alice, value: ether(8) }
             );
@@ -580,7 +577,7 @@ contract("PlotEscrow", (accounts) => {
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
-                0,
+                zeroAddress,
                 0,
                 { from: alice, value: ether(4) }
               )
@@ -594,7 +591,7 @@ contract("PlotEscrow", (accounts) => {
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
-                0,
+                zeroAddress,
                 ether(50),
                 { from: alice, value: ether(8) }
               )
@@ -607,7 +604,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               0,
               { from: alice, value: ether(8) }
             );
@@ -630,7 +627,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               0,
               { from: alice, value: ether(13) }
             );
@@ -853,7 +850,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               ether(55),
               { from: alice }
             );
@@ -867,7 +864,7 @@ contract("PlotEscrow", (accounts) => {
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
-                0,
+                zeroAddress,
                 ether(44),
                 { from: alice }
               )
@@ -882,7 +879,7 @@ contract("PlotEscrow", (accounts) => {
                 ether(50),
                 this.attachedDocuments.map(galt.ipfsHashToBytes32),
                 EscrowCurrency.ETH,
-                0,
+                zeroAddress,
                 ether(45),
                 { from: alice, value: ether(1) }
               )
@@ -896,7 +893,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               ether(53),
               { from: alice }
             );
@@ -920,7 +917,7 @@ contract("PlotEscrow", (accounts) => {
               ether(50),
               this.attachedDocuments.map(galt.ipfsHashToBytes32),
               EscrowCurrency.ETH,
-              0,
+              zeroAddress,
               ether(57),
               { from: alice }
             );
@@ -1142,7 +1139,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(7) }
           );
@@ -1196,7 +1193,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(6) }
           );
@@ -1240,7 +1237,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(6) }
           );
@@ -1287,7 +1284,7 @@ contract("PlotEscrow", (accounts) => {
             ether(50),
             this.attachedDocuments.map(galt.ipfsHashToBytes32),
             EscrowCurrency.ETH,
-            0,
+            zeroAddress,
             0,
             { from: alice, value: ether(6) }
           );
@@ -1314,7 +1311,7 @@ contract("PlotEscrow", (accounts) => {
           ether(50),
           this.attachedDocuments.map(galt.ipfsHashToBytes32),
           EscrowCurrency.ETH,
-          0,
+          zeroAddress,
           0,
           { from: alice, value: ether(6) }
         );
@@ -1862,9 +1859,9 @@ contract("PlotEscrow", (accounts) => {
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         this.spaceTokenId = res.spaceTokenId;
-        await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-        await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+        await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
@@ -2060,9 +2057,9 @@ contract("PlotEscrow", (accounts) => {
       beforeEach(async function() {
         await this.oracles.setApplicationTypeOracleTypes(
           NEW_APPLICATION,
-          ['foo', 'bar', 'buzz'],
+          [FOO, BAR, BUZZ],
           [50, 25, 25],
-          ['', '', ''],
+          [_ES, _ES, _ES],
           { from: applicationTypeManager }
         );
 
@@ -2079,42 +2076,34 @@ contract("PlotEscrow", (accounts) => {
         });
 
         // assign oracles
-        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
           from: oracleManager
         });
         await this.oracles.addOracle(
           multiSigX,
           charlie,
-          'Charlie',
-          'MN',
+          CHARLIE,
+          MN,
           [],
-          ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+          [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           {
             from: oracleManager
           }
         );
-        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(
-          multiSigX,
-          eve,
-          'Eve',
-          'MN',
-          [],
-          [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE],
-          {
-            from: oracleManager
-          }
-        );
-        await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
           from: oracleManager
         });
         await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });
@@ -2124,7 +2113,7 @@ contract("PlotEscrow", (accounts) => {
         await this.oracles.onOracleStakeChanged(multiSigX, dan, PE_AUDITOR_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
           from: stakesNotifier
         });

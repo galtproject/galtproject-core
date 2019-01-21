@@ -102,43 +102,43 @@ contract('OracleStakesAccounting', accounts => {
 
     await this.oracles.setApplicationTypeOracleTypes(
       NEW_APPLICATION,
-      ['foo', 'bar', 'buzz'],
+      [FOO, BAR, BUZZ],
       [30, 30, 40],
-      ['', '', ''],
+      [_ES, _ES, _ES],
       {
         from: applicationTypeManager
       }
     );
-    await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+    await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [_ES], {
       from: applicationTypeManager
     });
     this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
       CUSTODIAN_APPLICATION,
       [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [60, 40],
-      ['', ''],
+      [_ES, _ES],
       { from: applicationTypeManager }
     );
 
     // assign oracles
-    await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
+    await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
       from: oracleManager
     });
     await this.oracles.addOracle(
       this.mX,
       charlie,
-      'Charlie',
-      'MN',
+      CHARLIE,
+      MN,
       [],
-      ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       {
         from: oracleManager
       }
     );
-    await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleManager
     });
 
@@ -181,10 +181,10 @@ contract('OracleStakesAccounting', accounts => {
       await this.oracles.addOracle(
         this.mX,
         bob,
-        'Bob',
-        'MN',
+        BOB,
+        MN,
         [],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, 'foo'],
+        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO],
         {
           from: oracleManager
         }

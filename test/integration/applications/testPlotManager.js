@@ -19,12 +19,25 @@ const {
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6ca3060ac1e46095';
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+const FOO = bytes32('foo');
+const BAR = bytes32('bar');
+const BUZZ = bytes32('buzz');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
+const FRANK = bytes32('Frank');
+const DOG = bytes32('dog');
+const CAT = bytes32('cat');
+const HUMAN = bytes32('human');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -153,15 +166,15 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    await this.oracles.setOracleTypeMinimalDeposit('foo', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('bar', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('buzz', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('human', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('dog', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('cat', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('🦋', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('🦆', ether(30), { from: coreTeam });
-    await this.oracles.setOracleTypeMinimalDeposit('🦄', ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(FOO, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(BAR, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(BUZZ, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(HUMAN, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(DOG, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(CAT, ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦋'), ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦆'), ether(30), { from: coreTeam });
+    await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦄'), ether(30), { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
@@ -250,10 +263,6 @@ contract('PlotManager', accounts => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny fee manager set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny fee manager set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.plotManager.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -270,10 +279,6 @@ contract('PlotManager', accounts => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny a fee manager set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('0.5', { from: feeManager }));
-      });
-
       it('should deny a fee manager set Galt Space Galt share grater than 100 percents', async function() {
         await assertRevert(this.plotManager.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
@@ -288,9 +293,9 @@ contract('PlotManager', accounts => {
     beforeEach(async function() {
       this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['🦄', '🦆', '🦋'],
+        [bytes32('🦄'), bytes32('🦆'), bytes32('🦋')],
         [25, 30, 45],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: coreTeam }
       );
       const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
@@ -386,9 +391,9 @@ contract('PlotManager', accounts => {
           await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
           this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
             NEW_APPLICATION,
-            ['cat', 'dog', 'human'],
+            [CAT, DOG, HUMAN],
             [52, 47, 1],
-            ['', '', ''],
+            [_ES, _ES, _ES],
             { from: coreTeam }
           );
 
@@ -414,15 +419,15 @@ contract('PlotManager', accounts => {
           assert.equal(res.galtSpaceReward, 3380000000000000000);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(aId).call();
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), ['cat', 'dog', 'human']);
+          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [CAT, DOG, HUMAN].map(hexToUtf8));
 
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, utf8ToHex('cat')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, CAT).call();
           assert.equal(res.reward.toString(), '11762400000000000000');
 
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, utf8ToHex('dog')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, DOG).call();
           assert.equal(res.reward.toString(), '10631400000000000000');
 
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, utf8ToHex('human')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, HUMAN).call();
           assert.equal(res.reward.toString(), '226200000000000000');
         });
       });
@@ -431,17 +436,19 @@ contract('PlotManager', accounts => {
     describe('#closeApplication()', () => {
       describe('with status REVERTED', () => {
         it('should change status to CLOSED', async function() {
-          await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['🦄'], { from: coreTeam });
-          await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['🦆'], { from: coreTeam });
-          await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['🦋'], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [bytes32('🦄')], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [bytes32('🦆')], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [bytes32('🦋')], { from: coreTeam });
 
-          await this.oracles.onOracleStakeChanged(multiSigX, charlie, '🦄', ether(30), { from: stakesNotifier });
-          await this.oracles.onOracleStakeChanged(multiSigX, dan, '🦆', ether(30), { from: stakesNotifier });
-          await this.oracles.onOracleStakeChanged(multiSigX, eve, '🦋', ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(multiSigX, charlie, bytes32('🦄'), ether(30), {
+            from: stakesNotifier
+          });
+          await this.oracles.onOracleStakeChanged(multiSigX, dan, bytes32('🦆'), ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(multiSigX, eve, bytes32('🦋'), ether(30), { from: stakesNotifier });
 
-          await this.plotManager.lockApplicationForReview(this.aId, '🦄', { from: charlie });
-          await this.plotManager.lockApplicationForReview(this.aId, '🦆', { from: dan });
-          await this.plotManager.lockApplicationForReview(this.aId, '🦋', { from: eve });
+          await this.plotManager.lockApplicationForReview(this.aId, bytes32('🦄'), { from: charlie });
+          await this.plotManager.lockApplicationForReview(this.aId, bytes32('🦆'), { from: dan });
+          await this.plotManager.lockApplicationForReview(this.aId, bytes32('🦋'), { from: eve });
           await this.plotManager.revertApplication(this.aId, 'dont like it', { from: charlie });
           await this.plotManager.closeApplication(this.aId, { from: alice });
 
@@ -457,21 +464,21 @@ contract('PlotManager', accounts => {
         await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
         this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
           NEW_APPLICATION,
-          ['cat', 'dog', 'human'],
+          [CAT, DOG, HUMAN],
           [52, 47, 1],
-          ['', '', ''],
+          [_ES, _ES, _ES],
           { from: coreTeam }
         );
-        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
 
-        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
         await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
         const res = await this.plotManager.submitApplication(
@@ -486,9 +493,9 @@ contract('PlotManager', accounts => {
         );
         this.aId = res.logs[0].args.id;
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
@@ -541,7 +548,7 @@ contract('PlotManager', accounts => {
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
-        const newLedgerIdentifier = 'foo-123';
+        const newLedgerIdentifier = bytes32('foo-123');
 
         await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
           from: alice
@@ -549,7 +556,7 @@ contract('PlotManager', accounts => {
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, newCredentiasHash);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), newLedgerIdentifier);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
       });
     });
 
@@ -559,21 +566,21 @@ contract('PlotManager', accounts => {
         await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
         this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
           NEW_APPLICATION,
-          ['cat', 'dog', 'human'],
+          [CAT, DOG, HUMAN],
           [52, 47, 1],
-          ['', '', ''],
+          [_ES, _ES, _ES],
           { from: coreTeam }
         );
-        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
 
-        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'cat', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
@@ -588,9 +595,9 @@ contract('PlotManager', accounts => {
 
         await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
         geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
@@ -633,9 +640,9 @@ contract('PlotManager', accounts => {
         await this.oracles.deleteApplicationType(NEW_APPLICATION);
         this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
           NEW_APPLICATION,
-          ['human', 'dog', 'cat'],
+          [HUMAN, DOG, CAT],
           [50, 25, 25],
-          ['', '', ''],
+          [_ES, _ES, _ES],
           { from: coreTeam }
         );
 
@@ -657,20 +664,20 @@ contract('PlotManager', accounts => {
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
 
-        await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
       });
 
       describe('on approve', () => {
@@ -696,7 +703,7 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '8700000000000000000');
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
@@ -727,7 +734,7 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '8700000000000000000');
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
@@ -757,7 +764,7 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString(10));
 
-          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          const res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '8700000000000000000');
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
@@ -773,9 +780,9 @@ contract('PlotManager', accounts => {
     beforeEach(async function() {
       this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['human', 'dog', 'cat'],
+        [HUMAN, DOG, CAT],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: coreTeam }
       );
 
@@ -799,16 +806,16 @@ contract('PlotManager', accounts => {
       this.packageTokenId = res.packageTokenId;
       assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], ['human'], { from: coreTeam });
-      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['human'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
 
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], ['cat'], { from: coreTeam });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], ['dog'], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'human', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'human', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'cat', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, 'dog', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
     });
 
     describe('#submitApplication()', () => {
@@ -877,18 +884,18 @@ contract('PlotManager', accounts => {
           assert.equal(res.oraclesReward, 1340000000000000000);
 
           res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), ['cat', 'dog', 'human']);
+          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [CAT, DOG, HUMAN].map(hexToUtf8));
 
           // 50%
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '670000000000000000');
 
           // 25%
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
           assert.equal(res.reward.toString(), '335000000000000000');
 
           // 25%
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
           assert.equal(res.reward.toString(), '335000000000000000');
         });
       });
@@ -898,9 +905,9 @@ contract('PlotManager', accounts => {
       describe('for applications paid by ETH', () => {
         describe('with status REVERTED', () => {
           it('should change status to CLOSED', async function() {
-            await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-            await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-            await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+            await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+            await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+            await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
             await this.plotManager.revertApplication(this.aId, 'dont like it', { from: bob });
 
             let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -921,9 +928,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
@@ -934,7 +941,7 @@ contract('PlotManager', accounts => {
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
-        const newLedgerIdentifier = 'foo-123';
+        const newLedgerIdentifier = bytes32('foo-123');
 
         await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
           from: alice
@@ -942,7 +949,7 @@ contract('PlotManager', accounts => {
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, newCredentiasHash);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), newLedgerIdentifier);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
       });
 
       it('should allow submit reverted application to the same oracle who reverted it', async function() {
@@ -953,15 +960,15 @@ contract('PlotManager', accounts => {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
         assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
         assert.equal(res.oracle, eve);
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
@@ -984,9 +991,9 @@ contract('PlotManager', accounts => {
 
         const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
         await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
         geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
@@ -1045,29 +1052,29 @@ contract('PlotManager', accounts => {
 
     describe('#lockApplicationForReview()', () => {
       it('should allow multiple oracles of different roles to lock a submitted application', async function() {
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
         assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
         assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       // eslint-disable-next-line
       it("should deny a oracle with the same role to lock an application which is already on consideration", async function() {
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: charlie }));
       });
 
       it('should push an application id to the oracles list for caching', async function() {
@@ -1086,7 +1093,7 @@ contract('PlotManager', accounts => {
         const a1Id = res.logs[0].args.id;
 
         // lock first
-        await this.plotManager.lockApplicationForReview(a1Id, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(a1Id, HUMAN, { from: bob });
 
         // submit second
         res = await this.plotManager.submitApplication(
@@ -1104,7 +1111,7 @@ contract('PlotManager', accounts => {
         const a2Id = res.logs[0].args.id;
 
         // lock second
-        await this.plotManager.lockApplicationForReview(a2Id, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(a2Id, HUMAN, { from: bob });
 
         res = await this.plotManager.getApplicationsByOracle(bob);
         assert.equal(res.length, 2);
@@ -1113,21 +1120,21 @@ contract('PlotManager', accounts => {
       });
 
       it('should deny oracle to lock an application which is already approved', async function() {
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
 
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
 
-        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: charlie }));
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: charlie }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
       it('should deny non-oracle to lock an application', async function() {
-        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, 'human', { from: coreTeam }));
+        await assertRevert(this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: coreTeam }));
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
@@ -1138,27 +1145,27 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
       });
 
       it('should should allow a contract owner to unlock an application under consideration', async function() {
-        await this.plotManager.resetApplicationRole(this.aId, 'human', { from: coreTeam });
+        await this.plotManager.resetApplicationRole(this.aId, HUMAN, { from: coreTeam });
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       it('should deny non-owner to unlock an application under consideration', async function() {
-        await assertRevert(this.plotManager.resetApplicationRole(this.aId, 'human', { from: charlie }));
+        await assertRevert(this.plotManager.resetApplicationRole(this.aId, HUMAN, { from: charlie }));
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
@@ -1169,9 +1176,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
       });
 
       it('should allow a oracle approve application', async function() {
@@ -1217,15 +1224,15 @@ contract('PlotManager', accounts => {
       it("should deny oracle whose role doesnt present in application type to approve application", async function() {
         await this.oracles.setApplicationTypeOracleTypes(
           ANOTHER_APPLICATION,
-          ['foo', 'bar', 'buzz'],
+          [FOO, BAR, BUZZ],
           [50, 25, 25],
-          ['', '', ''],
+          [_ES, _ES, _ES],
           { from: coreTeam }
         );
 
-        await this.oracles.addOracle(multiSigX, frank, 'Frank', 'MN', [], ['foo'], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [FOO], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, frank, 'foo', ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(multiSigX, frank, FOO, ether(30), { from: stakesNotifier });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
       });
 
@@ -1247,9 +1254,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
       });
 
       it('should allow a oracle revert application', async function() {
@@ -1273,15 +1280,15 @@ contract('PlotManager', accounts => {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REVERTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
         assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.APPROVED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
         assert.equal(res.oracle, eve);
         assert.equal(res.status, ValidationStatus.REVERTED);
       });
@@ -1309,9 +1316,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
       });
 
       it('should allow a oracle reject application', async function() {
@@ -1321,12 +1328,12 @@ contract('PlotManager', accounts => {
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.REJECTED);
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.REJECTED);
         assert.equal(res.message, 'my reason');
 
-        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+        res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
         assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
         assert.equal(res.message, '');
@@ -1351,9 +1358,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
 
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
@@ -1384,9 +1391,9 @@ contract('PlotManager', accounts => {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotManager.lockApplicationForReview(this.aId, 'human', { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, 'cat', { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, 'dog', { from: eve });
+        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
+        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
+        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
       });
 
       describe('on approve', () => {
@@ -1412,11 +1419,11 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
-          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '670000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
           assert.equal(res.reward.toString(), '335000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
           assert.equal(res.reward.toString(), '335000000000000000');
 
           res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
@@ -1448,11 +1455,11 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
-          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '670000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
           assert.equal(res.reward.toString(), '335000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
           assert.equal(res.reward.toString(), '335000000000000000');
 
           res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
@@ -1485,11 +1492,11 @@ contract('PlotManager', accounts => {
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
           const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
-          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('human')).call();
+          let res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '670000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('cat')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
           assert.equal(res.reward.toString(), '335000000000000000');
-          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, utf8ToHex('dog')).call();
+          res = await this.plotManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
           assert.equal(res.reward.toString(), '335000000000000000');
 
           res = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
