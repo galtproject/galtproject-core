@@ -40,5 +40,6 @@ contract.only('Geodesic', () => {
     res = await this.geodesic.calculateContourArea(contour);
     console.log('gasUsed for calculate', res.receipt.gasUsed);
     assert.isBelow(Math.abs(res.logs[0].args.area.toFixed() / 10 ** 18 - 500882.5), 1.5);
+    // assert.equal(true, false);
   });
 });

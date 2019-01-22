@@ -55,15 +55,11 @@ library TrigonometryUtils {
     return getSinOfRad(radians + (PI / 2));
   }
 
-  event Tan(string s, int256 v);
   function tan(int256 radians) internal returns (int256) {
-    emit Tan("input", radians);
-    emit Tan("cos", cos(radians));
-    emit Tan("sin", sin(radians) * 1 ether);
     return (sin(radians) * 1 ether) / cos(radians);
   }
 
-  function atan(int256 x) internal pure returns (int256) {
+  function atan(int256 x) internal returns (int256) {
     int a = 0;
     // 1st term
     int sum = 0;
@@ -88,6 +84,9 @@ library TrigonometryUtils {
           sum += a;
           a *= -1 * ((2 * j - 1) * 1 ether ** 2) / ((2 * j + 1) * ((x * x) / 1 ether));
           a /= 1 ether;
+          if(a == 0) {
+            break;
+          }
           // next term from last
         }
       } else {// -1 < x < 1
@@ -99,6 +98,9 @@ library TrigonometryUtils {
           sum += a;
           a *= -1 * (2 * j - 1) * ((x * x) / 1 ether) / (2 * j + 1);
           a /= 1 ether;
+          if(a == 0) {
+            break;
+          }
           // next term from last
         }
       }
@@ -106,7 +108,7 @@ library TrigonometryUtils {
     return sum;
   }
 
-  function atan2(int256 y, int256 x) internal pure returns (int256) {
+  function atan2(int256 y, int256 x) internal returns (int256) {
     int u = atan((y * 1 ether) / x);
     if (x < 0) { // 2nd, 3rd quadrant
       if (u > 0) // will go to 3rd quadrant
@@ -122,13 +124,13 @@ library TrigonometryUtils {
   }
 
   function cosh(int256 radians) internal view returns (int256) {
-    //  return (y + 1 / y) / 2;
-    return (MathUtils.exp(radians) + MathUtils.exp(- radians)) / 2;
+    int256 y = MathUtils.exp(radians);
+    return (y + (1 ether * 1 ether) / y) / 2;
   }
 
   function sinh(int256 radians) internal view returns (int256) {
-    //  return (y - 1 / y) / 2;
-    return (MathUtils.exp(radians) - MathUtils.exp(- radians)) / 2;
+    int256 y = MathUtils.exp(radians);
+    return (y - (1 ether * 1 ether) / y) / 2;
   }
 
   function asinh(int256 x) internal returns (int256) {
