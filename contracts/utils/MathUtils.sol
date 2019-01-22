@@ -115,10 +115,10 @@ library MathUtils {
     int256 m = longer_fixed_1 * v / (v + 3 * longer_fixed_1);
     r = r + 2 * m;
     int256 m_2 = m * m / longer_fixed_1;
-    uint8 i = 3;
+    int256 i = 3;
     while (true) {
       m = m * m_2 / longer_fixed_1;
-      r = r + 2 * m / int256(i);
+      r = r + 2 * m / i;
       i += 2;
       if (i >= 3 + 2 * 18)
         break;
