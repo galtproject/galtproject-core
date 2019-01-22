@@ -4,7 +4,7 @@ const chai = require('chai');
 const _ = require('lodash');
 const chaiAsPromised = require('chai-as-promised');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
-const { initHelperWeb3, initHelperArtifacts, ether, assertRevert, clearLibCache } = require('../helpers');
+const { initHelperWeb3, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 const web3 = new Web3(GaltMath.web3.currentProvider);
 initHelperWeb3(web3);
@@ -18,7 +18,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('GaltMath', ([coreTeam]) => {
+contract('GaltMath', ([coreTeam]) => {
   before(clearLibCache);
 
   const txBaseGas = 21000;

@@ -26,7 +26,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   using SafeMath for int256;
 
   int constant PI = 3141592653589793300;
-  
+
   mapping(int256 => int256) public sinCache;
   mapping(int256 => int256) public cosCache;
   mapping(int256 => int256) public tanCache;
@@ -41,19 +41,19 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   mapping(int256 => int256) public logCache;
   mapping(int256 => int256) public log2Cache;
   mapping(int256 => int256) public log10Cache;
-  
+
   event CalculateResult(int256 result);
 
   function sin(int256 input) public returns (int256) {
-    if(sinCache[input] == 0) {
+    if (sinCache[input] == 0) {
       sinCache[input] = TrigonometryUtils.sin(input);
     }
     emit CalculateResult(sinCache[input]);
     return sinCache[input];
   }
-  
+
   function cos(int256 input) public returns (int256) {
-    if(cosCache[input] == 0) {
+    if (cosCache[input] == 0) {
       cosCache[input] = TrigonometryUtils.cos(input);
     }
     emit CalculateResult(cosCache[input]);
@@ -61,6 +61,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   event Input(int256 input);
+
   function tan(int256 input) public returns (int256) {
     int256 sinResult = sin(input);
     int256 cosResult = cos(input);
@@ -71,7 +72,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function atan(int256 input) public returns (int256) {
-    if(atanCache[input] == 0) {
+    if (atanCache[input] == 0) {
       atanCache[input] = TrigonometryUtils.atan(input);
     }
     emit CalculateResult(atanCache[input]);
@@ -88,7 +89,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function atanh(int256 input) public returns (int256) {
-    if(atanhCache[input] == 0) {
+    if (atanhCache[input] == 0) {
       atanhCache[input] = TrigonometryUtils.atanh(input);
     }
     emit CalculateResult(atanhCache[input]);
@@ -96,7 +97,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function cosh(int256 input) public returns (int256) {
-    if(coshCache[input] == 0) {
+    if (coshCache[input] == 0) {
       coshCache[input] = TrigonometryUtils.cosh(input);
     }
     emit CalculateResult(coshCache[input]);
@@ -104,7 +105,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function sinh(int256 input) public returns (int256) {
-    if(sinhCache[input] == 0) {
+    if (sinhCache[input] == 0) {
       sinhCache[input] = TrigonometryUtils.sinh(input);
     }
     emit CalculateResult(sinhCache[input]);
@@ -112,7 +113,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function asinh(int256 input) public returns (int256) {
-    if(asinhCache[input] == 0) {
+    if (asinhCache[input] == 0) {
       asinhCache[input] = TrigonometryUtils.asinh(input);
     }
     emit CalculateResult(asinhCache[input]);
@@ -120,7 +121,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function sqrt(int256 input) public returns (int256) {
-    if(sqrtCache[input] == 0) {
+    if (sqrtCache[input] == 0) {
       sqrtCache[input] = MathUtils.sqrtInt(input);
     }
     emit CalculateResult(sqrtCache[input]);
@@ -128,7 +129,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function exp(int256 input) public returns (int256) {
-    if(expCache[input] == 0) {
+    if (expCache[input] == 0) {
       expCache[input] = MathUtils.exp(input);
     }
     emit CalculateResult(expCache[input]);
@@ -136,7 +137,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function log(int256 input) public returns (int256) {
-    if(logCache[input] == 0) {
+    if (logCache[input] == 0) {
       logCache[input] = MathUtils.logE(input);
     }
     emit CalculateResult(logCache[input]);
@@ -144,7 +145,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function log2(int256 input) public returns (int256) {
-    if(log2Cache[input] == 0) {
+    if (log2Cache[input] == 0) {
       log2Cache[input] = MathUtils.log2(input);
     }
     emit CalculateResult(log2Cache[input]);
@@ -152,7 +153,7 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   }
 
   function log10(int256 input) public returns (int256) {
-    if(log10Cache[input] == 0) {
+    if (log10Cache[input] == 0) {
       log10Cache[input] = MathUtils.log10(input);
     }
     emit CalculateResult(log10Cache[input]);
