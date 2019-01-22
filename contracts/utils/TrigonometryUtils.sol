@@ -123,12 +123,12 @@ library TrigonometryUtils {
     output = MathUtils.logE(((1 ether + x) * 1 ether) / (1 ether - x)) / 2;
   }
 
-  function cosh(int256 radians) internal view returns (int256) {
+  function cosh(int256 radians) internal returns (int256) {
     int256 y = MathUtils.exp(radians);
     return (y + (1 ether * 1 ether) / y) / 2;
   }
 
-  function sinh(int256 radians) internal view returns (int256) {
+  function sinh(int256 radians) internal returns (int256) {
     int256 y = MathUtils.exp(radians);
     return (y - (1 ether * 1 ether) / y) / 2;
   }

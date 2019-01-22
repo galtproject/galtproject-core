@@ -150,12 +150,23 @@ library MathUtils {
     return v * sign;
   }
 
-  function exp(int x) internal view returns (int) {
+  event Iteration(uint i);
+  function exp(int x) internal returns (int) {
     int sum = 1 ether;
-
-    for (uint i = 15 - 1; i > 0; --i) {
-      sum = 1 ether + x * sum / int(i * 1 ether);
-    }
+    sum = 1 ether + x * sum / 14 ether;
+    sum = 1 ether + x * sum / 13 ether;
+    sum = 1 ether + x * sum / 12 ether;
+    sum = 1 ether + x * sum / 11 ether;
+    sum = 1 ether + x * sum / 10 ether;
+    sum = 1 ether + x * sum / 9 ether;
+    sum = 1 ether + x * sum / 8 ether;
+    sum = 1 ether + x * sum / 7 ether;
+    sum = 1 ether + x * sum / 6 ether;
+    sum = 1 ether + x * sum / 5 ether;
+    sum = 1 ether + x * sum / 4 ether;
+    sum = 1 ether + x * sum / 3 ether;
+    sum = 1 ether + x * sum / 2 ether;
+    sum = 1 ether + x * sum / 1 ether;
 
     return sum;
   }
