@@ -20,8 +20,9 @@ import "./traits/Initializable.sol";
 import "./traits/Permissionable.sol";
 import "./utils/MathUtils.sol";
 import "./utils/TrigonometryUtils.sol";
+import "./interfaces/IGaltMath.sol";
 
-contract GaltMath is Initializable, Ownable, Permissionable {
+contract GaltMath is IGaltMath, Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
   using SafeMath for int256;
 
@@ -42,121 +43,179 @@ contract GaltMath is Initializable, Ownable, Permissionable {
   mapping(int256 => int256) public log2Cache;
   mapping(int256 => int256) public log10Cache;
 
-  event CalculateResult(int256 result);
+  event CalculateResult(int256 result, bool fromCache);
 
-  function sin(int256 input) public returns (int256) {
+  function sin(int256 input, bool cache) public returns (int256 result) {
     if (sinCache[input] == 0) {
-      sinCache[input] = TrigonometryUtils.sin(input);
+      result = TrigonometryUtils.sin(input);
+      emit CalculateResult(result, false);
+      
+      if(cache)
+        sinCache[input] = result;
+    } else {
+      result = sinCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(sinCache[input]);
-    return sinCache[input];
   }
 
-  function cos(int256 input) public returns (int256) {
+  function cos(int256 input, bool cache) public returns (int256 result) {
     if (cosCache[input] == 0) {
-      cosCache[input] = TrigonometryUtils.cos(input);
+      result = TrigonometryUtils.cos(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        cosCache[input] = result;
+    } else {
+      result = cosCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(cosCache[input]);
-    return cosCache[input];
   }
 
-  event Input(int256 input);
 
-  function tan(int256 input) public returns (int256) {
-    int256 sinResult = sin(input);
-    int256 cosResult = cos(input);
+  function tan(int256 input, bool cache) public returns (int256 result) {
+    int256 sinResult = sin(input, cache);
+    int256 cosResult = cos(input, cache);
     int result = (sinResult * 1 ether) / cosResult;
-    emit CalculateResult(result);
-    emit Input(input);
+    emit CalculateResult(result, false);
     return result;
   }
 
-  function atan(int256 input) public returns (int256) {
+  function atan(int256 input, bool cache) public returns (int256 result) {
     if (atanCache[input] == 0) {
-      atanCache[input] = TrigonometryUtils.atan(input);
+      result = TrigonometryUtils.atan(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        atanCache[input] = result;
+    } else {
+      result = atanCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(atanCache[input]);
-    return atanCache[input];
   }
 
-  function atan2(int256 y, int256 x) public returns (int256) {
-    int result = atan(y.mul(1 ether).div(x));
+  function atan2(int256 y, int256 x, bool cache) public returns (int256 result) {
+    int result = atan(y.mul(1 ether).div(x), cache);
     if (x < 0) {
       result = result > 0 ? result.sub(PI) : result.add(PI);
     }
-    emit CalculateResult(result);
+    emit CalculateResult(result, false);
     return result;
   }
 
-  function atanh(int256 input) public returns (int256) {
+  function atanh(int256 input, bool cache) public returns (int256 result) {
     if (atanhCache[input] == 0) {
-      atanhCache[input] = TrigonometryUtils.atanh(input);
+      result = TrigonometryUtils.atanh(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        atanhCache[input] = result;
+    } else {
+      result = atanhCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(atanhCache[input]);
-    return atanhCache[input];
   }
 
-  function cosh(int256 input) public returns (int256) {
+  function cosh(int256 input, bool cache) public returns (int256 result) {
     if (coshCache[input] == 0) {
-      coshCache[input] = TrigonometryUtils.cosh(input);
+      result = TrigonometryUtils.cosh(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        coshCache[input] = result;
+    } else {
+      result = coshCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(coshCache[input]);
-    return coshCache[input];
   }
 
-  function sinh(int256 input) public returns (int256) {
+  function sinh(int256 input, bool cache) public returns (int256 result) {
     if (sinhCache[input] == 0) {
-      sinhCache[input] = TrigonometryUtils.sinh(input);
+      result = TrigonometryUtils.sinh(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        sinhCache[input] = result;
+    } else {
+      result = sinhCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(sinhCache[input]);
-    return sinhCache[input];
   }
 
-  function asinh(int256 input) public returns (int256) {
+  function asinh(int256 input, bool cache) public returns (int256 result) {
     if (asinhCache[input] == 0) {
-      asinhCache[input] = TrigonometryUtils.asinh(input);
+      result = TrigonometryUtils.asinh(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        asinhCache[input] = result;
+    } else {
+      result = asinhCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(asinhCache[input]);
-    return asinhCache[input];
   }
 
-  function sqrt(int256 input) public returns (int256) {
+  function sqrt(int256 input, bool cache) public returns (int256 result) {
     if (sqrtCache[input] == 0) {
-      sqrtCache[input] = MathUtils.sqrtInt(input);
+      result = MathUtils.sqrtInt(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        sqrtCache[input] = result;
+    } else {
+      result = sqrtCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(sqrtCache[input]);
-    return sqrtCache[input];
   }
 
-  function exp(int256 input) public returns (int256) {
+  function exp(int256 input, bool cache) public returns (int256 result) {
     if (expCache[input] == 0) {
-      expCache[input] = MathUtils.exp(input);
+      result = MathUtils.exp(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        expCache[input] = result;
+    } else {
+      result = expCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(expCache[input]);
-    return expCache[input];
   }
 
-  function log(int256 input) public returns (int256) {
+  function log(int256 input, bool cache) public returns (int256 result) {
     if (logCache[input] == 0) {
-      logCache[input] = MathUtils.logE(input);
+      result = MathUtils.logE(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        logCache[input] = result;
+    } else {
+      result = logCache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(logCache[input]);
-    return logCache[input];
   }
 
-  function log2(int256 input) public returns (int256) {
+  function log2(int256 input, bool cache) public returns (int256 result) {
     if (log2Cache[input] == 0) {
-      log2Cache[input] = MathUtils.log2(input);
+      result = MathUtils.log2(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        log2Cache[input] = result;
+    } else {
+      result = log2Cache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(log2Cache[input]);
-    return log2Cache[input];
   }
 
-  function log10(int256 input) public returns (int256) {
+  function log10(int256 input, bool cache) public returns (int256 result) {
     if (log10Cache[input] == 0) {
-      log10Cache[input] = MathUtils.log10(input);
+      result = MathUtils.log10(input);
+      emit CalculateResult(result, false);
+
+      if(cache)
+        log10Cache[input] = result;
+    } else {
+      result = log10Cache[input];
+      emit CalculateResult(result, true);
     }
-    emit CalculateResult(log10Cache[input]);
-    return log10Cache[input];
   }
 }

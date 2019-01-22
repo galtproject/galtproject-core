@@ -206,6 +206,22 @@ const Helpers = {
     libCache.ArrayUtils = await ArrayUtils.new();
     return libCache.ArrayUtils;
   },
+  async getMathUtilsLib() {
+    if (libCache.MathUtils) {
+      return libCache.MathUtils;
+    }
+    const MathUtils = Helpers.requireContract('./utils/MathUtils.sol');
+    libCache.MathUtils = await MathUtils.new();
+    return libCache.MathUtils;
+  },
+  async getTrigonometryUtilsLib() {
+    if (libCache.TrigonometryUtils) {
+      return libCache.TrigonometryUtils;
+    }
+    const TrigonometryUtils = Helpers.requireContract('./utils/TrigonometryUtils.sol');
+    libCache.TrigonometryUtils = await TrigonometryUtils.new();
+    return libCache.TrigonometryUtils;
+  },
   async getPolygonUtilsLib() {
     if (libCache.PolygonUtils) {
       return libCache.PolygonUtils;
@@ -307,12 +323,31 @@ const Helpers = {
   },
   async deployGeodesic() {
     const Geodesic = Helpers.requireContract('./Geodesic.sol');
+    const GaltMath = Helpers.requireContract('./GaltMath.sol');
 
     const landUtils = await Helpers.getLandUtilsLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
+    const mathUtils = await Helpers.getMathUtilsLib();
+    const trigonometryUtils = await Helpers.getTrigonometryUtilsLib();
+
     Geodesic.link('LandUtils', landUtils.address);
     Geodesic.link('PolygonUtils', polygonUtils.address);
-    return Geodesic.new();
+    Geodesic.link('MathUtils', mathUtils.address);
+    Geodesic.link('TrigonometryUtils', trigonometryUtils.address);
+
+    const geodesic = await Geodesic.new();
+    
+    console.log('geodesic', geodesic.address);
+
+    const galtMath = await GaltMath.new();
+
+    console.log('galtMath', galtMath.address);
+
+    await geodesic.setGaltMath(galtMath.address);
+
+      console.log('return geodesic');
+
+    return geodesic;
   },
   async deploySplitMerge(spaceTokenAddress) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
