@@ -72,19 +72,19 @@ library TrigonometryUtils {
       return - PI / 4;
 
     if (n > 0) {
-      if ((x < -1 ether) || (x > 1 ether)) {
+      if ((x < - 1 ether) || (x > 1 ether)) {
         // constant term
         if (x > 1)
           sum = PI / 2;
         else
-          sum = -PI / 2;
+          sum = - PI / 2;
         // initial value of a
-        a = -(1 ether ** 2) / x;
+        a = - (1 ether ** 2) / x;
         for (int j = 1; j <= n; j++) {
           sum += a;
-          a *= -1 * ((2 * j - 1) * 1 ether ** 2) / ((2 * j + 1) * ((x * x) / 1 ether));
+          a *= - 1 * ((2 * j - 1) * 1 ether ** 2) / ((2 * j + 1) * ((x * x) / 1 ether));
           a /= 1 ether;
-          if(a == 0) {
+          if (a == 0) {
             break;
           }
           // next term from last
@@ -96,9 +96,9 @@ library TrigonometryUtils {
         a = x;
         for (int j = 1; j <= n; j++) {
           sum += a;
-          a *= -1 * (2 * j - 1) * ((x * x) / 1 ether) / (2 * j + 1);
+          a *= - 1 * (2 * j - 1) * ((x * x) / 1 ether) / (2 * j + 1);
           a /= 1 ether;
-          if(a == 0) {
+          if (a == 0) {
             break;
           }
           // next term from last
@@ -110,7 +110,7 @@ library TrigonometryUtils {
 
   function atan2(int256 y, int256 x) internal returns (int256) {
     int u = atan((y * 1 ether) / x);
-    if (x < 0) { // 2nd, 3rd quadrant
+    if (x < 0) {// 2nd, 3rd quadrant
       if (u > 0) // will go to 3rd quadrant
         u -= PI;
       else
