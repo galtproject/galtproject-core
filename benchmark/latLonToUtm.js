@@ -31,6 +31,7 @@ module.exports = async function(callback) {
 
     console.log('point', JSON.stringify(point));
     console.log('gasUsed', res.receipt.gasUsed);
+    // TODO: add comparsion with galtprojects-utils-js results
     gasUsedArr.push(res.receipt.gasUsed);
   });
 

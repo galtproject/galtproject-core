@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-import "./MathUtils.sol";
+import "@galtproject/math/contracts/MathUtils.sol";
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";

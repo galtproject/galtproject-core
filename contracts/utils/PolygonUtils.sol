@@ -15,7 +15,7 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./LandUtils.sol";
-import "./TrigonometryUtils.sol";
+import "@galtproject/math/contracts/TrigonometryUtils.sol";
 import "./PointUtils.sol";
 import "./SegmentUtils.sol";
 

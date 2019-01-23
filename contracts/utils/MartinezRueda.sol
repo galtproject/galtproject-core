@@ -16,7 +16,7 @@ pragma experimental "v0.5.0";
 //pragma experimental ABIEncoderV2;
 
 import "../collections/RedBlackTree.sol";
-import "./MathUtils.sol";
+import "@galtproject/math/contracts/MathUtils.sol";
 import "./PolygonUtils.sol";
 import "../collections/SweepLineRedBlackTree.sol";
 import "../collections/SweepQueueLinkedList.sol";

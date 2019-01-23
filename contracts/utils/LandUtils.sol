@@ -11,9 +11,9 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-import "./MathUtils.sol";
+import "@galtproject/math/contracts/MathUtils.sol";
 import "./GeohashUtils.sol";
-import "./TrigonometryUtils.sol";
+import "@galtproject/math/contracts/TrigonometryUtils.sol";
 
 pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
@@ -213,12 +213,12 @@ library LandUtils {
     variables[0] = TrigonometryUtils.degreeToRad(_lat);
     variables[1] = TrigonometryUtils.tan(variables[0]);
     // t ≡ tanF, ti ≡ tanFʹ; prime (ʹ) indicates angles on the conformal sphere
-    variables[14] = MathUtils.sqrtInt(1 ether + (variables[1] * variables[1]) / 1 ether);
+    variables[14] = MathUtils.sqrt(1 ether + (variables[1] * variables[1]) / 1 ether);
     variables[2] = TrigonometryUtils.sinh((eccentricity * TrigonometryUtils.atanh((eccentricity * variables[1]) / variables[14])) / 1 ether);
-    variables[3] = (variables[1] * MathUtils.sqrtInt(1 ether + (variables[2] * variables[2]) / 1 ether)) / 1 ether - (variables[2] * variables[14]) / 1 ether;
+    variables[3] = (variables[1] * MathUtils.sqrt(1 ether + (variables[2] * variables[2]) / 1 ether)) / 1 ether - (variables[2] * variables[14]) / 1 ether;
 
     //  variables[4] - tanL
-    //  variables[5] - MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether))
+    //  variables[5] - MathUtils.sqrt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether))
     //  variables[6] - Ei
     //  variables[7] - ni
     (variables[4], variables[6], variables[7], variables[5]) = getUTM_tanL_Ei_ni(_lon, L0, variables[3]);
@@ -385,20 +385,20 @@ library LandUtils {
     tanL = TrigonometryUtils.tan(L);
 
     Ei = TrigonometryUtils.atan2(ti, cosL);
-    si = MathUtils.sqrtInt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether));
+    si = MathUtils.sqrt(((ti * ti) / 1 ether) + ((cosL * cosL) / 1 ether));
     ni = TrigonometryUtils.asinh((TrigonometryUtils.sin(L) * 1 ether) / si);
   }
 
   function getUTM_V(int ti, int tanL, int qi, int pi) public returns (int) {
-    return TrigonometryUtils.atan((((ti * 1 ether) / MathUtils.sqrtInt(1 ether + (ti * ti) / 1 ether)) * tanL) / 1 ether) + TrigonometryUtils.atan2(qi, pi);
+    return TrigonometryUtils.atan((((ti * 1 ether) / MathUtils.sqrt(1 ether + (ti * ti) / 1 ether)) * tanL) / 1 ether) + TrigonometryUtils.atan2(qi, pi);
   }
 
   function getUTM_k(int F, int st, int pi, int qi, int si) public returns (int) {
     int sinF = TrigonometryUtils.sin(F);
     return (k0 * (
     /* solium-disable-next-line */
-    (((((MathUtils.sqrtInt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
-    * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
+    (((((MathUtils.sqrt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
+    * MathUtils.sqrt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
     )) / 1 ether;
   }
 }
