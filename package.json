@@ -1,5 +1,5 @@
 {
-  "name": "galtproject-contracts",
+  "name": "@galtproject/galtproject-core",
   "version": "0.5.0",
   "description": "Open-source software for land tokenization (accounting on blockchain) and self-governance",
   "directories": {
