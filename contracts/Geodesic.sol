@@ -17,13 +17,12 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./traits/Initializable.sol";
-import "./traits/Permissionable.sol";
 import "./utils/LandUtils.sol";
 import "./utils/GeohashUtils.sol";
 import "./utils/PolygonUtils.sol";
 import "./interfaces/IGeodesic.sol";
 
-contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
+contract Geodesic is IGeodesic, Initializable, Ownable {
   using SafeMath for uint256;
 
   LandUtils.LatLonData private latLonData;
@@ -50,7 +49,7 @@ contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
     latLonData.utmByLatLonHash[pointHash] = LandUtils.latLonToUtmCompressed(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
 
     latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
-    
+
     return latLonData.utmByGeohash[_geohash];
   }
 

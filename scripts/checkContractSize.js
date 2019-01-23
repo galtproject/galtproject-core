@@ -25,6 +25,7 @@ checkSize('SpaceToken');
 checkSize('SpaceReputationAccounting');
 checkSize('SplitMerge');
 checkSize('SpaceSplitOperation');
+checkSize('GaltMath');
 
 console.log('\nFactories...');
 checkSize('MultiSigFactory');

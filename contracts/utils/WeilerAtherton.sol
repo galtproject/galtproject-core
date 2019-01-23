@@ -120,7 +120,7 @@ library WeilerAtherton {
     }
   }
 
-  function isMartinezRuedaFinished(State storage state) public returns (bool) {
+  function isMartinezRuedaFinished(State storage state) public view returns (bool) {
     return state.martinezRueda.subdivideSegmentsOver && state.martinezRueda.resultEvents.length != 0;
   }
 

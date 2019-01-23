@@ -45,7 +45,6 @@ library MathUtils {
 
   function EPS() internal pure returns (int256) {
     return 1000000000;
-    //    return 0;
   }
 
   function abs(int number) internal pure returns (int) {
@@ -116,10 +115,10 @@ library MathUtils {
     int256 m = longer_fixed_1 * v / (v + 3 * longer_fixed_1);
     r = r + 2 * m;
     int256 m_2 = m * m / longer_fixed_1;
-    uint8 i = 3;
+    int256 i = 3;
     while (true) {
       m = m * m_2 / longer_fixed_1;
-      r = r + 2 * m / int256(i);
+      r = r + 2 * m / i;
       i += 2;
       if (i >= 3 + 2 * 18)
         break;
@@ -151,12 +150,23 @@ library MathUtils {
     return v * sign;
   }
 
-  function exp(int x) internal view returns (int) {
+  event Iteration(uint i);
+  function exp(int x) internal returns (int) {
     int sum = 1 ether;
-
-    for (uint i = 15 - 1; i > 0; --i) {
-      sum = 1 ether + x * sum / int(i * 1 ether);
-    }
+    sum = 1 ether + x * sum / 14 ether;
+    sum = 1 ether + x * sum / 13 ether;
+    sum = 1 ether + x * sum / 12 ether;
+    sum = 1 ether + x * sum / 11 ether;
+    sum = 1 ether + x * sum / 10 ether;
+    sum = 1 ether + x * sum / 9 ether;
+    sum = 1 ether + x * sum / 8 ether;
+    sum = 1 ether + x * sum / 7 ether;
+    sum = 1 ether + x * sum / 6 ether;
+    sum = 1 ether + x * sum / 5 ether;
+    sum = 1 ether + x * sum / 4 ether;
+    sum = 1 ether + x * sum / 3 ether;
+    sum = 1 ether + x * sum / 2 ether;
+    sum = 1 ether + x * sum / 1 ether;
 
     return sum;
   }
