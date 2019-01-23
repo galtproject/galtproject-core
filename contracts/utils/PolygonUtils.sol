@@ -103,15 +103,15 @@ library PolygonUtils {
     for (uint i = 0; i < _polygon.points.length; i++) {
       area += ((_polygon.points[j][0] + _polygon.points[i][0]) * (_polygon.points[j][1] - _polygon.points[i][1])) / 1 ether;
 
-      int isNorth = _polygon.points[i][2] / (1 ether * 1 finney);
-      int zone = _polygon.points[i][2] / (1 ether * 1 szabo) - isNorth * 10 ** 3;
+      (,, int scale,, int zone,) = LandUtils.UtmUncompress(_polygon.points[i]);
+
       if (i == 0) {
         firstPointZone = zone;
       }
 
       require(zone == firstPointZone, "All points should belongs to same zone");
 
-      scaleSum += _polygon.points[i][2] - (isNorth * 1 ether * 1 finney) - (zone * 1 ether * 1 szabo);
+      scaleSum += scale;
       j = i;
       //j is previous vertex to i
     }

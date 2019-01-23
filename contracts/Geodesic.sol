@@ -17,13 +17,12 @@ pragma experimental "v0.5.0";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./traits/Initializable.sol";
-import "./traits/Permissionable.sol";
 import "./utils/LandUtils.sol";
 import "./utils/GeohashUtils.sol";
 import "./utils/PolygonUtils.sol";
 import "./interfaces/IGeodesic.sol";
 
-contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
+contract Geodesic is IGeodesic, Initializable, Ownable {
   using SafeMath for uint256;
 
   LandUtils.LatLonData private latLonData;
@@ -46,15 +45,11 @@ contract Geodesic is IGeodesic, Initializable, Ownable, Permissionable {
     latLonData.latLonByGeohash[_geohash] = LandUtils.geohash5ToLatLonArr(_geohash);
     bytes32 pointHash = keccak256(abi.encode(latLonData.latLonByGeohash[_geohash]));
     latLonData.geohashByLatLonHash[pointHash][GeohashUtils.geohash5Precision(_geohash)] = _geohash;
-    
-    (int x, int y, int scale, int zone, bool isNorth) = LandUtils.latLonToUtm(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
 
-    latLonData.utmByLatLonHash[pointHash][0] = x;
-    latLonData.utmByLatLonHash[pointHash][1] = y;
-    latLonData.utmByLatLonHash[pointHash][2] = scale + (zone * 1 ether * 1 szabo) + (int(isNorth ? 1 : 0) * 1 ether * 1 finney);
-    
+    latLonData.utmByLatLonHash[pointHash] = LandUtils.latLonToUtmCompressed(latLonData.latLonByGeohash[_geohash][0], latLonData.latLonByGeohash[_geohash][1]);
+
     latLonData.utmByGeohash[_geohash] = latLonData.utmByLatLonHash[pointHash];
-    
+
     return latLonData.utmByGeohash[_geohash];
   }
 

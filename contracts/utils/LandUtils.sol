@@ -19,15 +19,15 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 library LandUtils {
-  
+
   struct LatLonData {
     mapping(uint256 => int256[2]) latLonByGeohash;
     mapping(bytes32 => mapping(uint8 => uint256)) geohashByLatLonHash;
-    
+
     mapping(uint256 => int256[3]) utmByGeohash;
     mapping(bytes32 => int256[3]) utmByLatLonHash;
   }
-  
+
   function latLonIntervalToLatLon(
     int256[2] latInterval,
     int256[2] lonInterval
@@ -152,6 +152,22 @@ library LandUtils {
     return geohash;
   }
 
+  function UtmUncompress(int[3] compressedUtm) internal returns (int x, int y, int scale, int latBand, int zone, int isNorth) {
+    x = compressedUtm[0];
+    y = compressedUtm[1];
+
+    latBand = compressedUtm[2] / (1 ether * 10 ** 9);
+    isNorth = compressedUtm[2] / (1 ether * 10 ** 6) - latBand * 10 ** 3;
+    zone = compressedUtm[2] / (1 ether * 10 ** 3) - isNorth * 10 ** 3 - latBand * 10 ** 6;
+    scale = compressedUtm[2] - (zone * 1 ether * 10 ** 3) - (isNorth * 1 ether * 10 ** 6) - (latBand * 1 ether * 10 ** 9);
+  }
+
+  function latLonToUtmCompressed(int _lat, int _lon) public returns (int[3]) {
+    (int x, int y, int scale, int latBand, int zone, bool isNorth) = latLonToUtm(_lat, _lon);
+
+    return [x, y, scale + (zone * 1 ether * 10 ** 3) + (int(isNorth ? 1 : 0) * 1 ether * 10 ** 6) + (latBand * 1 ether * 10 ** 9)];
+  }
+
   // WGS 84: a = 6378137, b = 6356752.314245, f = 1/298.257223563;
   int constant ellipsoidalA = 6378137000000000000000000;
   int constant ellipsoidalB = 6356752314245000000000000;
@@ -169,21 +185,22 @@ library LandUtils {
   // UTM scale on the central meridian
   // latitude ± from equator
   // longitude ± from central meridian
-  function latLonToUtm(int256 _lat, int256 _lon) 
-    public 
-    returns 
+  function latLonToUtm(int256 _lat, int256 _lon)
+  public
+  returns
   (
     int x,
     int y,
     int scale,
+    int latBand,
     int zone,
     bool isNorth
-  ) 
+  )
   {
     require(- 80 ether <= _lat && _lat <= 84 ether, "Outside UTM limits");
 
     int L0;
-    (zone, L0) = getUTM_L0_zone(_lat, _lon);
+    (zone, L0, latBand) = getUTM_L0_zone(_lat, _lon);
 
     // note a is one-based array (6th order Krüger expressions)
     int[7] memory a = [int(0), 837731820624470, 760852777357, 1197645503, 2429171, 5712, 15];
@@ -237,24 +254,24 @@ library LandUtils {
     //  variables[8] - E
     /* solium-disable-next-line */
     variables[8] = variables[6]
-     + (a[1] * (variables[15] * variables[21]) / 1 ether) / 1 ether
-     + (a[2] * (variables[16] * variables[22]) / 1 ether) / 1 ether
-     + (a[3] * (variables[17] * variables[23]) / 1 ether) / 1 ether
-     + (a[4] * (variables[18] * variables[24]) / 1 ether) / 1 ether
-     + (a[5] * (variables[19] * variables[25]) / 1 ether) / 1 ether
+    + (a[1] * (variables[15] * variables[21]) / 1 ether) / 1 ether
+    + (a[2] * (variables[16] * variables[22]) / 1 ether) / 1 ether
+    + (a[3] * (variables[17] * variables[23]) / 1 ether) / 1 ether
+    + (a[4] * (variables[18] * variables[24]) / 1 ether) / 1 ether
+    + (a[5] * (variables[19] * variables[25]) / 1 ether) / 1 ether
     /* solium-disable-next-line */
-     + (a[6] * (variables[20] * variables[26]) / 1 ether) / 1 ether;
+    + (a[6] * (variables[20] * variables[26]) / 1 ether) / 1 ether;
 
     //  variables[9] - n
     /* solium-disable-next-line */
     variables[9] = variables[7]
-     + (a[1] * ((variables[27] * variables[33]) / 1 ether)) / 1 ether
-     + (a[2] * ((variables[28] * variables[34]) / 1 ether)) / 1 ether
-     + (a[3] * ((variables[29] * variables[35]) / 1 ether)) / 1 ether
-     + (a[4] * ((variables[30] * variables[36]) / 1 ether)) / 1 ether
-     + (a[5] * ((variables[31] * variables[37]) / 1 ether)) / 1 ether
+    + (a[1] * ((variables[27] * variables[33]) / 1 ether)) / 1 ether
+    + (a[2] * ((variables[28] * variables[34]) / 1 ether)) / 1 ether
+    + (a[3] * ((variables[29] * variables[35]) / 1 ether)) / 1 ether
+    + (a[4] * ((variables[30] * variables[36]) / 1 ether)) / 1 ether
+    + (a[5] * ((variables[31] * variables[37]) / 1 ether)) / 1 ether
     /* solium-disable-next-line */
-     + (a[6] * ((variables[32] * variables[38]) / 1 ether)) / 1 ether;
+    + (a[6] * ((variables[32] * variables[38]) / 1 ether)) / 1 ether;
 
     x = (((k0 * A) / 1 ether) * variables[9]) / 1 ether;
     y = (((k0 * A) / 1 ether) * variables[8]) / 1 ether;
@@ -280,22 +297,22 @@ library LandUtils {
     //  variables[12] - V
     /* solium-disable-next-line */
     variables[10] = 1 ether
-     + 2 * 1 * ((a[1] * (variables[27] * variables[21]) / 1 ether) / 1 ether)
-     + 2 * 2 * ((a[2] * (variables[28] * variables[22]) / 1 ether) / 1 ether)
-     + 2 * 3 * ((a[3] * (variables[29] * variables[23]) / 1 ether) / 1 ether)
-     + 2 * 4 * ((a[4] * (variables[30] * variables[24]) / 1 ether) / 1 ether)
-     + 2 * 5 * ((a[5] * (variables[31] * variables[25]) / 1 ether) / 1 ether)
+    + 2 * 1 * ((a[1] * (variables[27] * variables[21]) / 1 ether) / 1 ether)
+    + 2 * 2 * ((a[2] * (variables[28] * variables[22]) / 1 ether) / 1 ether)
+    + 2 * 3 * ((a[3] * (variables[29] * variables[23]) / 1 ether) / 1 ether)
+    + 2 * 4 * ((a[4] * (variables[30] * variables[24]) / 1 ether) / 1 ether)
+    + 2 * 5 * ((a[5] * (variables[31] * variables[25]) / 1 ether) / 1 ether)
     /* solium-disable-next-line */
-     + 2 * 6 * ((a[6] * (variables[32] * variables[26]) / 1 ether) / 1 ether);
+    + 2 * 6 * ((a[6] * (variables[32] * variables[26]) / 1 ether) / 1 ether);
 
     /* solium-disable-next-line */
     variables[11] = 2 * 1 * ((a[1] * ((variables[15] * variables[33]) / 1 ether)) / 1 ether)
-     + 2 * 2 * ((a[2] * ((variables[16] * variables[34]) / 1 ether)) / 1 ether)
-     + 2 * 3 * ((a[3] * ((variables[17] * variables[35]) / 1 ether)) / 1 ether)
-     + 2 * 4 * ((a[4] * ((variables[18] * variables[36]) / 1 ether)) / 1 ether)
-     + 2 * 5 * ((a[5] * ((variables[19] * variables[37]) / 1 ether)) / 1 ether)
+    + 2 * 2 * ((a[2] * ((variables[16] * variables[34]) / 1 ether)) / 1 ether)
+    + 2 * 3 * ((a[3] * ((variables[17] * variables[35]) / 1 ether)) / 1 ether)
+    + 2 * 4 * ((a[4] * ((variables[18] * variables[36]) / 1 ether)) / 1 ether)
+    + 2 * 5 * ((a[5] * ((variables[19] * variables[37]) / 1 ether)) / 1 ether)
     /* solium-disable-next-line */
-     + 2 * 6 * ((a[6] * ((variables[20] * variables[38]) / 1 ether)) / 1 ether);
+    + 2 * 6 * ((a[6] * ((variables[20] * variables[38]) / 1 ether)) / 1 ether);
 
     variables[12] = getUTM_V(variables[3], variables[4], variables[11], variables[10]);
 
@@ -320,7 +337,7 @@ library LandUtils {
     return [int(- 3193952531149623000), - 3089232776029963300, - 2984513020910303000, - 2879793265790643700, - 2775073510670984000, - 2670353755551324000, - 2565634000431664600, - 2460914245312004000, - 2356194490192345000, - 2251474735072684800, - 2146754979953025500, - 2042035224833365500, - 1937315469713705700, - 1832595714594046200, - 1727875959474386400, - 1623156204354726400, - 1518436449235066600, - 1413716694115406800, - 1308996938995747300, - 1204277183876087300, - 1099557428756427600, - 994837673636767700, - 890117918517108000, - 785398163397448300, - 680678408277788400, - 575958653158128800, - 471238898038469000, - 366519142918809200, - 261799387799149400, - 157079632679489660, - 52359877559829880, 52359877559829880, 157079632679489660, 261799387799149400, 366519142918809200, 471238898038469000, 575958653158128800, 680678408277788400, 785398163397448300, 890117918517108000, 994837673636767700, 1099557428756427600, 1204277183876087300, 1308996938995747300, 1413716694115406800, 1518436449235066600, 1623156204354726400, 1727875959474386400, 1832595714594046200, 1937315469713705700, 2042035224833365500, 2146754979953025500, 2251474735072684800, 2356194490192345000, 2460914245312004000, 2565634000431664600, 2670353755551324000, 2775073510670984000, 2879793265790643700, 2984513020910303000, 3089232776029963300];
   }
 
-  function getUTM_L0_zone(int _lat, int _lon) public returns (int zone, int L0) {
+  function getUTM_L0_zone(int _lat, int _lon) public returns (int zone, int L0, int latBand) {
     zone = ((_lon + 180 ether) / 6 ether) + 1;
     // longitudinal zone
     L0 = TrigonometryUtils.degreeToRad(((zone - 1) * 6 ether) - 180 ether + 3 ether);
@@ -328,7 +345,7 @@ library LandUtils {
 
     // ---- handle Norway/Svalbard exceptions
     // grid zones are 8° tall; 0°N is offset 10 into latitude bands array
-    int latBand = _lat / 8 ether + 10;
+    latBand = _lat / 8 ether + 10;
 
     // adjust zone & central meridian for Norway
     if (zone == 31 && latBand == 17 && _lon >= 3) {
@@ -379,9 +396,9 @@ library LandUtils {
   function getUTM_k(int F, int st, int pi, int qi, int si) public returns (int) {
     int sinF = TrigonometryUtils.sin(F);
     return (k0 * (
-     /* solium-disable-next-line */
-     (((((MathUtils.sqrtInt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
-     * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
+    /* solium-disable-next-line */
+    (((((MathUtils.sqrtInt(1 ether - (((eccentricity * eccentricity) / 1 ether) * ((sinF * sinF) / 1 ether)) / 1 ether) * st) / si) * A) / ellipsoidalA)
+    * MathUtils.sqrtInt((pi * pi) / 1 ether + (qi * qi) / 1 ether)) / 1 ether
     )) / 1 ether;
   }
 }
