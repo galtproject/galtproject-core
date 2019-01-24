@@ -8,8 +8,9 @@
   "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
-    "@galtproject/utils": "0.9.1",
+    "@galtproject/geodesic": "git+https://github.com/galtspace/galtproject-geodesic.git",
     "@galtproject/math": "git+https://github.com/galtspace/galtproject-math.git",
+    "@galtproject/utils": "0.9.1",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "10.0.1",
@@ -26,7 +27,6 @@
     "lodash": "^4.17.11",
     "mocha": "^5.2.0",
     "openzeppelin-solidity": "2.1.0",
-    "bancor-contracts": "^0.4.4",
     "p-iteration": "^1.1.7",
     "prettier": "1.15.3",
     "solidity-coverage": "^0.5.11",

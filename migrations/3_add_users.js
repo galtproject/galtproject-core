@@ -6,7 +6,7 @@ const PlotEscrow = artifacts.require('./PlotEscrow');
 const SpaceToken = artifacts.require('./SpaceToken');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
-const GaltDex = artifacts.require('./GaltDex');
+// const GaltDex = artifacts.require('./GaltDex');
 const Oracles = artifacts.require('./Oracles');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting');
 const Web3 = require('web3');
@@ -44,7 +44,7 @@ module.exports = async function(deployer, network, accounts) {
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
-    const galtDex = await GaltDex.at(data.galtDexAddress);
+    // const galtDex = await GaltDex.at(data.galtDexAddress);
     const oracles = await Oracles.at(data.oraclesAddress);
     const oracleStakeAccountingX = await OracleStakesAccounting.at(data.oracleStakesAccountingXAddress);
 
@@ -230,7 +230,7 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('needGaltForDeposits', needGaltForDeposits);
 
-    await galtDex.exchangeEthToGalt({ from: coreTeam, value: ether(needGaltForDeposits) });
+    // await galtDex.exchangeEthToGalt({ from: coreTeam, value: ether(needGaltForDeposits) });
 
     await galtToken.approve(oracleStakeAccountingX.address, ether(needGaltForDeposits), { from: coreTeam });
 
@@ -268,7 +268,7 @@ module.exports = async function(deployer, network, accounts) {
       }
 
       if (_.includes(adminsList, name)) {
-        promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
+        // promises.push(galtDex.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
