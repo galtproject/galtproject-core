@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/galtproject-libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
 
 
 contract SpaceCustodianRegistry is Permissionable {

@@ -14,7 +14,7 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
-import "@galtproject/galtproject-libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceToken.sol";
 
 /*

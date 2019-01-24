@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/galtproject-libs/contracts/collections/ArraySet.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ISplitMerge.sol";
