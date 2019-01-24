@@ -54,12 +54,6 @@ contract('ArbitratorVoting', accounts => {
   ] = accounts;
 
   beforeEach(async function() {
-    // CREATING
-
-    // console.log('A', candidateA);
-    // console.log('B', candidateB);
-    // console.log('C', candidateC);
-
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
