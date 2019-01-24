@@ -10,6 +10,7 @@
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/utils": "0.9.1",
     "@galtproject/math": "git+https://github.com/galtspace/galtproject-math.git",
+    "@galtproject/geodesic": "git+https://github.com/galtspace/galtproject-geodesic.git",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "10.0.1",
