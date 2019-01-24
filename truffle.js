@@ -38,13 +38,19 @@ const config = {
         // 7 800 000
         gasLimit: 0x7704c0
       }),
+      skipDryRun: true,
       network_id: '*'
     }
   },
-  solc: {
-    optimizer: {
-      enabled: true,
-      runs: 200
+  compilers: {
+    solc: {
+      version: 'native',
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
+      }
     }
   }
 };

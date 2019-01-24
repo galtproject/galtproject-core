@@ -15,6 +15,8 @@ const pIteration = require('p-iteration');
 // const AdminUpgradeabilityProxy = artifacts.require('zos-lib/contracts/upgradeability/AdminUpgradeabilityProxy.sol');
 
 const web3 = new Web3(PlotManager.web3.currentProvider);
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 
 const fs = require('fs');
 const _ = require('lodash');
@@ -59,29 +61,29 @@ module.exports = async function(deployer, network, accounts) {
       production: 0
     };
 
-    const PM_CADASTRAL_ORACLE_TYPE = 'pm_cadastral';
-    const PM_AUDITOR_ORACLE_TYPE = 'pm_auditor';
+    const PM_CADASTRAL_ORACLE_TYPE = bytes32('pm_cadastral');
+    const PM_AUDITOR_ORACLE_TYPE = bytes32('pm_auditor');
 
     const PLOT_MANAGER_APPLICATION_TYPE = await plotManager.APPLICATION_TYPE.call();
     await oracles.setApplicationTypeOracleTypes(
       PLOT_MANAGER_APPLICATION_TYPE,
       [PM_CADASTRAL_ORACLE_TYPE, PM_AUDITOR_ORACLE_TYPE],
       [75, 25],
-      ['', ''],
+      [bytes32(''), bytes32('')],
       {
         from: coreTeam
       }
     );
 
-    const PCL_CADASTRAL_ORACLE_TYPE = 'pcl_cadastral';
-    const PCL_AUDITOR_ORACLE_TYPE = 'pcl_auditor';
+    const PCL_CADASTRAL_ORACLE_TYPE = bytes32('pcl_cadastral');
+    const PCL_AUDITOR_ORACLE_TYPE = bytes32('pcl_auditor');
 
     const PLOT_CLARIFICATION_APPLICATION_TYPE = await plotClarification.APPLICATION_TYPE.call();
     await oracles.setApplicationTypeOracleTypes(
       PLOT_CLARIFICATION_APPLICATION_TYPE,
       [PCL_CADASTRAL_ORACLE_TYPE, PCL_AUDITOR_ORACLE_TYPE],
       [75, 25],
-      ['', ''],
+      [bytes32(''), bytes32('')],
       {
         from: coreTeam
       }
@@ -96,7 +98,7 @@ module.exports = async function(deployer, network, accounts) {
       PLOT_VALUATION_APPLICATION_TYPE,
       [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
       [35, 35, 30],
-      ['', '', ''],
+      [bytes32(''), bytes32(''), bytes32('')],
       {
         from: coreTeam
       }
@@ -110,7 +112,7 @@ module.exports = async function(deployer, network, accounts) {
       PLOT_CUSTODIAN_APPLICATION_TYPE,
       [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [75, 25],
-      ['', ''],
+      [bytes32(''), bytes32('')],
       {
         from: coreTeam
       }
@@ -118,9 +120,15 @@ module.exports = async function(deployer, network, accounts) {
 
     const PE_AUDITOR_ORACLE_TYPE = await plotEscrow.PE_AUDITOR_ORACLE_TYPE.call();
     const PLOT_ESCROW_APPLICATION_TYPE = await plotEscrow.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeOracleTypes(PLOT_ESCROW_APPLICATION_TYPE, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
-      from: coreTeam
-    });
+    await oracles.setApplicationTypeOracleTypes(
+      PLOT_ESCROW_APPLICATION_TYPE,
+      [PE_AUDITOR_ORACLE_TYPE],
+      [100],
+      [bytes32('')],
+      {
+        from: coreTeam
+      }
+    );
 
     const users = {
       Jonybang: '0xf0430bbb78c3c359c22d4913484081a563b86170',
@@ -249,9 +257,17 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(
           new Promise(async resolve => {
             await oracles
-              .addOracle(data.arbitratorsMultiSigXAddress, address, name, 'MN', [], validatorsSpecificRoles[name], {
-                from: coreTeam
-              })
+              .addOracle(
+                data.arbitratorsMultiSigXAddress,
+                address,
+                bytes32(name),
+                bytes32('MN'),
+                [],
+                validatorsSpecificRoles[name],
+                {
+                  from: coreTeam
+                }
+              )
               .catch(e => {
                 console.error(e);
                 resolve(e);

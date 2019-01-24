@@ -5,9 +5,6 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -22,23 +19,31 @@ const {
 
 const web3 = new Web3(PlotValuation.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
 
-const PV_APPRAISER_ORACLE_TYPE = 'PV_APPRAISER_ORACLE_TYPE';
-const PV_APPRAISER2_ORACLE_TYPE = 'PV_APPRAISER2_ORACLE_TYPE';
-const PV_AUDITOR_ORACLE_TYPE = 'PV_AUDITOR_ORACLE_TYPE';
+const PV_APPRAISER_ORACLE_TYPE = bytes32('PV_APPRAISER_ORACLE_TYPE');
+const PV_APPRAISER2_ORACLE_TYPE = bytes32('PV_APPRAISER2_ORACLE_TYPE');
+const PV_AUDITOR_ORACLE_TYPE = bytes32('PV_AUDITOR_ORACLE_TYPE');
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+const FOO = bytes32('foo');
+const BAR = bytes32('bar');
+const BUZZ = bytes32('buzz');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
+const DOG = bytes32('dog');
+const CAT = bytes32('cat');
+const HUMAN = bytes32('human');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
@@ -94,9 +99,9 @@ contract('PlotValuation', (accounts) => {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
     this.attachedDocuments = [
-      'a80470dba00d5faf620fd6c51a1ca94668e13cd66fffaee3702f5497a8549053',
-      'e96a061ac2a6eeb4a87eecdba4624500b6eae61e18c64ff0672434d3ae137825',
-      '9850d829b57b233101525397603baedc32d20288a866514dd5441abe286f4d2e'
+      '0xa80470dba00d5faf620fd6c51a1ca94668e13cd66fffaee3702f5497a8549053',
+      '0xe96a061ac2a6eeb4a87eecdba4624500b6eae61e18c64ff0672434d3ae137825',
+      '0x9850d829b57b233101525397603baedc32d20288a866514dd5441abe286f4d2e'
     ];
 
     this.heights = [1, 2, 3];
@@ -182,12 +187,12 @@ contract('PlotValuation', (accounts) => {
       from: coreTeam
     });
 
-    await this.oracles.setOracleTypeMinimalDeposit('foo', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('bar', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('buzz', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('human', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('dog', ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit('cat', ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(FOO, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(BAR, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(BUZZ, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(HUMAN, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(DOG, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(CAT, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(PV_APPRAISER_ORACLE_TYPE, ether(30), {
       from: applicationTypeManager
     });
@@ -262,10 +267,6 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.plotValuation.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.plotValuation.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -282,10 +283,6 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.plotValuation.setGaltSpaceGaltShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
         await assertRevert(this.plotValuation.setGaltSpaceGaltShare('101', { from: feeManager }));
       });
@@ -300,9 +297,9 @@ contract('PlotValuation', (accounts) => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['foo', 'bar', 'buzz'],
+        [FOO, BAR, BUZZ],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: applicationTypeManager }
       );
 
@@ -310,28 +307,28 @@ contract('PlotValuation', (accounts) => {
         VALUATION_APPLICATION,
         [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, 'foo'], {
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PV_APPRAISER_ORACLE_TYPE, FOO], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['bar'], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -356,9 +353,9 @@ contract('PlotValuation', (accounts) => {
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.spaceTokenId = res.spaceTokenId;
 
-      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
@@ -428,25 +425,18 @@ contract('PlotValuation', (accounts) => {
           // galtspace share - 13%
 
           res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [
-            PV_APPRAISER_ORACLE_TYPE,
-            PV_APPRAISER2_ORACLE_TYPE,
-            PV_AUDITOR_ORACLE_TYPE
-          ]);
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
+          );
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER2_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_AUDITOR_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '20445000000000000000');
         });
       });
@@ -477,19 +467,13 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.galtSpaceRewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER2_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_AUDITOR_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
       });
 
@@ -510,7 +494,7 @@ contract('PlotValuation', (accounts) => {
         const orgsFinalBalance = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
 
         const res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
+          .getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE)
           .call();
         assert.equal(res.reward.toString(), '24795000000000000000');
 
@@ -549,9 +533,9 @@ contract('PlotValuation', (accounts) => {
     beforeEach(async function() {
       this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
         NEW_APPLICATION,
-        ['foo', 'bar', 'buzz'],
+        [FOO, BAR, BUZZ],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: applicationTypeManager }
       );
 
@@ -559,28 +543,28 @@ contract('PlotValuation', (accounts) => {
         VALUATION_APPLICATION,
         [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
         [50, 25, 25],
-        ['', '', ''],
+        [_ES, _ES, _ES],
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, 'Bob', 'MN', [], [PV_APPRAISER_ORACLE_TYPE, 'foo'], {
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PV_APPRAISER_ORACLE_TYPE, FOO], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, charlie, 'Charlie', 'MN', [], ['bar'], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, 'Dan', 'MN', [], [PV_APPRAISER2_ORACLE_TYPE, 'buzz'], {
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, 'Eve', 'MN', [], [PV_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, 'foo', ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, 'bar', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, 'buzz', ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
@@ -605,9 +589,9 @@ contract('PlotValuation', (accounts) => {
       res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
       this.spaceTokenId = res.spaceTokenId;
 
-      await this.plotManager.lockApplicationForReview(this.aId, 'foo', { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, 'bar', { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, 'buzz', { from: dan });
+      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
+      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
+      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
 
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
       await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
@@ -679,25 +663,18 @@ contract('PlotValuation', (accounts) => {
           // galtspace share - 33% (50%/25%/25%);
 
           res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [
-            PV_APPRAISER_ORACLE_TYPE,
-            PV_APPRAISER2_ORACLE_TYPE,
-            PV_AUDITOR_ORACLE_TYPE
-          ]);
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
+          );
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '4355000000000000000');
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER2_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotValuationWeb3.methods
-            .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
-            .call();
+          res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_AUDITOR_ORACLE_TYPE).call();
           assert.equal(res.reward.toString(), '2177500000000000000');
         });
       });
@@ -719,22 +696,16 @@ contract('PlotValuation', (accounts) => {
         let res = await this.plotValuationWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
-          .call();
-        assert.equal(res.oracle.toLowerCase(), bob);
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE).call();
+        assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
-          .call();
-        assert.equal(res.oracle.toLowerCase(), dan);
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER2_ORACLE_TYPE).call();
+        assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
-          .call();
-        assert.equal(res.oracle.toLowerCase(), zeroAddress);
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_AUDITOR_ORACLE_TYPE).call();
+        assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
@@ -924,19 +895,13 @@ contract('PlotValuation', (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.galtSpaceRewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER2_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_APPRAISER2_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
 
-        res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_AUDITOR_ORACLE_TYPE))
-          .call();
+        res = await this.plotValuationWeb3.methods.getApplicationOracle(this.aId, PV_AUDITOR_ORACLE_TYPE).call();
         assert.equal(res.rewardPaidOut, true);
       });
 
@@ -957,7 +922,7 @@ contract('PlotValuation', (accounts) => {
         const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
 
         const res = await this.plotValuationWeb3.methods
-          .getApplicationOracle(this.aId, utf8ToHex(PV_APPRAISER_ORACLE_TYPE))
+          .getApplicationOracle(this.aId, PV_APPRAISER_ORACLE_TYPE)
           .call();
         assert.equal(res.reward.toString(), '2010000000000000000');
 

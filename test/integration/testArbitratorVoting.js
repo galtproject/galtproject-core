@@ -14,16 +14,25 @@ const Web3 = require('web3');
 const { ether, assertRevert, initHelperWeb3, initHelperArtifacts, deploySplitMerge } = require('../helpers');
 
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 const { deployMultiSigFactory } = require('../deploymentHelpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-const TYPE_A = 'TYPE_A';
-const TYPE_B = 'TYPE_B';
-const TYPE_C = 'TYPE_C';
-
 const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
+
+const TYPE_A = bytes32('TYPE_A');
+const TYPE_B = bytes32('TYPE_B');
+const TYPE_C = bytes32('TYPE_C');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('ArbitratorVoting', accounts => {
@@ -150,7 +159,7 @@ contract('ArbitratorVoting', accounts => {
       MY_APPLICATION,
       [TYPE_A, TYPE_B, TYPE_C],
       [50, 25, 25],
-      ['', '', ''],
+      [_ES, _ES, _ES],
       { from: oracleManager }
     );
 
@@ -158,16 +167,16 @@ contract('ArbitratorVoting', accounts => {
     await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
     await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
 
-    await this.oracles.addOracle(this.abMultiSigX.address, bob, 'Bob', 'MN', [], [TYPE_A], {
+    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, charlie, 'Charlie', 'MN', [], [TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, 'Dan', 'MN', [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigY.address, eve, 'Eve', 'MN', [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
 
@@ -633,7 +642,7 @@ contract('ArbitratorVoting', accounts => {
             await voting.recalculate(candidateA);
 
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameMembers(res.map(a => a.toLowerCase()), [candidateA]);
+            assert.sameMembers(res, [candidateA]);
             res = await votingWeb3.methods.isCandidateInList(candidateA).call();
             assert.equal(res, true);
             res = await votingWeb3.methods.getWeight(candidateA).call();
@@ -670,7 +679,7 @@ contract('ArbitratorVoting', accounts => {
           it('should move tail to head if the element is the HEAD', async () => {
             // CHECK LIST
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -697,7 +706,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2300);
             res = await votingWeb3.methods.getSize().call();
@@ -723,7 +732,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA]);
+            assert.sameOrderedMembers(res, [candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2300);
             res = await votingWeb3.methods.getSize().call();
@@ -749,7 +758,7 @@ contract('ArbitratorVoting', accounts => {
           it('should remove tail if the element is the TAIL', async function() {
             // CHECK LIST
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -776,7 +785,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
             res = await votingWeb3.methods.getSize().call();
@@ -802,7 +811,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+            assert.sameOrderedMembers(res, [candidateB]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
             res = await votingWeb3.methods.getSize().call();
@@ -837,7 +846,7 @@ contract('ArbitratorVoting', accounts => {
           it('should move head down if the element is the HEAD', async function() {
             // CHECK LIST
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -872,7 +881,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2000);
             res = await votingWeb3.methods.getSize().call();
@@ -906,7 +915,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2000);
             res = await votingWeb3.methods.getSize().call();
@@ -940,7 +949,7 @@ contract('ArbitratorVoting', accounts => {
           it('should move link elements correctly if the element is the middle', async function() {
             // CHECK LIST
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -975,7 +984,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2300);
             res = await votingWeb3.methods.getSize().call();
@@ -1009,7 +1018,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2300);
             res = await votingWeb3.methods.getSize().call();
@@ -1043,7 +1052,7 @@ contract('ArbitratorVoting', accounts => {
           it('should move tail up if the element is the TAIL', async function() {
             // CHECK LIST
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -1078,7 +1087,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
             res = await votingWeb3.methods.getSize().call();
@@ -1115,7 +1124,7 @@ contract('ArbitratorVoting', accounts => {
             res = await votingWeb3.methods.getSize().call();
             assert.equal(res, 3);
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+            assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
 
@@ -1148,7 +1157,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+            assert.sameOrderedMembers(res, [candidateB, candidateC]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
             res = await votingWeb3.methods.getSize().call();
@@ -1183,7 +1192,7 @@ contract('ArbitratorVoting', accounts => {
 
             // CHECK LIST
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 2700);
             res = await votingWeb3.methods.getSize().call();
@@ -1225,7 +1234,7 @@ contract('ArbitratorVoting', accounts => {
             await voting.recalculate(candidateA);
 
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA]);
+            assert.sameOrderedMembers(res, [candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 800);
             res = await votingWeb3.methods.getSize().call();
@@ -1235,7 +1244,7 @@ contract('ArbitratorVoting', accounts => {
             await voting.onDelegateReputationChanged(candidateA, 700, { from: fakeSRA });
 
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA]);
+            assert.sameOrderedMembers(res, [candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 700);
             res = await votingWeb3.methods.getSize().call();
@@ -1244,7 +1253,7 @@ contract('ArbitratorVoting', accounts => {
             // RECALCULATE
             await voting.recalculate(candidateA);
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA]);
+            assert.sameOrderedMembers(res, [candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 700);
             res = await votingWeb3.methods.getSize().call();
@@ -1263,7 +1272,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1500, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1289,7 +1298,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1315,7 +1324,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1342,7 +1351,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1368,7 +1377,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1394,7 +1403,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1423,7 +1432,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1500, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1449,7 +1458,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1475,7 +1484,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2700);
                 res = await votingWeb3.methods.getSize().call();
@@ -1502,7 +1511,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB]);
+                assert.sameOrderedMembers(res, [candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1528,7 +1537,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1554,7 +1563,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2000);
                 res = await votingWeb3.methods.getSize().call();
@@ -1595,7 +1604,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1621,7 +1630,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1647,7 +1656,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1674,7 +1683,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1700,7 +1709,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1726,7 +1735,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3200);
                 res = await votingWeb3.methods.getSize().call();
@@ -1755,7 +1764,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1201, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1765,7 +1774,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1775,7 +1784,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1786,7 +1795,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1201, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1796,7 +1805,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1806,7 +1815,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2401);
                 res = await votingWeb3.methods.getSize().call();
@@ -1818,7 +1827,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1199, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1828,7 +1837,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1854,7 +1863,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1881,7 +1890,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1199, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1891,7 +1900,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1917,7 +1926,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2399);
                 res = await votingWeb3.methods.getSize().call();
@@ -1948,7 +1957,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1501, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3001);
                 res = await votingWeb3.methods.getSize().call();
@@ -1960,7 +1969,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3001);
                 res = await votingWeb3.methods.getSize().call();
@@ -1971,7 +1980,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1501, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3001);
                 res = await votingWeb3.methods.getSize().call();
@@ -1983,7 +1992,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3001);
                 res = await votingWeb3.methods.getSize().call();
@@ -1996,7 +2005,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1201, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2701);
                 res = await votingWeb3.methods.getSize().call();
@@ -2008,7 +2017,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2701);
                 res = await votingWeb3.methods.getSize().call();
@@ -2019,7 +2028,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1201, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2701);
                 res = await votingWeb3.methods.getSize().call();
@@ -2031,7 +2040,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2701);
                 res = await votingWeb3.methods.getSize().call();
@@ -2044,7 +2053,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1199, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2699);
                 res = await votingWeb3.methods.getSize().call();
@@ -2056,7 +2065,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2699);
                 res = await votingWeb3.methods.getSize().call();
@@ -2067,7 +2076,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 1199, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2699);
                 res = await votingWeb3.methods.getSize().call();
@@ -2079,7 +2088,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2699);
                 res = await votingWeb3.methods.getSize().call();
@@ -2094,7 +2103,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateA, 1501, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2128,7 +2137,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2162,7 +2171,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateA, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateA, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2196,7 +2205,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA, candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateA, candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2238,7 +2247,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateA, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateA, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3901);
                 res = await votingWeb3.methods.getSize().call();
@@ -2256,7 +2265,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3899);
                 res = await votingWeb3.methods.getSize().call();
@@ -2269,7 +2278,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateA, 1501, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2303,7 +2312,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2337,7 +2346,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA, candidateC]);
+                assert.sameOrderedMembers(res, [candidateB, candidateA, candidateC]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2371,7 +2380,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA, candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateA, candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2413,7 +2422,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateA, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateA, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3901);
                 res = await votingWeb3.methods.getSize().call();
@@ -2431,7 +2440,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3899);
                 res = await votingWeb3.methods.getSize().call();
@@ -2444,7 +2453,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateA, 1501, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2458,7 +2467,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateA, candidateC, candidateB]);
+                assert.sameOrderedMembers(res, [candidateA, candidateC, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4201);
                 res = await votingWeb3.methods.getSize().call();
@@ -2500,7 +2509,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateA, candidateB]);
+                assert.sameOrderedMembers(res, [candidateC, candidateA, candidateB]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3901);
                 res = await votingWeb3.methods.getSize().call();
@@ -2518,7 +2527,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3899);
                 res = await votingWeb3.methods.getSize().call();
@@ -2545,7 +2554,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2559,7 +2568,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2594,7 +2603,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2608,7 +2617,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2619,7 +2628,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 2000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2633,7 +2642,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 4000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2646,7 +2655,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateB, 801, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2403);
                 res = await votingWeb3.methods.getSize().call();
@@ -2656,7 +2665,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2403);
                 res = await votingWeb3.methods.getSize().call();
@@ -2690,7 +2699,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2403);
                 res = await votingWeb3.methods.getSize().call();
@@ -2724,7 +2733,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateB);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 2403);
                 res = await votingWeb3.methods.getSize().call();
@@ -2761,7 +2770,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2775,7 +2784,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateA);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2786,7 +2795,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2800,7 +2809,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2811,7 +2820,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.onDelegateReputationChanged(candidateC, 1000, { from: fakeSRA });
 
                 let res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+                assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2825,7 +2834,7 @@ contract('ArbitratorVoting', accounts => {
                 await voting.recalculate(candidateC);
 
                 res = await votingWeb3.methods.getCandidates().call();
-                assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateC, candidateA]);
+                assert.sameOrderedMembers(res, [candidateB, candidateC, candidateA]);
                 res = await votingWeb3.methods.totalSpaceReputation().call();
                 assert.equal(res, 3000);
                 res = await votingWeb3.methods.getSize().call();
@@ -2850,7 +2859,7 @@ contract('ArbitratorVoting', accounts => {
 
           it('should remove last element when E > HEAD was pushed', async function() {
             let res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 3500);
             res = await votingWeb3.methods.getSize().call();
@@ -2859,7 +2868,7 @@ contract('ArbitratorVoting', accounts => {
             await voting.onDelegateReputationChanged(candidateD, 2000, { from: fakeSRA });
 
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateB, candidateA]);
+            assert.sameOrderedMembers(res, [candidateC, candidateB, candidateA]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 5500);
             res = await votingWeb3.methods.getSize().call();
@@ -2868,7 +2877,7 @@ contract('ArbitratorVoting', accounts => {
             await voting.recalculate(candidateD);
 
             res = await votingWeb3.methods.getCandidates().call();
-            assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateC, candidateD, candidateB]);
+            assert.sameOrderedMembers(res, [candidateC, candidateD, candidateB]);
             res = await votingWeb3.methods.totalSpaceReputation().call();
             assert.equal(res, 5500);
             res = await votingWeb3.methods.getSize().call();
@@ -2896,11 +2905,11 @@ contract('ArbitratorVoting', accounts => {
       await voting.recalculate(candidateA);
 
       res = await votingWeb3.methods.getCandidates().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [candidateA]);
+      assert.sameMembers(res, [candidateA]);
 
       await voting.recalculate(candidateB);
       res = await votingWeb3.methods.getCandidates().call();
-      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateB, candidateA]);
+      assert.sameOrderedMembers(res, [candidateB, candidateA]);
       // assert.fail('');
       // TODO: fetch list
     });
@@ -3090,13 +3099,7 @@ contract('ArbitratorVoting', accounts => {
       assert.equal(res, 900);
 
       res = await votingWeb3.methods.getCandidates().call();
-      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [
-        candidateC,
-        candidateB,
-        candidateF,
-        candidateA,
-        candidateE
-      ]);
+      assert.sameOrderedMembers(res, [candidateC, candidateB, candidateF, candidateA, candidateE]);
       res = await votingWeb3.methods.totalSpaceReputation().call();
       assert.equal(res, 5300);
       res = await votingWeb3.methods.getSize().call();
@@ -3105,17 +3108,17 @@ contract('ArbitratorVoting', accounts => {
 
     it('should push arbitrators', async function() {
       let res = await multiSigWeb3.methods.getArbitrators().call();
-      assert.sameMembers(res.map(a => a.toLowerCase()), [a1, a2, a3]);
+      assert.sameMembers(res, [a1, a2, a3]);
 
       await voting.pushArbitrators();
 
       res = await multiSigWeb3.methods.getArbitrators().call();
       assert.equal(res.length, 5);
-      assert.equal(res[0].toLowerCase(), candidateC);
-      assert.equal(res[1].toLowerCase(), candidateB);
-      assert.equal(res[2].toLowerCase(), candidateF);
-      assert.equal(res[3].toLowerCase(), candidateA);
-      assert.equal(res[4].toLowerCase(), candidateE);
+      assert.equal(res[0], candidateC);
+      assert.equal(res[1], candidateB);
+      assert.equal(res[2], candidateF);
+      assert.equal(res[3], candidateA);
+      assert.equal(res[4], candidateE);
     });
 
     it('should deny pushing list with < 3 elements', async function() {
@@ -3128,7 +3131,7 @@ contract('ArbitratorVoting', accounts => {
       await voting.recalculate(candidateC);
 
       const res = await votingWeb3.methods.getCandidates().call();
-      assert.sameOrderedMembers(res.map(a => a.toLowerCase()), [candidateF, candidateE]);
+      assert.sameOrderedMembers(res, [candidateF, candidateE]);
       await assertRevert(voting.pushArbitrators());
     });
   });

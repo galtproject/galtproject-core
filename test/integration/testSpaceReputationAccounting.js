@@ -70,7 +70,7 @@ contract('SpaceReputationAccounting', accounts => {
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       res = await this.spaceTokenWeb3.methods.ownerOf(token1).call();
-      assert.equal(res.toLowerCase(), alice);
+      assert.equal(res, alice);
 
       // HACK
       await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
@@ -90,7 +90,7 @@ contract('SpaceReputationAccounting', accounts => {
       assert.equal(res, 800);
 
       res = await lockerWeb3.methods.owner().call();
-      assert.equal(res.toLowerCase(), alice);
+      assert.equal(res, alice);
 
       res = await lockerWeb3.methods.spaceTokenId().call();
       assert.equal(res, 0);
@@ -191,7 +191,7 @@ contract('SpaceReputationAccounting', accounts => {
       assert.equal(res, 0);
 
       res = await lockerWeb3.methods.owner().call();
-      assert.equal(res.toLowerCase(), alice);
+      assert.equal(res, alice);
 
       res = await lockerWeb3.methods.spaceTokenId().call();
       assert.equal(res, 0);

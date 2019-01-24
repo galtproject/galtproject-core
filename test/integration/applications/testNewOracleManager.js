@@ -5,9 +5,6 @@ const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -19,17 +16,18 @@ const {
 const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
-const { hexToUtf8 } = Web3.utils;
+const { hexToUtf8, utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const EVE = bytes32('Eve');
 
 initHelperWeb3(web3);
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
@@ -62,8 +60,8 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 
 // eslint-disable-next-line
 contract('NewOracleManager', (accounts) => {
@@ -223,10 +221,6 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.newOracle.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -241,10 +235,6 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.setGaltSpaceGaltShare('42', { from: feeManager });
         const res = await this.newOracle.galtSpaceGaltShare();
         assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceGaltShare('0.5', { from: feeManager }));
       });
 
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
@@ -265,7 +255,7 @@ contract('NewOracleManager', (accounts) => {
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [_ES, _ES],
         { from: applicationTypeManager }
       );
     });
@@ -276,8 +266,8 @@ contract('NewOracleManager', (accounts) => {
         let res = await this.newOracle.submit(
           this.mX,
           bob,
-          'Bob',
-          'MN',
+          BOB,
+          MN,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -297,8 +287,8 @@ contract('NewOracleManager', (accounts) => {
             this.newOracle.submit(
               this.mX,
               bob,
-              'Bob',
-              'MN',
+              BOB,
+              MN,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -315,8 +305,8 @@ contract('NewOracleManager', (accounts) => {
             this.newOracle.submit(
               this.mX,
               bob,
-              'Bob',
-              'MN',
+              BOB,
+              MN,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               ether(10),
@@ -332,8 +322,8 @@ contract('NewOracleManager', (accounts) => {
           let res = await this.newOracle.submit(
             this.mX,
             bob,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(53),
@@ -360,8 +350,8 @@ contract('NewOracleManager', (accounts) => {
           const res = await this.newOracle.submit(
             this.mX,
             bob,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(47),
@@ -436,8 +426,8 @@ contract('NewOracleManager', (accounts) => {
         let res = await this.newOracle.submit(
           this.mX,
           bob,
-          'Bob',
-          'MN',
+          BOB,
+          MN,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -450,7 +440,7 @@ contract('NewOracleManager', (accounts) => {
 
         res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(res.applicant.toLowerCase(), alice);
+        assert.equal(res.applicant, alice);
         assert.sameMembers(res.arbitrators, []);
         assert.equal(res.m, 3);
         assert.equal(res.n, 5);
@@ -458,13 +448,13 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(res.nayCount, 0);
 
         res = await this.newOracleWeb3.methods.getApplicationOracle(this.aId).call();
-        assert.equal(res.addr.toLowerCase(), bob);
+        assert.equal(res.addr, bob);
         assert.equal(hexToUtf8(res.name), 'Bob');
         assert.sameMembers(res.descriptionHashes.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
-        assert.sameMembers(res.oracleTypes.map(web3.utils.hexToUtf8), [
-          PC_AUDITOR_ORACLE_TYPE,
-          PC_CUSTODIAN_ORACLE_TYPE
-        ]);
+        assert.sameMembers(
+          res.oracleTypes.map(web3.utils.hexToUtf8),
+          [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE].map(web3.utils.hexToUtf8)
+        );
       });
 
       describe('payable', () => {
@@ -473,8 +463,8 @@ contract('NewOracleManager', (accounts) => {
             this.newOracle.submit(
               this.mX,
               bob,
-              'Bob',
-              'MN',
+              BOB,
+              MN,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -490,8 +480,8 @@ contract('NewOracleManager', (accounts) => {
             this.newOracle.submit(
               this.mX,
               bob,
-              'Bob',
-              'MN',
+              BOB,
+              MN,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -507,8 +497,8 @@ contract('NewOracleManager', (accounts) => {
           let res = await this.newOracle.submit(
             this.mX,
             bob,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -535,8 +525,8 @@ contract('NewOracleManager', (accounts) => {
           const res = await this.newOracle.submit(
             this.mX,
             bob,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -622,15 +612,15 @@ contract('NewOracleManager', (accounts) => {
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [_ES, _ES],
         { from: applicationTypeManager }
       );
 
       const res = await this.newOracle.submit(
         this.mX,
         eve,
-        'Eve',
-        'MN',
+        EVE,
+        MN,
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
         0,
@@ -648,7 +638,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: bob });
 
         const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
-        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.arbitrators, [bob]);
       });
 
       it('should deny locking more slots than n', async function() {
@@ -660,7 +650,7 @@ contract('NewOracleManager', (accounts) => {
         await assertRevert(this.newOracle.lock(this.aId, { from: henrey }));
 
         const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
-        assert.sameMembers(res.arbitrators.map(a => a.toLowerCase()), [bob, charlie, dan, frank, george]);
+        assert.sameMembers(res.arbitrators, [bob, charlie, dan, frank, george]);
       });
 
       it('should deny non-arbitrator locking an application', async function() {
@@ -770,10 +760,10 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(hexToUtf8(res.name), 'Eve');
         assert.equal(hexToUtf8(res.position), 'MN');
         assert.equal(res.active, true);
-        assert.sameMembers(res.assignedOracleTypes.map(web3.utils.hexToUtf8), [
-          PC_AUDITOR_ORACLE_TYPE,
-          PC_CUSTODIAN_ORACLE_TYPE
-        ]);
+        assert.sameMembers(
+          res.assignedOracleTypes.map(hexToUtf8),
+          [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE].map(hexToUtf8)
+        );
         assert.sameMembers(res.descriptionHashes, this.attachedDocumentsBytes32);
         assert.sameMembers(res.activeOracleTypes, []);
       });

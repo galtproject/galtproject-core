@@ -6,9 +6,6 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
@@ -20,23 +17,23 @@ const {
 } = require('../helpers');
 const { deployMultiSigFactory } = require('../deploymentHelpers');
 
-const { stringToHex } = Web3.utils;
-
 const web3 = new Web3(ClaimManager.web3.currentProvider);
+const { utf8ToHex, hexToString } = Web3.utils;
+const bytes32 = utf8ToHex;
 
 const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
 
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
 
 initHelperWeb3(web3);
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
@@ -228,10 +225,6 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.toString(10), '42');
       });
 
-      it('should deny owner set Galt Space EHT share less than 1 percent', async function() {
-        await assertRevert(this.claimManager.setGaltSpaceEthShare('0.5', { from: feeManager }));
-      });
-
       it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
         await assertRevert(this.claimManager.setGaltSpaceEthShare('101', { from: feeManager }));
       });
@@ -246,10 +239,6 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.setGaltSpaceGaltShare('42', { from: feeManager });
         const res = await this.claimManager.galtSpaceGaltShare();
         assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space Galt share less than 1 percent', async function() {
-        await assertRevert(this.claimManager.setGaltSpaceGaltShare('0.5', { from: feeManager }));
       });
 
       it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
@@ -440,7 +429,7 @@ contract("ClaimManager", (accounts) => {
         MY_APPLICATION,
         [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
         [50, 50],
-        ['', ''],
+        [_ES, _ES],
         {
           from: applicationTypeManager
         }
@@ -453,9 +442,9 @@ contract("ClaimManager", (accounts) => {
         from: applicationTypeManager
       });
 
-      await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [''], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, dan, DAN, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, eve, EVE, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
       const res = await this.claimManager.submit(
         this.mX,
@@ -543,27 +532,27 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 0).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.text, 'hi');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 1).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.text, 'hey');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 2).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), alice);
+        assert.equal(res.from, alice);
         assert.equal(res.text, 'hello');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 3).call();
         assert(res.timestamp > 0);
-        assert.equal(res.from.toLowerCase(), charlie);
+        assert.equal(res.from, charlie);
         assert.equal(res.text, 'you');
 
         res = await this.claimManagerWeb3.methods.getMessage(this.cId, 4).call();
         assert.equal(res.timestamp, 0);
-        assert.equal(res.from.toLowerCase(), zeroAddress);
+        assert.equal(res.from, zeroAddress);
         assert.equal(res.text, '');
       });
     });
@@ -611,25 +600,25 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsTaken, 2);
 
         res = await this.claimManagerWeb3.methods.getProposals(this.cId).call();
-        assert.sameMembers(res.map(a => a.toLowerCase()), [pId1, pId2]);
+        assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.message, 'good enough');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [dan]);
-        assert.sameMembers(res.oracleTypes.map(web3.utils.hexToString), [PC_AUDITOR_ORACLE_TYPE]);
+        assert.sameMembers(res.oracles, [dan]);
+        assert.sameMembers(res.oracleTypes.map(hexToString), [PC_AUDITOR_ORACLE_TYPE].map(hexToString));
         assert.sameMembers(res.fines, [ether(20)]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
-        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.from, dan);
         assert.equal(res.message, 'looks good');
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.oracles.map(a => a.toLowerCase()), [bob, eve]);
-        assert.sameMembers(res.oracleTypes.map(web3.utils.hexToString), [
-          PC_AUDITOR_ORACLE_TYPE,
-          PC_AUDITOR_ORACLE_TYPE
-        ]);
+        assert.sameMembers(res.oracles, [bob, eve]);
+        assert.sameMembers(
+          res.oracleTypes.map(web3.utils.hexToString),
+          [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToString)
+        );
         assert.sameMembers(res.fines, [ether(10), ether(20)]);
       });
 
@@ -700,12 +689,12 @@ contract("ClaimManager", (accounts) => {
         assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.message, 'NOT good enough');
         assert.equal(res.action, Action.REJECT);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
-        assert.equal(res.from.toLowerCase(), dan);
+        assert.equal(res.from, dan);
         assert.equal(res.message, 'odd');
         assert.equal(res.action, Action.REJECT);
       });
@@ -764,13 +753,13 @@ contract("ClaimManager", (accounts) => {
       it('should automatically count proposer voice', async function() {
         // empty array since the vote reassigned to pId3
         let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+        assert.sameMembers(res.votesFor, []);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.votesFor, [dan]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.votesFor, [bob]);
       });
 
       it('should reassign slots according a last vote', async function() {
@@ -781,7 +770,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+        assert.sameMembers(res.votesFor, [bob, dan]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, []);
@@ -799,9 +788,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId1, { from: dan });
 
         let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob, dan]);
+        assert.sameMembers(res.votesFor, [bob, dan]);
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), []);
+        assert.sameMembers(res.votesFor, []);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId1);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
@@ -810,9 +799,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan]);
+        assert.sameMembers(res.votesFor, [dan]);
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [bob]);
+        assert.sameMembers(res.votesFor, [bob]);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId2);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, dan).call();
@@ -837,9 +826,9 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.totalSlots, 5);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
-        assert.equal(res.from.toLowerCase(), bob);
+        assert.equal(res.from, bob);
         assert.equal(res.action, Action.APPROVE);
-        assert.sameMembers(res.votesFor.map(a => a.toLowerCase()), [dan, bob, charlie]);
+        assert.sameMembers(res.votesFor, [dan, bob, charlie]);
       });
 
       it('should new porposals voting if status is not SUBMITTED', async function() {
@@ -873,11 +862,11 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsThreshold, 3);
         assert.equal(res.totalSlots, 5);
 
-        await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
         await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
 
@@ -915,11 +904,9 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should apply proposed slashes', async function() {
-        let res = await this.oracleStakesAccountingXWeb3.methods
-          .stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE))
-          .call();
+        let res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE).call();
         assert.equal(res, ether(200));
-        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE).call();
         assert.equal(res, ether(200));
 
         res = await this.oracles.isOracleActive(bob);
@@ -942,9 +929,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE).call();
         assert.equal(res, ether(190));
-        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, stringToHex(PC_AUDITOR_ORACLE_TYPE)).call();
+        res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE).call();
         assert.equal(res, ether(180));
 
         res = await this.oracles.isOracleActive(bob);
@@ -1001,13 +988,13 @@ contract("ClaimManager", (accounts) => {
 
         const txId = '0';
         res = await this.abMultiSigXWeb3.methods.transactions(txId).call();
-        assert.equal(res.destination.toLowerCase(), this.galtToken.address);
+        assert.equal(res.destination, this.galtToken.address);
         assert.equal(res.value, 0);
         assert.equal(
           res.data,
           `0xa9059cbb000000000000000000000000${alice
-            .toLowerCase()
-            .substr(2)}000000000000000000000000000000000000000000000001a055690d9db80000`
+            .substr(2)
+            .toLowerCase()}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
         const multiSigBalance = await this.galtTokenWeb3.methods.balanceOf(this.abMultiSigX.address).call();
@@ -1017,7 +1004,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.abMultiSigXWeb3.methods.getConfirmationCount(txId).call();
         assert.equal(res, 0);
         res = await this.abMultiSigXWeb3.methods.getOwners().call();
-        assert.sameMembers(res.map(a => a.toLowerCase()), [bob, charlie, dan, eve, frank]);
+        assert.sameMembers(res, [bob, charlie, dan, eve, frank]);
 
         const aliceInitialBalance = await this.galtTokenWeb3.methods.balanceOf(alice).call();
 
@@ -1045,21 +1032,13 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by GALT', () => {
       beforeEach(async function() {
-        await this.oracles.addOracle(
-          this.mX,
-          bob,
-          'Bob',
-          'MN',
-          [],
-          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-          {
-            from: oracleManager
-          }
-        );
-        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
 
@@ -1318,21 +1297,13 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by ETH', () => {
       beforeEach(async function() {
-        await this.oracles.addOracle(
-          this.mX,
-          bob,
-          'Bob',
-          'MN',
-          [],
-          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-          {
-            from: oracleManager
-          }
-        );
-        await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+          from: oracleManager
+        });
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
 

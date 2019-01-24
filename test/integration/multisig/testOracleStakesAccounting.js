@@ -3,32 +3,33 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
-const { stringToHex } = Web3.utils;
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 const web3 = new Web3(Oracles.web3.currentProvider);
 
 initHelperWeb3(web3);
-
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 const ESCROW_APPLICATION = '0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48';
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-const NON_EXISTENT_ROLE = 'blah';
-const PE_AUDITOR_ORACLE_TYPE = 'PE_AUDITOR_ORACLE_TYPE';
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
+const NON_EXISTENT_ROLE = bytes32('blah');
+const PE_AUDITOR_ORACLE_TYPE = bytes32('PE_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
+
+const FOO = bytes32('foo');
+const BAR = bytes32('bar');
+const BUZZ = bytes32('buzz');
+// eslint-disable-next-line no-underscore-dangle
+const _ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('Bob');
+const CHARLIE = bytes32('Charlie');
+const DAN = bytes32('Dan');
+const EVE = bytes32('Eve');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('OracleStakesAccounting', accounts => {
@@ -100,45 +101,39 @@ contract('OracleStakesAccounting', accounts => {
       }
     );
 
-    await this.oracles.setApplicationTypeOracleTypes(
-      NEW_APPLICATION,
-      ['foo', 'bar', 'buzz'],
-      [30, 30, 40],
-      ['', '', ''],
-      {
-        from: applicationTypeManager
-      }
-    );
-    await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [''], {
+    await this.oracles.setApplicationTypeOracleTypes(NEW_APPLICATION, [FOO, BAR, BUZZ], [30, 30, 40], [_ES, _ES, _ES], {
+      from: applicationTypeManager
+    });
+    await this.oracles.setApplicationTypeOracleTypes(ESCROW_APPLICATION, [PE_AUDITOR_ORACLE_TYPE], [100], [_ES], {
       from: applicationTypeManager
     });
     this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
       CUSTODIAN_APPLICATION,
       [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [60, 40],
-      ['', ''],
+      [_ES, _ES],
       { from: applicationTypeManager }
     );
 
     // assign oracles
-    await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, 'foo'], {
+    await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
       from: oracleManager
     });
     await this.oracles.addOracle(
       this.mX,
       charlie,
-      'Charlie',
-      'MN',
+      CHARLIE,
+      MN,
       [],
-      ['bar', PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       {
         from: oracleManager
       }
     );
-    await this.oracles.addOracle(this.mX, dan, 'Dan', 'MN', [], ['buzz', PE_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.mX, eve, 'Eve', 'MN', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+    await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleManager
     });
 
@@ -153,17 +148,19 @@ contract('OracleStakesAccounting', accounts => {
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
 
-      let res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, stringToHex(NON_EXISTENT_ROLE)).call();
+      let res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, NON_EXISTENT_ROLE).call();
       assert.equal(res, 0);
-      res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, stringToHex(PC_CUSTODIAN_ORACLE_TYPE)).call();
+      res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE).call();
       assert.equal(res, ether(35));
     });
 
     it('should deny staking for non-existing role', async function() {
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
-      await assertRevert(this.oracleStakesAccountingX.stake(bob, 'non-exisitng-role', ether(35), { from: alice }));
+      await assertRevert(
+        this.oracleStakesAccountingX.stake(bob, bytes32('non-exisitng-role'), ether(35), { from: alice })
+      );
 
-      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, stringToHex(NON_EXISTENT_ROLE)).call();
+      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, NON_EXISTENT_ROLE).call();
       assert.equal(res, 0);
     });
 
@@ -171,24 +168,16 @@ contract('OracleStakesAccounting', accounts => {
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
       await assertRevert(this.oracleStakesAccountingX.stake(alice, NON_EXISTENT_ROLE, ether(35), { from: alice }));
 
-      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(alice, stringToHex(NON_EXISTENT_ROLE)).call();
+      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(alice, NON_EXISTENT_ROLE).call();
       assert.equal(res, 0);
     });
   });
 
   describe('#slash()', () => {
     beforeEach(async function() {
-      await this.oracles.addOracle(
-        this.mX,
-        bob,
-        'Bob',
-        'MN',
-        [],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, 'foo'],
-        {
-          from: oracleManager
-        }
-      );
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
+        from: oracleManager
+      });
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(1000), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(55), { from: alice });
@@ -198,18 +187,14 @@ contract('OracleStakesAccounting', accounts => {
     it('should allow slash manager slashing oracle stake', async function() {
       await this.oracleStakesAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(18), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingXWeb3.methods
-        .stakeOf(bob, stringToHex(PC_AUDITOR_ORACLE_TYPE))
-        .call();
+      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, PC_AUDITOR_ORACLE_TYPE).call();
       assert.equal(res, ether(37));
     });
 
     it('should allow slash a stake to a negative value', async function() {
       await this.oracleStakesAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingXWeb3.methods
-        .stakeOf(bob, stringToHex(PC_AUDITOR_ORACLE_TYPE))
-        .call();
+      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(bob, PC_AUDITOR_ORACLE_TYPE).call();
       assert.equal(res, ether(-45));
     });
 
@@ -226,9 +211,7 @@ contract('OracleStakesAccounting', accounts => {
     it('should allow slashing existent role with 0 balance', async function() {
       await this.oracleStakesAccountingX.slash(dan, PE_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingXWeb3.methods
-        .stakeOf(dan, stringToHex(PE_AUDITOR_ORACLE_TYPE))
-        .call();
+      const res = await this.oracleStakesAccountingXWeb3.methods.stakeOf(dan, PE_AUDITOR_ORACLE_TYPE).call();
       assert.equal(res, ether(-100));
     });
   });

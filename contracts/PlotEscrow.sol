@@ -550,9 +550,9 @@ contract PlotEscrow is AbstractOracleApplication {
 
     require(saleOffer.status == SaleOfferStatus.CANCELLED, "CANCELLED offer status required");
 
+    // TODO: add revert description: "Both Space token and the payment should be withdrawn"
     require(
-      spaceToken.ownerOf(saleOrder.spaceTokenId) != address(this) && saleOffer.paymentAttached == false,
-      "Both Space token and the payment should be withdrawn");
+      spaceToken.ownerOf(saleOrder.spaceTokenId) != address(this) && saleOffer.paymentAttached == false);
 
     changeSaleOfferStatus(saleOrder, _buyer, SaleOfferStatus.EMPTY);
   }
