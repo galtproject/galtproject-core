@@ -14,12 +14,12 @@
 pragma solidity 0.5.3;
 //pragma experimental ABIEncoderV2;
 
-import "./utils/WeilerAtherton.sol";
-import "./utils/PolygonUtils.sol";
+import "@galtproject/geodesic/contracts/utils/WeilerAtherton.sol";
+import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
+import "@galtproject/geodesic/contracts/Geodesic.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SpaceToken.sol";
 import "./SplitMerge.sol";
-import "./Geodesic.sol";
 
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;

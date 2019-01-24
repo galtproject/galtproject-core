@@ -1,7 +1,7 @@
 # Galt Project Contracts
 
 [![Build Status](https://travis-ci.org/galtspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-contracts)
-[![Contracts Version](https://img.shields.io/badge/version-0.4.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
+[![Contracts Version](https://img.shields.io/badge/version-0.6.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
 [![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
 
@@ -20,16 +20,18 @@ For testnet ether see the section below.
 
 Currently we have all our contracts deployed at our private network named `testnet-57`:
 
-* HTTP RPC server `http://206.189.27.214:8545/`
-* WS RPC server `ws://206.189.27.214:8546/`
-* Faucet http://faucet-dev.galtproject.io/
+* HTTP RPC server `https://testnet-rpc.galtproject.io/`
+* WS RPC server `wss://testnet-rpc.galtproject.io:8556/`
+* Explorer: `https://explorer.testnet.galtproject.io/`
+* Faucet `http://faucet-dev.galtproject.io/`
 
 ### Roadmap
 
-* `v0.4.0` - Current version
-* `v0.5.0` - Introduce some decentralization and cleanup existing contracts
-* `v0.6.0` - Internal contracts review
-* `v0.7.0` - External peer review; Public testnet deployment
+* `v0.6.0` - Current version
+* `v0.7.0` - Migrate to Truffle v5.0
+* `v0.8.0` - Introduce Fund contracts
+* `v0.9.0` - Internal contracts review
+* `v0.10.0` - External peer review; Public testnet deployment
 * `v1.0.0` - External audit; Mainnet deployment
 
 ### About Copyright and Software licenses

@@ -49,7 +49,9 @@ contract SpaceCustodianRegistry is Permissionable {
     }
   }
 
-  // REQUIRES
+  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool) {
+    return assignedCustodians[_spaceTokenId].has(_custodian);
+  }
 
   function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory) {
     return assignedCustodians[_spaceTokenId].elements();

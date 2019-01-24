@@ -1,3 +1,30 @@
+## Galt Project Contracts [v0.6.0](https://github.com/galtspace/galtproject-contracts/tree/v0.6.0) (2019-01-18)
+
+The full list of included changes:
+
+- Add multi-custodian support to PlotCustodianManager.
+- Move spaceToken => [custodians] mapping to the separate SpaceCustodianRegistry contract
+- Introduce Arbitrators-level contracts with registry and factories
+- Introduce global-level SpaceReputationAccounting to provide information for Arbitrator votings
+- Introduce SpaceLocker which locks your token and provides token area information to \*SRA contracts
+- Introduce 2 abstract application types - 1) Verified by Arbitrators; 2) Verified by Oracles
+- Oracles now can be added using NewOraclesApplication and updated using UpdateOracleApplication. All these applications are verifiable by arbitrators.
+- PlotManager now mints Space token within the final approve transaction
+- Migrate to OpenZeppelin 2.0
+- Remove ZeppelinOS dependency
+- Convert LatLon to UTM in LandUtils
+- Calculate UTM area for single zone in PolygonUtils
+- Move calling of libs calculations from SplitMerge and SpaceSplitOperation to new contract Geodesic
+- Implement new GaltDex based on Bancor contracts
+- Implement GaltGenesis with sending wraped ETH to GaltDex
+- Improve SplitOperation upgradability by using factory in SplitMerge
+- Implement calculations of sqrt, sin, cos, tan, atan, exp, log
+- Implement SplitMergeSandbox for fast testing split and merge calculations from ui
+- Move geohash5Precision and geohash5ToGeohashString functions to GeohashUtils from LandUtils
+- Improve deployed info for support multi-network paradigm
+- Reports section with BancorGaltDex contract for build .csv files based on operations info
+
+
 ## Galt Project Contracts [v0.5.0](https://github.com/galtspace/galtproject-contracts/tree/v0.5.0) (2018-12-21)
 
 The full list of included changes:
