@@ -30,7 +30,7 @@ library AddressLinkedList {
   function insertByFoundAndComparator(Data storage data, address newId, address foundId, int8 compareResult) public {
     if (data.headId == 0) {
       data.count += 1;
-      
+
       data.headId = newId;
       return;
     }
@@ -49,7 +49,7 @@ library AddressLinkedList {
         data.headId = newId;
         return;
       }
-      
+
       insertAfter(data, newId, data.nodesByIds[foundId].prevId);
     }
   }
@@ -143,7 +143,7 @@ library AddressLinkedList {
   }
 
   event LogPop(address popId, address headId, uint256 count);
-  
+
   function pop(Data storage data) public returns (address) {
     address popId = data.headId;
 
@@ -155,7 +155,7 @@ library AddressLinkedList {
     }
 
     delete data.nodesByIds[popId];
-    
+
     return popId;
   }
 }

@@ -26,7 +26,7 @@ const TYPE_C = 'TYPE_C';
 const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('ArbitratorVoting', accounts => {
+contract('ArbitratorVoting', accounts => {
   const [
     coreTeam,
     arbitratorManager,
@@ -616,7 +616,7 @@ contract.only('ArbitratorVoting', accounts => {
         });
       });
 
-      describe.only('in list', () => {
+      describe('in list', () => {
         beforeEach(async () => {
           const p = [
             voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA }),

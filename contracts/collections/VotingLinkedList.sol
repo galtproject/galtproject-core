@@ -20,20 +20,20 @@ import "./VotingStore.sol";
 library VotingLinkedList {
 
   function insertOrUpdate(AddressLinkedList.Data storage data, VotingStore.Data storage store, address newAddress, uint256 value) public returns (uint256) {
-    if(store.votes[newAddress] > 0) {
+    if (store.votes[newAddress] > 0) {
       // find the more optimized way
       AddressLinkedList.remove(data, newAddress);
     }
-    
-    if(value == 0) {
+
+    if (value == 0) {
       return;
     }
-    
+
     address foundLeft = search(data, store, newAddress, true);
-    
+
     int8 compareResult;
-    if(store.votes[foundLeft] > store.votes[newAddress]) {
-      compareResult = -1;
+    if (store.votes[foundLeft] > store.votes[newAddress]) {
+      compareResult = - 1;
     } else {
       compareResult = store.votes[foundLeft] < store.votes[newAddress] ? int8(1) : int8(0);
     }
@@ -53,8 +53,8 @@ library VotingLinkedList {
     //    uint256 i = 0;
     do {
       int8 compareResult;
-      if(store.votes[curId] > store.votes[valueId]) {
-        compareResult = -1;
+      if (store.votes[curId] > store.votes[valueId]) {
+        compareResult = - 1;
       } else {
         compareResult = store.votes[curId] < store.votes[valueId] ? int8(1) : int8(0);
       }
