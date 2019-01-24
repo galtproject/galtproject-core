@@ -16,7 +16,7 @@ const Helpers = {
   ) {
     const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });
 
-    VotingLinkedList.link('LinkedList', (await AddressLinkedList.new()).address);
+    VotingLinkedList.link('AddressLinkedList', (await AddressLinkedList.new()).address);
     const votingLinkedList = await VotingLinkedList.new();
     ArbitratorVotingFactory.link('VotingLinkedList', votingLinkedList.address);
 
