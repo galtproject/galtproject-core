@@ -16,14 +16,14 @@ pragma experimental "v0.5.0";
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
 import "./SpaceToken.sol";
 import "./traits/Initializable.sol";
 import "./traits/Permissionable.sol";
-import "./interfaces/IGeodesic.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SplitMergeLib.sol";
-import "./utils/GeohashUtils.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
   using SafeMath for uint256;
