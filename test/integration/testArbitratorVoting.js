@@ -26,7 +26,7 @@ const TYPE_C = 'TYPE_C';
 const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('ArbitratorVoting', accounts => {
+contract.only('ArbitratorVoting', accounts => {
   const [
     coreTeam,
     arbitratorManager,
@@ -117,12 +117,12 @@ contract('ArbitratorVoting', accounts => {
     res = await this.multiSigFactory.build([bob, charlie, dan, eve], 2, { from: alice });
     this.abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     this.abVotingZ = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-    this.oracleStakesAccountingZ = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    // this.oracleStakesAccountingZ = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 
     res = await this.multiSigFactoryF.build([a1, a2, a3], 2, { from: alice });
     this.abMultiSigF = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     this.abVotingF = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-    this.oracleStakesAccountingF = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    // this.oracleStakesAccountingF = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 
     // ASSIGNING ROLES
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -176,12 +176,12 @@ contract('ArbitratorVoting', accounts => {
     this.abVotingYWeb3 = new web3.eth.Contract(this.abVotingY.abi, this.abVotingY.address);
     this.abVotingZWeb3 = new web3.eth.Contract(this.abVotingZ.abi, this.abVotingZ.address);
     this.abVotingFWeb3 = new web3.eth.Contract(this.abVotingF.abi, this.abVotingF.address);
-    this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
+    // this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
     this.abMultiSigFWeb3 = new web3.eth.Contract(this.abMultiSigF.abi, this.abMultiSigF.address);
-    this.oracleStakesXWeb3 = new web3.eth.Contract(
-      this.oracleStakesAccountingX.abi,
-      this.oracleStakesAccountingX.address
-    );
+    // this.oracleStakesXWeb3 = new web3.eth.Contract(
+    //   this.oracleStakesAccountingX.abi,
+    //   this.oracleStakesAccountingX.address
+    // );
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
       this.spaceReputationAccounting.address
@@ -616,7 +616,7 @@ contract('ArbitratorVoting', accounts => {
         });
       });
 
-      describe('in list', () => {
+      describe.only('in list', () => {
         beforeEach(async () => {
           const p = [
             voting.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA }),

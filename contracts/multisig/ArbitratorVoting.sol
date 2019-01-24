@@ -19,9 +19,13 @@ import "./ArbitratorsMultiSig.sol";
 import "../traits/Permissionable.sol";
 import "./OracleStakesAccounting.sol";
 import "../SpaceReputationAccounting.sol";
+import "../collections/VotingStore.sol";
+import "../collections/AddressLinkedList.sol";
+import "../collections/VotingLinkedList.sol";
 
 contract ArbitratorVoting is Permissionable {
   using ArraySet for ArraySet.AddressSet;
+  using AddressLinkedList for AddressLinkedList.Data;
 
   event LimitReached();
   event Update();
@@ -94,10 +98,6 @@ contract ArbitratorVoting is Permissionable {
   // Candidate/Delegate => balance
   mapping(address => uint256) private reputationBalance;
 
-
-  // Candidate address => Candidate details
-  mapping(address => Candidate) candidates;
-
   struct Oracle {
     address candidate;
     uint256 weight;
@@ -108,17 +108,8 @@ contract ArbitratorVoting is Permissionable {
     ArraySet.AddressSet candidates;
   }
 
-  struct Candidate {
-    bool active;
-    address next;
-    address prev;
-    uint256 weight;
-  }
-
-  // HEAD. Candidate from Top-N with the highest weight
-  address public candidatesHead;
-  // TAIL. candidate from Top-N with the lower weight
-  address public candidatesTail;
+  VotingStore.Data votingData;
+  AddressLinkedList.Data votingTop;
 
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
@@ -166,8 +157,6 @@ contract ArbitratorVoting is Permissionable {
       weight = combinedRatio / 2;
     }
 
-    candidates[_candidate].weight = weight;
-
     emit Recalculate(
       _candidate,
       candidateSpaceReputation,
@@ -179,295 +168,8 @@ contract ArbitratorVoting is Permissionable {
       combinedRatio,
       weight
     );
-
-    if (weight == 0) {
-      if (candidates[_candidate].active) {
-        emit RemoveFromList(_candidate);
-        _removeFromList(_candidate);
-      }
-      return;
-    }
-
-    // an empty list
-    if (candidateCounter == 0) {
-      candidatesHead = _candidate;
-      candidates[_candidate].active = true;
-      candidateCounter = 1;
-
-      return;
-    }
-
-    // one-element list
-    if (candidateCounter == 1) {
-      uint256 headWeight = candidates[candidatesHead].weight;
-      if (candidates[_candidate].active) {
-        assert(_candidate == candidatesHead);
-        assert(address(0) == candidatesTail);
-      } else {
-        if (weight >= headWeight) {
-          // move head to the tail
-          candidatesTail = candidatesHead;
-          // insert as HEAD
-          candidatesHead = _candidate;
-        } else {
-          // insert as TAIL
-          candidatesTail = _candidate;
-        }
-
-        candidates[candidatesHead].next = candidatesTail;
-        candidates[candidatesTail].prev = candidatesHead;
-        candidates[_candidate].active = true;
-        candidateCounter = 2;
-      }
-
-      return;
-    }
-
-    // >= 2 elements list
-    // existing element
-    if (candidates[_candidate].active) {
-      emit Update();
-      _recalculateActive(_candidate, weight);
-    // new element
-    } else {
-      emit New();
-      _insertNew(_candidate, weight);
-    }
-  }
-
-  function _insertNew(address _candidate, uint256 weight) internal {
-    Candidate storage c = candidates[_candidate];
-    Candidate storage currentHead = candidates[candidatesHead];
-    Candidate storage currentTail = candidates[candidatesTail];
-
-    c.active = true;
-
-    // weight > HEAD
-    if (weight > currentHead.weight) {
-      emit InsertHead();
-      currentHead.prev = _candidate;
-      c.next = candidatesHead;
-      candidatesHead = _candidate;
-    } else if (weight < currentTail.weight) {
-      // skip if limit is already reached
-      if (candidateCounter >= n) {
-        emit LimitReached();
-        return;
-      }
-
-      emit InsertTail();
-
-      currentTail.next = _candidate;
-      c.prev = candidatesTail;
-      candidatesTail = _candidate;
-    // HEAD > weight > TAIL
-    } else {
-      emit InsertMiddle();
-
-      address current = candidatesHead;
-      address nextAfter = candidates[current].next;
-
-      while (weight < candidates[nextAfter].weight) {
-        current = candidates[current].next;
-        nextAfter = candidates[current].next;
-      }
-
-      // relink
-      candidates[current].next = _candidate;
-      candidates[nextAfter].prev = _candidate;
-      candidates[_candidate].next = nextAfter;
-      candidates[_candidate].prev = current;
-    }
-    // else do nothing
-
-    if (candidateCounter >= n) {
-      emit CutTail();
-      address prev = candidates[candidatesTail].prev;
-      delete candidates[prev].next;
-      delete candidates[candidatesTail].prev;
-      candidatesTail = prev;
-    } else {
-      candidateCounter += 1;
-    }
-  }
-
-  function _recalculateActive(address _candidate, uint256 weight) internal {
-    Candidate storage c = candidates[_candidate];
-    Candidate storage currentHead = candidates[candidatesHead];
-    Candidate storage currentTail = candidates[candidatesTail];
-
-    if (_candidate == candidatesHead) {
-      if (weight > candidates[currentHead.next].weight) {
-        emit KeepHead();
-        return;
-      }
-
-      emit DeposeHead();
-
-      if (candidateCounter == 2) {
-        delete candidates[candidatesHead].next;
-        delete candidates[candidatesTail].prev;
-
-        candidatesHead = candidatesTail;
-        candidatesTail = _candidate;
-
-        candidates[candidatesHead].next = candidatesTail;
-        candidates[candidatesTail].prev = candidatesHead;
-        return;
-      }
-
-      // pop head (now it's not the HEAD)
-      delete candidates[currentHead.next].prev;
-      candidatesHead = currentHead.next;
-    } else if (_candidate == candidatesTail) {
-      if (weight < candidates[currentTail.prev].weight) {
-        emit KeepTail();
-        return;
-      }
-
-      emit DeposeTail();
-
-      if (candidateCounter == 2) {
-        delete candidates[candidatesHead].next;
-        delete candidates[candidatesTail].prev;
-
-        candidatesTail = candidatesHead;
-        candidatesHead = _candidate;
-
-        candidates[candidatesHead].next = candidatesTail;
-        candidates[candidatesTail].prev = candidatesHead;
-        return;
-      }
-
-      // pop tail (now it's not the HEAD)
-      delete candidates[currentTail.prev].next;
-      candidatesTail = currentTail.prev;
-    }  else {
-      candidates[c.prev].next = c.next;
-      candidates[c.next].prev = c.prev;
-
-      if (weight > currentHead.weight) {
-        emit AppointHead();
-
-        currentHead.prev = _candidate;
-        c.next = candidatesHead;
-        candidatesHead = _candidate;
-
-        return;
-      } else if (weight < currentTail.weight) {
-        emit AppointTail();
-
-        currentTail.next = _candidate;
-        c.prev = candidatesTail;
-        candidatesTail = _candidate;
-
-        return;
-      }
-    }
-
-    // walk from HEAD to TAIL
-    address currentAddress = candidatesHead;
-    address next = candidates[currentAddress].next;
-    // TODO: case when it is a head now
-
-    while (currentAddress != address(0)) {
-      // TODO: limit not reahed
-      if (next == address(0)) {
-        candidates[currentAddress].next = _candidate;
-        candidates[_candidate].prev = currentAddress;
-        return;
-      }
-
-      if (weight < candidates[currentAddress].weight && weight > candidates[next].weight) {
-        candidates[currentAddress].next = _candidate;
-        candidates[_candidate].prev = currentAddress;
-        candidates[next].prev = _candidate;
-        candidates[_candidate].next = next;
-        return;
-      }
-
-      currentAddress = candidates[currentAddress].next;
-      next = candidates[currentAddress].next;
-    }
-
-    // something went wrong;
-    assert(false);
-  }
-
-  function _removeFromList(address _candidate) internal {
-    assert(candidateCounter > 0);
-
-    Candidate storage c = candidates[candidatesHead];
-
-    candidates[_candidate].active = false;
-
-    if (candidateCounter == 1) {
-      assert(_candidate == candidatesHead);
-      delete candidatesHead;
-      candidateCounter = 0;
-
-      return;
-    }
-
-    if (candidateCounter == 2) {
-      assert(_candidate == candidatesHead || _candidate == candidatesTail);
-
-      Candidate storage t = candidates[candidatesTail];
-
-      if (_candidate == candidatesHead) {
-        candidatesHead = candidatesTail;
-      }
-
-      delete c.next;
-      delete t.prev;
-      delete candidatesTail;
-      candidateCounter -= 1;
-      return;
-    }
-
-    candidateCounter -= 1;
-
-    // walk from head till tail
-    Candidate storage h = candidates[candidatesHead];
-    Candidate storage t = candidates[candidatesTail];
-
-    // if tail
-    if (_candidate == candidatesTail) {
-      delete candidates[t.prev].next;
-      candidatesTail = t.prev;
-      delete t.prev;
-
-      return;
-    }
-
-    // if head
-    if (_candidate == candidatesHead) {
-      delete candidates[h.next].prev;
-      candidatesHead = h.next;
-      delete h.next;
-
-      return;
-    }
-
-    // walk from HEAD to TAIL
-    address currentAddress = candidatesHead;
-    address next = candidates[currentAddress].next;
-
-    while (next != address(0)) {
-      if (_candidate == next) {
-        address nextAfter = candidates[next].next;
-        candidates[currentAddress].next = nextAfter;
-        candidates[nextAfter].prev = currentAddress;
-
-        delete candidates[next].prev;
-        delete candidates[next].next;
-
-        return;
-      }
-
-      currentAddress = candidates[currentAddress].next;
-      next = candidates[currentAddress].next;
-    }
+    
+    VotingLinkedList.insertOrUpdate(votingTop, votingData, _candidate, weight);
   }
 
   // 'Oracle Stake Locking' accounting only inside this contract
@@ -664,18 +366,17 @@ contract ArbitratorVoting is Permissionable {
 
   // Getters
   function getCandidates() public view returns (address[]) {
-    if (candidateCounter == 0) {
+    if (votingTop.count == 0) {
       return;
     }
 
-    address[] memory c = new address[](candidateCounter);
-    address currentAddress = candidatesHead;
-
-    // head to tail
+    address[] memory c = new address[](votingTop.count > m ? m : votingTop.count);
+    
+    address currentAddress = votingTop.headId;
     for (uint256 i = 0; i < candidateCounter; i++) {
       c[i] = currentAddress;
 
-      currentAddress = candidates[currentAddress].next;
+      currentAddress = votingTop.nodesByIds[currentAddress].nextId;
     }
 
     return c;
@@ -690,11 +391,11 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function getWeight(address _candidate) external view returns (uint256) {
-    return candidates[_candidate].weight;
+    return votingData.votes[_candidate];
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {
-    return candidates[_candidate].active;
+    return votingTop.headId == _candidate || votingTop.nodesByIds[_candidate].nextId != address(0) || votingTop.nodesByIds[_candidate].prevId != address(0);
   }
 
   function getSize() external view returns (uint256 size) {
