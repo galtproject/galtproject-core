@@ -2,7 +2,7 @@ const GaltToken = artifacts.require('./GaltToken');
 const SpaceToken = artifacts.require('./SpaceToken');
 const LandUtils = artifacts.require('./utils/LandUtils');
 const PolygonUtils = artifacts.require('./utils/PolygonUtils');
-const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
+// const EtherToken = artifacts.require('bancor-contracts/solidity/contracts/token/EtherToken.sol');
 const LinkedList = artifacts.require('./collections/LinkedList');
 const SweepQueueLinkedList = artifacts.require('./collections/SweepQueueLinkedList');
 const RedBlackTree = artifacts.require('./collections/RedBlackTree');
@@ -35,8 +35,8 @@ const Geodesic = artifacts.require('./Geodesic');
 const SpaceSplitOperationFactory = artifacts.require('./SpaceSplitOperationFactory');
 const SplitMergeLib = artifacts.require('./SplitMergeLib');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation');
-const GaltDex = artifacts.require('./GaltDex');
-const GaltGenesis = artifacts.require('./GaltGenesis');
+// const GaltDex = artifacts.require('./GaltDex');
+// const GaltGenesis = artifacts.require('./GaltGenesis');
 const Oracles = artifacts.require('./Oracles');
 const Web3 = require('web3');
 
@@ -118,10 +118,10 @@ module.exports = async function(deployer, network, accounts) {
       splitMergeSandbox.address
     );
     await splitMergeSandbox.setSplitOperationFactory(splitOperationSandboxFactory.address);
-
-    const etherToken = await EtherToken.new({ from: coreTeam });
-    const galtDex = await GaltDex.new({ from: coreTeam });
-    const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, etherToken.address);
+    //
+    // const etherToken = await EtherToken.new({ from: coreTeam });
+    // const galtDex = await GaltDex.new({ from: coreTeam });
+    // const galtGenesis = await GaltGenesis.new(galtToken.address, galtDex.address, etherToken.address);
 
     const oracles = await Oracles.new({ from: coreTeam });
 
@@ -290,14 +290,14 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    await galtDex.initialize(
-      Web3.utils.toWei('10', 'szabo'),
-      Web3.utils.toWei('1', 'szabo'),
-      Web3.utils.toWei('1', 'szabo'),
-      galtToken.address,
-      galtGenesis.address,
-      { from: coreTeam }
-    );
+    // await galtDex.initialize(
+    //   Web3.utils.toWei('10', 'szabo'),
+    //   Web3.utils.toWei('1', 'szabo'),
+    //   Web3.utils.toWei('1', 'szabo'),
+    //   galtToken.address,
+    //   galtGenesis.address,
+    //   { from: coreTeam }
+    // );
 
     await claimManager.initialize(oracles.address, galtToken.address, multiSigRegistry.address, coreTeam, {
       from: coreTeam
@@ -305,8 +305,9 @@ module.exports = async function(deployer, network, accounts) {
 
     console.log('Mint GALT to contracts..');
     const totalGalt = 10000000;
-    await galtToken.mint(galtDex.address, Web3.utils.toWei((totalGalt * 0.75).toString(), 'ether'));
-    await galtToken.mint(galtGenesis.address, Web3.utils.toWei((totalGalt * 0.05).toString(), 'ether'));
+    // TODO: find the way for deploy it
+    // await galtToken.mint(galtDex.address, Web3.utils.toWei((totalGalt * 0.75).toString(), 'ether'));
+    // await galtToken.mint(galtGenesis.address, Web3.utils.toWei((totalGalt * 0.05).toString(), 'ether'));
     await galtToken.mint(referralsFund, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
     await galtToken.mint(coreTeam, Web3.utils.toWei((totalGalt * 0.1).toString(), 'ether'));
 
@@ -315,7 +316,7 @@ module.exports = async function(deployer, network, accounts) {
     await splitMerge.addRoleTo(plotManager.address, 'geo_data_manager', { from: coreTeam });
     await splitMerge.addRoleTo(plotClarification.address, 'geo_data_manager', { from: coreTeam });
 
-    await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
+    // await galtDex.addRoleTo(coreTeam, 'fee_manager', { from: coreTeam });
     await spaceToken.addRoleTo(coreTeam, 'minter', { from: coreTeam });
 
     await spaceCustodianRegistry.addRoleTo(plotCustodian.address, 'application', { from: coreTeam });
@@ -402,8 +403,8 @@ module.exports = async function(deployer, network, accounts) {
             galtTokenAbi: galtToken.abi,
             spaceTokenAddress: spaceToken.address,
             spaceTokenAbi: spaceToken.abi,
-            etherTokenAddress: etherToken.address,
-            etherTokenAbi: etherToken.abi,
+            // etherTokenAddress: etherToken.address,
+            // etherTokenAbi: etherToken.abi,
             geodesicAddress: geodesic.address,
             geodesicAbi: geodesic.abi,
             splitMergeAddress: splitMerge.address,
@@ -424,10 +425,10 @@ module.exports = async function(deployer, network, accounts) {
             plotEscrowAbi: plotEscrow.abi,
             landUtilsAddress: landUtils.address,
             landUtilsAbi: landUtils.abi,
-            galtGenesisAddress: galtGenesis.address,
-            galtGenesisAbi: galtGenesis.abi,
-            galtDexAddress: galtDex.address,
-            galtDexAbi: galtDex.abi,
+            // galtGenesisAddress: galtGenesis.address,
+            // galtGenesisAbi: galtGenesis.abi,
+            // galtDexAddress: galtDex.address,
+            // galtDexAbi: galtDex.abi,
             claimManagerAddress: claimManager.address,
             claimManagerAbi: claimManager.abi,
             oraclesAddress: oracles.address,
