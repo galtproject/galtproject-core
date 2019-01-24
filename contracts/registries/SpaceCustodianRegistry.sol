@@ -11,14 +11,9 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "../traits/Permissionable.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitratorVoting.sol";
-import "../multisig/OracleStakesAccounting.sol";
-import "../SpaceLocker.sol";
+import "@galtproject/galtproject-libs/contracts/traits/Permissionable.sol";
 
 
 contract SpaceCustodianRegistry is Permissionable {
@@ -32,7 +27,7 @@ contract SpaceCustodianRegistry is Permissionable {
 
   function attach(
     uint256 _spaceTokenId,
-    address[] _custodians
+    address[] calldata _custodians
   )
     external
     onlyRole(ROLE_APPLICATION)
@@ -44,7 +39,7 @@ contract SpaceCustodianRegistry is Permissionable {
 
   function detach(
     uint256 _spaceTokenId,
-    address[] _custodians
+    address[] calldata _custodians
   )
     external
     onlyRole(ROLE_APPLICATION)
@@ -56,7 +51,7 @@ contract SpaceCustodianRegistry is Permissionable {
 
   // REQUIRES
 
-  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[]) {
+  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory) {
     return assignedCustodians[_spaceTokenId].elements();
   }
 

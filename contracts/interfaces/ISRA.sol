@@ -11,8 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 
 interface ISRA {
@@ -20,7 +19,7 @@ interface ISRA {
   function balanceOf(address owner) external view returns (uint256);
 
   // ERC20 compatible
-  function totalSupply() external returns (uint256);
+  function totalSupply() external view returns (uint256);
 
   // Ping-Pong Handshake
   function ping() external pure returns (bytes32);

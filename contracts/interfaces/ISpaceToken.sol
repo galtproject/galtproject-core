@@ -11,11 +11,15 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-interface IRSRA {
-  function lockedBalanceOf(address _owner) external view returns (uint256);
-  function totalLockedSupply() external view returns (uint256);
-  function getShare(address[] _addresses) external view returns (uint256);
+
+interface ISpaceToken {
+  function mint(address _to) external returns (uint256);
+  function burn(uint256 _tokenId) external;
+  function setTokenURI(uint256 _tokenId, string calldata _uri) external;
+  function tokensOfOwner(address _owner) external view returns (uint256[] memory);
+  function exists(uint256 _tokenId) external view returns (bool);
+  function transferFrom(address from, address to, uint256 tokenId) external;
+  function safeTransferFrom(address from, address to, uint256 tokenId) external;
 }

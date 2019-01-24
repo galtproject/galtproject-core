@@ -11,22 +11,13 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
+pragma solidity 0.5.3;
 
-pragma experimental "v0.5.0";
+import "../../interfaces/ISpaceLocker.sol";
 
-contract Statusable {
-  enum ApplicationStatus {
-    NOT_EXISTS,
-    SUBMITTED,
-    APPROVED,
-    REJECTED,
-    REVERTED,
 
-    ACCEPTED,
-    LOCKED,
-    REVIEW,
-    COMPLETED,
-    CLOSED
-  }
+interface ISpaceLockerRegistry {
+  function addSpaceLocker(ISpaceLocker _spaceLocker) external;
+  function requireValidLocker(ISpaceLocker _spaceLocker) external view;
+  function isValid(address _spaceLocker) external view returns (bool);
 }

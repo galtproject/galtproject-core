@@ -13,8 +13,7 @@
 
 import "./MathUtils.sol";
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 library VectorUtils {
   function onSegment(int[2] a, int[2] b, int[2] c) internal pure returns (bool) {

@@ -14,8 +14,7 @@
 import "../utils/PointUtils.sol";
 import "./RedBlackTree.sol";
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 library PointRedBlackTree {
   using RedBlackTree for RedBlackTree.Tree;

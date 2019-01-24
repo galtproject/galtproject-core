@@ -14,8 +14,7 @@
 import "../utils/SegmentUtils.sol";
 import "./RedBlackTree.sol";
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 library SegmentRedBlackTree {
   using RedBlackTree for RedBlackTree.Tree;

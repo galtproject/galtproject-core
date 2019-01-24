@@ -11,24 +11,25 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./collections/ArraySet.sol";
-import "./traits/Permissionable.sol";
-import "./SpaceToken.sol";
-import "./registries/SpaceLockerRegistry.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@galtproject/galtproject-libs/contracts/traits/Permissionable.sol";
+import "@galtproject/galtproject-libs/contracts/collections/ArraySet.sol";
+import "./interfaces/ISpaceToken.sol";
+import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ISRA.sol";
+import "./registries/interfaces/ISpaceLockerRegistry.sol";
 
 
 contract LiquidReputationAccounting is ISRA, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  SpaceToken internal spaceToken;
-  SpaceLockerRegistry internal spaceLockerRegistry;
+  IERC721 internal spaceToken;
+  ISpaceLockerRegistry internal spaceLockerRegistry;
 
   // Delegate => balance
   mapping(address => uint256) internal _balances;
@@ -45,8 +46,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   uint256 internal totalStakedSpace;
 
   constructor(
-    SpaceToken _spaceToken,
-    SpaceLockerRegistry _spaceLockerRegistry
+    IERC721 _spaceToken,
+    ISpaceLockerRegistry _spaceLockerRegistry
   )
     public
   {
@@ -54,8 +55,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     spaceLockerRegistry = _spaceLockerRegistry;
   }
 
-  modifier onlySpaceTokenOwner(uint256 _spaceTokenId, SpaceLocker _spaceLocker) {
-    require(_spaceLocker == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
+  modifier onlySpaceTokenOwner(uint256 _spaceTokenId, ISpaceLocker _spaceLocker) {
+    require(address(_spaceLocker) == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
     require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
     _;
@@ -65,7 +66,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
   // @dev Mints reputation for given token to the owner account
   function mint(
-    SpaceLocker _spaceLocker
+    ISpaceLocker _spaceLocker
   )
     public
   {
@@ -85,7 +86,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // Burn space token total reputation
   // Owner should revoke all delegated reputation back to his account before performing this action
   function approveBurn(
-    SpaceLocker _spaceLocker
+    ISpaceLocker _spaceLocker
   )
     public
   {
@@ -165,17 +166,17 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     return _balances[_owner];
   }
 
-  function delegatedBalanceOf(address _delegate, address _owner) public view returns (uint256) {
-    return _delegations[_owner][_delegate];
+  function delegatedBalanceOf(address __delegate, address _owner) public view returns (uint256) {
+    return _delegations[_owner][__delegate];
   }
 
   // ERC20 compatible
-  function totalSupply() public returns (uint256) {
+  function totalSupply() public view returns (uint256) {
     return totalStakedSpace;
   }
 
   // Ping-Pong Handshake
-  function ping() public returns (bytes32) {
+  function ping() public pure returns (bytes32) {
     return bytes32("pong");
   }
 }

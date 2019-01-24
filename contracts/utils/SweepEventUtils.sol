@@ -14,8 +14,7 @@
 import "./MathUtils.sol";
 import "../structs/SweepEvent.sol";
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 library SweepEventUtils {
 

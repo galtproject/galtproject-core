@@ -16,8 +16,7 @@ import "./RedBlackTree.sol";
 import "../utils/SweepEventUtils.sol";
 import "../structs/SweepEvent.sol";
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 library SweepLineRedBlackTree {
   using RedBlackTree for RedBlackTree.Tree;
