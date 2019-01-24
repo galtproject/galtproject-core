@@ -1,6 +1,6 @@
 {
   "name": "@galtproject/galtproject-core",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "description": "Open-source software for land tokenization (accounting on blockchain) and self-governance",
   "directories": {
     "test": "test"
@@ -9,6 +9,7 @@
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/utils": "0.9.1",
+    "@galtproject/libs": "git+https://github.com/galtspace/galtproject-libs.git",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
     "babel-eslint": "10.0.1",
@@ -24,7 +25,7 @@
     "ganache-core": "2.3.3",
     "lodash": "^4.17.11",
     "mocha": "^5.2.0",
-    "openzeppelin-solidity": "2.1.0",
+    "openzeppelin-solidity": "2.1.2",
     "bancor-contracts": "^0.4.4",
     "p-iteration": "^1.1.7",
     "prettier": "1.15.3",
