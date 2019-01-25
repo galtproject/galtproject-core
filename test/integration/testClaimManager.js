@@ -1134,7 +1134,7 @@ contract("ClaimManager", (accounts) => {
 
           describe('after transaction was executed', () => {
             beforeEach(async function() {
-              const txId = '0';
+              const txId = 0;
 
               await this.abMultiSigX.confirmTransaction(txId, { from: bob });
               await this.abMultiSigX.confirmTransaction(txId, { from: dan });
