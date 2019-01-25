@@ -15,12 +15,13 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/ISpaceToken.sol";
+import "./registries/interfaces/ISpaceCustodianRegistry.sol";
+import "./AbstractOracleApplication.sol";
 import "./applications/PlotCustodianManager.sol";
 import "./PlotEscrowLib.sol";
-import "./SpaceToken.sol";
 import "./Oracles.sol";
-import "./collections/ArraySet.sol";
-import "./AbstractOracleApplication.sol";
 
 
 /**
@@ -149,12 +150,12 @@ contract PlotEscrow is AbstractOracleApplication {
     address addr;
   }
 
-  mapping(bytes32 => SaleOrder) public saleOrders;
+  mapping(bytes32 => SaleOrder) private saleOrders;
   mapping(uint256 => bool) public tokenOnSale;
 
-  SpaceToken internal spaceToken;
+  ISpaceToken internal spaceToken;
+  ISpaceCustodianRegistry internal spaceCustodianRegistry;
   PlotCustodianManager internal plotCustodianManager;
-  SpaceCustodianRegistry internal spaceCustodianRegistry;
 
   // Caching (items could be obsolete)
   bytes32[] public saleOrderArray;
@@ -169,9 +170,9 @@ contract PlotEscrow is AbstractOracleApplication {
   constructor () public {}
 
   function initialize(
-    SpaceToken _spaceToken,
+    ISpaceToken _spaceToken,
     PlotCustodianManager _plotCustodianManager,
-    SpaceCustodianRegistry _spaceCustodianRegistry,
+    ISpaceCustodianRegistry _spaceCustodianRegistry,
     Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
@@ -198,7 +199,7 @@ contract PlotEscrow is AbstractOracleApplication {
   function createSaleOrder(
     uint256 _spaceTokenId,
     uint256 _ask,
-    bytes32[] _documents,
+    bytes32[] calldata _documents,
     EscrowCurrency _currency,
     ERC20 _erc20address,
     uint256 _feeInGalt
@@ -581,7 +582,7 @@ contract PlotEscrow is AbstractOracleApplication {
   function applyCustodianAssignment(
     bytes32 _orderId,
     address _buyer,
-    address[] _chosenCustodians,
+    address[] calldata _chosenCustodians,
     uint256 _applicationFeeInGalt
   )
     external
@@ -802,24 +803,22 @@ contract PlotEscrow is AbstractOracleApplication {
       uint256 spaceTokenId,
       uint256 createdAt,
       address lastBuyer,
-      address[] offersList
+      address[] memory offersList
     )
   {
     SaleOrder storage r = saleOrders[_rId];
 
-    return(
-      r.id,
-      r.status,
-      r.escrowCurrency,
-      r.ask,
-      r.tokenContract,
-      r.seller,
-      r.offerList.length,
-      r.spaceTokenId,
-      r.createdAt,
-      r.lastBuyer,
-      r.offerList
-    );
+    id = r.id;
+    status = r.status;
+    escrowCurrency = r.escrowCurrency;
+    ask = r.ask;
+    tokenContract = address(r.tokenContract);
+    seller = r.seller;
+    offerCount = r.offerList.length;
+    spaceTokenId = r.spaceTokenId;
+    createdAt = r.createdAt;
+    lastBuyer = r.lastBuyer;
+    offersList = r.offerList;
   }
 
   /**
@@ -913,7 +912,7 @@ contract PlotEscrow is AbstractOracleApplication {
     return saleOrderArray.length;
   }
 
-  function getSaleOrders() external view returns (bytes32[]) {
+  function getSaleOrders() external view returns (bytes32[] memory) {
     return saleOrderArray;
   }
 
@@ -929,7 +928,7 @@ contract PlotEscrow is AbstractOracleApplication {
     return openSaleOrders.size();
   }
 
-  function getOpenSaleOrders() external view returns (bytes32[]) {
+  function getOpenSaleOrders() external view returns (bytes32[] memory) {
     return openSaleOrders.elements();
   }
 
@@ -937,19 +936,19 @@ contract PlotEscrow is AbstractOracleApplication {
     return auditRequiredSaleOrders.size();
   }
 
-  function getAuditRequiredSaleOrders() external view returns (bytes32[]) {
+  function getAuditRequiredSaleOrders() external view returns (bytes32[] memory) {
     return auditRequiredSaleOrders.elements();
   }
 
-  function getSellerOrders(address _seller) external view returns (bytes32[]) {
+  function getSellerOrders(address _seller) external view returns (bytes32[] memory) {
     return saleOrderArrayBySeller[_seller];
   }
 
-  function getBuyerOrders(address _buyer) external view returns (bytes32[]) {
+  function getBuyerOrders(address _buyer) external view returns (bytes32[] memory) {
     return saleOrderArrayByBuyer[_buyer];
   }
 
-  function getAuditorOrders(address _buyer) external view returns (bytes32[]) {
+  function getAuditorOrders(address _buyer) external view returns (bytes32[] memory) {
     return saleOrderArrayByAuditor[_buyer];
   }
 

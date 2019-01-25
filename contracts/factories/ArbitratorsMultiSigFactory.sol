@@ -21,7 +21,7 @@ import "../multisig/ArbitratorsMultiSig.sol";
 
 contract ArbitratorsMultiSigFactory is Ownable {
   function build(
-    address[] _initialOwners,
+    address[] calldata _initialOwners,
     uint256 _multiSigRequired
   )
     external

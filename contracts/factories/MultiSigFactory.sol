@@ -69,7 +69,7 @@ contract MultiSigFactory is Ownable {
   }
 
   function build(
-    address[] _initialOwners,
+    address[] calldata _initialOwners,
     uint256 _multiSigRequired
   )
     external
@@ -85,12 +85,12 @@ contract MultiSigFactory is Ownable {
       oracleStakesAccounting
     );
 
-    arbitratorMultiSig.addRoleTo(arbitratorVoting, arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
-    arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
-    oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
-    arbitratorVoting.addRoleTo(oracleStakesAccounting, arbitratorVoting.ORACLE_STAKES_NOTIFIER());
-    arbitratorVoting.addRoleTo(spaceReputationAccounting, arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
-    oracles.addOracleNotifierRoleTo(oracleStakesAccounting);
+    arbitratorMultiSig.addRoleTo(address(arbitratorVoting), arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
+    arbitratorMultiSig.addRoleTo(address(claimManager), arbitratorMultiSig.ROLE_PROPOSER());
+    oracleStakesAccounting.addRoleTo(address(claimManager), oracleStakesAccounting.ROLE_SLASH_MANAGER());
+    arbitratorVoting.addRoleTo(address(oracleStakesAccounting), arbitratorVoting.ORACLE_STAKES_NOTIFIER());
+    arbitratorVoting.addRoleTo(address(spaceReputationAccounting), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
+    oracles.addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     oracleStakesAccounting.setVotingAddress(arbitratorVoting);
 
@@ -100,7 +100,7 @@ contract MultiSigFactory is Ownable {
     arbitratorVoting.removeRoleFrom(address(this), "role_manager");
     oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
 
-    emit MultiSigCreated(arbitratorMultiSig, arbitratorVoting, oracleStakesAccounting);
+    emit MultiSigCreated(address(arbitratorMultiSig), address(arbitratorVoting), address(oracleStakesAccounting));
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

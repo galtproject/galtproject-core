@@ -15,12 +15,12 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./collections/ArraySet.sol";
-import "./traits/Permissionable.sol";
-import "./SpaceToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/ArbitratorVoting.sol";
 import "./registries/MultiSigRegistry.sol";
-import "./registries/SpaceLockerRegistry.sol";
+import "./registries/interfaces/ISpaceLockerRegistry.sol";
 import "./LiquidReputationAccounting.sol";
 
 
@@ -38,9 +38,9 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
   uint256 private totalStakedSpace;
 
   constructor(
-    SpaceToken _spaceToken,
+    IERC721 _spaceToken,
     MultiSigRegistry _multiSigRegistry,
-    SpaceLockerRegistry _spaceLockerRegistry
+    ISpaceLockerRegistry _spaceLockerRegistry
   )
     public
     LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)

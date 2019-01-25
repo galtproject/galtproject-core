@@ -16,13 +16,12 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./AbstractApplication.sol";
-import "./SpaceToken.sol";
-import "./Oracles.sol";
-import "./collections/ArraySet.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/OracleStakesAccounting.sol";
 import "./multisig/ArbitratorsMultiSig.sol";
 import "./registries/MultiSigRegistry.sol";
+import "./AbstractApplication.sol";
+import "./Oracles.sol";
 
 
 contract ClaimManager is AbstractApplication {
@@ -56,7 +55,7 @@ contract ClaimManager is AbstractApplication {
 
   struct Claim {
     bytes32 id;
-    address multiSig;
+    address payable multiSig;
     address applicant;
     address beneficiary;
     uint256 amount;
@@ -166,10 +165,10 @@ contract ClaimManager is AbstractApplication {
    * @return new claim id
    */
   function submit(
-    address _multiSig,
+    address payable _multiSig,
     address _beneficiary,
     uint256 _amount,
-    bytes32[] _documents,
+    bytes32[] calldata _documents,
     uint256 _applicationFeeInGalt
   )
     external
@@ -257,11 +256,11 @@ contract ClaimManager is AbstractApplication {
    */
   function proposeApproval(
     bytes32 _cId,
-    string _msg,
+    string calldata _msg,
     uint256 _amount,
-    address[] _a,
-    bytes32[] _r,
-    uint256[] _f
+    address[] calldata _a,
+    bytes32[] calldata _r,
+    uint256[] calldata _f
   )
     external
   {
@@ -305,7 +304,7 @@ contract ClaimManager is AbstractApplication {
    * @dev Arbitrator makes reject proposal
    * @param _cId Claim ID
    */
-  function proposeReject(bytes32 _cId, string _msg) external {
+  function proposeReject(bytes32 _cId, string calldata _msg) external {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -359,7 +358,7 @@ contract ClaimManager is AbstractApplication {
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
         c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
-          galtToken,
+          address(galtToken),
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
         );
@@ -417,7 +416,7 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
-  function pushMessage(bytes32 _cId, string _text) external {
+  function pushMessage(bytes32 _cId, string calldata _text) external {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -498,8 +497,8 @@ contract ClaimManager is AbstractApplication {
       address beneficiary,
       address multiSig,
       uint256 amount,
-      bytes32[] attachedDocuments,
-      address[] arbitrators,
+      bytes32[] memory attachedDocuments,
+      address[] memory arbitrators,
       uint256 slotsTaken,
       uint256 slotsThreshold,
       uint256 totalSlots,
@@ -547,7 +546,7 @@ contract ClaimManager is AbstractApplication {
     );
   }
 
-  function getProposals(bytes32 _cId) external view returns (bytes32[]) {
+  function getProposals(bytes32 _cId) external view returns (bytes32[] memory) {
     return claims[_cId].proposals;
   }
 
@@ -560,7 +559,7 @@ contract ClaimManager is AbstractApplication {
     returns (
       uint256 timestamp,
       address from,
-      string text
+      string memory text
     )
   {
     Message storage message = claims[_cId].messages[_mId];
@@ -591,12 +590,12 @@ contract ClaimManager is AbstractApplication {
       Action action,
       bytes32 id,
       address from,
-      string message,
-      address[] votesFor,
+      string memory message,
+      address[] memory votesFor,
       uint256 votesSize,
-      address[] oracles,
-      bytes32[] oracleTypes,
-      uint256[] fines
+      address[] memory oracles,
+      bytes32[] memory oracleTypes,
+      uint256[] memory fines
     )
   {
     Proposal storage p = claims[_cId].proposalDetails[_pId];

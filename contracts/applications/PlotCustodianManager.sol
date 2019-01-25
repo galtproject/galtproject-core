@@ -14,13 +14,13 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../SpaceToken.sol";
-import "../SplitMerge.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@galtproject/libs/contracts/traits/Statusable.sol";
+import "../interfaces/ISpaceToken.sol";
+import "../interfaces/ISplitMerge.sol";
 import "../Oracles.sol";
 import "../PlotEscrow.sol";
 import "../AbstractOracleApplication.sol";
-import "../traits/Statusable.sol";
 import "../registries/SpaceCustodianRegistry.sol";
 
 
@@ -108,8 +108,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
   mapping(bytes32 => Application) private applications;
 
-  SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  ISpaceToken public spaceToken;
+  ISplitMerge public splitMerge;
   PlotEscrow public plotEscrow;
   SpaceCustodianRegistry public spaceCustodianRegistry;
 
@@ -144,10 +144,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   constructor () public {}
 
   function initialize(
-    SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
+    ISpaceToken _spaceToken,
+    ISplitMerge _splitMerge,
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     PlotEscrow _plotEscrow,
     SpaceCustodianRegistry _spaceCustodianRegistry,
     address _galtSpaceRewardsAddress
@@ -178,7 +178,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   function submitApplicationFromEscrow(
     uint256 _spaceTokenId,
     Action _action,
-    address[] _custodiansToModify,
+    address[] calldata _custodiansToModify,
     address _applicant,
     uint256 _applicationFeeInGalt
   )
@@ -211,7 +211,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   function submit(
     uint256 _spaceTokenId,
     Action _action,
-    address[] _custodiansToModify,
+    address[] calldata _custodiansToModify,
     uint256 _applicationFeeInGalt
   )
     external
@@ -235,7 +235,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     uint256 _spaceTokenId,
     Action _action,
     address _applicant,
-    address[] _custodiansToModify,
+    address[] memory _custodiansToModify,
     bool _throughEscrow,
     uint256 _applicationFeeInGalt
   )
@@ -306,7 +306,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     bytes32 _aId,
     uint256 _spaceTokenId,
     Action _action,
-    address[] _custodiansToModify
+    address[] calldata _custodiansToModify
   )
     external
     onlyApplicant(_aId)
@@ -438,7 +438,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.status == ApplicationStatus.LOCKED,
       "Application status should be LOCKED");
-    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
+    spaceToken.transferFrom(a.throughEscrow ? address(plotEscrow) : a.applicant, address(this), a.spaceTokenId);
     // TODO: assign values;
 
     // voters = unique(acceptedCustodians + lockedCustodians) + 1 auditor + 1 applicant
@@ -474,7 +474,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
    */
   function attachDocuments(
     bytes32 _aId,
-    bytes32[] _documents
+    bytes32[] calldata _documents
   )
     external
     onlyParticipatingCustodian(_aId)
@@ -549,7 +549,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
    */
   function reject(
     bytes32 _aId,
-    string _message
+    string calldata _message
   )
     external
     onlyParticipatingCustodian(_aId)
@@ -695,10 +695,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     returns (
       address applicant,
       uint256 spaceTokenId,
-      address[] custodiansToModify,
-      address[] acceptedCustodians,
-      address[] lockedCustodians,
-      bytes32[] custodianDocuments,
+      address[] memory custodiansToModify,
+      address[] memory acceptedCustodians,
+      address[] memory lockedCustodians,
+      bytes32[] memory custodianDocuments,
       address auditor,
       bool throughEscrow,
       ApplicationStatus status,
@@ -771,15 +771,12 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     Application storage a = applications[_aId];
 
-    bool involved = (
+    involved = (
       a.acceptedCustodians.has(_custodian) ||
       a.lockedCustodians.has(_custodian) || a.custodiansToModify.has(_custodian));
 
-    return (
-      a.voting.approvals[_custodian],
-      a.rewards.custodianRewardPaidOut[_custodian],
-      involved
-    );
+    approved = a.voting.approvals[_custodian];
+    rewardPaidOut = a.rewards.custodianRewardPaidOut[_custodian];
   }
 
   function getApplicationVoting(bytes32 _aId)
@@ -788,7 +785,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     returns (
       uint256 approveCount,
       uint256 required,
-      address[] voters,
+      address[] memory voters,
       bool currentAddressApproved
     )
   {

@@ -13,11 +13,11 @@
 
 pragma solidity 0.5.3;
 
-import "../traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
 import "../multisig/ArbitratorVoting.sol";
 import "../multisig/OracleStakesAccounting.sol";
-import "../collections/ArraySet.sol";
 
 
 contract MultiSigRegistry is Permissionable {
@@ -42,17 +42,17 @@ contract MultiSigRegistry is Permissionable {
     ArbitratorVoting _abVoting,
     OracleStakesAccounting _oracleStakesAccounting
   )
-  external
-  onlyRole(ROLE_FACTORY)
+    external
+    onlyRole(ROLE_FACTORY)
   {
-    MultiSig storage ms = multiSigs[_abMultiSig];
+    MultiSig storage ms = multiSigs[address(_abMultiSig)];
 
     ms.active = true;
     ms.voting = _abVoting;
     ms.oracleStakesAccounting = _oracleStakesAccounting;
     ms.factoryAddress = msg.sender;
 
-    multiSigsArray.add(_abMultiSig);
+    multiSigsArray.add(address(_abMultiSig));
   }
 
   // REQUIRES
@@ -71,7 +71,7 @@ contract MultiSigRegistry is Permissionable {
     return multiSigs[_multiSig].oracleStakesAccounting;
   }
 
-  function getMultiSigList() external returns (address[]) {
+  function getMultiSigList() external returns (address[] memory) {
     return multiSigsArray.elements();
   }
 

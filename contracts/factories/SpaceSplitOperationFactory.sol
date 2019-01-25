@@ -15,22 +15,29 @@ pragma solidity 0.5.3;
 //pragma experimental ABIEncoderV2;
 
 import "../interfaces/ISpaceSplitOperationFactory.sol";
+import "../interfaces/ISpaceToken.sol";
+import "../interfaces/ISplitMerge.sol";
 import "../SpaceSplitOperation.sol";
-import "../SpaceToken.sol";
-import "../SplitMerge.sol";
 
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
-  address spaceToken;
-  address splitMerge;
+  ISpaceToken spaceToken;
+  ISplitMerge splitMerge;
   
-  constructor(address _spaceToken, address _splitMerge) public {
+  constructor(ISpaceToken _spaceToken, ISplitMerge _splitMerge) public {
     spaceToken = _spaceToken;
     splitMerge = _splitMerge;
   }
 
-  function build(uint256 _spaceTokenId, uint256[] _clippingContour) external returns (address) {
-    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(spaceToken, splitMerge, SpaceToken(spaceToken).ownerOf(_spaceTokenId), _spaceTokenId, SplitMerge(splitMerge).getPackageContour(_spaceTokenId), _clippingContour);
+  function build(uint256 _spaceTokenId, uint256[] calldata _clippingContour) external returns (address) {
+    SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(
+      address(spaceToken),
+      address(splitMerge),
+      spaceToken.ownerOf(_spaceTokenId),
+      _spaceTokenId,
+      splitMerge.getPackageContour(_spaceTokenId),
+      _clippingContour
+    );
     return address(newSplitOperation);
   }
 }

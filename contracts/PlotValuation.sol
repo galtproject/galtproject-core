@@ -87,7 +87,7 @@ contract PlotValuation is AbstractOracleApplication {
 
   uint256 public gasPriceForDeposits;
 
-  mapping(bytes32 => Application) public applications;
+  mapping(bytes32 => Application) private applications;
   // spaceTokenId => valuationInWei
   mapping(uint256 => uint256) public plotValuations;
 
@@ -160,7 +160,7 @@ contract PlotValuation is AbstractOracleApplication {
    */
   function submitApplication(
     uint256 _spaceTokenId,
-    bytes32[] _attachedDocuments,
+    bytes32[] calldata _attachedDocuments,
     uint256 _applicationFeeInGalt
   )
     external
@@ -361,7 +361,7 @@ contract PlotValuation is AbstractOracleApplication {
    */
   function rejectValuation(
     bytes32 _aId,
-    string _message
+    string calldata _message
   )
     external
     onlyOracleOfApplication(_aId)
@@ -449,8 +449,8 @@ contract PlotValuation is AbstractOracleApplication {
       Currency currency,
       uint256 firstValuation,
       uint256 secondValuation,
-      bytes32[] attachedDocuments,
-      bytes32[] assignedOracleTypes,
+      bytes32[] memory attachedDocuments,
+      bytes32[] memory assignedOracleTypes,
       uint256 galtSpaceReward,
       uint256 oraclesReward,
       bool galtSpaceRewardPaidOut
@@ -486,7 +486,7 @@ contract PlotValuation is AbstractOracleApplication {
       uint256 reward,
       bool rewardPaidOut,
       ValidationStatus status,
-      string message
+      string memory message
     )
   {
     return (

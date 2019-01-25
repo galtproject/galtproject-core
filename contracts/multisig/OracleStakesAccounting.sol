@@ -15,9 +15,9 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../collections/ArraySet.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../Oracles.sol";
-import "../traits/Initializable.sol";
 import "./ArbitratorVoting.sol";
 import "./ArbitratorsMultiSig.sol";
 
@@ -45,7 +45,7 @@ contract OracleStakesAccounting is Permissionable {
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
   address slashManager;
-  address multiSigWallet;
+  ArbitratorsMultiSig multiSigWallet;
   ArbitratorVoting voting;
   ERC20 galtToken;
   Oracles oracles;
@@ -83,7 +83,7 @@ contract OracleStakesAccounting is Permissionable {
     _slash(_oracle, _oracleType, _amount);
   }
 
-  function slashMultiple(address[] _oracles, bytes32[] _oracleTypes, uint256[] _amounts) external onlySlashManager {
+  function slashMultiple(address[] calldata _oracles, bytes32[] calldata _oracleTypes, uint256[] calldata _amounts) external onlySlashManager {
     assert(_oracles.length == _oracleTypes.length);
     assert(_oracleTypes.length == _amounts.length);
 
@@ -106,7 +106,7 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    oracles.onOracleStakeChanged(multiSigWallet, _oracle, _oracleType, finalOracleTypeStake);
+    oracles.onOracleStakeChanged(address(multiSigWallet), _oracle, _oracleType, finalOracleTypeStake);
     voting.onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
@@ -114,7 +114,7 @@ contract OracleStakesAccounting is Permissionable {
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
     oracles.requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    galtToken.transferFrom(msg.sender, multiSigWallet, _amount);
+    galtToken.transferFrom(msg.sender, address(multiSigWallet), _amount);
 
     require(_amount > 0, "Expect positive amount");
 
@@ -129,7 +129,7 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    oracles.onOracleStakeChanged(multiSigWallet, _oracle, _oracleType, finalRoleStake);
+    oracles.onOracleStakeChanged(address(multiSigWallet), _oracle, _oracleType, finalRoleStake);
     voting.onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);

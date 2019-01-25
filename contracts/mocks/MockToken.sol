@@ -1,7 +1,7 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
-import "../traits/Initializable.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 // TODO: remove initializer
 
 

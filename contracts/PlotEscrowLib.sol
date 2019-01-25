@@ -13,13 +13,10 @@
 
 pragma solidity 0.5.3;
 
-import "./PlotEscrow.sol";
-import "./SpaceToken.sol";
-import "./AbstractApplication.sol";
-import "./applications/PlotCustodianManager.sol";
-import "./SplitMerge.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./PlotEscrow.sol";
+import "./registries/interfaces/ISpaceCustodianRegistry.sol";
+import "./AbstractApplication.sol";
 
 
 library PlotEscrowLib {
@@ -27,7 +24,7 @@ library PlotEscrowLib {
 
   function resolveHelper(
     PlotEscrow.SaleOrder storage saleOrder,
-    SpaceCustodianRegistry _spaceCustodianRegistry,
+    ISpaceCustodianRegistry _spaceCustodianRegistry,
     address _buyer
   )
     external

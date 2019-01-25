@@ -24,13 +24,13 @@ contract ISpaceSplitOperation {
   uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
-  function getSubjectContour() external view returns (uint256[]);
+  function getSubjectContour() external view returns (uint256[] memory);
 
-  function getClippingContour() external view returns (uint256[]);
+  function getClippingContour() external view returns (uint256[] memory);
 
   function init() external;
 
-  function getResultContour(uint256 contourIndex) external view returns (uint256[]);
+  function getResultContour(uint256 contourIndex) external view returns (uint256[] memory);
 
-  function getFinishInfo() external view returns (uint256[] subjectContourResult, address tokenOwner, uint256 resultContoursCount);
+  function getFinishInfo() external view returns (uint256[] memory subjectContourResult, address tokenOwner, uint256 resultContoursCount);
 }

@@ -14,8 +14,8 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./collections/ArraySet.sol";
-import "./traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
 contract Oracles is Permissionable {
@@ -130,9 +130,9 @@ contract Oracles is Permissionable {
    */
   function setApplicationTypeOracleTypes(
     bytes32 _applicationType,
-    bytes32[] _oracleTypes,
-    uint256[] _shares,
-    bytes32[] _descriptions
+    bytes32[] calldata _oracleTypes,
+    uint256[] calldata _shares,
+    bytes32[] calldata _descriptions
   )
     external
     onlyApplicationTypeManager
@@ -199,8 +199,8 @@ contract Oracles is Permissionable {
     address _oracle,
     bytes32 _name,
     bytes32 _position,
-    bytes32[] _descriptionHashes,
-    bytes32[] _oracleTypes
+    bytes32[] calldata _descriptionHashes,
+    bytes32[] calldata _oracleTypes
   )
     external
     onlyOracleManager
@@ -314,7 +314,7 @@ contract Oracles is Permissionable {
    * @dev Multiple assigned oracle types check
    * @return true if all given oracle-type pairs are exist
    */
-  function oraclesHasTypesAssigned(address[] _oracles, bytes32[] _oracleType) external view returns (bool) {
+  function oraclesHasTypesAssigned(address[] calldata _oracles, bytes32[] calldata _oracleType) external view returns (bool) {
     for (uint256 i = 0; i < _oracles.length; i++) {
       if (oracles[_oracles[i]].assignedOracleTypes.has(_oracleType[i]) == false) {
         return false;
@@ -329,7 +329,7 @@ contract Oracles is Permissionable {
   )
     external
     view
-    returns (bytes32[])
+    returns (bytes32[] memory)
   {
     return applicationTypeOracleTypes[_applicationType];
   }
@@ -359,15 +359,15 @@ contract Oracles is Permissionable {
     return oracleTypes[_oracleType].applicationType;
   }
 
-  function getOracleTypes() external view returns (bytes32[]) {
+  function getOracleTypes() external view returns (bytes32[] memory) {
     return oracleTypesIndex;
   }
 
-  function getOracles() external view returns (address[]) {
+  function getOracles() external view returns (address[] memory) {
     return oraclesArray;
   }
 
-  function getOraclesByOracleType(bytes32 _oracleType) external view returns (address[]) {
+  function getOraclesByOracleType(bytes32 _oracleType) external view returns (address[] memory) {
     return oraclesByType[_oracleType];
   }
 
@@ -379,9 +379,9 @@ contract Oracles is Permissionable {
     returns (
       bytes32 name,
       bytes32 position,
-      bytes32[] descriptionHashes,
-      bytes32[] activeOracleTypes,
-      bytes32[] assignedOracleTypes,
+      bytes32[] memory descriptionHashes,
+      bytes32[] memory activeOracleTypes,
+      bytes32[] memory assignedOracleTypes,
       bool active
     )
   {

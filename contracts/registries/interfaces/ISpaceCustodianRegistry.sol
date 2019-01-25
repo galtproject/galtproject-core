@@ -14,14 +14,10 @@
 pragma solidity 0.5.3;
 
 
-interface ISpaceToken {
-  function mint(address _to) external returns (uint256);
-  function burn(uint256 _tokenId) external;
-  function approve(address _to, uint256 _tokenId) external;
-  function setTokenURI(uint256 _tokenId, string calldata _uri) external;
-  function tokensOfOwner(address _owner) external view returns (uint256[] memory);
-  function ownerOf(uint256 _tokenId) external view returns (address);
-  function exists(uint256 _tokenId) external view returns (bool);
-  function transferFrom(address from, address to, uint256 tokenId) external;
-  function safeTransferFrom(address from, address to, uint256 tokenId) external;
+contract ISpaceCustodianRegistry {
+  function attach(uint256 _spaceTokenId, address[] calldata _custodians) external;
+  function detach(uint256 _spaceTokenId, address[] calldata _custodians) external;
+  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool);
+  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory);
+  function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256);
 }

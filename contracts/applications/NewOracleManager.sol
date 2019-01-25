@@ -14,9 +14,9 @@
 pragma solidity 0.5.3;
 
 
-import "../traits/Statusable.sol";
+import "@galtproject/libs/contracts/traits/Statusable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../AbstractApplication.sol";
-import "../collections/ArraySet.sol";
 import "../registries/MultiSigRegistry.sol";
 import "./ArbitratorApprovableApplication.sol";
 
@@ -51,12 +51,12 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   }
 
   function submit(
-    address _multiSig,
+    address payable _multiSig,
     address _oracleAddress,
     bytes32 _name,
     bytes32 _position,
-    bytes32[] _descriptionHashes,
-    bytes32[] _oracleTypes,
+    bytes32[] calldata _descriptionHashes,
+    bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
   )
     external
@@ -105,8 +105,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       address addr,
       bytes32 name,
       bytes32 position,
-      bytes32[] descriptionHashes,
-      bytes32[] oracleTypes
+      bytes32[] memory descriptionHashes,
+      bytes32[] memory oracleTypes
     )
   {
     OracleDetails storage o = oracleDetails[_id];

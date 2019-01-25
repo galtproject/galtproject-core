@@ -13,11 +13,12 @@
 
 pragma solidity 0.5.3;
 
-import "../collections/ArraySet.sol";
-import "./ArbitratorsMultiSig.sol";
-import "../traits/Permissionable.sol";
-import "./OracleStakesAccounting.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../SpaceReputationAccounting.sol";
+import "./ArbitratorsMultiSig.sol";
+import "./OracleStakesAccounting.sol";
+
 
 contract ArbitratorVoting is Permissionable {
   using ArraySet for ArraySet.AddressSet;
@@ -662,9 +663,9 @@ contract ArbitratorVoting is Permissionable {
   }
 
   // Getters
-  function getCandidates() public view returns (address[]) {
+  function getCandidates() public view returns (address[] memory) {
     if (candidateCounter == 0) {
-      return;
+      return new address[](0);
     }
 
     address[] memory c = new address[](candidateCounter);

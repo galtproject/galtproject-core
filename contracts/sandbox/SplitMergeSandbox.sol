@@ -14,7 +14,7 @@ contract SplitMergeSandbox is SplitMerge {
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _spaceTokenId, uint256[] _geohashesContour) public {
+  function setPackageContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour) public {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
       _geohashesContour.length <= MAX_CONTOUR_GEOHASH_COUNT,
@@ -33,14 +33,14 @@ contract SplitMergeSandbox is SplitMerge {
     emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
-  function setPackageHeights(uint256 _packageTokenId, int256[] _heightsList) public {
+  function setPackageHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
     require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
     packageToHeights[_packageTokenId] = _heightsList;
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
   }
 
-  function createPackage(address spaceTokenOwner, uint256[] _geohashesContour, int256[] _heightsList) public returns (uint256) {
+  function createPackage(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList) public returns (uint256) {
     uint256 _spaceTokenId = initPackage(spaceTokenOwner);
     setPackageContour(_spaceTokenId, _geohashesContour);
     setPackageHeights(_spaceTokenId, _heightsList);

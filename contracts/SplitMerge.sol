@@ -17,11 +17,11 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
-import "./SpaceToken.sol";
-import "./traits/Initializable.sol";
-import "./traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
+import "./SpaceToken.sol";
 import "./SplitMergeLib.sol";
 
 contract SplitMerge is Initializable, Ownable, Permissionable {
@@ -98,7 +98,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _spaceTokenId, uint256[] _geohashesContour)
+  function setPackageContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour)
     public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
@@ -119,7 +119,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
-  function setPackageHeights(uint256 _spaceTokenId, int256[] _heightsList)
+  function setPackageHeights(uint256 _spaceTokenId, int256[] memory _heightsList)
     public onlyGeoDataManager()
   {
     require(_heightsList.length == getPackageContour(_spaceTokenId).length, "Number of height elements should be equal contour length");
@@ -138,7 +138,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   // TODO: add SpaceSplitOperationFactory for migrations between versions
   function startSplitOperation(
     uint256 _spaceTokenId,
-    uint256[] _clippingContour
+    uint256[] calldata _clippingContour
   )
     external
     onlySpaceTokenOwner(_spaceTokenId)
@@ -230,7 +230,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function mergePackage(
     uint256 _sourceSpaceTokenId,
     uint256 _destinationSpaceTokenId,
-    uint256[] _destinationSpaceContour
+    uint256[] calldata _destinationSpaceContour
   )
     external
     onlySpaceTokenOwner(_sourceSpaceTokenId)
@@ -284,11 +284,11 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
 
-  function getPackageContour(uint256 _packageTokenId) public view returns (uint256[]) {
+  function getPackageContour(uint256 _packageTokenId) public view returns (uint256[] memory) {
     return packageToContour[_packageTokenId];
   }
 
-  function getPackageHeights(uint256 _packageTokenId) public view returns (int256[]) {
+  function getPackageHeights(uint256 _packageTokenId) public view returns (int256[] memory) {
     return packageToHeights[_packageTokenId];
   }
 
@@ -309,8 +309,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   function getPackageGeoData(uint256 _spaceTokenId) public view returns (
-    uint256[] contour,
-    int256[] heights,
+    uint256[] memory contour,
+    int256[] memory heights,
     int256 level
   )
   {

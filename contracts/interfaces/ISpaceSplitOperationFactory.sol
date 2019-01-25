@@ -15,9 +15,5 @@ pragma solidity 0.5.3;
 //pragma experimental ABIEncoderV2;
 
 contract ISpaceSplitOperationFactory {
-
-  address spaceToken;
-  address splitMerge;
-
-  function build(uint256 _spaceTokenId, uint256[] _clippingContour) external returns (address);
+  function build(uint256 _spaceTokenId, uint256[] calldata _clippingContour) external returns (address);
 }
