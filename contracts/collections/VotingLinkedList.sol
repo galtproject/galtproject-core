@@ -20,17 +20,17 @@ import "./VotingStore.sol";
 library VotingLinkedList {
 
   event InsertOrUpdate(address newAddress, uint256 value);
-  
+
   function insertOrUpdate(AddressLinkedList.Data storage data, VotingStore.Data storage store, address newAddress, uint256 value) public returns (uint256) {
     emit InsertOrUpdate(newAddress, value);
-    
+
     // is exist
     if (data.headId == newAddress || data.tailId == newAddress || data.nodesByIds[newAddress].nextId != address(0) || data.nodesByIds[newAddress].prevId != address(0)) {
       // TODO: find the more optimized way
       AddressLinkedList.remove(data, newAddress);
     }
-    
-    if(store.maxCount == data.count && value <= store.votes[data.tailId]) {
+
+    if (store.maxCount == data.count && value <= store.votes[data.tailId]) {
       store.votes[newAddress] = 0;
       return;
     }
@@ -39,20 +39,21 @@ library VotingLinkedList {
       store.votes[newAddress] = 0;
       return;
     }
-    
+
     store.votes[newAddress] = value;
 
     address foundLeft = search(data, store, newAddress, true);
-    
+
     AddressLinkedList.insertByFoundAndComparator(data, newAddress, foundLeft, compare(store, foundLeft, newAddress));
-    
-    if(data.count > store.maxCount) {
+
+    if (data.count > store.maxCount) {
       AddressLinkedList.remove(data, data.tailId);
     }
   }
 
   event CompareResult(int8 compareResult);
-  function compare(VotingStore.Data storage store, address a, address b) public returns(int8 compareResult) {
+
+  function compare(VotingStore.Data storage store, address a, address b) public returns (int8 compareResult) {
     if (store.votes[a] > store.votes[b]) {
       compareResult = - 1;
     } else {
