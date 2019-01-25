@@ -9,7 +9,7 @@ compile: cleanup
 	tput bel
 
 validate:
-	npm run solium
+	npm run ethlint
 	npm run eslint
 
 only-skip:
