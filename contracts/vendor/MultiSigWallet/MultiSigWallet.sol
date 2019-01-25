@@ -242,14 +242,11 @@ contract MultiSigWallet {
 
     // call has been separated into its own function in order to take advantage
     // of the Solidity's code generator to produce a loop that copies tx.data into memory.
-    function external_call(address destination, uint value, uint dataLength, bytes storage data) private returns (bool) {
+    function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
         bool result;
         assembly {
             let x := mload(0x40)   // "Allocate" memory for output (0x40 is where "free memory" pointer is stored by convention)
-            // TODO: ensure this works correctly
-            let d := add(data_offset, 32) // First 32 bytes are the padded length of data, so exclude that
-            // Originally was
-            // let d := add(data, 32) // First 32 bytes are the padded length of data, so exclude that
+            let d := add(data, 32) // First 32 bytes are the padded length of data, so exclude that
             result := call(
                 sub(gas, 34710),   // 34710 is the value that solidity is currently emitting
                                    // It includes callGas (700) + callVeryLow (3, to pay for SUB) + callValueTransferGas (9000) +
