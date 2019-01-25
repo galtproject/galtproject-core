@@ -13,8 +13,8 @@ before_install:
 
 install:
   - npm install
-  - npm install -g eslint solium
+  - npm install -g eslint ethlint
 
 script:
-  - npm run eslint && npm run solium && npm run test
+  - npm run eslint && npm run ethlint && npm run test
 
