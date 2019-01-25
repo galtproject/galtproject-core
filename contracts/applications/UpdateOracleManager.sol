@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorApprovableApplication.sol";
-import "../AbstractApplication.sol";
+import "./AbstractApplication.sol";
 
 
 contract UpdateOracleManager is ArbitratorApprovableApplication {

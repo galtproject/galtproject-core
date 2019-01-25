@@ -15,11 +15,11 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "../AbstractApplication.sol";
-import "../AbstractOracleApplication.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "../Oracles.sol";
+import "./AbstractApplication.sol";
+import "./AbstractOracleApplication.sol";
 import "./PlotManagerLib.sol";
 
 

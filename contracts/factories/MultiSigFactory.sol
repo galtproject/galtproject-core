@@ -19,10 +19,10 @@ import "../Oracles.sol";
 import "../GaltToken.sol";
 import "../SpaceReputationAccounting.sol";
 import "../registries/MultiSigRegistry.sol";
+import "../applications/ClaimManager.sol";
 import "./ArbitratorsMultiSigFactory.sol";
 import "./ArbitratorVotingFactory.sol";
 import "./OracleStakesAccountingFactory.sol";
-import "../ClaimManager.sol";
 
 
 contract MultiSigFactory is Ownable {

@@ -16,8 +16,8 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../AbstractApplication.sol";
 import "../registries/MultiSigRegistry.sol";
+import "./AbstractApplication.sol";
 import "./ArbitratorApprovableApplication.sol";
 
 contract NewOracleManager is ArbitratorApprovableApplication {

@@ -14,8 +14,8 @@ const {
   assertGaltBalanceChanged,
   assertEthBalanceChanged,
   assertRevert
-} = require('../helpers');
-const { deployMultiSigFactory } = require('../deploymentHelpers');
+} = require('../../helpers');
+const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 const { utf8ToHex, hexToString } = Web3.utils;

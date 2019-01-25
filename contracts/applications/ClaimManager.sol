@@ -17,11 +17,11 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./multisig/OracleStakesAccounting.sol";
-import "./multisig/ArbitratorsMultiSig.sol";
-import "./registries/MultiSigRegistry.sol";
+import "../multisig/OracleStakesAccounting.sol";
+import "../multisig/ArbitratorsMultiSig.sol";
+import "../registries/MultiSigRegistry.sol";
+import "../Oracles.sol";
 import "./AbstractApplication.sol";
-import "./Oracles.sol";
 
 
 contract ClaimManager is AbstractApplication {

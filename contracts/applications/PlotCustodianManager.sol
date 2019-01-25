@@ -19,9 +19,8 @@ import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "../Oracles.sol";
-import "../PlotEscrow.sol";
-import "../AbstractOracleApplication.sol";
 import "../registries/SpaceCustodianRegistry.sol";
+import "./AbstractOracleApplication.sol";
 
 
 contract PlotCustodianManager is AbstractOracleApplication, Statusable {
@@ -110,8 +109,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
   ISpaceToken public spaceToken;
   ISplitMerge public splitMerge;
-  PlotEscrow public plotEscrow;
   SpaceCustodianRegistry public spaceCustodianRegistry;
+  address public plotEscrow;
 
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
@@ -148,7 +147,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     ISplitMerge _splitMerge,
     Oracles _oracles,
     IERC20 _galtToken,
-    PlotEscrow _plotEscrow,
+    address _plotEscrow,
     SpaceCustodianRegistry _spaceCustodianRegistry,
     address _galtSpaceRewardsAddress
   )
@@ -186,10 +185,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-    require(msg.sender == address(plotEscrow), "Only trusted PlotEscrow contract allowed overriding applicant address");
+    require(msg.sender == plotEscrow, "Only trusted PlotEscrow contract allowed overriding applicant address");
     require(_applicant != address(0), "Should specify applicant");
     require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_spaceTokenId) == address(plotEscrow), "PlotEscrow contract should own the token");
+    require(spaceToken.ownerOf(_spaceTokenId) == plotEscrow, "PlotEscrow contract should own the token");
 
     return submitApplicationHelper(
       _spaceTokenId,
@@ -438,7 +437,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.status == ApplicationStatus.LOCKED,
       "Application status should be LOCKED");
-    spaceToken.transferFrom(a.throughEscrow ? address(plotEscrow) : a.applicant, address(this), a.spaceTokenId);
+    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
     // TODO: assign values;
 
     // voters = unique(acceptedCustodians + lockedCustodians) + 1 auditor + 1 applicant
@@ -577,7 +576,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
 
     if (a.throughEscrow) {
-      require(msg.sender == address(plotEscrow), "Only plotEscrow allowed claiming token back");
+      require(msg.sender == plotEscrow, "Only plotEscrow allowed claiming token back");
     } else {
       require(msg.sender == a.applicant, "Invalid applicant");
     }

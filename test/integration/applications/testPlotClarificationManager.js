@@ -16,7 +16,7 @@ const {
   zeroAddress,
   deploySplitMerge,
   clearLibCache
-} = require('../helpers');
+} = require('../../helpers');
 
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;

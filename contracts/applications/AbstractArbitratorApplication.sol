@@ -14,9 +14,9 @@
 pragma solidity 0.5.3;
 
 
+import "../multisig/ArbitratorsMultiSig.sol";
+import "../registries/MultiSigRegistry.sol";
 import "./AbstractApplication.sol";
-import "./multisig/ArbitratorsMultiSig.sol";
-import "./registries/MultiSigRegistry.sol";
 
 
 contract AbstractArbitratorApplication is AbstractApplication {

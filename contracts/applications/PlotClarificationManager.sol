@@ -16,8 +16,8 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "./interfaces/ISplitMerge.sol";
-import "./Oracles.sol";
+import "../interfaces/ISplitMerge.sol";
+import "../Oracles.sol";
 import "./AbstractOracleApplication.sol";
 
 
