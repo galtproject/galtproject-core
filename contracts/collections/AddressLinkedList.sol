@@ -29,12 +29,13 @@ library AddressLinkedList {
   }
 
   event SetHead(address head);
+
   function insertByFoundAndComparator(Data storage data, address newAddress, address foundAddress, int8 compareResult) public {
     if (data.head == 0) {
       data.count += 1;
 
       data.head = newAddress;
-      if(data.withTail) {
+      if (data.withTail) {
         data.tail = newAddress;
       }
       emit SetHead(newAddress);
@@ -61,6 +62,7 @@ library AddressLinkedList {
   }
 
   event InsertAfter(address addr, address prev, uint count);
+
   function insertAfter(Data storage data, address newAddress, address prev) public {
     data.count += 1;
 
@@ -69,7 +71,7 @@ library AddressLinkedList {
 
     data.nodes[prev].next = newAddress;
     if (data.nodes[newAddress].next == address(0)) {
-      if(data.withTail) {
+      if (data.withTail) {
         data.tail = newAddress;
       }
     } else {
@@ -79,6 +81,7 @@ library AddressLinkedList {
   }
 
   event Remove(address addr, address prev, address next, address head, address tail, uint count);
+
   function remove(Data storage data, address addr) public {
     if (addr == address(0)) {
       return;
@@ -99,11 +102,11 @@ library AddressLinkedList {
     if (data.withTail && addr == data.tail) {
       data.tail = node.prev;
     }
-    
+
     data.count--;
 
     emit Remove(addr, node.prev, node.next, data.head, data.tail, data.count);
-  
+
     delete data.nodes[addr];
   }
 
@@ -146,7 +149,7 @@ library AddressLinkedList {
       data.head = b;
     }
 
-    if(data.withTail) {
+    if (data.withTail) {
       if (data.nodes[a].next == address(0)) {
         data.tail = a;
       }
