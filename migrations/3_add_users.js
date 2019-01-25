@@ -1,8 +1,6 @@
 const PlotManager = artifacts.require('./PlotManager');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager');
-const PlotValuation = artifacts.require('./PlotValuation');
 const PlotCustodian = artifacts.require('./PlotCustodianManager');
-const PlotEscrow = artifacts.require('./PlotEscrow');
 const SpaceToken = artifacts.require('./SpaceToken');
 const SplitMerge = artifacts.require('./SplitMerge');
 const GaltToken = artifacts.require('./GaltToken');
@@ -40,9 +38,7 @@ module.exports = async function(deployer, network, accounts) {
     const data = JSON.parse(fs.readFileSync(`${__dirname}/../deployed/${networkId}.json`).toString());
     const plotManager = await PlotManager.at(data.plotManagerAddress);
     const plotClarification = await PlotClarificationManager.at(data.plotClarificationAddress);
-    const plotValuation = await PlotValuation.at(data.plotValuationAddress);
     const plotCustodian = await PlotCustodian.at(data.plotCustodianAddress);
-    const plotEscrow = await PlotEscrow.at(data.plotEscrowAddress);
     const spaceToken = await SpaceToken.at(data.spaceTokenAddress);
     const splitMerge = await SplitMerge.at(data.splitMergeAddress);
     const galtToken = await GaltToken.at(data.galtTokenAddress);
@@ -89,21 +85,6 @@ module.exports = async function(deployer, network, accounts) {
       }
     );
 
-    const PV_APPRAISER_ORACLE_TYPE = await plotValuation.PV_APPRAISER_ORACLE_TYPE.call();
-    const PV_APPRAISER2_ORACLE_TYPE = await plotValuation.PV_APPRAISER2_ORACLE_TYPE.call();
-    const PV_AUDITOR_ORACLE_TYPE = await plotValuation.PV_AUDITOR_ORACLE_TYPE.call();
-
-    const PLOT_VALUATION_APPLICATION_TYPE = await plotValuation.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeOracleTypes(
-      PLOT_VALUATION_APPLICATION_TYPE,
-      [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
-      [35, 35, 30],
-      [bytes32(''), bytes32(''), bytes32('')],
-      {
-        from: coreTeam
-      }
-    );
-
     const PC_CUSTODIAN_ORACLE_TYPE = await plotCustodian.PC_CUSTODIAN_ORACLE_TYPE.call();
     const PC_AUDITOR_ORACLE_TYPE = await plotCustodian.PC_AUDITOR_ORACLE_TYPE.call();
 
@@ -113,18 +94,6 @@ module.exports = async function(deployer, network, accounts) {
       [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
       [75, 25],
       [bytes32(''), bytes32('')],
-      {
-        from: coreTeam
-      }
-    );
-
-    const PE_AUDITOR_ORACLE_TYPE = await plotEscrow.PE_AUDITOR_ORACLE_TYPE.call();
-    const PLOT_ESCROW_APPLICATION_TYPE = await plotEscrow.APPLICATION_TYPE.call();
-    await oracles.setApplicationTypeOracleTypes(
-      PLOT_ESCROW_APPLICATION_TYPE,
-      [PE_AUDITOR_ORACLE_TYPE],
-      [100],
-      [bytes32('')],
       {
         from: coreTeam
       }
@@ -178,12 +147,8 @@ module.exports = async function(deployer, network, accounts) {
       PM_AUDITOR_ORACLE_TYPE,
       PCL_CADASTRAL_ORACLE_TYPE,
       PCL_AUDITOR_ORACLE_TYPE,
-      PV_APPRAISER_ORACLE_TYPE,
-      PV_APPRAISER2_ORACLE_TYPE,
-      PV_AUDITOR_ORACLE_TYPE,
       PC_CUSTODIAN_ORACLE_TYPE,
-      PC_AUDITOR_ORACLE_TYPE,
-      PE_AUDITOR_ORACLE_TYPE
+      PC_AUDITOR_ORACLE_TYPE
     ];
 
     const validatorsSpecificRoles = {
@@ -200,17 +165,11 @@ module.exports = async function(deployer, network, accounts) {
       Nik: allRoles,
       Nik2: allRoles,
       NickValidator: allRoles,
-      Nik3: [PV_APPRAISER_ORACLE_TYPE],
-      Nik4: [PV_APPRAISER2_ORACLE_TYPE],
-      Nik5: [PV_AUDITOR_ORACLE_TYPE],
       DevNick: allRoles,
       DevNick2: allRoles,
       DevNickValidator: allRoles,
       DevNickValidator2: allRoles,
-      DevNickValidator3: allRoles,
-      DevNik3: [PV_APPRAISER_ORACLE_TYPE],
-      DevNik4: [PV_APPRAISER2_ORACLE_TYPE],
-      DevNik5: [PV_AUDITOR_ORACLE_TYPE]
+      DevNickValidator3: allRoles
     };
 
     const minDepositForValidator = 500; // 10k $
@@ -222,12 +181,8 @@ module.exports = async function(deployer, network, accounts) {
     minDepositGalt[PM_AUDITOR_ORACLE_TYPE] = minDepositForValidator;
     minDepositGalt[PCL_CADASTRAL_ORACLE_TYPE] = minDepositForValidator;
     minDepositGalt[PCL_AUDITOR_ORACLE_TYPE] = minDepositForValidator;
-    minDepositGalt[PV_APPRAISER_ORACLE_TYPE] = minDepositForValidator;
-    minDepositGalt[PV_APPRAISER2_ORACLE_TYPE] = minDepositForValidator;
-    minDepositGalt[PV_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_CUSTODIAN_ORACLE_TYPE] = minDepositForAuditor;
     minDepositGalt[PC_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
-    minDepositGalt[PE_AUDITOR_ORACLE_TYPE] = minDepositForAuditor;
 
     let needGaltForDeposits = 0;
     _.forEach(validatorsSpecificRoles, validatorRoles => {
@@ -288,10 +243,8 @@ module.exports = async function(deployer, network, accounts) {
         promises.push(oracles.addRoleTo(address, 'validator_manager', { from: coreTeam }));
         promises.push(oracles.addRoleTo(address, 'application_type_manager', { from: coreTeam }));
         promises.push(plotManager.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(plotValuation.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotCustodian.addRoleTo(address, 'fee_manager', { from: coreTeam }));
         promises.push(plotClarification.addRoleTo(address, 'fee_manager', { from: coreTeam }));
-        promises.push(plotEscrow.addRoleTo(address, 'fee_manager', { from: coreTeam }));
       }
 
       if (!sendEthByNetwork[network]) {
