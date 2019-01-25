@@ -16,9 +16,9 @@ pragma experimental "v0.5.0";
 
 library AddressLinkedList {
   struct Data {
-    bool allowDuplicates;
     mapping(address => Node) nodesByIds;
     address headId;
+    address tailId;
     uint256 count;
   }
 
@@ -27,11 +27,14 @@ library AddressLinkedList {
     address nextId;
   }
 
+  event SetHead(address head);
   function insertByFoundAndComparator(Data storage data, address newId, address foundId, int8 compareResult) public {
     if (data.headId == 0) {
       data.count += 1;
 
       data.headId = newId;
+      data.tailId = newId;
+      emit SetHead(newId);
       return;
     }
 
@@ -54,6 +57,7 @@ library AddressLinkedList {
     }
   }
 
+  event InsertAfter(address newId, address prevId, uint count);
   function insertAfter(Data storage data, address newId, address prevId) public {
     data.count += 1;
 
@@ -61,21 +65,25 @@ library AddressLinkedList {
     data.nodesByIds[newId].prevId = prevId;
 
     data.nodesByIds[prevId].nextId = newId;
-    if (data.nodesByIds[newId].nextId != 0) {
+    if (data.nodesByIds[newId].nextId == address(0)) {
+      data.tailId = newId;
+    } else {
       data.nodesByIds[data.nodesByIds[newId].nextId].prevId = newId;
     }
+    emit InsertAfter(newId, prevId, data.count);
   }
 
+  event Remove(address id, address prevId, address nextId, address headId, address tailId, uint count);
   function remove(Data storage data, address id) public {
-    if (id == 0) {
+    if (id == address(0)) {
       return;
     }
     Node storage node = data.nodesByIds[id];
 
-    if (node.prevId != 0) {
+    if (node.prevId != address(0)) {
       data.nodesByIds[node.prevId].nextId = node.nextId;
     }
-    if (node.nextId != 0) {
+    if (node.nextId != address(0)) {
       data.nodesByIds[node.nextId].prevId = node.prevId;
     }
 
@@ -83,6 +91,14 @@ library AddressLinkedList {
       data.headId = node.nextId;
     }
 
+    if (id == data.tailId) {
+      data.tailId = node.prevId;
+    }
+    
+    data.count--;
+
+    emit Remove(id, node.prevId, node.nextId, data.headId, data.tailId, data.count);
+  
     delete data.nodesByIds[id];
   }
 
@@ -102,32 +118,39 @@ library AddressLinkedList {
       bNode.prevId = bId;
     }
 
-    if (aNodePrevId != 0) {
+    if (aNodePrevId != address(0)) {
       data.nodesByIds[aNodePrevId].nextId = bId;
     }
-    if (aNodeNextId != 0) {
+    if (aNodeNextId != address(0)) {
       data.nodesByIds[aNodeNextId].prevId = bId;
     }
-    if (bNodePrevId != 0) {
+    if (bNodePrevId != address(0)) {
       data.nodesByIds[bNodePrevId].nextId = aId;
     }
-    if (bNodeNextId != 0) {
+    if (bNodeNextId != address(0)) {
       data.nodesByIds[bNodeNextId].prevId = aId;
     }
 
     data.nodesByIds[aId] = bNode;
     data.nodesByIds[bId] = aNode;
 
-    if (data.nodesByIds[aId].prevId == 0) {
+    if (data.nodesByIds[aId].prevId == address(0)) {
       data.headId = aId;
     }
-    if (data.nodesByIds[bId].prevId == 0) {
+    if (data.nodesByIds[bId].prevId == address(0)) {
       data.headId = bId;
+    }
+
+    if (data.nodesByIds[aId].nextId == address(0)) {
+      data.tailId = aId;
+    }
+    if (data.nodesByIds[bId].nextId == address(0)) {
+      data.tailId = bId;
     }
   }
 
   function getIndex(Data storage data, address id) public returns (uint256) {
-    if (id == 0) {
+    if (id == address(0)) {
       require(false, "id not exists in LinkedList");
     }
     address curId = data.headId;
@@ -147,11 +170,11 @@ library AddressLinkedList {
   function pop(Data storage data) public returns (address) {
     address popId = data.headId;
 
-    if (data.nodesByIds[popId].nextId != 0) {
-      data.nodesByIds[data.nodesByIds[popId].nextId].prevId = 0;
+    if (data.nodesByIds[popId].nextId != address(0)) {
+      data.nodesByIds[data.nodesByIds[popId].nextId].prevId = address(0);
       data.headId = data.nodesByIds[popId].nextId;
     } else {
-      data.headId = 0;
+      data.headId = address(0);
     }
 
     delete data.nodesByIds[popId];

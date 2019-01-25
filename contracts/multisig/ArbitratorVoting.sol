@@ -114,8 +114,6 @@ contract ArbitratorVoting is Permissionable {
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
 
-  uint256 candidateCounter;
-
   uint256 public n;
   uint256 public m;
 
@@ -132,6 +130,7 @@ contract ArbitratorVoting is Permissionable {
     spaceReputationAccounting = _spaceReputationAccounting;
     oracleStakesAccounting = _oracleStakesAccounting;
     n = 10;
+    votingData.maxCount = n;
   }
 
 
@@ -353,6 +352,7 @@ contract ArbitratorVoting is Permissionable {
 
     m = _m;
     n = _n;
+    votingData.maxCount = n;
   }
 
   function pushArbitrators() external {
@@ -365,20 +365,29 @@ contract ArbitratorVoting is Permissionable {
   }
 
   // Getters
+  event CandidatesResult(address[] result);
+  event CandidatesCount(uint count);
+  event CandidatesIteration(address c);
+
   function getCandidates() public view returns (address[]) {
     if (votingTop.count == 0) {
       return;
     }
+    
+//    emit CandidatesCount(votingTop.count);
 
-    address[] memory c = new address[](votingTop.count > m ? m : votingTop.count);
+    address[] memory c = new address[](votingTop.count);
+
+//    emit CandidatesCount(c.length);
     
     address currentAddress = votingTop.headId;
-    for (uint256 i = 0; i < candidateCounter; i++) {
+    for (uint256 i = 0; i < c.length; i++) {
       c[i] = currentAddress;
+//      emit CandidatesIteration(currentAddress);
 
       currentAddress = votingTop.nodesByIds[currentAddress].nextId;
     }
-
+//    emit CandidatesResult(c);
     return c;
   }
 
@@ -395,10 +404,10 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {
-    return votingTop.headId == _candidate || votingTop.nodesByIds[_candidate].nextId != address(0) || votingTop.nodesByIds[_candidate].prevId != address(0);
+    return votingTop.headId == _candidate || votingTop.tailId == _candidate || votingTop.nodesByIds[_candidate].nextId != address(0) || votingTop.nodesByIds[_candidate].prevId != address(0);
   }
 
   function getSize() external view returns (uint256 size) {
-    return candidateCounter;
+    return votingTop.count;
   }
 }

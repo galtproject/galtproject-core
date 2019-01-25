@@ -17,5 +17,6 @@ pragma experimental "v0.5.0";
 library VotingStore {
   struct Data {
     mapping(address => uint) votes;
+    uint256 maxCount;
   }
 }

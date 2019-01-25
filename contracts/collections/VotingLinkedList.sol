@@ -19,26 +19,46 @@ import "./VotingStore.sol";
 
 library VotingLinkedList {
 
+  event InsertOrUpdate(address newAddress, uint256 value);
+  
   function insertOrUpdate(AddressLinkedList.Data storage data, VotingStore.Data storage store, address newAddress, uint256 value) public returns (uint256) {
-    if (store.votes[newAddress] > 0) {
-      // find the more optimized way
+    emit InsertOrUpdate(newAddress, value);
+    
+    // is exist
+    if (data.headId == newAddress || data.tailId == newAddress || data.nodesByIds[newAddress].nextId != address(0) || data.nodesByIds[newAddress].prevId != address(0)) {
+      // TODO: find the more optimized way
       AddressLinkedList.remove(data, newAddress);
     }
-
-    if (value == 0) {
+    
+    if(store.maxCount == data.count && value <= store.votes[data.tailId]) {
+      store.votes[newAddress] = 0;
       return;
     }
 
-    address foundLeft = search(data, store, newAddress, true);
+    if (value == 0) {
+      store.votes[newAddress] = 0;
+      return;
+    }
+    
+    store.votes[newAddress] = value;
 
-    int8 compareResult;
-    if (store.votes[foundLeft] > store.votes[newAddress]) {
+    address foundLeft = search(data, store, newAddress, true);
+    
+    AddressLinkedList.insertByFoundAndComparator(data, newAddress, foundLeft, compare(store, foundLeft, newAddress));
+    
+    if(data.count > store.maxCount) {
+      AddressLinkedList.remove(data, data.tailId);
+    }
+  }
+
+  event CompareResult(int8 compareResult);
+  function compare(VotingStore.Data storage store, address a, address b) public returns(int8 compareResult) {
+    if (store.votes[a] > store.votes[b]) {
       compareResult = - 1;
     } else {
-      compareResult = store.votes[foundLeft] < store.votes[newAddress] ? int8(1) : int8(0);
+      compareResult = store.votes[a] < store.votes[b] ? int8(1) : int8(0);
     }
-
-    AddressLinkedList.insertByFoundAndComparator(data, newAddress, foundLeft, compareResult);
+    emit CompareResult(compareResult);
   }
 
   //TODO: optimize
@@ -52,12 +72,7 @@ library VotingLinkedList {
     // let prevId = null;
     //    uint256 i = 0;
     do {
-      int8 compareResult;
-      if (store.votes[curId] > store.votes[valueId]) {
-        compareResult = - 1;
-      } else {
-        compareResult = store.votes[curId] < store.votes[valueId] ? int8(1) : int8(0);
-      }
+      int8 compareResult = compare(store, curId, valueId);
       //      if(store.sweepById[curId].point[0] == 1210809247568000000 && store.sweepById[valueId].point[0] == 1210809247568000000) {
       //        emit CompareResult1(store.sweepById[curId].point);//, store.sweepById[curId].left, store.sweepById[curId].isSubject);
       //        emit CompareResult2(store.sweepById[valueId].point);//, store.sweepById[valueId].left, store.sweepById[valueId].isSubject);
