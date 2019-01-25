@@ -108,7 +108,7 @@ contract ArbitratorVoting is Permissionable {
   }
 
   VotingLinkedList.Data votingData;
-  AddressLinkedList.Data votingTop;
+  AddressLinkedList.Data votingList;
 
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
@@ -130,6 +130,7 @@ contract ArbitratorVoting is Permissionable {
     oracleStakesAccounting = _oracleStakesAccounting;
     n = 10;
     votingData.maxCount = n;
+    votingList.withTail = true;
   }
 
 
@@ -167,7 +168,7 @@ contract ArbitratorVoting is Permissionable {
       weight
     );
     
-    VotingLinkedList.insertOrUpdate(votingTop, votingData, _candidate, weight);
+    VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weight);
   }
 
   // 'Oracle Stake Locking' accounting only inside this contract
@@ -369,22 +370,22 @@ contract ArbitratorVoting is Permissionable {
   event CandidatesIteration(address c);
 
   function getCandidates() public view returns (address[]) {
-    if (votingTop.count == 0) {
+    if (votingList.count == 0) {
       return;
     }
     
-//    emit CandidatesCount(votingTop.count);
+//    emit CandidatesCount(votingList.count);
 
-    address[] memory c = new address[](votingTop.count);
+    address[] memory c = new address[](votingList.count);
 
 //    emit CandidatesCount(c.length);
     
-    address currentAddress = votingTop.head;
+    address currentAddress = votingList.head;
     for (uint256 i = 0; i < c.length; i++) {
       c[i] = currentAddress;
 //      emit CandidatesIteration(currentAddress);
 
-      currentAddress = votingTop.nodes[currentAddress].next;
+      currentAddress = votingList.nodes[currentAddress].next;
     }
 //    emit CandidatesResult(c);
     return c;
@@ -403,10 +404,10 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {
-    return VotingLinkedList.isExists(votingTop, _candidate);
+    return VotingLinkedList.isExists(votingList, _candidate);
   }
 
   function getSize() external view returns (uint256 size) {
-    return votingTop.count;
+    return votingList.count;
   }
 }

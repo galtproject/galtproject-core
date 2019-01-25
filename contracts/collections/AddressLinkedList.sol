@@ -20,6 +20,7 @@ library AddressLinkedList {
     address head;
     address tail;
     uint256 count;
+    bool withTail;
   }
 
   struct Node {
@@ -33,7 +34,9 @@ library AddressLinkedList {
       data.count += 1;
 
       data.head = newAddress;
-      data.tail = newAddress;
+      if(data.withTail) {
+        data.tail = newAddress;
+      }
       emit SetHead(newAddress);
       return;
     }
@@ -66,7 +69,9 @@ library AddressLinkedList {
 
     data.nodes[prev].next = newAddress;
     if (data.nodes[newAddress].next == address(0)) {
-      data.tail = newAddress;
+      if(data.withTail) {
+        data.tail = newAddress;
+      }
     } else {
       data.nodes[data.nodes[newAddress].next].prev = newAddress;
     }
@@ -91,7 +96,7 @@ library AddressLinkedList {
       data.head = node.next;
     }
 
-    if (addr == data.tail) {
+    if (data.withTail && addr == data.tail) {
       data.tail = node.prev;
     }
     
@@ -141,11 +146,13 @@ library AddressLinkedList {
       data.head = b;
     }
 
-    if (data.nodes[a].next == address(0)) {
-      data.tail = a;
-    }
-    if (data.nodes[b].next == address(0)) {
-      data.tail = b;
+    if(data.withTail) {
+      if (data.nodes[a].next == address(0)) {
+        data.tail = a;
+      }
+      if (data.nodes[b].next == address(0)) {
+        data.tail = b;
+      }
     }
   }
 

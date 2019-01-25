@@ -25,15 +25,15 @@ library VotingLinkedList {
 
   event InsertOrUpdate(address newAddress, uint256 value);
 
-  function insertOrUpdate(AddressLinkedList.Data storage listData, Data storage votingData, address newAddress, uint256 value) public returns (uint256) {
+  function insertOrUpdate(AddressLinkedList.Data storage votingList, Data storage votingData, address newAddress, uint256 value) public returns (uint256) {
     emit InsertOrUpdate(newAddress, value);
 
-    if (isExists(listData, newAddress)) {
+    if (isExists(votingList, newAddress)) {
       // TODO: find the more optimized way to rewrite newAddress
-      AddressLinkedList.remove(listData, newAddress);
+      AddressLinkedList.remove(votingList, newAddress);
     }
 
-    if (votingData.maxCount == listData.count && value <= votingData.votes[listData.tail]) {
+    if (votingData.maxCount == votingList.count && value <= votingData.votes[votingList.tail]) {
       votingData.votes[newAddress] = 0;
       return;
     }
@@ -45,17 +45,17 @@ library VotingLinkedList {
 
     votingData.votes[newAddress] = value;
 
-    address foundLeft = search(listData, votingData, newAddress, true);
+    address foundLeft = search(votingList, votingData, newAddress, true);
 
-    AddressLinkedList.insertByFoundAndComparator(listData, newAddress, foundLeft, compare(votingData, foundLeft, newAddress));
+    AddressLinkedList.insertByFoundAndComparator(votingList, newAddress, foundLeft, compare(votingData, foundLeft, newAddress));
 
-    if (listData.count > votingData.maxCount) {
-      AddressLinkedList.remove(listData, listData.tail);
+    if (votingList.count > votingData.maxCount) {
+      AddressLinkedList.remove(votingList, votingList.tail);
     }
   }
   
-  function isExists(AddressLinkedList.Data storage listData, address addr) public view returns (bool) {
-    return listData.head == addr || listData.tail == addr || listData.nodes[addr].next != address(0) || listData.nodes[addr].prev != address(0);
+  function isExists(AddressLinkedList.Data storage votingList, address addr) public view returns (bool) {
+    return votingList.head == addr || votingList.tail == addr || votingList.nodes[addr].next != address(0) || votingList.nodes[addr].prev != address(0);
   }
 
   event CompareResult(int8 compareResult);
@@ -70,24 +70,24 @@ library VotingLinkedList {
   }
 
   //TODO: optimize by binary search
-  function search(AddressLinkedList.Data storage listData, Data storage votingData, address valueAddress, bool returnLeft) public returns (address) {
-    if (listData.head == 0) {
+  function search(AddressLinkedList.Data storage votingList, Data storage votingData, address valueAddress, bool returnLeft) public returns (address) {
+    if (votingList.head == 0) {
       return 0;
     }
 
-    address curAddress = listData.head;
+    address curAddress = votingList.head;
     do {
       int8 compareResult = compare(votingData, curAddress, valueAddress);
       if (compareResult == 0) {
         return curAddress;
       } else if (!returnLeft) {
-        if (listData.nodes[curAddress].next == 0) {
+        if (votingList.nodes[curAddress].next == 0) {
           return 0;
         }
-        curAddress = listData.nodes[curAddress].next;
+        curAddress = votingList.nodes[curAddress].next;
       } else {
-        if (compareResult < 0 && listData.nodes[curAddress].next != 0) {
-          curAddress = listData.nodes[curAddress].next;
+        if (compareResult < 0 && votingList.nodes[curAddress].next != 0) {
+          curAddress = votingList.nodes[curAddress].next;
         } else {
           return curAddress;
         }
