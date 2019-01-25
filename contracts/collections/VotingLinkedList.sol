@@ -15,91 +15,83 @@ pragma solidity 0.4.24;
 pragma experimental "v0.5.0";
 
 import "./AddressLinkedList.sol";
-import "./VotingStore.sol";
 
 library VotingLinkedList {
 
+  struct Data {
+    mapping(address => uint) votes;
+    uint256 maxCount;
+  }
+
   event InsertOrUpdate(address newAddress, uint256 value);
 
-  function insertOrUpdate(AddressLinkedList.Data storage data, VotingStore.Data storage store, address newAddress, uint256 value) public returns (uint256) {
+  function insertOrUpdate(AddressLinkedList.Data storage listData, Data storage votingData, address newAddress, uint256 value) public returns (uint256) {
     emit InsertOrUpdate(newAddress, value);
 
-    // is exist
-    if (data.headId == newAddress || data.tailId == newAddress || data.nodesByIds[newAddress].nextId != address(0) || data.nodesByIds[newAddress].prevId != address(0)) {
-      // TODO: find the more optimized way
-      AddressLinkedList.remove(data, newAddress);
+    if (isExists(listData, newAddress)) {
+      // TODO: find the more optimized way to rewrite newAddress
+      AddressLinkedList.remove(listData, newAddress);
     }
 
-    if (store.maxCount == data.count && value <= store.votes[data.tailId]) {
-      store.votes[newAddress] = 0;
+    if (votingData.maxCount == listData.count && value <= votingData.votes[listData.tail]) {
+      votingData.votes[newAddress] = 0;
       return;
     }
 
     if (value == 0) {
-      store.votes[newAddress] = 0;
+      votingData.votes[newAddress] = 0;
       return;
     }
 
-    store.votes[newAddress] = value;
+    votingData.votes[newAddress] = value;
 
-    address foundLeft = search(data, store, newAddress, true);
+    address foundLeft = search(listData, votingData, newAddress, true);
 
-    AddressLinkedList.insertByFoundAndComparator(data, newAddress, foundLeft, compare(store, foundLeft, newAddress));
+    AddressLinkedList.insertByFoundAndComparator(listData, newAddress, foundLeft, compare(votingData, foundLeft, newAddress));
 
-    if (data.count > store.maxCount) {
-      AddressLinkedList.remove(data, data.tailId);
+    if (listData.count > votingData.maxCount) {
+      AddressLinkedList.remove(listData, listData.tail);
     }
+  }
+  
+  function isExists(AddressLinkedList.Data storage listData, address addr) public view returns (bool) {
+    return listData.head == addr || listData.tail == addr || listData.nodes[addr].next != address(0) || listData.nodes[addr].prev != address(0);
   }
 
   event CompareResult(int8 compareResult);
 
-  function compare(VotingStore.Data storage store, address a, address b) public returns (int8 compareResult) {
-    if (store.votes[a] > store.votes[b]) {
+  function compare(Data storage votingData, address a, address b) public returns (int8 compareResult) {
+    if (votingData.votes[a] > votingData.votes[b]) {
       compareResult = - 1;
     } else {
-      compareResult = store.votes[a] < store.votes[b] ? int8(1) : int8(0);
+      compareResult = votingData.votes[a] < votingData.votes[b] ? int8(1) : int8(0);
     }
     emit CompareResult(compareResult);
   }
 
-  //TODO: optimize
-  function search(AddressLinkedList.Data storage data, VotingStore.Data storage store, address valueId, bool returnLeft) public returns (address) {
-    // console.log('binarySearch begin', returnLeft, headId, nodesByIds);
-    if (data.headId == 0) {
+  //TODO: optimize by binary search
+  function search(AddressLinkedList.Data storage listData, Data storage votingData, address valueAddress, bool returnLeft) public returns (address) {
+    if (listData.head == 0) {
       return 0;
     }
 
-    address curId = data.headId;
-    // let prevId = null;
-    //    uint256 i = 0;
+    address curAddress = listData.head;
     do {
-      int8 compareResult = compare(store, curId, valueId);
-      //      if(store.sweepById[curId].point[0] == 1210809247568000000 && store.sweepById[valueId].point[0] == 1210809247568000000) {
-      //        emit CompareResult1(store.sweepById[curId].point);//, store.sweepById[curId].left, store.sweepById[curId].isSubject);
-      //        emit CompareResult2(store.sweepById[valueId].point);//, store.sweepById[valueId].left, store.sweepById[valueId].isSubject);
-      //        emit CompareResult3(compareResult);
-      //      }
-      //      emit SearchIteration(i, curId, data.nodesByIds[curId].prevId, data.nodesByIds[curId].nextId, compareResult);
-      // console.log('compareResult', compareResult, shortLine(valuesByIds[curId]));
-
+      int8 compareResult = compare(votingData, curAddress, valueAddress);
       if (compareResult == 0) {
-        return curId;
+        return curAddress;
       } else if (!returnLeft) {
-        if (data.nodesByIds[curId].nextId == 0) {
+        if (listData.nodes[curAddress].next == 0) {
           return 0;
         }
-        curId = data.nodesByIds[curId].nextId;
+        curAddress = listData.nodes[curAddress].next;
       } else {
-        if (compareResult < 0 && data.nodesByIds[curId].nextId != 0) {
-          curId = data.nodesByIds[curId].nextId;
+        if (compareResult < 0 && listData.nodes[curAddress].next != 0) {
+          curAddress = listData.nodes[curAddress].next;
         } else {
-          return curId;
+          return curAddress;
         }
       }
-      //      i++;
-      //      if(i >= 10) {
-      //        return curId;
-      //      }
     }
     while (true);
   }

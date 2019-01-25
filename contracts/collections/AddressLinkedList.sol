@@ -16,169 +16,169 @@ pragma experimental "v0.5.0";
 
 library AddressLinkedList {
   struct Data {
-    mapping(address => Node) nodesByIds;
-    address headId;
-    address tailId;
+    mapping(address => Node) nodes;
+    address head;
+    address tail;
     uint256 count;
   }
 
   struct Node {
-    address prevId;
-    address nextId;
+    address prev;
+    address next;
   }
 
   event SetHead(address head);
-  function insertByFoundAndComparator(Data storage data, address newId, address foundId, int8 compareResult) public {
-    if (data.headId == 0) {
+  function insertByFoundAndComparator(Data storage data, address newAddress, address foundAddress, int8 compareResult) public {
+    if (data.head == 0) {
       data.count += 1;
 
-      data.headId = newId;
-      data.tailId = newId;
-      emit SetHead(newId);
+      data.head = newAddress;
+      data.tail = newAddress;
+      emit SetHead(newAddress);
       return;
     }
 
     if (compareResult == 0) {
-      insertAfter(data, newId, foundId);
+      insertAfter(data, newAddress, foundAddress);
     } else if (compareResult < 0) {
-      insertAfter(data, newId, foundId);
+      insertAfter(data, newAddress, foundAddress);
     } else {
-      if (foundId == data.headId) {
+      if (foundAddress == data.head) {
         data.count += 1;
 
-        data.nodesByIds[newId].nextId = data.headId;
+        data.nodes[newAddress].next = data.head;
 
-        data.nodesByIds[data.headId].prevId = newId;
-        data.headId = newId;
+        data.nodes[data.head].prev = newAddress;
+        data.head = newAddress;
         return;
       }
 
-      insertAfter(data, newId, data.nodesByIds[foundId].prevId);
+      insertAfter(data, newAddress, data.nodes[foundAddress].prev);
     }
   }
 
-  event InsertAfter(address newId, address prevId, uint count);
-  function insertAfter(Data storage data, address newId, address prevId) public {
+  event InsertAfter(address addr, address prev, uint count);
+  function insertAfter(Data storage data, address newAddress, address prev) public {
     data.count += 1;
 
-    data.nodesByIds[newId].nextId = data.nodesByIds[prevId].nextId;
-    data.nodesByIds[newId].prevId = prevId;
+    data.nodes[newAddress].next = data.nodes[prev].next;
+    data.nodes[newAddress].prev = prev;
 
-    data.nodesByIds[prevId].nextId = newId;
-    if (data.nodesByIds[newId].nextId == address(0)) {
-      data.tailId = newId;
+    data.nodes[prev].next = newAddress;
+    if (data.nodes[newAddress].next == address(0)) {
+      data.tail = newAddress;
     } else {
-      data.nodesByIds[data.nodesByIds[newId].nextId].prevId = newId;
+      data.nodes[data.nodes[newAddress].next].prev = newAddress;
     }
-    emit InsertAfter(newId, prevId, data.count);
+    emit InsertAfter(newAddress, prev, data.count);
   }
 
-  event Remove(address id, address prevId, address nextId, address headId, address tailId, uint count);
-  function remove(Data storage data, address id) public {
-    if (id == address(0)) {
+  event Remove(address addr, address prev, address next, address head, address tail, uint count);
+  function remove(Data storage data, address addr) public {
+    if (addr == address(0)) {
       return;
     }
-    Node storage node = data.nodesByIds[id];
+    Node storage node = data.nodes[addr];
 
-    if (node.prevId != address(0)) {
-      data.nodesByIds[node.prevId].nextId = node.nextId;
+    if (node.prev != address(0)) {
+      data.nodes[node.prev].next = node.next;
     }
-    if (node.nextId != address(0)) {
-      data.nodesByIds[node.nextId].prevId = node.prevId;
-    }
-
-    if (id == data.headId) {
-      data.headId = node.nextId;
+    if (node.next != address(0)) {
+      data.nodes[node.next].prev = node.prev;
     }
 
-    if (id == data.tailId) {
-      data.tailId = node.prevId;
+    if (addr == data.head) {
+      data.head = node.next;
+    }
+
+    if (addr == data.tail) {
+      data.tail = node.prev;
     }
     
     data.count--;
 
-    emit Remove(id, node.prevId, node.nextId, data.headId, data.tailId, data.count);
+    emit Remove(addr, node.prev, node.next, data.head, data.tail, data.count);
   
-    delete data.nodesByIds[id];
+    delete data.nodes[addr];
   }
 
-  function swap(Data storage data, address aId, address bId) public {
-    Node storage aNode = data.nodesByIds[aId];
-    Node storage bNode = data.nodesByIds[bId];
-    address aNodePrevId = aNode.prevId;
-    address aNodeNextId = aNode.nextId;
-    address bNodePrevId = bNode.prevId;
-    address bNodeNextId = bNode.nextId;
+  function swap(Data storage data, address a, address b) public {
+    Node storage aNode = data.nodes[a];
+    Node storage bNode = data.nodes[b];
+    address aNodePrevId = aNode.prev;
+    address aNodeNextId = aNode.next;
+    address bNodePrevId = bNode.prev;
+    address bNodeNextId = bNode.next;
 
-    if (aNodePrevId == bId) {
-      aNode.prevId = aId;
-      bNode.nextId = bId;
-    } else if (aNodeNextId == bId) {
-      aNode.nextId = aId;
-      bNode.prevId = bId;
+    if (aNodePrevId == b) {
+      aNode.prev = a;
+      bNode.next = b;
+    } else if (aNodeNextId == b) {
+      aNode.next = a;
+      bNode.prev = b;
     }
 
     if (aNodePrevId != address(0)) {
-      data.nodesByIds[aNodePrevId].nextId = bId;
+      data.nodes[aNodePrevId].next = b;
     }
     if (aNodeNextId != address(0)) {
-      data.nodesByIds[aNodeNextId].prevId = bId;
+      data.nodes[aNodeNextId].prev = b;
     }
     if (bNodePrevId != address(0)) {
-      data.nodesByIds[bNodePrevId].nextId = aId;
+      data.nodes[bNodePrevId].next = a;
     }
     if (bNodeNextId != address(0)) {
-      data.nodesByIds[bNodeNextId].prevId = aId;
+      data.nodes[bNodeNextId].prev = a;
     }
 
-    data.nodesByIds[aId] = bNode;
-    data.nodesByIds[bId] = aNode;
+    data.nodes[a] = bNode;
+    data.nodes[b] = aNode;
 
-    if (data.nodesByIds[aId].prevId == address(0)) {
-      data.headId = aId;
+    if (data.nodes[a].prev == address(0)) {
+      data.head = a;
     }
-    if (data.nodesByIds[bId].prevId == address(0)) {
-      data.headId = bId;
+    if (data.nodes[b].prev == address(0)) {
+      data.head = b;
     }
 
-    if (data.nodesByIds[aId].nextId == address(0)) {
-      data.tailId = aId;
+    if (data.nodes[a].next == address(0)) {
+      data.tail = a;
     }
-    if (data.nodesByIds[bId].nextId == address(0)) {
-      data.tailId = bId;
+    if (data.nodes[b].next == address(0)) {
+      data.tail = b;
     }
   }
 
-  function getIndex(Data storage data, address id) public returns (uint256) {
-    if (id == address(0)) {
+  function getIndex(Data storage data, address addr) public returns (uint256) {
+    if (addr == address(0)) {
       require(false, "id not exists in LinkedList");
     }
-    address curId = data.headId;
+    address curAddress = data.head;
     uint256 index = 0;
     do {
-      if (curId == id) {
+      if (curAddress == addr) {
         return index;
       }
-      curId = data.nodesByIds[curId].nextId;
+      curAddress = data.nodes[curAddress].next;
       index++;
     }
     while (true);
   }
 
-  event LogPop(address popId, address headId, uint256 count);
+  event LogPop(address popAddress, address head, uint256 count);
 
   function pop(Data storage data) public returns (address) {
-    address popId = data.headId;
+    address popAddress = data.head;
 
-    if (data.nodesByIds[popId].nextId != address(0)) {
-      data.nodesByIds[data.nodesByIds[popId].nextId].prevId = address(0);
-      data.headId = data.nodesByIds[popId].nextId;
+    if (data.nodes[popAddress].next != address(0)) {
+      data.nodes[data.nodes[popAddress].next].prev = address(0);
+      data.head = data.nodes[popAddress].next;
     } else {
-      data.headId = address(0);
+      data.head = address(0);
     }
 
-    delete data.nodesByIds[popId];
+    delete data.nodes[popAddress];
 
-    return popId;
+    return popAddress;
   }
 }

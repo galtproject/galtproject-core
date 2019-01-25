@@ -19,7 +19,6 @@ import "./ArbitratorsMultiSig.sol";
 import "../traits/Permissionable.sol";
 import "./OracleStakesAccounting.sol";
 import "../SpaceReputationAccounting.sol";
-import "../collections/VotingStore.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
 
@@ -108,7 +107,7 @@ contract ArbitratorVoting is Permissionable {
     ArraySet.AddressSet candidates;
   }
 
-  VotingStore.Data votingData;
+  VotingLinkedList.Data votingData;
   AddressLinkedList.Data votingTop;
 
   uint256 public totalSpaceReputation;
@@ -380,12 +379,12 @@ contract ArbitratorVoting is Permissionable {
 
 //    emit CandidatesCount(c.length);
     
-    address currentAddress = votingTop.headId;
+    address currentAddress = votingTop.head;
     for (uint256 i = 0; i < c.length; i++) {
       c[i] = currentAddress;
 //      emit CandidatesIteration(currentAddress);
 
-      currentAddress = votingTop.nodesByIds[currentAddress].nextId;
+      currentAddress = votingTop.nodes[currentAddress].next;
     }
 //    emit CandidatesResult(c);
     return c;
@@ -404,7 +403,7 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {
-    return votingTop.headId == _candidate || votingTop.tailId == _candidate || votingTop.nodesByIds[_candidate].nextId != address(0) || votingTop.nodesByIds[_candidate].prevId != address(0);
+    return VotingLinkedList.isExists(votingTop, _candidate);
   }
 
   function getSize() external view returns (uint256 size) {
