@@ -54,12 +54,6 @@ contract('ArbitratorVoting', accounts => {
   ] = accounts;
 
   beforeEach(async function() {
-    // CREATING
-
-    // console.log('A', candidateA);
-    // console.log('B', candidateB);
-    // console.log('C', candidateC);
-
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
@@ -117,12 +111,12 @@ contract('ArbitratorVoting', accounts => {
     res = await this.multiSigFactory.build([bob, charlie, dan, eve], 2, { from: alice });
     this.abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     this.abVotingZ = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-    this.oracleStakesAccountingZ = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    // this.oracleStakesAccountingZ = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 
     res = await this.multiSigFactoryF.build([a1, a2, a3], 2, { from: alice });
     this.abMultiSigF = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     this.abVotingF = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-    this.oracleStakesAccountingF = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    // this.oracleStakesAccountingF = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 
     // ASSIGNING ROLES
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -176,12 +170,12 @@ contract('ArbitratorVoting', accounts => {
     this.abVotingYWeb3 = new web3.eth.Contract(this.abVotingY.abi, this.abVotingY.address);
     this.abVotingZWeb3 = new web3.eth.Contract(this.abVotingZ.abi, this.abVotingZ.address);
     this.abVotingFWeb3 = new web3.eth.Contract(this.abVotingF.abi, this.abVotingF.address);
-    this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
+    // this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
     this.abMultiSigFWeb3 = new web3.eth.Contract(this.abMultiSigF.abi, this.abMultiSigF.address);
-    this.oracleStakesXWeb3 = new web3.eth.Contract(
-      this.oracleStakesAccountingX.abi,
-      this.oracleStakesAccountingX.address
-    );
+    // this.oracleStakesXWeb3 = new web3.eth.Contract(
+    //   this.oracleStakesAccountingX.abi,
+    //   this.oracleStakesAccountingX.address
+    // );
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
       this.spaceReputationAccounting.address
