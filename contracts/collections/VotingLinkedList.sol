@@ -11,10 +11,10 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "./AddressLinkedList.sol";
+
 
 library VotingLinkedList {
 
@@ -25,7 +25,14 @@ library VotingLinkedList {
 
   event InsertOrUpdate(address newAddress, uint256 value);
 
-  function insertOrUpdate(AddressLinkedList.Data storage votingList, Data storage votingData, address newAddress, uint256 value) public returns (uint256) {
+  function insertOrUpdate(
+    AddressLinkedList.Data storage votingList,
+    Data storage votingData,
+    address newAddress,
+    uint256 value
+  )
+    public
+  {
     emit InsertOrUpdate(newAddress, value);
 
     if (isExists(votingList, newAddress)) {
@@ -70,23 +77,32 @@ library VotingLinkedList {
   }
 
   //TODO: optimize by binary search
-  function search(AddressLinkedList.Data storage votingList, Data storage votingData, address valueAddress, bool returnLeft) public returns (address) {
-    if (votingList.head == 0) {
-      return 0;
+  function search(
+    AddressLinkedList.Data storage votingList,
+    Data storage votingData,
+    address valueAddress,
+    bool returnLeft
+  )
+    public
+    returns (address)
+  {
+    if (votingList.head == address(0)) {
+      return address(0);
     }
 
     address curAddress = votingList.head;
+
     do {
       int8 compareResult = compare(votingData, curAddress, valueAddress);
       if (compareResult == 0) {
         return curAddress;
       } else if (!returnLeft) {
-        if (votingList.nodes[curAddress].next == 0) {
-          return 0;
+        if (votingList.nodes[curAddress].next == address(0)) {
+          return address(0);
         }
         curAddress = votingList.nodes[curAddress].next;
       } else {
-        if (compareResult < 0 && votingList.nodes[curAddress].next != 0) {
+        if (compareResult < 0 && votingList.nodes[curAddress].next != address(0)) {
           curAddress = votingList.nodes[curAddress].next;
         } else {
           return curAddress;

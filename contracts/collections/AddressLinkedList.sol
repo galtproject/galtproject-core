@@ -10,9 +10,8 @@
  * Galt•Space Society Construction and Terraforming Company by
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
+pragma solidity 0.5.3;
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
 
 library AddressLinkedList {
   struct Data {
@@ -31,7 +30,7 @@ library AddressLinkedList {
   event SetHead(address head);
 
   function insertByFoundAndComparator(Data storage data, address newAddress, address foundAddress, int8 compareResult) public {
-    if (data.head == 0) {
+    if (data.head == address(0)) {
       data.count += 1;
 
       data.head = newAddress;
