@@ -2,6 +2,8 @@ const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
+const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
 const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
@@ -56,6 +58,11 @@ contract('OracleStakesAccounting', accounts => {
       multiSig,
       { from: coreTeam }
     );
+
+    VotingLinkedList.link('AddressLinkedList', (await AddressLinkedList.new()).address);
+    const votingLinkedList = await VotingLinkedList.new();
+    ArbitratorVoting.link('VotingLinkedList', votingLinkedList.address);
+
     this.arbitratorVoting = await ArbitratorVoting.new(
       multiSig,
       spaceReputationAccounting,

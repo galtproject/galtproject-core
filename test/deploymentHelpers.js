@@ -2,6 +2,8 @@ const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
 const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
 const ArbitratorVotingFactory = artifacts.require('./ArbitratorVotingFactory.sol');
 const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountingFactory.sol');
+const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
+const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
 
 const Helpers = {
   async deployMultiSigFactory(
@@ -13,6 +15,11 @@ const Helpers = {
     owner
   ) {
     const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });
+
+    VotingLinkedList.link('AddressLinkedList', (await AddressLinkedList.new()).address);
+    const votingLinkedList = await VotingLinkedList.new();
+    ArbitratorVotingFactory.link('VotingLinkedList', votingLinkedList.address);
+
     const voting = await ArbitratorVotingFactory.new({ from: owner });
     const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
 
