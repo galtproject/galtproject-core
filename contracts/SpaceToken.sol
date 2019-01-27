@@ -11,20 +11,16 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./traits/Permissionable.sol";
-import "./traits/Initializable.sol";
-import "./SpaceReputationAccounting.sol";
-
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "./interfaces/ISpaceToken.sol";
 
 /*
  * SpaceToken contract
  */
-contract SpaceToken is ERC721Full, Ownable, Permissionable {
+contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
   string public constant ROLE_MINTER = "minter";
   string public constant ROLE_BURNER = "burner";
 
@@ -48,8 +44,8 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
   }
 
   constructor(
-    string name,
-    string symbol
+    string memory name,
+    string memory symbol
   )
     public
     ERC721Full(name, symbol)
@@ -81,7 +77,7 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
 
   function setTokenURI(
     uint256 _tokenId,
-    string _uri
+    string calldata _uri
   )
     external
     onlyOwnerOf(_tokenId)
@@ -89,7 +85,7 @@ contract SpaceToken is ERC721Full, Ownable, Permissionable {
     super._setTokenURI(_tokenId, _uri);
   }
 
-  function tokensOfOwner(address _owner) external view returns (uint256[]) {
+  function tokensOfOwner(address _owner) external view returns (uint256[] memory) {
     return _tokensOfOwner(_owner);
   }
 

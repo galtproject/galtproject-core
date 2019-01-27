@@ -11,12 +11,12 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "./Oracles.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./traits/Initializable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "../Oracles.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
@@ -30,7 +30,7 @@ contract AbstractApplication is Initializable, Permissionable {
   uint256 public galtSpaceGaltShare;
   address internal galtSpaceRewardsAddress;
 
-  ERC20 public galtToken;
+  IERC20 public galtToken;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
@@ -84,11 +84,11 @@ contract AbstractApplication is Initializable, Permissionable {
     galtSpaceGaltShare = _newShare;
   }
 
-  function getAllApplications() external view returns (bytes32[]) {
+  function getAllApplications() external view returns (bytes32[] memory) {
     return applicationsArray;
   }
 
-  function getApplicationsByApplicant(address _applicant) external view returns (bytes32[]) {
+  function getApplicationsByApplicant(address _applicant) external view returns (bytes32[] memory) {
     return applicationsByApplicant[_applicant];
   }
 }

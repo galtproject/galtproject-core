@@ -6,25 +6,21 @@ const NewOracleManager = artifacts.require('./NewOracleManager.sol');
 const UpdateOracleManager = artifacts.require('./UpdateOracleManager.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const { initHelperWeb3, ether, assertRevert } = require('../../helpers');
 const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
-const { hexToUtf8 } = Web3.utils;
+const { hexToUtf8, utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
+const ES = bytes32('');
+const MN = bytes32('MN');
+const BOB = bytes32('BOB');
 
 initHelperWeb3(web3);
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
@@ -57,9 +53,9 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-const PC_AUDITOR_ORACLE_TYPE = 'PC_AUDITOR_ORACLE_TYPE';
-const PC_CUSTODIAN_ORACLE_TYPE = 'PC_CUSTODIAN_ORACLE_TYPE';
-const PC_ANOTHER_ORACLE_TYPE = 'PC_ANOTHER_ORACLE_TYPE';
+const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_ANOTHER_ORACLE_TYPE = bytes32('PC_ANOTHER_ORACLE_TYPE');
 
 // eslint-disable-next-line
 contract('UpdateOracleManager', (accounts) => {
@@ -202,11 +198,11 @@ contract('UpdateOracleManager', (accounts) => {
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         [60, 40],
-        ['', ''],
+        [ES, ES],
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(this.mX, bob, 'Bob', 'MN', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
     });
@@ -217,8 +213,8 @@ contract('UpdateOracleManager', (accounts) => {
         let res = await this.updateOracle.submit(
           this.mX,
           bob,
-          'Bob',
-          'MN',
+          BOB,
+          MN,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -237,8 +233,8 @@ contract('UpdateOracleManager', (accounts) => {
           this.updateOracle.submit(
             this.mX,
             galtSpaceOrg,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(45),
@@ -255,8 +251,8 @@ contract('UpdateOracleManager', (accounts) => {
         let res = await this.updateOracle.submit(
           this.mX,
           bob,
-          'Bob',
-          'MN',
+          BOB,
+          MN,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -275,8 +271,8 @@ contract('UpdateOracleManager', (accounts) => {
           this.updateOracle.submit(
             this.mX,
             galtSpaceOrg,
-            'Bob',
-            'MN',
+            BOB,
+            MN,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -296,7 +292,7 @@ contract('UpdateOracleManager', (accounts) => {
         CUSTODIAN_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE],
         [30, 40, 30],
-        ['', '', ''],
+        [ES, ES, ES],
         { from: applicationTypeManager }
       );
 
@@ -305,8 +301,8 @@ contract('UpdateOracleManager', (accounts) => {
       let res = await this.newOracle.submit(
         this.mX,
         bob,
-        'Bob',
-        'MN',
+        BOB,
+        MN,
         this.attachedDocumentsBytes32,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         ether(47),
@@ -331,8 +327,8 @@ contract('UpdateOracleManager', (accounts) => {
       res = await this.updateOracle.submit(
         this.mX,
         bob,
-        'Bob',
-        'MN',
+        BOB,
+        MN,
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE],
         ether(47),
@@ -353,7 +349,10 @@ contract('UpdateOracleManager', (accounts) => {
       await this.updateOracle.aye(this.aId, { from: frank });
 
       res = await this.oraclesWeb3.methods.getOracle(bob).call();
-      assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE]);
+      assert.sameMembers(
+        res.assignedOracleTypes.map(hexToUtf8),
+        [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE].map(hexToUtf8)
+      );
     });
   });
 });

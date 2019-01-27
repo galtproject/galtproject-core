@@ -13,14 +13,25 @@
 
 pragma solidity 0.5.3;
 
+import "./AbstractApplication.sol";
 
-interface ISRA {
-  // ERC20 compatible
-  function balanceOf(address owner) external view returns (uint256);
 
-  // ERC20 compatible
-  function totalSupply() external view returns (uint256);
+contract AbstractOracleApplication is AbstractApplication {
+  Oracles oracles;
 
-  // Ping-Pong Handshake
-  function ping() external pure returns (bytes32);
+  mapping(address => bytes32[]) public applicationsByOracle;
+
+  modifier anyOracle() {
+    // TODO: dangerous check
+    require(oracles.isOracleActive(msg.sender), "Not active oracle");
+    _;
+  }
+
+  constructor() public {}
+
+  function claimOracleReward(bytes32 _aId) external;
+
+  function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {
+    return applicationsByOracle[_oracle];
+  }
 }

@@ -11,12 +11,11 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "./collections/ArraySet.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/ArbitratorsMultiSig.sol";
-import "./traits/Permissionable.sol";
 
 contract ArbitratorsMultiSigRegistry {
   using ArraySet for ArraySet.AddressSet;
@@ -28,14 +27,12 @@ contract ArbitratorsMultiSigRegistry {
   constructor() public {}
 
   // MODIFIERS
-  function createMultiSig(address[] _initialOwners, uint256 _required) external returns(uint256 id) {
-    uint256 id = multiSigs.size();
-    address ms = new ArbitratorsMultiSig(_initialOwners, _required);
+  function createMultiSig(address[] calldata _initialOwners, uint256 _required) external returns(uint256 id) {
+    id = multiSigs.size();
+    ArbitratorsMultiSig ms = new ArbitratorsMultiSig(_initialOwners, _required);
 
-    multiSigs.add(ms);
-    emit NewMultiSig(id, ms);
-
-    return id;
+    multiSigs.add(address(ms));
+    emit NewMultiSig(id, address(ms));
   }
 
   // GETTERS
@@ -43,7 +40,7 @@ contract ArbitratorsMultiSigRegistry {
     return multiSigs.elements()[_id];
   }
   
-  function getMultiSigList() external returns (address[]) {
+  function getMultiSigList() external returns (address[] memory) {
     return multiSigs.elements();
   }
 

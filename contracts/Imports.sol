@@ -13,14 +13,9 @@
 
 pragma solidity 0.5.3;
 
+import "@galtproject/geodesic/contracts/Geodesic.sol";
 
-interface ISRA {
-  // ERC20 compatible
-  function balanceOf(address owner) external view returns (uint256);
+// solium-disable-next-line no-empty-blocks
+contract Imports {
 
-  // ERC20 compatible
-  function totalSupply() external view returns (uint256);
-
-  // Ping-Pong Handshake
-  function ping() external pure returns (bytes32);
 }

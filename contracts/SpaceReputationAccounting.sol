@@ -11,154 +11,41 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./collections/ArraySet.sol";
-import "./traits/Permissionable.sol";
-import "./SpaceToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/ArbitratorVoting.sol";
 import "./registries/MultiSigRegistry.sol";
-import "./registries/SpaceLockerRegistry.sol";
+import "./registries/interfaces/ISpaceLockerRegistry.sol";
+import "./LiquidReputationAccounting.sol";
 
 
-contract SpaceReputationAccounting is Permissionable {
+// TODO: rename to ASRA
+contract SpaceReputationAccounting is LiquidReputationAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant ROLE_SPACE_TOKEN = "space_token";
-
-  SpaceToken spaceToken;
   MultiSigRegistry multiSigRegistry;
-  SpaceLockerRegistry spaceLockerRegistry;
-
-  // Delegate => balance
-  mapping(address => uint256) private _balances;
-
-  // Reputation Owner => (Delegate => balance))
-  mapping(address => mapping(address => uint256)) private _delegations;
 
   // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
-
-  mapping(uint256 => bool) public reputationMinted;
 
   // L0
   uint256 private totalStakedSpace;
 
   constructor(
-    SpaceToken _spaceToken,
+    IERC721 _spaceToken,
     MultiSigRegistry _multiSigRegistry,
-    SpaceLockerRegistry _spaceLockerRegistry
+    ISpaceLockerRegistry _spaceLockerRegistry
   )
     public
+    LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)
   {
-    _addRoleTo(address(_spaceToken), ROLE_SPACE_TOKEN);
-    spaceToken = _spaceToken;
     multiSigRegistry = _multiSigRegistry;
-    spaceLockerRegistry = _spaceLockerRegistry;
-  }
-
-  modifier onlySpaceTokenContract() {
-    require(msg.sender == address(spaceToken), "Invalid sender. SpaceToken contract expected");
-    _;
-  }
-
-  modifier onlySpaceTokenOwner(uint256 _spaceTokenId, SpaceLocker _spaceLocker) {
-    require(_spaceLocker == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
-    require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
-    _;
-  }
-
-  // MODIFIERS
-
-  // @dev Mints reputation for given token to the owner account
-  function mint(
-    SpaceLocker _spaceLocker
-  )
-    external
-  {
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
-
-    address owner = _spaceLocker.owner();
-
-    require(msg.sender == owner, "Not owner of the locker");
-
-    uint256 spaceTokenId = _spaceLocker.spaceTokenId();
-
-    require(reputationMinted[spaceTokenId] == false, "Reputation already minted");
-
-    uint256 reputation = _spaceLocker.reputation();
-
-    totalStakedSpace += reputation;
-
-    _balances[msg.sender] += reputation;
-    _delegations[msg.sender][msg.sender] += reputation;
-    reputationMinted[spaceTokenId] = true;
-  }
-
-  // Burn space token total reputation
-  // Owner should revoke all delegated reputation back to his account before performing this action
-  function approveBurn(
-    SpaceLocker _spaceLocker
-  )
-    external
-  {
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
-
-    address owner = _spaceLocker.owner();
-
-    require(msg.sender == owner, "Not owner of the locker");
-
-    uint256 reputation = _spaceLocker.reputation();
-
-    uint256 spaceTokenId = _spaceLocker.spaceTokenId();
-
-    require(reputationMinted[spaceTokenId] == true, "Reputation doesn't minted");
-    require(_balances[owner] >= reputation, "Not enough funds to burn");
-    require(_delegations[owner][owner] >= reputation, "Not enough funds to burn");
-
-    totalStakedSpace -= reputation;
-
-    _balances[owner] -= reputation;
-    _delegations[owner][owner] -= reputation;
-
-    reputationMinted[spaceTokenId] = false;
-  }
-
-  // @dev Transfer owned reputation
-  // PermissionED
-  function delegate(address _to, address _owner, uint256 _amount) external {
-    require(_balances[msg.sender] >= _amount, "Not enough funds");
-    require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
-    // TODO: check space owner
-
-    _balances[msg.sender] -= _amount;
-    _delegations[_owner][msg.sender] -= _amount;
-
-    assert(_balances[msg.sender] >= 0);
-    assert(_delegations[_owner][msg.sender] >= 0);
-
-    _balances[_to] += _amount;
-    _delegations[_owner][_to] += _amount;
-  }
-
-  // PermissionED
-  function revoke(address _from, uint256 _amount) external {
-    require(_balances[_from] >= _amount, "Not enough funds");
-    require(_delegations[msg.sender][_from] >= _amount, "Not enough funds");
-
-    _balances[_from] -= _amount;
-    _delegations[msg.sender][_from] -= _amount;
-
-    assert(_balances[_from] >= 0);
-    assert(_delegations[msg.sender][_from] >= 0);
-
-    _balances[msg.sender] += _amount;
-    _delegations[msg.sender][msg.sender] += _amount;
   }
 
   // PermissionED
@@ -209,20 +96,5 @@ contract SpaceReputationAccounting is Permissionable {
 
   function lockedBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
     return _locks[_owner][_multiSig];
-  }
-
-  // ERC20 compatible
-  function balanceOf(address owner) public view returns (uint256) {
-    return _balances[owner];
-  }
-
-  // ERC20 compatible
-  function totalSupply() public returns (uint256) {
-    return totalStakedSpace;
-  }
-
-  // Ping-Pong Handshake
-  function ping() public returns (bytes32) {
-    return bytes32("pong");
   }
 }

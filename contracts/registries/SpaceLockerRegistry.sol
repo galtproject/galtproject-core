@@ -11,14 +11,10 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "../traits/Permissionable.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitratorVoting.sol";
-import "../multisig/OracleStakesAccounting.sol";
-import "../SpaceLocker.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "../interfaces/ISpaceLocker.sol";
 
 
 contract SpaceLockerRegistry is Permissionable {
@@ -32,8 +28,8 @@ contract SpaceLockerRegistry is Permissionable {
     address factoryAddress;
   }
 
-  function addSpaceLocker(SpaceLocker _spaceLocker) external onlyRole(ROLE_FACTORY) {
-    Details storage sl = spaceLockers[_spaceLocker];
+  function addSpaceLocker(ISpaceLocker _spaceLocker) external onlyRole(ROLE_FACTORY) {
+    Details storage sl = spaceLockers[address(_spaceLocker)];
 
     sl.active = true;
     sl.factoryAddress = msg.sender;

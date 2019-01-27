@@ -11,16 +11,16 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./collections/ArraySet.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/ISpaceToken.sol";
+import "./interfaces/ISpaceLocker.sol";
+import "./interfaces/ISplitMerge.sol";
 import "./interfaces/ISRA.sol";
 
 
-contract SpaceLocker {
+contract SpaceLocker is ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
   event ReputationMinted(address sra);
@@ -29,8 +29,8 @@ contract SpaceLocker {
 
   address public owner;
 
-  SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  ISpaceToken public spaceToken;
+  ISplitMerge public splitMerge;
 
   uint256 public spaceTokenId;
   uint256 public reputation;
@@ -39,7 +39,7 @@ contract SpaceLocker {
 
   ArraySet.AddressSet sras;
 
-  constructor(SpaceToken _spaceToken, SplitMerge _splitMerge, address _owner) public {
+  constructor(ISpaceToken _spaceToken, ISplitMerge _splitMerge, address _owner) public {
     owner = _owner;
 
     spaceToken = _spaceToken;
@@ -78,14 +78,14 @@ contract SpaceLocker {
   }
 
   function approveMint(ISRA _sra) external onlyOwner notBurned {
-    require(!sras.has(_sra), "Already minted to this SRA");
+    require(!sras.has(address(_sra)), "Already minted to this SRA");
     require(_sra.ping() == bytes32("pong"), "Handshake failed");
 
-    sras.add(_sra);
+    sras.add(address(_sra));
   }
 
   function burn(ISRA _sra) external onlyOwner {
-    require(sras.has(_sra), "Not minted to the SRA");
+    require(sras.has(address(_sra)), "Not minted to the SRA");
     require(_sra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
     sras.remove(address(_sra));
@@ -110,7 +110,7 @@ contract SpaceLocker {
     return sras.has(_sra);
   }
 
-  function getSras() external returns (address[]) {
+  function getSras() external returns (address[] memory) {
     return sras.elements();
   }
 

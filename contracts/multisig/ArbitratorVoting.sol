@@ -11,14 +11,13 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "../collections/ArraySet.sol";
-import "./ArbitratorsMultiSig.sol";
-import "../traits/Permissionable.sol";
-import "./OracleStakesAccounting.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../SpaceReputationAccounting.sol";
+import "./ArbitratorsMultiSig.sol";
+import "./OracleStakesAccounting.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
 
@@ -167,7 +166,7 @@ contract ArbitratorVoting is Permissionable {
       combinedRatio,
       weight
     );
-    
+
     VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weight);
   }
 
@@ -365,29 +364,22 @@ contract ArbitratorVoting is Permissionable {
   }
 
   // Getters
-  event CandidatesResult(address[] result);
-  event CandidatesCount(uint count);
-  event CandidatesIteration(address c);
 
-  function getCandidates() public view returns (address[]) {
+  function getCandidates() public view returns (address[] memory) {
     if (votingList.count == 0) {
-      return;
+      return new address[](0);
     }
-    
-//    emit CandidatesCount(votingList.count);
 
     address[] memory c = new address[](votingList.count);
 
-//    emit CandidatesCount(c.length);
-    
     address currentAddress = votingList.head;
+
     for (uint256 i = 0; i < c.length; i++) {
       c[i] = currentAddress;
-//      emit CandidatesIteration(currentAddress);
 
       currentAddress = votingList.nodes[currentAddress].next;
     }
-//    emit CandidatesResult(c);
+
     return c;
   }
 

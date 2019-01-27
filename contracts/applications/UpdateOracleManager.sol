@@ -11,13 +11,14 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "../traits/Statusable.sol";
-import "../AbstractApplication.sol";
-import "../collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@galtproject/libs/contracts/traits/Statusable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorApprovableApplication.sol";
+import "./AbstractApplication.sol";
+
 
 contract UpdateOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
@@ -39,7 +40,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
   function initialize(
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
@@ -51,12 +52,12 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   }
 
   function submit(
-    address _multiSig,
+    address payable _multiSig,
     address _oracleAddress,
     bytes32 _name,
     bytes32 _position,
-    bytes32[] _descriptionHashes,
-    bytes32[] _oracleTypes,
+    bytes32[] calldata _descriptionHashes,
+    bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
   )
     external
@@ -107,8 +108,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
       address addr,
       bytes32 name,
       bytes32 position,
-      bytes32[] descriptionHashes,
-      bytes32[] oracleTypes
+      bytes32[] memory descriptionHashes,
+      bytes32[] memory oracleTypes
     )
   {
     OracleDetails storage o = oracleDetails[_id];

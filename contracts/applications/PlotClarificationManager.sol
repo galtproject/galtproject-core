@@ -11,14 +11,13 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
-import "./Oracles.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "../interfaces/ISplitMerge.sol";
+import "../Oracles.sol";
 import "./AbstractOracleApplication.sol";
 
 
@@ -80,8 +79,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
 
   mapping(bytes32 => Application) public applications;
 
-  SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  IERC721 public spaceToken;
+  ISplitMerge public splitMerge;
 
   constructor () public {}
 
@@ -109,8 +108,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
   }
 
   function initialize(
-    SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
+    IERC721 _spaceToken,
+    ISplitMerge _splitMerge,
     Oracles _oracles,
     ERC20 _galtToken,
     address _galtSpaceRewardsAddress
@@ -136,8 +135,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
   function submitApplication(
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
-    uint256[] _newContour,
-    int256[] _newHeights,
+    uint256[] calldata _newContour,
+    int256[] calldata _newHeights,
     int256 _newLevel,
     uint256 _applicationFeeInGalt
   )
@@ -252,7 +251,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
 
   function revertApplication(
     bytes32 _aId,
-    string _message
+    string calldata _message
   )
     external
     onlyOracleOfApplication(_aId)
@@ -383,7 +382,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
       bool tokenWithdrawn,
       bool gasDepositWithdrawn,
       bool galtSpaceRewardPaidOut,
-      bytes32[] assignedOracleTypes,
+      bytes32[] memory assignedOracleTypes,
       uint256 gasDeposit,
       uint256 oraclesReward,
       uint256 galtSpaceReward
@@ -414,8 +413,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
     external
     view
     returns(
-      uint256[] newContour,
-      int256[] newHeights,
+      uint256[] memory newContour,
+      int256[] memory newHeights,
       int256 newLevel,
       bytes32 ledgerIdentifier
     )
@@ -438,7 +437,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
       uint256 reward,
       bool rewardPaidOut,
       ValidationStatus status,
-      string message
+      string memory message
     )
   {
     Application storage m = applications[_aId];

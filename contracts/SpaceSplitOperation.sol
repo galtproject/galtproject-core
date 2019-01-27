@@ -11,16 +11,15 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 //pragma experimental ABIEncoderV2;
 
 import "@galtproject/geodesic/contracts/utils/WeilerAtherton.sol";
 import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
-import "@galtproject/geodesic/contracts/Geodesic.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
-import "./SpaceToken.sol";
-import "./SplitMerge.sol";
+import "./interfaces/ISpaceToken.sol";
+import "./interfaces/ISplitMerge.sol";
 
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
@@ -44,9 +43,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   Stage public doneStage;
 
-  SplitMerge public splitMerge;
-  SpaceToken public spaceToken;
-  Geodesic public geodesic;
+  ISplitMerge public splitMerge;
+  ISpaceToken public spaceToken;
+  IGeodesic public geodesic;
 
   address public subjectTokenOwner;
   uint256 public subjectTokenId;
@@ -56,10 +55,10 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
-  constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] _subjectContour, uint256[] _clippingContour) public {
-    splitMerge = SplitMerge(_splitMerge);
-    spaceToken = SpaceToken(_spaceToken);
-    geodesic = Geodesic(splitMerge.geodesic());
+  constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] memory _subjectContour, uint256[] memory _clippingContour) public {
+    splitMerge = ISplitMerge(_splitMerge);
+    spaceToken = ISpaceToken(_spaceToken);
+    geodesic = IGeodesic(splitMerge.geodesic());
 
     subjectTokenOwner = _subjectTokenOwner;
     subjectTokenId = _subjectTokenId;
@@ -67,11 +66,11 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     clippingContour = _clippingContour;
   }
 
-  function getSubjectContour() external view returns (uint256[]) {
+  function getSubjectContour() external view returns (uint256[] memory) {
     return subjectContour;
   }
 
-  function getClippingContour() external view returns (uint256[]) {
+  function getClippingContour() external view returns (uint256[] memory) {
     return clippingContour;
   }
 
@@ -204,11 +203,11 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     return weilerAtherton.resultPolygons[polygonIndex].points.length;
   }
 
-  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public view returns (int256[2]) {
+  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public view returns (int256[2] memory) {
     return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
   }
 
-  function getSubjectPolygonOutputPoint(uint256 pointIndex) public view returns (int256[2]) {
+  function getSubjectPolygonOutputPoint(uint256 pointIndex) public view returns (int256[2] memory) {
     return weilerAtherton.subjectPolygonOutput.points[pointIndex];
   }
 
@@ -241,7 +240,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     buildSubjectPolygonOutput();
   }
 
-  function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] geohashContour) {
+  function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] memory geohashContour) {
     geohashContour = new uint256[](latLonPolygon.points.length);
 
     uint256 geohash;
@@ -282,11 +281,11 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     finishClippingPolygons();
   }
 
-  function getResultContour(uint256 contourIndex) external view returns (uint256[]) {
+  function getResultContour(uint256 contourIndex) external view returns (uint256[] memory) {
     return resultContours[contourIndex];
   }
 
-  function getFinishInfo() external view returns (uint256[] subjectContourResult, address tokenOwner, uint256 resultContoursCount) {
+  function getFinishInfo() external view returns (uint256[] memory subjectContourResult, address tokenOwner, uint256 resultContoursCount) {
     require(doneStage == Stage.POLYGONS_FINISH, "SpaceSplitOperation not finished");
     subjectContourResult = subjectContourOutput;
     tokenOwner = subjectTokenOwner;

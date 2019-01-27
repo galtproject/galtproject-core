@@ -11,14 +11,14 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
-import "../traits/Statusable.sol";
-import "../AbstractApplication.sol";
-import "../collections/ArraySet.sol";
-import "../AbstractArbitratorApplication.sol";
+
+import "@galtproject/libs/contracts/traits/Statusable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../registries/MultiSigRegistry.sol";
+import "./AbstractApplication.sol";
+import "./AbstractArbitratorApplication.sol";
 
 contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statusable {
   using SafeMath for uint256;
@@ -31,7 +31,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   event Nay(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
 
   struct Application {
-    address multiSig;
+    address payable multiSig;
     address applicant;
 
     // votes required
@@ -201,7 +201,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   function _initialize(
     MultiSigRegistry _multiSigRegistry,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     internal
@@ -224,7 +224,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   function _submit(
     bytes32 _id,
-    address _multiSig,
+    address payable _multiSig,
     uint256 _applicationFeeInGalt
   )
     internal
@@ -312,7 +312,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     returns (
       ApplicationStatus status,
       address applicant,
-      address[] arbitrators,
+      address[] memory arbitrators,
       uint256 m,
       uint256 n,
       uint256 ayeCount,

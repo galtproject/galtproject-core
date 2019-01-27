@@ -11,28 +11,13 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
-
-import "./AbstractApplication.sol";
+pragma solidity 0.5.3;
 
 
-contract AbstractOracleApplication is AbstractApplication {
-  Oracles oracles;
-
-  mapping(address => bytes32[]) public applicationsByOracle;
-
-  modifier anyOracle() {
-    // TODO: dangerous check
-    require(oracles.isOracleActive(msg.sender), "Not active oracle");
-    _;
-  }
-
-  constructor() public {}
-
-  function claimOracleReward(bytes32 _aId) external;
-
-  function getApplicationsByOracle(address _oracle) external view returns (bytes32[]) {
-    return applicationsByOracle[_oracle];
-  }
+contract ISpaceCustodianRegistry {
+  function attach(uint256 _spaceTokenId, address[] calldata _custodians) external;
+  function detach(uint256 _spaceTokenId, address[] calldata _custodians) external;
+  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool);
+  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory);
+  function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256);
 }

@@ -11,11 +11,10 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
-import "../traits/Permissionable.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
@@ -33,7 +32,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   }
 
   constructor(
-    address[] _initialOwners,
+    address[] memory _initialOwners,
     uint256 _required
   )
     public
@@ -55,7 +54,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
    * @param data Transaction data payload.
    * @return Returns transaction ID.
    */
-  function proposeTransaction(address destination, uint value, bytes data)
+  function proposeTransaction(address destination, uint value, bytes calldata data)
     external
     onlyRole(ROLE_PROPOSER)
     returns (uint transactionId)
@@ -72,7 +71,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   function setArbitrators(
     uint256 m,
     uint256 n,
-    address[] descArbitrators
+    address[] calldata descArbitrators
   )
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
@@ -106,7 +105,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   }
 
   // GETTERS
-  function getArbitrators() public view returns (address[]) {
+  function getArbitrators() public view returns (address[] memory) {
     return owners;
   }
 }

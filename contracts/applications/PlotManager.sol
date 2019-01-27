@@ -11,16 +11,15 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.4.24;
-pragma experimental "v0.5.0";
+pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../AbstractApplication.sol";
-import "../AbstractOracleApplication.sol";
-import "../SpaceToken.sol";
-import "../SplitMerge.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/ISpaceToken.sol";
+import "../interfaces/ISplitMerge.sol";
 import "../Oracles.sol";
+import "./AbstractApplication.sol";
+import "./AbstractOracleApplication.sol";
 import "./PlotManagerLib.sol";
 
 
@@ -93,20 +92,20 @@ contract PlotManager is AbstractOracleApplication {
   // rate per one 12-symbol geohash in ETH
   uint256 public submissionFeeRateEth;
 
-  mapping(bytes32 => Application) public applications;
+  mapping(bytes32 => Application) private applications;
 
-  SpaceToken public spaceToken;
-  SplitMerge public splitMerge;
+  ISpaceToken public spaceToken;
+  ISplitMerge public splitMerge;
   Oracles public oracles;
-  ERC20 public galtToken;
+  IERC20 public galtToken;
 
   constructor () public {}
 
   function initialize(
-    SpaceToken _spaceToken,
-    SplitMerge _splitMerge,
+    ISpaceToken _spaceToken,
+    ISplitMerge _splitMerge,
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     address _galtSpaceRewardsAddress
   )
     public
@@ -173,8 +172,8 @@ contract PlotManager is AbstractOracleApplication {
   }
 
   function submitApplication(
-    uint256[] _packageContour,
-    int256[] _heights,
+    uint256[] calldata _packageContour,
+    int256[] calldata _heights,
     int256 _level,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
@@ -266,8 +265,8 @@ contract PlotManager is AbstractOracleApplication {
     bytes32 _aId,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
-    uint256[] _newPackageContour,
-    int256[] _newHeights,
+    uint256[] calldata _newPackageContour,
+    int256[] calldata _newHeights,
     int256 _newLevel,
     uint256 _resubmissionFeeInGalt
   )
@@ -308,7 +307,7 @@ contract PlotManager is AbstractOracleApplication {
   function checkResubmissionPayment(
     Application storage a,
     uint256 _resubmissionFeeInGalt,
-    uint256[] _newPackageContour
+    uint256[] memory _newPackageContour
   )
     internal
   {
@@ -431,7 +430,7 @@ contract PlotManager is AbstractOracleApplication {
 
   function rejectApplication(
     bytes32 _aId,
-    string _message
+    string calldata _message
   )
     external
     onlyOracleOfApplication(_aId)
@@ -445,7 +444,7 @@ contract PlotManager is AbstractOracleApplication {
 
   function revertApplication(
     bytes32 _aId,
-    string _message
+    string calldata _message
   )
     external
     onlyOracleOfApplication(_aId)
@@ -652,7 +651,7 @@ contract PlotManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       bytes32 ledgerIdentifier,
-      bytes32[] assignedOracleTypes
+      bytes32[] memory assignedOracleTypes
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -716,8 +715,8 @@ contract PlotManager is AbstractOracleApplication {
       bytes32 credentialsHash,
       bytes32 ledgerIdentifier,
       int256 level,
-      uint256[] packageContour,
-      int256[] heights
+      uint256[] memory packageContour,
+      int256[] memory heights
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -741,7 +740,7 @@ contract PlotManager is AbstractOracleApplication {
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
    * WARNING: currently area weight is hardcoded in #submitApplication() method
    */
-  function getSubmissionFee(Currency _currency, uint256[] _packageContour) public view returns (uint256) {
+  function getSubmissionFee(Currency _currency, uint256[] memory _packageContour) public view returns (uint256) {
     if (_currency == Currency.GALT) {
       return 2000000 * submissionFeeRateGalt;
     } else {
@@ -759,7 +758,7 @@ contract PlotManager is AbstractOracleApplication {
    * if newTotalFee < latestPaidFee:
    *   (result < 0) and could be claimed back.
    */
-  function getResubmissionFee(bytes32 _aId, uint256[] _packageContour) external returns (int256) {
+  function getResubmissionFee(bytes32 _aId, uint256[] calldata _packageContour) external returns (int256) {
     Application storage a = applications[_aId];
     uint256 newTotalFee = getSubmissionFee(a.currency, _packageContour);
     uint256 latest = a.fees.latestCommittedFee;
@@ -778,7 +777,7 @@ contract PlotManager is AbstractOracleApplication {
       uint256 reward,
       bool rewardPaidOut,
       ValidationStatus status,
-      string message
+      string memory message
     )
   {
     return (
