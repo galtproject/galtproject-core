@@ -210,7 +210,7 @@ contract ArbitratorVoting is Permissionable {
     delegatedReputation[msg.sender].distributedReputation[_candidate] -= _amount;
     delegatedReputation[msg.sender].distributedReputation[msg.sender] += _amount;
 
-    reputationBalance[_candidate] == _amount;
+    reputationBalance[_candidate] -= _amount;
     reputationBalance[msg.sender] += _amount;
 
     if (delegatedReputation[msg.sender].distributedReputation[_candidate] == 0) {
