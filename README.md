@@ -1,4 +1,4 @@
-# Galt Project Contracts
+# Galt Project Core Contracts (@galtproject/core)
 
 [![Build Status](https://travis-ci.org/galtspace/galtproject-contracts.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-contracts)
 [![Contracts Version](https://img.shields.io/badge/version-0.6.0-orange.svg)](https://github.com/galtspace/galtproject-contracts)
@@ -9,6 +9,16 @@
 The main goal of Galt Project is to create sofware for land tokenization (accounting, buying and selling on blockchain) and self-governance. And to create a communities, runned by a smart contracts with the help of this software.
 
 https://galtproject.io/
+
+### Other Galt Project Modules
+
+* [@galtproject/galt-token](https://github.com/galtspace/galtproject-galt-token)
+* [@galtproject/galt-distribution](https://github.com/galtspace/galtproject-galt-distribution)
+* [@galtproject/libs](https://github.com/galtspace/galtproject-libs)
+* [@galtproject/geodesic](https://github.com/galtspace/galtproject-geodesic)
+* [@galtproject/math](https://github.com/galtspace/galtproject-math)
+* [@galtproject/market](https://github.com/galtspace/galtproject-market)
+* [@galtproject/token-fund-basic](https://github.com/galtspace/galtproject-fund-basic)
 
 ### UI
 
