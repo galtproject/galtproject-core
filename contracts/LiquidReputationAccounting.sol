@@ -34,11 +34,16 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // Delegate => balance
   mapping(address => uint256) internal _balances;
 
+  // Owner => totalMinted
+  mapping(address => uint256) internal _ownedBalances;
+
   // Reputation Owner => (Delegate => balance))
-  mapping(address => mapping(address => uint256)) internal _delegations;
+  mapping(address => mapping(address => uint256)) internal _delegatedBalances;
 
   // Delegate => locked amount
   mapping(address => uint256) internal _locks;
+
+  mapping(address => ArraySet.AddressSet) internal _delegations;
 
   mapping(uint256 => bool) public reputationMinted;
 
@@ -102,12 +107,18 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
     require(reputationMinted[spaceTokenId] == true, "Reputation doesn't minted");
     require(_balances[owner] >= reputation, "Not enough funds to burn");
-    require(_delegations[owner][owner] >= reputation, "Not enough funds to burn");
+    require(_delegatedBalances[owner][owner] >= reputation, "Not enough funds to burn");
+    require(_ownedBalances[owner] >= reputation, "Not enough funds to burn");
 
     totalStakedSpace -= reputation;
 
     _balances[owner] -= reputation;
-    _delegations[owner][owner] -= reputation;
+    _delegatedBalances[owner][owner] -= reputation;
+    _ownedBalances[owner] -= reputation;
+
+    if (_delegatedBalances[owner][owner] == 0) {
+      _delegations[owner].remove(owner);
+    }
 
     reputationMinted[spaceTokenId] = false;
   }
@@ -116,7 +127,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // PermissionED
   function delegate(address _to, address _owner, uint256 _amount) public {
     require(_balances[msg.sender] >= _amount, "Not enough funds");
-    require(_delegations[_owner][msg.sender] >= _amount, "Not enough funds");
+    require(_delegatedBalances[_owner][msg.sender] >= _amount, "Not enough funds");
 
     _delegate(_to, msg.sender, _owner, _amount);
   }
@@ -124,16 +135,21 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // PermissionED
   function revoke(address _from, uint256 _amount) public {
     require(_balances[_from] >= _amount, "Not enough funds");
-    require(_delegations[msg.sender][_from] >= _amount, "Not enough funds");
+    require(_delegatedBalances[msg.sender][_from] >= _amount, "Not enough funds");
 
     _balances[_from] -= _amount;
-    _delegations[msg.sender][_from] -= _amount;
+    _delegatedBalances[msg.sender][_from] -= _amount;
+
+    if (_delegatedBalances[msg.sender][_from] == 0) {
+      _delegations[msg.sender].remove(_from);
+    }
 
     assert(_balances[_from] >= 0);
-    assert(_delegations[msg.sender][_from] >= 0);
+    assert(_delegatedBalances[msg.sender][_from] >= 0);
 
     _balances[msg.sender] += _amount;
-    _delegations[msg.sender][msg.sender] += _amount;
+    _delegatedBalances[msg.sender][msg.sender] += _amount;
+    _delegations[msg.sender].addSilent(msg.sender);
   }
 
   // INTERNAL
@@ -142,7 +158,9 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     totalStakedSpace += _amount;
 
     _balances[_beneficiary] += _amount;
-    _delegations[_beneficiary][_beneficiary] += _amount;
+    _delegatedBalances[_beneficiary][_beneficiary] += _amount;
+    _ownedBalances[_beneficiary] += _amount;
+    _delegations[_beneficiary].addSilent(_beneficiary);
     reputationMinted[_spaceTokenId] = true;
   }
 
@@ -150,13 +168,19 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     // TODO: check space owner
 
     _balances[_from] -= _amount;
-    _delegations[_owner][_from] -= _amount;
+    _delegatedBalances[_owner][_from] -= _amount;
+
+    if (_delegatedBalances[_owner][_from] == 0) {
+      _delegations[_owner].remove(_from);
+    }
 
     assert(_balances[_from] >= 0);
-    assert(_delegations[_owner][_from] >= 0);
+    assert(_delegatedBalances[_owner][_from] >= 0);
 
     _balances[_to] += _amount;
-    _delegations[_owner][_to] += _amount;
+    _delegatedBalances[_owner][_to] += _amount;
+
+    _delegations[_owner].addSilent(_to);
   }
 
   // GETTERS
@@ -166,8 +190,16 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     return _balances[_owner];
   }
 
+  function ownedBalanceOf(address _owner) public view returns (uint256) {
+    return _ownedBalances[_owner];
+  }
+
   function delegatedBalanceOf(address __delegate, address _owner) public view returns (uint256) {
-    return _delegations[_owner][__delegate];
+    return _delegatedBalances[_owner][__delegate];
+  }
+
+  function delegations(address _owner) public view returns (address[] memory) {
+    return _delegations[_owner].elements();
   }
 
   // ERC20 compatible

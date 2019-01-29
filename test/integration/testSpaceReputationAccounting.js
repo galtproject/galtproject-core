@@ -142,6 +142,26 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
       assert.equal(res, 50);
 
+      // check owned balance...
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(alice).call();
+      assert.equal(res, 800);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(charlie).call();
+      assert.equal(res, 0);
+
+      // check delegations
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(alice).call();
+      assert.sameMembers(res, [alice, bob, charlie]);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(bob).call();
+      assert.sameMembers(res, []);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(charlie).call();
+      assert.sameMembers(res, []);
+
       // REVOKE #1
       await this.spaceReputationAccounting.revoke(bob, 200, { from: alice });
 
@@ -177,9 +197,39 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
       assert.equal(res, 0);
 
+      // check delegations
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(alice).call();
+      assert.sameMembers(res, [alice]);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(bob).call();
+      assert.sameMembers(res, []);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(charlie).call();
+      assert.sameMembers(res, []);
+
       // WITHDRAW TOKEN
       await assertRevert(this.spaceReputationAccounting.approveBurn(lockerAddress, { from: charlie }));
       await this.spaceReputationAccounting.approveBurn(lockerAddress, { from: alice });
+
+      // check owned balances...
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(alice).call();
+      assert.equal(res, 0);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(bob).call();
+      assert.equal(res, 0);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownedBalanceOf(charlie).call();
+      assert.equal(res, 0);
+
+      // check delegations
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(alice).call();
+      assert.sameMembers(res, []);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(bob).call();
+      assert.sameMembers(res, []);
+
+      res = await this.spaceReputationAccountingWeb3.methods.delegations(charlie).call();
+      assert.sameMembers(res, []);
 
       await locker.burn(this.spaceReputationAccounting.address, { from: alice });
       await locker.withdraw(token1, { from: alice });

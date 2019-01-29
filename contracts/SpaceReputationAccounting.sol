@@ -50,12 +50,12 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
 
   // PermissionED
   function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external {
-    require(_delegations[msg.sender][_delegate] >= _amount, "Not enough funds");
+    require(_delegatedBalances[msg.sender][_delegate] >= _amount, "Not enough funds");
     require(_locks[_delegate][_multiSig] >= _amount, "Not enough funds");
 
-    _delegations[msg.sender][_delegate] -= _amount;
+    _delegatedBalances[msg.sender][_delegate] -= _amount;
     _locks[_delegate][_multiSig] -= _amount;
-    _delegations[msg.sender][msg.sender] += _amount;
+    _delegatedBalances[msg.sender][msg.sender] += _amount;
     _balances[msg.sender] += _amount;
 
     multiSigRegistry
