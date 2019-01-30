@@ -59,7 +59,7 @@ contract SpaceLockerRegistry is Permissionable {
   // TODO: how to deactivate multiSig?
 
   // GETTERS
-  function getSpaceLockersListByOwner(address _owner) external view returns (address [] memory) {
+  function getSpaceLockersListByOwner(address _owner) external view returns (address[] memory) {
     return spaceLockersByOwner[_owner].elements();
   }
 
