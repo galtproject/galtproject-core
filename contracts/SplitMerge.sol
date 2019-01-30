@@ -136,9 +136,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   // TODO: add SpaceSplitOperationFactory for migrations between versions
-  function startSplitOperation(uint256 _spaceTokenId,
-    uint256[] calldata _clippingContour
-  )
+  function startSplitOperation(uint256 _spaceTokenId, uint256[] calldata _clippingContour)
     external
     onlySpaceTokenOwner(_spaceTokenId)
     returns (address)
