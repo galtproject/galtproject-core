@@ -136,10 +136,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   }
 
   // TODO: add SpaceSplitOperationFactory for migrations between versions
-  function startSplitOperation(
-    uint256 _spaceTokenId,
-    uint256[] calldata _clippingContour
-  )
+  function startSplitOperation(uint256 _spaceTokenId, uint256[] calldata _clippingContour)
     external
     onlySpaceTokenOwner(_spaceTokenId)
     returns (address)
@@ -284,16 +281,16 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
 
-  function getPackageContour(uint256 _packageTokenId) public view returns (uint256[] memory) {
-    return packageToContour[_packageTokenId];
+  function getPackageContour(uint256 _spaceTokenId) public view returns (uint256[] memory) {
+    return packageToContour[_spaceTokenId];
   }
 
-  function getPackageHeights(uint256 _packageTokenId) public view returns (int256[] memory) {
-    return packageToHeights[_packageTokenId];
+  function getPackageHeights(uint256 _spaceTokenId) public view returns (int256[] memory) {
+    return packageToHeights[_spaceTokenId];
   }
 
-  function getPackageLevel(uint256 _packageTokenId) public view returns (int256) {
-    return packageToLevel[_packageTokenId];
+  function getPackageLevel(uint256 _spaceTokenId) public view returns (int256) {
+    return packageToLevel[_spaceTokenId];
   }
   
   function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
@@ -311,13 +308,15 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   function getPackageGeoData(uint256 _spaceTokenId) public view returns (
     uint256[] memory contour,
     int256[] memory heights,
-    int256 level
+    int256 level,
+    uint256 area
   )
   {
     return (
-      getPackageContour(_spaceTokenId),
-      getPackageHeights(_spaceTokenId),
-      getPackageLevel(_spaceTokenId)
+      packageToContour[_spaceTokenId],
+      packageToHeights[_spaceTokenId],
+      packageToLevel[_spaceTokenId],
+      tokenArea[_spaceTokenId]
     );
   }
 }
