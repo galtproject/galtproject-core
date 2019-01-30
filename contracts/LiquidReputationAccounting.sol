@@ -202,6 +202,10 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     return _delegations[_owner].elements();
   }
 
+  function delegationCount(address _owner) public view returns (uint256) {
+    return _delegations[_owner].size();
+  }
+
   // ERC20 compatible
   function totalSupply() public view returns (uint256) {
     return totalStakedSpace;
