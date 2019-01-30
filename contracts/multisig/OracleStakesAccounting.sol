@@ -44,7 +44,7 @@ contract OracleStakesAccounting is Permissionable {
 
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
-  address public slashManager;
+  address slashManager;
   ArbitratorsMultiSig public multiSigWallet;
   ArbitratorVoting public voting;
   ERC20 public galtToken;
