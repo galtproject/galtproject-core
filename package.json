@@ -11,7 +11,7 @@
     "@galtproject/geodesic": "git+https://github.com/galtspace/galtproject-geodesic.git#24b401bf6f7f62ead9f1da5d0e9751305d5a938f",
     "@galtproject/math": "git+https://github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
     "@galtproject/utils": "0.9.1",
-    "@galtproject/libs": "git+https://github.com/galtspace/galtproject-libs.git#9dc2604fe30357a5340a4962fc1bae9bd911c561",
+    "@galtproject/libs": "git+https://github.com/galtspace/galtproject-libs.git",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
     "chai": "^4.2.0",
