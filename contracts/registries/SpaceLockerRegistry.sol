@@ -32,6 +32,8 @@ contract SpaceLockerRegistry is Permissionable {
     bool active;
     address factoryAddress;
   }
+  
+  event SpaceLockerAdded(address indexed spaceLocker, address indexed owner, address factoryAddress);
 
   function addSpaceLocker(ISpaceLocker _spaceLocker) external onlyRole(ROLE_FACTORY) {
     Details storage sl = spaceLockers[address(_spaceLocker)];
@@ -40,6 +42,8 @@ contract SpaceLockerRegistry is Permissionable {
     sl.factoryAddress = msg.sender;
 
     spaceLockersByOwner[_spaceLocker.owner()].add(address(_spaceLocker));
+    
+    emit SpaceLockerAdded(address(_spaceLocker), _spaceLocker.owner(), sl.factoryAddress);
   }
 
   // REQUIRES
