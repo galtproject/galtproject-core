@@ -24,7 +24,7 @@ contract SpaceLockerRegistry is Permissionable {
 
   // SpaceLocker address => Details
   mapping(address => Details) public spaceLockers;
-  
+
   // SpaceLocker address => Details
   mapping(address => ArraySet.AddressSet) private spaceLockersByOwner;
 
@@ -32,7 +32,7 @@ contract SpaceLockerRegistry is Permissionable {
     bool active;
     address factoryAddress;
   }
-  
+
   event SpaceLockerAdded(address indexed spaceLocker, address indexed owner, address factoryAddress);
 
   function addSpaceLocker(ISpaceLocker _spaceLocker) external onlyRole(ROLE_FACTORY) {
@@ -42,7 +42,7 @@ contract SpaceLockerRegistry is Permissionable {
     sl.factoryAddress = msg.sender;
 
     spaceLockersByOwner[_spaceLocker.owner()].add(address(_spaceLocker));
-    
+
     emit SpaceLockerAdded(address(_spaceLocker), _spaceLocker.owner(), sl.factoryAddress);
   }
 
@@ -57,11 +57,12 @@ contract SpaceLockerRegistry is Permissionable {
   }
   // TODO: how to update Factory Address?
   // TODO: how to deactivate multiSig?
-  
+
   // GETTERS
   function getSpaceLockersListByOwner(address _owner) external view returns (address [] memory) {
     return spaceLockersByOwner[_owner].elements();
   }
+
   function getSpaceLockersCountByOwner(address _owner) external view returns (uint256) {
     return spaceLockersByOwner[_owner].size();
   }
