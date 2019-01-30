@@ -33,6 +33,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
 
   // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
+  mapping(address => uint256) _totalLocked;
 
   // L0
   uint256 private totalStakedSpace;
@@ -48,15 +49,20 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     multiSigRegistry = _multiSigRegistry;
   }
 
+  function revoke(address _from, uint256 _amount) public {
+    require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");
+
+    _debitAccount(_from, msg.sender, _amount);
+    _creditAccount(msg.sender, msg.sender, _amount);
+  }
+
   // PermissionED
   function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external {
-    require(_delegatedBalances[msg.sender][_delegate] >= _amount, "Not enough funds");
     require(_locks[_delegate][_multiSig] >= _amount, "Not enough funds");
 
-    _delegatedBalances[msg.sender][_delegate] -= _amount;
+    _totalLocked[_delegate] -= _amount;
     _locks[_delegate][_multiSig] -= _amount;
-    _delegatedBalances[msg.sender][msg.sender] += _amount;
-    _balances[msg.sender] += _amount;
+    _revokeDelegated(_delegate, _amount);
 
     multiSigRegistry
       .getArbitratorVoting(_multiSig)
@@ -65,9 +71,9 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
 
   // PermissionED
   function lockReputation(address _multiSig, uint256 _amount) external {
-    require(_balances[msg.sender] >= _amount, "Insufficient amount to lock");
+    require((balanceOf(msg.sender) - _totalLocked[msg.sender]) >= _amount, "Insufficient amount to lock");
 
-    _balances[msg.sender] -= _amount;
+    _totalLocked[msg.sender] += _amount;
     _locks[msg.sender][_multiSig] += _amount;
 
     multiSigRegistry
@@ -83,9 +89,10 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     require(beforeUnlock >= _amount, "Insufficient amount to lock");
     require(afterUnlock >= 0, "Insufficient amount to lock");
     require(afterUnlock < _locks[msg.sender][_multiSig], "Insufficient amount to lock");
+    assert(_totalLocked[msg.sender] > _amount);
 
     _locks[msg.sender][_multiSig] -= _amount;
-    _balances[msg.sender] += _amount;
+    _totalLocked[msg.sender] -= _amount;
 
     multiSigRegistry
       .getArbitratorVoting(_multiSig)
@@ -93,8 +100,11 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
   }
 
   // GETTERS
+  function lockedBalanceOf(address _owner) public view returns (uint256) {
+    return _totalLocked[_owner];
+  }
 
-  function lockedBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
+  function lockedMultiSigBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
     return _locks[_owner][_multiSig];
   }
 }
