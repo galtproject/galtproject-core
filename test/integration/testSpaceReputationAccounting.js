@@ -123,10 +123,10 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceLockerRegistry.isValid(aliceLockerAddress);
       assert.equal(res, true);
 
-      res = await this.spaceLockerRegistryWeb3.methods.getSpaceLockersListByOwner(alice).call();
+      res = await this.spaceLockerRegistry.getSpaceLockersListByOwner(alice);
       assert.deepEqual(res, [aliceLockerAddress]);
 
-      res = await this.spaceLockerRegistryWeb3.methods.getSpaceLockersCountByOwner(alice).call();
+      res = await this.spaceLockerRegistry.getSpaceLockersCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
       // APPROVE REPUTATION MINT
