@@ -152,7 +152,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
     _ownedBalances[_beneficiary] += _amount;
     _spaceTokensByOwner[_beneficiary].add(_spaceTokenId);
-    _spaceTokenOwners.addSilent(msg.sender);
+    _spaceTokenOwners.addSilent(_beneficiary);
 
     reputationMinted[_spaceTokenId] = true;
   }
