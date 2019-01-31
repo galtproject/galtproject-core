@@ -214,6 +214,8 @@ contract('ArbitratorVoting', accounts => {
       await this.galtToken.approve(this.oracleStakesAccountingY.address, ether(2000), { from: alice });
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(2000), { from: alice });
 
+      assert.equal(this.abMultiSigX.address, await this.oracleStakesAccountingX.multiSigWallet());
+
       await this.oracleStakesAccountingX.stake(charlie, TYPE_B, ether(200), { from: alice });
       await this.oracleStakesAccountingX.stake(charlie, TYPE_C, ether(200), { from: alice });
       await this.oracleStakesAccountingX.stake(dan, TYPE_A, ether(200), { from: alice });
