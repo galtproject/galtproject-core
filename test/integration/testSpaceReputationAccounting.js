@@ -124,7 +124,7 @@ contract('SpaceReputationAccounting', accounts => {
       assert.equal(res, true);
 
       res = await this.spaceLockerRegistryWeb3.methods.getSpaceLockersListByOwner(alice).call();
-      assert.deepEqual(res, [lockerAddress]);
+      assert.deepEqual(res, [aliceLockerAddress]);
 
       res = await this.spaceLockerRegistryWeb3.methods.getSpaceLockersCountByOwner(alice).call();
       assert.equal(res.toString(10), '1');
