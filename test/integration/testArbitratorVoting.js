@@ -104,6 +104,7 @@ contract('ArbitratorVoting', accounts => {
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(dan, ether(10000000), { from: coreTeam });
     await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
     await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
 
@@ -297,7 +298,7 @@ contract('ArbitratorVoting', accounts => {
         this.splitMerge.setTokenArea(x4, '700', { from: geoDateManagement }),
         this.splitMerge.setTokenArea(x5, '100', { from: geoDateManagement }),
         this.splitMerge.setTokenArea(x6, '1000', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x7, '200', { from: geoDateManagement })
+        this.splitMerge.setTokenArea(x7, '0', { from: geoDateManagement })
       ];
 
       await Promise.all(p);
@@ -305,6 +306,7 @@ contract('ArbitratorVoting', accounts => {
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(20), { from: alice });
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(30), { from: bob });
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: charlie });
+      await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: dan });
 
       // BUILD LOCKER CONTRACTS
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -319,6 +321,8 @@ contract('ArbitratorVoting', accounts => {
       const lockerAddress5 = res.logs[0].args.locker;
       res = await this.spaceLockerFactory.build({ from: charlie });
       const lockerAddress6 = res.logs[0].args.locker;
+      res = await this.spaceLockerFactory.build({ from: dan });
+      const lockerAddress7 = res.logs[0].args.locker;
 
       const locker1 = await SpaceLocker.at(lockerAddress1);
       const locker2 = await SpaceLocker.at(lockerAddress2);
@@ -326,6 +330,7 @@ contract('ArbitratorVoting', accounts => {
       const locker4 = await SpaceLocker.at(lockerAddress4);
       const locker5 = await SpaceLocker.at(lockerAddress5);
       const locker6 = await SpaceLocker.at(lockerAddress6);
+      const locker7 = await SpaceLocker.at(lockerAddress7);
 
       // APPROVE SPACE TOKENS
       await this.spaceToken.approve(lockerAddress1, x1, { from: alice });
@@ -334,6 +339,7 @@ contract('ArbitratorVoting', accounts => {
       await this.spaceToken.approve(lockerAddress4, x4, { from: bob });
       await this.spaceToken.approve(lockerAddress5, x5, { from: bob });
       await this.spaceToken.approve(lockerAddress6, x6, { from: charlie });
+      await this.spaceToken.approve(lockerAddress7, x7, { from: dan });
 
       // DEPOSIT SPACE TOKENS
       await locker1.deposit(x1, { from: alice });
@@ -342,6 +348,7 @@ contract('ArbitratorVoting', accounts => {
       await locker4.deposit(x4, { from: bob });
       await locker5.deposit(x5, { from: bob });
       await locker6.deposit(x6, { from: charlie });
+      await locker7.deposit(x7, { from: dan });
 
       // APPROVE REPUTATION MINT AT ASRA
       p = [
@@ -350,7 +357,8 @@ contract('ArbitratorVoting', accounts => {
         locker3.approveMint(this.spaceReputationAccounting.address, { from: bob }),
         locker4.approveMint(this.spaceReputationAccounting.address, { from: bob }),
         locker5.approveMint(this.spaceReputationAccounting.address, { from: bob }),
-        locker6.approveMint(this.spaceReputationAccounting.address, { from: charlie })
+        locker6.approveMint(this.spaceReputationAccounting.address, { from: charlie }),
+        locker7.approveMint(this.spaceReputationAccounting.address, { from: dan })
       ];
 
       await Promise.all(p);
@@ -362,7 +370,8 @@ contract('ArbitratorVoting', accounts => {
         this.spaceReputationAccounting.mint(lockerAddress3, { from: bob }),
         this.spaceReputationAccounting.mint(lockerAddress4, { from: bob }),
         this.spaceReputationAccounting.mint(lockerAddress5, { from: bob }),
-        this.spaceReputationAccounting.mint(lockerAddress6, { from: charlie })
+        this.spaceReputationAccounting.mint(lockerAddress6, { from: charlie }),
+        this.spaceReputationAccounting.mint(lockerAddress7, { from: dan })
       ];
 
       await Promise.all(p);
@@ -463,36 +472,36 @@ contract('ArbitratorVoting', accounts => {
 
       // CHECK BALANCE AFTER LOCKING
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
-      assert.equal(res, 0);
+      assert.equal(res, 500);
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(bob).call();
-      assert.equal(res, 0);
+      assert.equal(res, 1100);
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(charlie).call();
-      assert.equal(res, 0);
-
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(dan).call();
       assert.equal(res, 350);
 
+      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(dan).call();
+      assert.equal(res, 1050);
+
       // CHECK LOCKED BALANCE AFTER LOCKING
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(alice, this.Y).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(alice, this.Y).call();
       assert.equal(res, 500);
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(alice, this.Z).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(alice, this.Z).call();
       assert.equal(res, 0);
 
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(bob, this.X).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(bob, this.X).call();
       assert.equal(res, 200);
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(bob, this.Y).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(bob, this.Y).call();
       assert.equal(res, 500);
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(bob, this.Z).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(bob, this.Z).call();
       assert.equal(res, 400);
 
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(charlie, this.Y).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(charlie, this.Y).call();
       assert.equal(res, 200);
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(charlie, this.Z).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(charlie, this.Z).call();
       assert.equal(res, 150);
 
-      res = await this.spaceReputationAccountingWeb3.methods.lockedBalanceOf(dan, this.X).call();
+      res = await this.spaceReputationAccountingWeb3.methods.lockedMultiSigBalanceOf(dan, this.X).call();
       assert.equal(res, 700);
 
       // CHECK VOTING REPUTATION BALANCE
