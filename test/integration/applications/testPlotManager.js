@@ -106,8 +106,8 @@ contract('PlotManager', accounts => {
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
     this.contour = this.initContour.map(galt.geohashToNumber);
-    // this.contour2 = this.initContour2.map(galt.geohashToNumber);
-    // this.contour3 = this.initContour3.map(galt.geohashToNumber);
+    this.contour2 = this.initContour2.map(galt.geohashToNumber);
+    this.contour3 = this.initContour3.map(galt.geohashToNumber);
     this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -331,7 +331,7 @@ contract('PlotManager', accounts => {
       });
     });
 
-    describe('#submitApplication()', () => {
+    describe('#submitApplication() with area calculated by geodesic contract', () => {
       beforeEach(async function() {
         this.fee = ether(26);
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
@@ -428,6 +428,30 @@ contract('PlotManager', accounts => {
           res = await this.plotManagerWeb3.methods.getApplicationOracle(aId, HUMAN).call();
           assert.equal(res.reward.toString(), '226200000000000000');
         });
+      });
+    });
+
+    describe('#submitApplication() with area provided by the applicant', () => {
+      beforeEach(async function() {
+        this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, 600);
+        assert.equal(this.fee, ether(5));
+
+        await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
+
+        await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
+      });
+
+      it('should submit applications in galt', async function() {
+        await this.plotManager.submitApplication(
+          this.contour,
+          this.heights,
+          0,
+          600,
+          this.credentials,
+          this.ledgerIdentifier,
+          ether(5),
+          { from: alice }
+        );
       });
     });
 

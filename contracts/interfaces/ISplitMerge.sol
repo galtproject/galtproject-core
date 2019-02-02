@@ -17,6 +17,7 @@ interface ISplitMerge {
   function setPackageContour(uint256 _spaceTokenId, uint256[] calldata _geohashesContour) external;
   function setPackageHeights(uint256 _spaceTokenId, int256[] calldata _heightsList) external;
   function setPackageLevel(uint256 _spaceTokenId, int256 _level) external;
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external;
   function setContourArea(uint256 _tokenId, uint256 _amount) external view returns (uint256);
   function initPackage(address _owner) external returns (uint256);
   function getContourArea(uint256 _tokenId) external view returns (uint256);

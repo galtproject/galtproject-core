@@ -437,6 +437,7 @@ contract PlotManager is AbstractOracleApplication {
     splitMerge.setPackageContour(tokenId, a.details.packageContour);
     splitMerge.setPackageHeights(tokenId, a.details.heights);
     splitMerge.setPackageLevel(tokenId, a.details.level);
+    splitMerge.setTokenArea(tokenId, a.details.area);
   }
 
   function rejectApplication(
