@@ -15,8 +15,7 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-//import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "../mocks/MockGeodesic.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "./interfaces/IPlotManagerFeeCalculator.sol";
@@ -108,7 +107,7 @@ contract PlotManager is AbstractOracleApplication {
   ISplitMerge public splitMerge;
   Oracles public oracles;
   IERC20 public galtToken;
-  IGeodesicT public geodesic;
+  IGeodesic public geodesic;
   IPlotManagerFeeCalculator public feeCalculator;
 
   constructor () public {}
@@ -118,7 +117,7 @@ contract PlotManager is AbstractOracleApplication {
     ISplitMerge _splitMerge,
     Oracles _oracles,
     IERC20 _galtToken,
-    IGeodesicT _geodesic,
+    IGeodesic _geodesic,
     IPlotManagerFeeCalculator _feeCalculator,
     address _galtSpaceRewardsAddress
   )
