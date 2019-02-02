@@ -224,7 +224,7 @@ contract PlotManager is AbstractOracleApplication {
       details.area = geodesic.calculateContourArea(_packageContour);
     } else {
       details.area = _customArea;
-      // Default a.areaSource is AreaSource.CONTRACT
+      // Default a.areaSource is AreaSource.USER_INPUT
     }
 
     uint256 fee;
