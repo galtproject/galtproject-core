@@ -168,6 +168,32 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       await this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.subjectContour);
     });
 
+    it('should check merge user case 1 correctly', async function() {
+      const sourceContour = ['w24qf7uc60s8', 'w24qfktnrmy4', 'w24qfkfeqxp7'];
+      const mergeContour = [
+        'w24r407j3nm8',
+        'w24r40ptz160',
+        'w24qfr2eqww0',
+        'w24r4241fndj',
+        'w24qfrydmn3m',
+        'w24qfqqj8t5g',
+        'w24qfq6pqydp',
+        'w24qfmt8e75u',
+        'w24qfktnrmy4',
+        'w24qfkfeqxp7',
+        'w24qf7uc60s8',
+        'w24qf6s32p85'
+      ];
+
+      const resultContour = galt.geohash.contour.mergeContours(sourceContour, mergeContour);
+
+      await this.splitMerge.checkMergeContours(
+        sourceContour.map(galt.geohashToGeohash5),
+        mergeContour.map(galt.geohashToGeohash5),
+        resultContour.map(galt.geohashToGeohash5)
+      );
+    });
+
     it('should reject incorrect split by duplicate geohash of merge contour', async function() {
       const sourceContour = ['w9cx71g9s1b', 'w9cwg7dkdrp', 'w9cwfqk3f0m', 'w9cx63zs884', 'w9cx71gk90n'].map(
         galt.geohashToGeohash5
