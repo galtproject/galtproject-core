@@ -1,8 +1,10 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
+const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const Geodesic = artifacts.require('./MockGeodesic.sol');
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
@@ -117,14 +119,18 @@ contract('PlotManager', accounts => {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.geodesic = await Geodesic.new({ from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
 
     await this.plotManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
       this.oracles.address,
       this.galtToken.address,
+      this.geodesic.address,
+      this.feeCalculator.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -179,8 +185,10 @@ contract('PlotManager', accounts => {
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
-    this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
+
+    const res = await this.plotManager.feeCalculator();
+    assert.equal(res, this.feeCalculator.address);
   });
 
   it('should be initialized successfully', async function() {
@@ -238,24 +246,6 @@ contract('PlotManager', accounts => {
       });
     });
 
-    describe('#setSubmissionFeeRate()', () => {
-      it('should allow a fee manager set a submission fee rate in ETH and GALT', async function() {
-        await this.plotManager.setSubmissionFeeRate(ether(0.02), ether(0.1), { from: feeManager });
-        let res = await this.plotManagerWeb3.methods.submissionFeeRateEth().call();
-        assert.equal(res, ether(0.02));
-        res = await this.plotManagerWeb3.methods.submissionFeeRateGalt().call();
-        assert.equal(res, ether(0.1));
-      });
-
-      it('should deny any other than a fee manager account set fee in ETH', async function() {
-        await assertRevert(
-          this.plotManager.setSubmissionFeeRate(ether(0.05), ether(0.05), {
-            from: coreTeam
-          })
-        );
-      });
-    });
-
     describe('#setGaltSpaceEthShare()', () => {
       it('should allow fee manager set galtSpace ETH share in percents', async function() {
         await this.plotManager.setGaltSpaceEthShare('42', { from: feeManager });
@@ -298,15 +288,22 @@ contract('PlotManager', accounts => {
         [_ES, _ES, _ES],
         { from: coreTeam }
       );
-      const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
-      await this.galtToken.approve(this.plotManager.address, expectedFee, { from: alice });
+
+      await this.geodesic.calculateContourArea(this.contour);
+      const area = await this.geodesic.getCalculatedContourArea(this.contour);
+      assert.equal(area, 3000);
+      this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
+      assert.equal(this.fee, ether(15));
+      await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
+
       const res = await this.plotManager.submitApplication(
         this.contour,
         this.heights,
         0,
+        0,
         this.credentials,
         this.ledgerIdentifier,
-        expectedFee,
+        this.fee,
         {
           from: alice
         }
@@ -337,8 +334,6 @@ contract('PlotManager', accounts => {
     describe('#submitApplication()', () => {
       beforeEach(async function() {
         this.fee = ether(26);
-        assert(new BN(this.fee) > (await this.plotManager.getSubmissionFee(Currency.GALT, this.contour)));
-
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
       });
 
@@ -346,6 +341,7 @@ contract('PlotManager', accounts => {
         await this.plotManager.submitApplication(
           this.contour,
           this.heights,
+          0,
           0,
           this.credentials,
           this.ledgerIdentifier,
@@ -359,6 +355,7 @@ contract('PlotManager', accounts => {
           const res = await this.plotManager.submitApplication(
             this.contour,
             this.heights,
+            0,
             0,
             this.credentials,
             this.ledgerIdentifier,
@@ -377,6 +374,7 @@ contract('PlotManager', accounts => {
             this.plotManager.submitApplication(
               this.contour,
               this.heights,
+              0,
               0,
               this.credentials,
               this.ledgerIdentifier,
@@ -403,9 +401,9 @@ contract('PlotManager', accounts => {
             this.contour,
             this.heights,
             0,
+            0,
             this.credentials,
             this.ledgerIdentifier,
-            // expect minimum is 20
             expectedFee,
             { from: alice }
           );
@@ -485,6 +483,7 @@ contract('PlotManager', accounts => {
           this.contour,
           this.heights,
           0,
+          0,
           this.credentials,
           this.ledgerIdentifier,
           // expect minimum is 20
@@ -561,80 +560,6 @@ contract('PlotManager', accounts => {
     });
 
     // TODO: implement after area calculation logic be ready
-    describe.skip('#withdrawSubmissionFee()', () => {
-      beforeEach(async function() {
-        await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-        this.resAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-          NEW_APPLICATION,
-          [CAT, DOG, HUMAN],
-          [52, 47, 1],
-          [_ES, _ES, _ES],
-          { from: coreTeam }
-        );
-        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
-
-        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
-
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, CAT, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
-
-        await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
-        let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
-        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
-
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const galts = await this.plotManagerWeb3.methods.getSubmissionFee(this.aId, Currency.GALT).call();
-        const eths = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.GALT).call();
-        await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
-
-        await this.plotManager.submitApplication(this.aId, galts, { from: alice, value: eths });
-
-        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
-        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-        geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
-        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
-          from: alice
-        });
-      });
-
-      it('should allow withdraw unused fee after resubmission', async function() {
-        let finance = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
-        assert.equal(finance.feeRefundAvailable, 0);
-
-        this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-
-        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-
-        finance = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
-        assert.equal(finance.feeRefundAvailable, '20971520000000000000');
-
-        const aliceInitialBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
-        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
-        const aliceFinalBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
-
-        assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN('20971520000000000000')));
-      });
-
-      it('should reject fee withdrawals before resubmission', async function() {
-        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
-      });
-
-      it('should reject on double-refund', async function() {
-        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
-        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
-      });
-    });
-
     describe('claim reward', () => {
       beforeEach(async function() {
         await this.oracles.deleteApplicationType(NEW_APPLICATION);
@@ -646,15 +571,17 @@ contract('PlotManager', accounts => {
           { from: coreTeam }
         );
 
-        const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
-        await this.galtToken.approve(this.plotManager.address, expectedFee, { from: alice });
+        // const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
+        this.fee = ether(20);
+        await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
         let res = await this.plotManager.submitApplication(
           this.contour,
           this.heights,
           0,
+          0,
           this.credentials,
           this.ledgerIdentifier,
-          expectedFee,
+          this.fee,
           {
             from: alice
           }
@@ -786,17 +713,25 @@ contract('PlotManager', accounts => {
         { from: coreTeam }
       );
 
-      const expectedFee = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+      await this.geodesic.calculateContourArea(this.contour);
+      const area = await this.geodesic.getCalculatedContourArea(this.contour);
+      assert.equal(area, 3000);
+      const expectedFee = await this.plotManager.getSubmissionFeeByArea(Currency.ETH, area);
+      assert.equal(expectedFee, ether(1.5));
+      this.fee = ether(2);
+      await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
+
       let res = await this.plotManager.submitApplication(
         this.contour,
         this.heights,
+        0,
         0,
         this.credentials,
         this.ledgerIdentifier,
         0,
         {
           from: alice,
-          value: expectedFee
+          value: this.fee
         }
       );
 
@@ -842,6 +777,7 @@ contract('PlotManager', accounts => {
               this.contour,
               this.heights,
               0,
+              0,
               this.credentials,
               this.ledgerIdentifier,
               0,
@@ -858,6 +794,7 @@ contract('PlotManager', accounts => {
             this.plotManager.submitApplication(
               this.contour,
               this.heights,
+              0,
               0,
               this.credentials,
               this.ledgerIdentifier,
@@ -1082,6 +1019,7 @@ contract('PlotManager', accounts => {
           this.contour,
           this.heights,
           0,
+          0,
           this.credentials,
           this.ledgerIdentifier,
           0,
@@ -1099,6 +1037,7 @@ contract('PlotManager', accounts => {
         res = await this.plotManager.submitApplication(
           this.contour,
           this.heights,
+          0,
           0,
           this.credentials,
           this.ledgerIdentifier,

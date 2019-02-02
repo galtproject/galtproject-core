@@ -15,8 +15,11 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+//import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+import "../mocks/MockGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
+import "./interfaces/IPlotManagerFeeCalculator.sol";
 import "../Oracles.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
@@ -46,6 +49,11 @@ contract PlotManager is AbstractOracleApplication {
     REVERTED
   }
 
+  enum AreaSource {
+    USER_INPUT,
+    CONTRACT
+  }
+
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
@@ -72,10 +80,10 @@ contract PlotManager is AbstractOracleApplication {
   }
 
   struct ApplicationFees {
+    uint256 totalPaidFee;
     uint256 oraclesReward;
     uint256 galtSpaceReward;
     uint256 latestCommittedFee;
-    uint256 feeRefundAvailable;
     bool galtSpaceRewardPaidOut;
   }
 
@@ -83,6 +91,8 @@ contract PlotManager is AbstractOracleApplication {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     int256 level;
+    uint256 area;
+    AreaSource areaSource;
     uint256[] packageContour;
     int256[] heights;
   }
@@ -98,6 +108,8 @@ contract PlotManager is AbstractOracleApplication {
   ISplitMerge public splitMerge;
   Oracles public oracles;
   IERC20 public galtToken;
+  IGeodesicT public geodesic;
+  IPlotManagerFeeCalculator public feeCalculator;
 
   constructor () public {}
 
@@ -106,6 +118,8 @@ contract PlotManager is AbstractOracleApplication {
     ISplitMerge _splitMerge,
     Oracles _oracles,
     IERC20 _galtToken,
+    IGeodesicT _geodesic,
+    IPlotManagerFeeCalculator _feeCalculator,
     address _galtSpaceRewardsAddress
   )
     public
@@ -115,6 +129,8 @@ contract PlotManager is AbstractOracleApplication {
     splitMerge = _splitMerge;
     oracles = _oracles;
     galtToken = _galtToken;
+    geodesic = _geodesic;
+    feeCalculator = _feeCalculator;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     // Default values for revenue shares and application fees
@@ -154,9 +170,8 @@ contract PlotManager is AbstractOracleApplication {
     _;
   }
 
-  function setSubmissionFeeRate(uint256 _newEthRate, uint256 _newGaltRate) external onlyFeeManager {
-    submissionFeeRateGalt = _newGaltRate;
-    submissionFeeRateEth = _newEthRate;
+  function setFeeCalculator(IPlotManagerFeeCalculator _feeCalculator) external onlyFeeManager {
+    feeCalculator = _feeCalculator;
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -175,6 +190,7 @@ contract PlotManager is AbstractOracleApplication {
     uint256[] calldata _packageContour,
     int256[] calldata _heights,
     int256 _level,
+    uint256 _customArea,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     uint256 _submissionFeeInGalt
@@ -189,7 +205,6 @@ contract PlotManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
-    Application memory a;
     bytes32 _id = keccak256(
       abi.encodePacked(
         _packageContour,
@@ -199,26 +214,39 @@ contract PlotManager is AbstractOracleApplication {
       )
     );
 
-    // Default is ETH
-    Currency currency;
+    Application storage a = applications[_id];
+    ApplicationDetails storage details = a.details;
+
+    require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    if (_customArea == 0) {
+      details.areaSource = AreaSource.CONTRACT;
+      details.area = geodesic.calculateContourArea(_packageContour);
+    } else {
+      details.area = _customArea;
+      // Default a.areaSource is AreaSource.CONTRACT
+    }
+
     uint256 fee;
 
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFee(Currency.GALT, _packageContour), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(Currency.GALT, details.area), "Incorrect fee passed in");
+
       galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
+
       fee = _submissionFeeInGalt;
       a.currency = Currency.GALT;
-      // ETH
+    // ETH
     } else {
       fee = msg.value;
+      // Default a.currency is Currency.ETH
+
       require(
-        msg.value >= getSubmissionFee(Currency.ETH, _packageContour),
+        msg.value >= getSubmissionFeeByArea(Currency.ETH, details.area),
         "Incorrect msg.value passed in");
     }
-
-    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
@@ -226,7 +254,11 @@ contract PlotManager is AbstractOracleApplication {
 
     calculateAndStoreFee(a, fee);
 
-    applications[_id] = a;
+    details.ledgerIdentifier = _ledgerIdentifier;
+    details.credentialsHash = _credentialsHash;
+    details.level = _level;
+    details.packageContour = _packageContour;
+    details.heights = _heights;
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -234,15 +266,6 @@ contract PlotManager is AbstractOracleApplication {
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
-    applications[_id].details = ApplicationDetails({
-      ledgerIdentifier: _ledgerIdentifier,
-      credentialsHash: _credentialsHash,
-      level: _level,
-      packageContour: _packageContour,
-      heights: _heights
-    });
-
-    applications[_id].fees.latestCommittedFee = fee;
     assignRequiredOracleTypesAndRewards(applications[_id]);
 
     return _id;
@@ -322,22 +345,16 @@ contract PlotManager is AbstractOracleApplication {
       fee = msg.value;
     }
 
-    uint256 newTotalFee = getSubmissionFee(a.currency, _newPackageContour);
+    uint256 area = geodesic.calculateContourArea(_newPackageContour);
+    uint256 newMinimalFee = getSubmissionFeeByArea(a.currency, area);
     uint256 alreadyPaid = a.fees.latestCommittedFee;
 
-    if (newTotalFee > alreadyPaid) {
-      uint256 requiredPayment = newTotalFee.sub(alreadyPaid);
+    if (newMinimalFee > alreadyPaid) {
+      uint256 requiredPayment = newMinimalFee.sub(alreadyPaid);
       require(fee >= requiredPayment, "Incorrect fee passed in");
-      newTotalFee = fee;
-    } else if (newTotalFee < alreadyPaid) {
-      require(fee == 0, "Unexpected payment");
-      uint256 requiredRefund = alreadyPaid.sub(newTotalFee);
-      a.fees.feeRefundAvailable = a.fees.feeRefundAvailable.add(requiredRefund);
-    } else {
-      require(fee == 0, "Unexpected payment");
     }
 
-    a.fees.latestCommittedFee = newTotalFee;
+    a.fees.latestCommittedFee = alreadyPaid + fee;
   }
 
   // Application can be locked by an oracle type only once.
@@ -538,25 +555,8 @@ contract PlotManager is AbstractOracleApplication {
     }
   }
 
-  /**
-   * @dev Withdraw total unused submission fee back
-   */
-  function withdrawSubmissionFee(bytes32 _aId) external onlyApplicant(_aId) {
-    Application storage a = applications[_aId];
-    uint256 refund = a.fees.feeRefundAvailable;
-
-    require(refund > 0, "No refund available");
-    a.fees.feeRefundAvailable = 0;
-
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(refund);
-    } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, refund);
-    }
-  }
-
   function calculateAndStoreFee(
-    Application memory _a,
+    Application storage _a,
     uint256 _fee
   )
     internal
@@ -576,6 +576,8 @@ contract PlotManager is AbstractOracleApplication {
 
     _a.fees.oraclesReward = oraclesReward;
     _a.fees.galtSpaceReward = galtSpaceReward;
+
+    _a.fees.latestCommittedFee = _fee;
   }
 
   function assignRequiredOracleTypesAndRewards(Application storage a) internal {
@@ -598,7 +600,10 @@ contract PlotManager is AbstractOracleApplication {
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward == a.fees.oraclesReward);
+    // TODO: 🙊 handle such cases more precisely
+    assert(totalReward <= a.fees.oraclesReward);
+    uint256 diff = a.fees.oraclesReward - totalReward;
+    a.assignedRewards[a.assignedOracleTypes[0]] += diff;
   }
 
   function changeValidationStatus(
@@ -683,7 +688,6 @@ contract PlotManager is AbstractOracleApplication {
       uint256 oraclesReward,
       uint256 galtSpaceReward,
       uint256 latestCommittedFee,
-      uint256 feeRefundAvailable,
       bool galtSpaceRewardPaidOut
     )
   {
@@ -697,7 +701,6 @@ contract PlotManager is AbstractOracleApplication {
       m.fees.oraclesReward,
       m.fees.galtSpaceReward,
       m.fees.latestCommittedFee,
-      m.fees.feeRefundAvailable,
       m.fees.galtSpaceRewardPaidOut
     );
   }
@@ -715,6 +718,8 @@ contract PlotManager is AbstractOracleApplication {
       bytes32 credentialsHash,
       bytes32 ledgerIdentifier,
       int256 level,
+      uint256 area,
+      AreaSource areaSource,
       uint256[] memory packageContour,
       int256[] memory heights
     )
@@ -727,6 +732,8 @@ contract PlotManager is AbstractOracleApplication {
       m.details.credentialsHash,
       m.details.ledgerIdentifier,
       m.details.level,
+      m.details.area,
+      m.details.areaSource,
       m.details.packageContour,
       m.details.heights
     );
@@ -740,11 +747,11 @@ contract PlotManager is AbstractOracleApplication {
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
    * WARNING: currently area weight is hardcoded in #submitApplication() method
    */
-  function getSubmissionFee(Currency _currency, uint256[] memory _packageContour) public view returns (uint256) {
+  function getSubmissionFeeByArea(Currency _currency, uint256 _area) public view returns (uint256) {
     if (_currency == Currency.GALT) {
-      return 2000000 * submissionFeeRateGalt;
+      return feeCalculator.calculateGaltFee(_area);
     } else {
-      return 2000000 * submissionFeeRateEth;
+      return feeCalculator.calculateEthFee(_area);
     }
   }
 
@@ -757,14 +764,15 @@ contract PlotManager is AbstractOracleApplication {
    *   (result == 0)
    * if newTotalFee < latestPaidFee:
    *   (result < 0) and could be claimed back.
+   * TODO: depricate
    */
-  function getResubmissionFee(bytes32 _aId, uint256[] calldata _packageContour) external returns (int256) {
-    Application storage a = applications[_aId];
-    uint256 newTotalFee = getSubmissionFee(a.currency, _packageContour);
-    uint256 latest = a.fees.latestCommittedFee;
-
-    return int256(newTotalFee) - int256(latest);
-  }
+//  function getResubmissionFee(bytes32 _aId, uint256[] calldata _packageContour) external returns (int256) {
+//    Application storage a = applications[_aId];
+//    uint256 newTotalFee = getSubmissionFeeByArea(a.currency, _packageContour);
+//    uint256 latest = a.fees.latestCommittedFee;
+//
+//    return int256(newTotalFee) - int256(latest);
+//  }
 
   function getApplicationOracle(
     bytes32 _aId,
