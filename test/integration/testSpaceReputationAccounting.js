@@ -43,10 +43,14 @@ contract('SpaceReputationAccounting', accounts => {
       this.spaceLockerRegistry.address,
       { from: coreTeam }
     );
-    this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
-    this.spaceLockerRegistry.addRoleTo(this.spaceLockerFactory.address, await this.spaceLockerRegistry.ROLE_FACTORY(), {
-      from: coreTeam
-    });
+    await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
+    await this.spaceLockerRegistry.addRoleTo(
+      this.spaceLockerFactory.address,
+      await this.spaceLockerRegistry.ROLE_FACTORY(),
+      {
+        from: coreTeam
+      }
+    );
     await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
       from: coreTeam
     });
