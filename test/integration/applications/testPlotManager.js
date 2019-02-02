@@ -106,8 +106,8 @@ contract('PlotManager', accounts => {
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
     this.contour = this.initContour.map(galt.geohashToNumber);
-    this.contour2 = this.initContour2.map(galt.geohashToNumber);
-    this.contour3 = this.initContour3.map(galt.geohashToNumber);
+    // this.contour2 = this.initContour2.map(galt.geohashToNumber);
+    // this.contour3 = this.initContour3.map(galt.geohashToNumber);
     this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -456,7 +456,6 @@ contract('PlotManager', accounts => {
       });
     });
 
-    // TODO: fix resubmission fee values after area calculation logic be ready
     describe('#resubmitApplication()', () => {
       beforeEach(async function() {
         await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
@@ -478,7 +477,13 @@ contract('PlotManager', accounts => {
         await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
-        await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
+        await this.geodesic.calculateContourArea(this.contour);
+        const area = await this.geodesic.getCalculatedContourArea(this.contour);
+        assert.equal(area, 3000);
+        this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
+        assert.equal(this.fee, ether(15));
+
+        await this.galtToken.approve(this.plotManager.address, ether(15), { from: alice });
         const res = await this.plotManager.submitApplication(
           this.contour,
           this.heights,
@@ -487,7 +492,7 @@ contract('PlotManager', accounts => {
           this.credentials,
           this.ledgerIdentifier,
           // expect minimum is 20
-          ether(20),
+          ether(15),
           { from: alice }
         );
         this.aId = res.logs[0].args.id;
@@ -499,21 +504,28 @@ contract('PlotManager', accounts => {
         await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
       });
 
-      // TODO: implement after area calculation logic be ready
-      describe.skip('contour changed', () => {
+      describe('contour changed', () => {
         beforeEach(async function() {
-          this.newContour = ['sezu112c', 'sezu113b1', 'sezu114'].map(galt.geohashToGeohash5);
-          this.galts = await this.plotManager.getResubmissionFee(this.aId, this.newContour);
+          this.newContour = ['sezu112c', 'sezu113b1', 'sezu114', 'sezu116'].map(galt.geohashToGeohash5);
+          await this.geodesic.calculateContourArea(this.newContour);
+          const area = await this.geodesic.getCalculatedContourArea(this.newContour);
+          assert.equal(area, 4000);
+          this.fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
+
+          await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
         });
 
         it('should require another payment', async function() {
+          assert.equal(this.fee, ether(5));
           await this.plotManager.resubmitApplication(
             this.aId,
             this.credentials,
             this.ledgerIdentifier,
+            this.newContour,
             this.heights,
             9,
-            this.galts,
+            0,
+            this.fee,
             { from: alice }
           );
 
@@ -521,23 +533,47 @@ contract('PlotManager', accounts => {
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
         });
 
-        it('should reject on unexpected fee in GALT', async function() {
-          await assertRevert(this.plotManager.resubmitApplication(this.aId, 123, { from: alice }));
+        it('should reject on payment both in ETH and GALT', async function() {
+          await assertRevert(
+            this.plotManager.resubmitApplication(
+              this.aId,
+              this.credentials,
+              this.ledgerIdentifier,
+              this.newContour,
+              this.heights,
+              9,
+              0,
+              this.fee,
+              { from: alice, value: '123' }
+            )
+          );
 
           const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.equal(res.status, ApplicationStatus.REVERTED);
         });
 
-        it('should reject on payment both in ETH and GALT', async function() {
-          await assertRevert(
-            this.plotManager.resubmitApplication(this.aId, this.galts, {
-              from: alice,
-              value: '123'
-            })
+        it('should not require additional payment when fee is less than previous onw', async function() {
+          const smallerContour = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
+          await this.geodesic.calculateContourArea(smallerContour);
+          const area = await this.geodesic.getCalculatedContourArea(smallerContour);
+          assert.equal(area, 2000);
+          const fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
+          assert.equal(fee, 0);
+
+          await this.plotManager.resubmitApplication(
+            this.aId,
+            this.credentials,
+            this.ledgerIdentifier,
+            smallerContour,
+            this.heights,
+            9,
+            0,
+            0,
+            { from: alice }
           );
 
           const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-          assert.equal(res.status, ApplicationStatus.REVERTED);
+          assert.equal(res.status, ApplicationStatus.SUBMITTED);
         });
       });
 
@@ -549,7 +585,7 @@ contract('PlotManager', accounts => {
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
         const newLedgerIdentifier = bytes32('foo-123');
 
-        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
+        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, 0, {
           from: alice
         });
 
@@ -559,7 +595,6 @@ contract('PlotManager', accounts => {
       });
     });
 
-    // TODO: implement after area calculation logic be ready
     describe('claim reward', () => {
       beforeEach(async function() {
         await this.oracles.deleteApplicationType(NEW_APPLICATION);
@@ -859,7 +894,6 @@ contract('PlotManager', accounts => {
       });
     });
 
-    // TODO: finish after area calculation logic be ready
     describe('#resubmitApplication()', () => {
       beforeEach(async function() {
         const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
@@ -880,7 +914,7 @@ contract('PlotManager', accounts => {
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
         const newLedgerIdentifier = bytes32('foo-123');
 
-        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, {
+        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, 0, {
           from: alice
         });
 
@@ -889,8 +923,59 @@ contract('PlotManager', accounts => {
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
       });
 
+      it('should revert if additional payment required', async function() {
+        let res = await this.plotManager.getApplicationById(this.aId);
+        assert.equal(res.status, ApplicationStatus.REVERTED);
+
+        // NOTICE: for 1.5 eth required we have already 2 eth paid as a fee
+        const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
+        const newLedgerIdentifier = bytes32('foo-123');
+        const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
+
+        await this.geodesic.calculateContourArea(newContour);
+        const area = await this.geodesic.getCalculatedContourArea(newContour);
+        assert.equal(area, 5000);
+        const fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
+        assert.equal(fee, ether(0.5));
+
+        await assertRevert(
+          this.plotManager.resubmitApplication(
+            this.aId,
+            newCredentiasHash,
+            newLedgerIdentifier,
+            newContour,
+            [],
+            9,
+            0,
+            0,
+            {
+              from: alice
+            }
+          )
+        );
+
+        await this.plotManager.resubmitApplication(
+          this.aId,
+          newCredentiasHash,
+          newLedgerIdentifier,
+          newContour,
+          [],
+          9,
+          0,
+          0,
+          {
+            from: alice,
+            value: ether(0.6)
+          }
+        );
+
+        res = await this.plotManager.getApplicationById(this.aId);
+        assert.equal(res.credentialsHash, newCredentiasHash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
+      });
+
       it('should allow submit reverted application to the same oracle who reverted it', async function() {
-        await this.plotManager.resubmitApplication(this.aId, this.credentials, this.ledgerIdentifier, [], [], 9, 0, {
+        await this.plotManager.resubmitApplication(this.aId, this.credentials, this.ledgerIdentifier, [], [], 9, 0, 0, {
           from: alice
         });
 
@@ -914,76 +999,6 @@ contract('PlotManager', accounts => {
         beforeEach(async function() {
           this.newContour = ['sezu112c', 'sezu113b1', 'sezu114'].map(galt.geohashToGeohash5);
         });
-      });
-    });
-
-    // TODO: implement after area calculation logic be ready
-    describe.skip('#withdrawSubmissionFee()', () => {
-      beforeEach(async function() {
-        let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
-        await this.plotManager.addGeohashesToApplication(this.aId, geohashes, [], [], { from: alice });
-
-        const res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
-        assert.equal(res.status, ApplicationStatus.NEW);
-
-        const payment = await this.plotManagerWeb3.methods.getSubmissionPaymentInEth(this.aId, Currency.ETH).call();
-        await this.plotManager.submitApplication(this.aId, 0, { from: alice, value: payment });
-        await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
-        await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
-        await this.plotManager.lockApplicationForReview(this.aId, DOG, { from: eve });
-        await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
-        await this.plotManager.revertApplication(this.aId, 'blah', { from: bob });
-        geohashes = ['sezu1100', 'sezu1110'].map(galt.geohashToGeohash5);
-        await this.plotManager.removeGeohashesFromApplication(this.aId, geohashes, [], [], {
-          from: alice
-        });
-        // TODO: remove one and get refund
-      });
-
-      it('should reject fee withdrawals before resubmission', async function() {
-        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
-      });
-
-      it('should reject on double-refund', async function() {
-        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
-        await assertRevert(this.plotManager.withdrawSubmissionFee(this.aId, { from: alice }));
-      });
-
-      it('should allow withdraw unused fee after resubmission', async function() {
-        let finance = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
-        assert.equal(finance.feeRefundAvailable, 0);
-
-        this.fee = await this.plotManagerWeb3.methods.getResubmissionFee(this.aId).call();
-
-        await this.plotManager.resubmitApplication(this.aId, 0, { from: alice });
-
-        finance = await this.plotManagerWeb3.methods.getApplicationFees(this.aId).call();
-        assert.equal(finance.feeRefundAvailable, '2097152000000000000');
-
-        const aliceInitialBalance = new BN(await web3.eth.getBalance(alice));
-        await this.plotManager.withdrawSubmissionFee(this.aId, { from: alice });
-        const aliceFinalBalance = new BN(await web3.eth.getBalance(alice));
-        // TODO: check balances
-
-        const diffAlice = aliceFinalBalance
-          .sub(new BN('2097152000000000000')) // <- the diff
-          .sub(aliceInitialBalance)
-          .add(new BN('10000000000000000')); // <- 0.01 ether
-
-        const max = new BN('10000000000000000'); // <- 0.01 ether
-        const min = new BN('0');
-
-        assert(
-          diffAlice.lt(max), // diff < 0.01 ether
-          `Expected ${web3.utils.fromWei(diffAlice.toString(10))} to be less than 0.01 ether`
-        );
-
-        // gt
-        assert(
-          diffAlice.gt(min), // diff > 0
-          `Expected ${web3.utils.fromWei(diffAlice.toString(10))} to be greater than 0`
-        );
       });
     });
 

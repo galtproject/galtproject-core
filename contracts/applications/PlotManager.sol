@@ -274,8 +274,6 @@ contract PlotManager is AbstractOracleApplication {
   /**
    * @dev Resubmit application after it was reverted
    *
-   * TODO: handle payments correctly
-   *
    * @param _aId application id
    * @param _credentialsHash keccak256 of user credentials
    * @param _ledgerIdentifier of a plot
@@ -291,6 +289,7 @@ contract PlotManager is AbstractOracleApplication {
     uint256[] calldata _newPackageContour,
     int256[] calldata _newHeights,
     int256 _newLevel,
+    uint256 _customArea,
     uint256 _resubmissionFeeInGalt
   )
     external
@@ -309,14 +308,9 @@ contract PlotManager is AbstractOracleApplication {
 
     a.details.credentialsHash = _credentialsHash;
     a.details.ledgerIdentifier = _ledgerIdentifier;
-
-    if (_newPackageContour.length != 0) {
-      splitMerge.setPackageContour(a.spaceTokenId, _newPackageContour);
-    }
-    if (_newHeights.length != 0) {
-      splitMerge.setPackageHeights(a.spaceTokenId, _newHeights);
-    }
-    splitMerge.setPackageLevel(a.spaceTokenId, _newLevel);
+    a.details.packageContour = _newPackageContour;
+    a.details.level = _newLevel;
+    a.details.heights = _newHeights;
 
     for (uint8 i = 0; i < len; i++) {
       if (a.validationStatus[a.assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
@@ -745,7 +739,6 @@ contract PlotManager is AbstractOracleApplication {
 
   /**
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
-   * WARNING: currently area weight is hardcoded in #submitApplication() method
    */
   function getSubmissionFeeByArea(Currency _currency, uint256 _area) public view returns (uint256) {
     if (_currency == Currency.GALT) {
@@ -757,22 +750,18 @@ contract PlotManager is AbstractOracleApplication {
 
   /**
    * @dev Fee to pass in to #resubmitApplication().
-   *
-   * if newTotalFee > latestPaidFee:
-   *   (result > 0) and should be sent either as GALT or as ETH depending on application currency.
-   * if newTotalFee == latestPaidFee:
-   *   (result == 0)
-   * if newTotalFee < latestPaidFee:
-   *   (result < 0) and could be claimed back.
-   * TODO: depricate
    */
-//  function getResubmissionFee(bytes32 _aId, uint256[] calldata _packageContour) external returns (int256) {
-//    Application storage a = applications[_aId];
-//    uint256 newTotalFee = getSubmissionFeeByArea(a.currency, _packageContour);
-//    uint256 latest = a.fees.latestCommittedFee;
-//
-//    return int256(newTotalFee) - int256(latest);
-//  }
+  function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
+    Application storage a = applications[_aId];
+    uint256 newTotalFee = getSubmissionFeeByArea(a.currency, _area);
+    uint256 latest = a.fees.latestCommittedFee;
+
+    if (newTotalFee <= latest) {
+      return 0;
+    } else {
+      return newTotalFee - latest;
+    }
+  }
 
   function getApplicationOracle(
     bytes32 _aId,
