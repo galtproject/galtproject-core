@@ -1,8 +1,10 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
+const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
+const Geodesic = artifacts.require('./MockGeodesic.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -113,14 +115,17 @@ contract('PlotClarificationManager', (accounts) => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-
+    this.geodesic = await Geodesic.new({ from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
 
     await this.plotManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
       this.oracles.address,
       this.galtToken.address,
+      this.geodesic.address,
+      this.feeCalculator.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -200,7 +205,6 @@ contract('PlotClarificationManager', (accounts) => {
       this.plotClarificationManager.abi,
       this.plotClarificationManager.address
     );
-    this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
   });
 
@@ -323,13 +327,17 @@ contract('PlotClarificationManager', (accounts) => {
       await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
-      const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
+      await this.geodesic.calculateContourArea(this.contour);
+      const area = await this.geodesic.getContourArea(this.contour);
+      const galts = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
+      // assert.equal(this.fee, ether(15));
       await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
 
       // Alice obtains a package token
       let res = await this.plotManager.submitApplication(
         this.contour,
         this.heights,
+        0,
         0,
         this.credentials,
         this.ledgerIdentifier,
@@ -681,19 +689,18 @@ contract('PlotClarificationManager', (accounts) => {
       await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
-      const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
-
       // Alice obtains a package token
       let res = await this.plotManager.submitApplication(
         this.contour,
         this.heights,
+        0,
         0,
         this.credentials,
         this.ledgerIdentifier,
         0,
         {
           from: alice,
-          value: eths
+          value: ether(5)
         }
       );
       this.aId = res.logs[0].args.id;
