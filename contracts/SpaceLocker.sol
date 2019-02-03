@@ -121,4 +121,22 @@ contract SpaceLocker is ISpaceLocker {
   function isOwner() public view returns (bool) {
     return msg.sender == owner;
   }
+
+  function getTokenInfo() public view returns 
+  (
+    address _owner,
+    uint256 _spaceTokenId,
+    uint256 _reputation,
+    bool _tokenDeposited,
+    bool _tokenBurned
+  ) 
+  {
+    return (
+      owner,
+      spaceTokenId,
+      reputation,
+      tokenDeposited,
+      tokenBurned
+    );
+  }
 }
