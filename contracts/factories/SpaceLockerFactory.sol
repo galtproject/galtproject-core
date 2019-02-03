@@ -24,12 +24,12 @@ import "../SpaceLocker.sol";
 contract SpaceLockerFactory is Ownable {
   event SpaceLockerCreated(address owner, address locker);
 
-  ISpaceLockerRegistry spaceLockerRegistry;
-  IERC20 galtToken;
-  ISpaceToken spaceToken;
-  ISplitMerge splitMerge;
+  ISpaceLockerRegistry public spaceLockerRegistry;
+  IERC20 public galtToken;
+  ISpaceToken public spaceToken;
+  ISplitMerge public splitMerge;
 
-  uint256 commission;
+  uint256 public commission;
 
   constructor (
     ISpaceLockerRegistry _spaceLockerRegistry,
