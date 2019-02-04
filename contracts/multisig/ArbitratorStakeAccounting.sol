@@ -42,6 +42,8 @@ contract ArbitratorStakeAccounting is Permissionable {
 
   address slashManager;
   uint256 public totalStakes;
+  uint256 public periodLengthInSeconds;
+  uint256 internal _initialTimestamp;
   ArbitratorsMultiSig public multiSigWallet;
   ERC20 public galtToken;
   ArraySet.AddressSet arbitrators;
@@ -55,12 +57,15 @@ contract ArbitratorStakeAccounting is Permissionable {
 
   constructor(
     ERC20 _galtToken,
-    ArbitratorsMultiSig _multiSigWallet
+    ArbitratorsMultiSig _multiSigWallet,
+    uint256 _periodLengthInSeconds
   )
     public
   {
     galtToken = _galtToken;
     multiSigWallet = _multiSigWallet;
+    periodLengthInSeconds = _periodLengthInSeconds;
+    _initialTimestamp = block.timestamp;
   }
 
   function slash(address _arbitrator, uint256 _amount) external onlySlashManager {
@@ -97,7 +102,15 @@ contract ArbitratorStakeAccounting is Permissionable {
     emit ArbitratorStakeDeposit(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
 
+  function getCurrentPeriod() external view returns (uint256) {
+    return (block.timestamp - _initialTimestamp) / periodLengthInSeconds;
+  }
+
   function balanceOf(address _arbitrator) external view returns (uint256) {
     return _balances[_arbitrator];
+  }
+
+  function getInitialTimestamp() external view returns (uint256) {
+    return _initialTimestamp;
   }
 }

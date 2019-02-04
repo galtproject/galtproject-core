@@ -1,5 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
-const ArbitratorStakeAccounting = artifacts.require('./ArbitratorStakeAccounting.sol');
+const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
 const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
 const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
 const Web3 = require('web3');
@@ -11,18 +11,6 @@ const web3 = new Web3(GaltToken.web3.currentProvider);
 
 initHelperWeb3(web3);
 
-const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
-const ESCROW_APPLICATION = '0xf17a99d990bb2b0a5c887c16a380aa68996c0b23307f6633bd7a2e1632e1ef48';
-const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
-
-const NON_EXISTENT_ROLE = bytes32('blah');
-const PE_AUDITOR_ORACLE_TYPE = bytes32('PE_AUDITOR_ORACLE_TYPE');
-const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
-const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
-
-const FOO = bytes32('foo');
-const BAR = bytes32('bar');
-const BUZZ = bytes32('buzz');
 // eslint-disable-next-line no-underscore-dangle
 const _ES = bytes32('');
 const MN = bytes32('MN');
@@ -31,13 +19,12 @@ const CHARLIE = bytes32('Charlie');
 const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
 
-// NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('ArbitratorStakeAccounting', accounts => {
-  const [coreTeam, slashManager, oracleManager, multiSig, alice, bob, charlie, dan, eve] = accounts;
+contract('ArbitratorStakeAccounting', accounts => {
+  const [coreTeam, slashManager, multiSig, alice, bob] = accounts;
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.galtToken.address, multiSig, {
+    this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.galtToken.address, multiSig, 60, {
       from: coreTeam
     });
 
@@ -92,6 +79,43 @@ contract.only('ArbitratorStakeAccounting', accounts => {
 
     it('should deny slashing with a value grater than current stake', async function() {
       await assertRevert(this.arbitratorStakeAccountingX.slash(bob, ether(36), { from: slashManager }));
+    });
+  });
+
+  describe('#getCurrentPeriod()', () => {
+    it('should provide correct period ID', async function() {
+      // DANGER: could fail since we don't count the execution time
+      let res = await web3.eth.getBlock('latest');
+      const latestBlockTimestamp = res.timestamp;
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp);
+      res = await this.arbitratorStakeAccountingX.getInitialTimestamp();
+      assert.equal(res, latestBlockTimestamp);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 0);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 59);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 0);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 60);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 1);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 61);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 1);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 119);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 1);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 120);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 2);
+
+      await this.arbitratorStakeAccountingX.setInitialTimestamp(latestBlockTimestamp - 121);
+      res = await this.arbitratorStakeAccountingX.getCurrentPeriod();
+      assert.equal(res, 2);
     });
   });
 });
