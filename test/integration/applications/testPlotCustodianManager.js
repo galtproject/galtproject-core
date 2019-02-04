@@ -1,5 +1,3 @@
-const PlotManager = artifacts.require('./PlotManager.sol');
-const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol');
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
@@ -85,6 +83,7 @@ contract('PlotCustodianManager', (accounts) => {
     feeManager,
     multiSigX,
     stakesNotifier,
+    minter,
     applicationTypeManager,
     manualCustodianManager,
     oracleManager,
@@ -111,28 +110,14 @@ contract('PlotCustodianManager', (accounts) => {
     this.heights = [1, 2, 3];
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
-    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
-
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
-    this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
     this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
 
-    await this.plotManager.initialize(
-      this.spaceToken.address,
-      this.splitMerge.address,
-      this.oracles.address,
-      this.galtToken.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
     await this.plotCustodianManager.initialize(
       this.spaceToken.address,
       this.splitMerge.address,
@@ -147,9 +132,6 @@ contract('PlotCustodianManager', (accounts) => {
       }
     );
     await this.splitMerge.initialize(this.spaceToken.address, {
-      from: coreTeam
-    });
-    await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
     await this.plotCustodianManager.addRoleTo(galtSpaceOrg, await this.plotCustodianManager.ROLE_GALT_SPACE(), {
@@ -173,7 +155,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
       from: coreTeam
     });
-    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER(), {
+    await this.splitMerge.addRoleTo(minter, await this.splitMerge.GEO_DATA_MANAGER(), {
       from: coreTeam
     });
     await this.spaceCustodianRegistry.addRoleTo(
@@ -192,17 +174,12 @@ contract('PlotCustodianManager', (accounts) => {
       }
     );
 
-    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
-
     await this.plotCustodianManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
     await this.plotCustodianManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
     await this.plotCustodianManager.setGaltSpaceEthShare(33, { from: feeManager });
     await this.plotCustodianManager.setGaltSpaceGaltShare(13, { from: feeManager });
 
-    await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
+    await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
@@ -386,51 +363,14 @@ contract('PlotCustodianManager', (accounts) => {
         from: stakesNotifier
       });
 
-      const galts = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
-      await this.galtToken.approve(this.plotManager.address, galts, { from: alice });
-
-      // Alice obtains a package token
-      let res = await this.plotManager.submitApplication(
-        this.contour,
-        this.heights,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        galts,
-        {
-          from: alice
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManager.getApplicationById(this.aId);
-      this.spaceTokenId = res.spaceTokenId;
-
-      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
-
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      await this.plotManager.claimSpaceToken(this.aId, { from: alice });
+      let res = await this.spaceToken.mint(alice, { from: minter });
+      this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
 
     describe('#submit()', () => {
       it('should allow an applicant pay commission in Galt', async function() {
-        await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
-        let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], ether(45), {
-          from: alice
-        });
-        this.aId = res.logs[0].args.id;
-        res = await this.plotCustodianManager.getApplicationById(this.aId);
-        assert.equal(res.status, applicationStatus.SUBMITTED);
-      });
-
-      // TODO: fix after implementation
-      it.skip('should allow detaching previously attached custodian', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
         let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], ether(45), {
           from: alice
@@ -757,34 +697,9 @@ contract('PlotCustodianManager', (accounts) => {
         from: stakesNotifier
       });
 
-      const eths = await this.plotManager.getSubmissionFee(Currency.ETH, this.contour);
+      let res = await this.spaceToken.mint(alice, { from: minter });
+      this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
 
-      // Alice obtains a package token
-      let res = await this.plotManager.submitApplication(
-        this.contour,
-        this.heights,
-        0,
-        this.credentials,
-        this.ledgerIdentifier,
-        0,
-        {
-          from: alice,
-          value: eths
-        }
-      );
-      this.aId = res.logs[0].args.id;
-
-      res = await this.plotManager.getApplicationById(this.aId);
-      this.spaceTokenId = res.spaceTokenId;
-
-      await this.plotManager.lockApplicationForReview(this.aId, FOO, { from: bob });
-      await this.plotManager.lockApplicationForReview(this.aId, BAR, { from: charlie });
-      await this.plotManager.lockApplicationForReview(this.aId, BUZZ, { from: dan });
-
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: charlie });
-      await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
-      await this.plotManager.claimSpaceToken(this.aId, { from: alice });
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
     });
