@@ -14,7 +14,7 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../Oracles.sol";
@@ -47,7 +47,7 @@ contract OracleStakesAccounting is Permissionable {
   address slashManager;
   ArbitratorsMultiSig public multiSigWallet;
   ArbitratorVoting public voting;
-  ERC20 public galtToken;
+  IERC20 public galtToken;
   Oracles public oracles;
   mapping(address => OracleTypes) oracleTypes;
 
@@ -65,7 +65,7 @@ contract OracleStakesAccounting is Permissionable {
 
   constructor(
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     ArbitratorsMultiSig _multiSigWallet
   )
     public

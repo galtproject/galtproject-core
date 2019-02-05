@@ -14,14 +14,14 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../Oracles.sol";
-import "../GaltToken.sol";
 import "../SpaceReputationAccounting.sol";
 import "../registries/MultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "./ArbitratorsMultiSigFactory.sol";
 import "./ArbitratorVotingFactory.sol";
+import "./ArbitratorStakeAccountingFactory.sol";
 import "./OracleStakesAccountingFactory.sol";
 
 
@@ -35,24 +35,26 @@ contract MultiSigFactory is Ownable {
   MultiSigRegistry multiSigRegistry;
   ClaimManager claimManager;
 
-  GaltToken galtToken;
+  IERC20 galtToken;
   Oracles oracles;
   SpaceReputationAccounting spaceReputationAccounting;
 
   ArbitratorsMultiSigFactory arbitratorMultiSigFactory;
   ArbitratorVotingFactory arbitratorVotingFactory;
+  ArbitratorStakeAccountingFactory arbitratorStakeAccountingFactory;
   OracleStakesAccountingFactory oracleStakesAccountingFactory;
 
   uint256 commission;
 
   constructor (
     MultiSigRegistry _multiSigRegistry,
-    GaltToken _galtToken,
+    IERC20 _galtToken,
     Oracles _oracles,
     ClaimManager _claimManager,
     SpaceReputationAccounting _spaceReputationAccounting,
     ArbitratorsMultiSigFactory _arbitratorMultiSigFactory,
     ArbitratorVotingFactory _arbitratorVotingFactory,
+    ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
     OracleStakesAccountingFactory _oracleStakesAccountingFactory
   ) public {
     commission = 10 ether;
@@ -65,12 +67,14 @@ contract MultiSigFactory is Ownable {
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
     arbitratorVotingFactory = _arbitratorVotingFactory;
+    arbitratorStakeAccountingFactory = _arbitratorStakeAccountingFactory;
     oracleStakesAccountingFactory = _oracleStakesAccountingFactory;
   }
 
   function build(
     address[] calldata _initialOwners,
-    uint256 _multiSigRequired
+    uint256 _multiSigRequired,
+    uint256 _periodLength
   )
     external
     returns (ArbitratorsMultiSig, ArbitratorVoting, OracleStakesAccounting)
@@ -79,6 +83,7 @@ contract MultiSigFactory is Ownable {
 
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _multiSigRequired);
     OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(oracles, galtToken, arbitratorMultiSig);
+    ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(galtToken, arbitratorMultiSig, _periodLength);
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(
       arbitratorMultiSig,
       spaceReputationAccounting,
@@ -94,7 +99,7 @@ contract MultiSigFactory is Ownable {
 
     oracleStakesAccounting.setVotingAddress(arbitratorVoting);
 
-    multiSigRegistry.addMultiSig(arbitratorMultiSig, arbitratorVoting, oracleStakesAccounting);
+    multiSigRegistry.addMultiSig(arbitratorMultiSig, arbitratorVoting, arbitratorStakeAccounting, oracleStakesAccounting);
 
     arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     arbitratorVoting.removeRoleFrom(address(this), "role_manager");

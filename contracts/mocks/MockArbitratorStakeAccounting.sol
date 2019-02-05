@@ -1,11 +1,12 @@
 pragma solidity 0.5.3;
 
 import "../multisig/ArbitratorStakeAccounting.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 
 contract MockArbitratorStakeAccounting is ArbitratorStakeAccounting {
   constructor(
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     ArbitratorsMultiSig _multiSigWallet,
     uint256 _periodLengthInSeconds
   ) public ArbitratorStakeAccounting(_galtToken, _multiSigWallet, _periodLengthInSeconds) {

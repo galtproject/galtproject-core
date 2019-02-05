@@ -115,7 +115,7 @@ contract("ClaimManager", (accounts) => {
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
-    const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
+    const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, 60, { from: alice });
     this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
 

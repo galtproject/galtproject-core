@@ -14,7 +14,7 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorsMultiSig.sol";
@@ -45,7 +45,7 @@ contract ArbitratorStakeAccounting is Permissionable {
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
   ArbitratorsMultiSig public multiSigWallet;
-  ERC20 public galtToken;
+  IERC20 public galtToken;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
 
@@ -56,7 +56,7 @@ contract ArbitratorStakeAccounting is Permissionable {
   }
 
   constructor(
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     ArbitratorsMultiSig _multiSigWallet,
     uint256 _periodLengthInSeconds
   )
