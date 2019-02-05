@@ -119,7 +119,7 @@ contract('PlotManager', accounts => {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.geodesic = await Geodesic.new({ from: coreTeam });
+    this.geodesicMock = await Geodesic.new({ from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
     this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
@@ -129,7 +129,7 @@ contract('PlotManager', accounts => {
       this.splitMerge.address,
       this.oracles.address,
       this.galtToken.address,
-      this.geodesic.address,
+      this.geodesicMock.address,
       this.feeCalculator.address,
       galtSpaceOrg,
       {
@@ -289,8 +289,8 @@ contract('PlotManager', accounts => {
         { from: coreTeam }
       );
 
-      await this.geodesic.calculateContourArea(this.contour);
-      const area = await this.geodesic.getContourArea(this.contour);
+      await this.geodesicMock.calculateContourArea(this.contour);
+      const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
       assert.equal(this.fee, ether(15));
@@ -501,8 +501,8 @@ contract('PlotManager', accounts => {
         await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
 
-        await this.geodesic.calculateContourArea(this.contour);
-        const area = await this.geodesic.getContourArea(this.contour);
+        await this.geodesicMock.calculateContourArea(this.contour);
+        const area = await this.geodesicMock.getContourArea(this.contour);
         assert.equal(area.toString(10), ether(3000).toString(10));
         this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
         assert.equal(this.fee, ether(15));
@@ -531,8 +531,8 @@ contract('PlotManager', accounts => {
       describe('contour changed', () => {
         beforeEach(async function() {
           this.newContour = ['sezu112c', 'sezu113b1', 'sezu114', 'sezu116'].map(galt.geohashToGeohash5);
-          await this.geodesic.calculateContourArea(this.newContour);
-          const area = await this.geodesic.getContourArea(this.newContour);
+          await this.geodesicMock.calculateContourArea(this.newContour);
+          const area = await this.geodesicMock.getContourArea(this.newContour);
           assert.equal(area.toString(10), ether(4000).toString(10));
           this.fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
 
@@ -578,8 +578,8 @@ contract('PlotManager', accounts => {
 
         it('should not require additional payment when fee is less than previous onw', async function() {
           const smallerContour = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
-          await this.geodesic.calculateContourArea(smallerContour);
-          const area = await this.geodesic.getContourArea(smallerContour);
+          await this.geodesicMock.calculateContourArea(smallerContour);
+          const area = await this.geodesicMock.getContourArea(smallerContour);
           assert.equal(area.toString(10), ether(2000).toString(10));
           const fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
           assert.equal(fee, 0);
@@ -772,8 +772,8 @@ contract('PlotManager', accounts => {
         { from: coreTeam }
       );
 
-      await this.geodesic.calculateContourArea(this.contour);
-      const area = await this.geodesic.getContourArea(this.contour);
+      await this.geodesicMock.calculateContourArea(this.contour);
+      const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       const expectedFee = await this.plotManager.getSubmissionFeeByArea(Currency.ETH, area);
       assert.equal(expectedFee, ether(1.5));
@@ -956,8 +956,8 @@ contract('PlotManager', accounts => {
         const newLedgerIdentifier = bytes32('foo-123');
         const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
 
-        await this.geodesic.calculateContourArea(newContour);
-        const area = await this.geodesic.getContourArea(newContour);
+        await this.geodesicMock.calculateContourArea(newContour);
+        const area = await this.geodesicMock.getContourArea(newContour);
         assert.equal(area.toString(10), ether(5000).toString(10));
         const fee = await this.plotManager.getResubmissionFeeByArea(this.aId, area);
         assert.equal(fee, ether(0.5));
