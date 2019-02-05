@@ -27,20 +27,20 @@ library PlotManagerFeeCalculator {
   function calculateEthFee(uint256 _area) external view returns (uint256 fee) {
     uint256 area = _area;
 
-    if (area < 1000) {
-      area = 1000;
+    if (area < 1000 * DECIMALS) {
+      area = 1000 * DECIMALS;
     }
 
-    return area * ETH_MULTIPLIER * DECIMALS / ETH_DIVISOR ;
+    return area * ETH_MULTIPLIER / ETH_DIVISOR;
   }
 
   function calculateGaltFee(uint256 _area) external view returns (uint256 fee) {
     uint256 area = _area;
 
-    if (area < 1000) {
-      area = 1000;
+    if (area < 1000 * DECIMALS) {
+      area = 1000 * DECIMALS;
     }
 
-    return area * GALT_MULTIPLIER * DECIMALS / GALT_DIVISOR;
+    return area * GALT_MULTIPLIER / GALT_DIVISOR;
   }
 }
