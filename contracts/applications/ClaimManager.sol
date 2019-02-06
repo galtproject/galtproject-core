@@ -268,8 +268,8 @@ contract ClaimManager is AbstractApplication {
    */
   function proposeApproval(
     bytes32 _cId,
-    uint256 _amount,
     string calldata _msg,
+    uint256 _amount,
     address[] calldata _oracles,
     bytes32[] calldata _oracleTypes,
     uint256[] calldata _oracleFines,
@@ -304,7 +304,7 @@ contract ClaimManager is AbstractApplication {
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
-    bytes32 pId = keccak256(abi.encode(_cId, block.timestamp, msg.sender));
+    bytes32 pId = keccak256(abi.encode(_cId, block.number, msg.sender));
 
     require(c.proposalDetails[pId].from == address(0), "Proposal already exists");
 
