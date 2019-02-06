@@ -26,11 +26,31 @@ import "./OracleStakesAccountingFactory.sol";
 
 
 contract MultiSigFactory is Ownable {
-  event MultiSigCreated(
+  event BuildMultiSigFirstStep(
+    bytes32 groupId,
     address arbitratorMultiSig,
     address arbitratorVoting,
     address oracleStakesAccounting
   );
+
+  event BuildMultiSigSecondStep(
+    address arbitratorStakeAccounting
+  );
+
+  enum Step {
+    FIRST,
+    SECOND,
+    DONE
+  }
+
+  struct MultiSigContractGroup {
+    address creator;
+    Step nextStep;
+    ArbitratorsMultiSig arbitratorMultiSig;
+    ArbitratorVoting arbitratorVoting;
+    ArbitratorStakeAccounting arbitratorStakeAccounting;
+    OracleStakesAccounting oracleStakesAccounting;
+  }
 
   MultiSigRegistry multiSigRegistry;
   ClaimManager claimManager;
@@ -43,6 +63,8 @@ contract MultiSigFactory is Ownable {
   ArbitratorVotingFactory arbitratorVotingFactory;
   ArbitratorStakeAccountingFactory arbitratorStakeAccountingFactory;
   OracleStakesAccountingFactory oracleStakesAccountingFactory;
+
+  mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
   uint256 commission;
 
@@ -71,19 +93,19 @@ contract MultiSigFactory is Ownable {
     oracleStakesAccountingFactory = _oracleStakesAccountingFactory;
   }
 
-  function build(
+  function buildFirstStep(
     address[] calldata _initialOwners,
-    uint256 _multiSigRequired,
-    uint256 _periodLength
+    uint256 _multiSigRequired
   )
     external
-    returns (ArbitratorsMultiSig, ArbitratorVoting, OracleStakesAccounting)
+    returns (bytes32 groupId)
   {
     galtToken.transferFrom(msg.sender, address(this), commission);
 
+    groupId = keccak256(abi.encode(block.timestamp, _multiSigRequired, msg.sender));
+
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _multiSigRequired);
     OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(oracles, galtToken, arbitratorMultiSig);
-    ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(galtToken, arbitratorMultiSig, _periodLength);
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(
       arbitratorMultiSig,
       spaceReputationAccounting,
@@ -99,13 +121,42 @@ contract MultiSigFactory is Ownable {
 
     oracleStakesAccounting.setVotingAddress(arbitratorVoting);
 
-    multiSigRegistry.addMultiSig(arbitratorMultiSig, arbitratorVoting, arbitratorStakeAccounting, oracleStakesAccounting);
-
     arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     arbitratorVoting.removeRoleFrom(address(this), "role_manager");
     oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
 
-    emit MultiSigCreated(address(arbitratorMultiSig), address(arbitratorVoting), address(oracleStakesAccounting));
+    MultiSigContractGroup storage g = multiSigContractGroups[groupId];
+
+    require(g.nextStep == Step.FIRST);
+
+    g.creator = msg.sender;
+    g.arbitratorMultiSig = arbitratorMultiSig;
+    g.arbitratorVoting = arbitratorVoting;
+    g.oracleStakesAccounting = oracleStakesAccounting;
+    g.nextStep = Step.SECOND;
+
+    emit BuildMultiSigFirstStep(groupId, address(arbitratorMultiSig), address(arbitratorVoting), address(oracleStakesAccounting));
+  }
+
+  function buildSecondStep(
+    bytes32 _groupId,
+    uint256 _periodLength
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.SECOND, "SECOND step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(galtToken, g.arbitratorMultiSig, _periodLength);
+    arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
+    arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
+
+    g.arbitratorStakeAccounting = arbitratorStakeAccounting;
+
+    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitratorVoting, arbitratorStakeAccounting, g.oracleStakesAccounting);
+
+    emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting));
   }
 
   function setCommission(uint256 _commission) external onlyOwner {
