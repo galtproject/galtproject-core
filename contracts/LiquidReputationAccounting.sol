@@ -229,6 +229,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     return _spaceTokensByOwner[_owner].elements();
   }
 
+  // TODO: fix name to spaceTokensByOwnerCount
   function spaceTokenOwnersCount(address _owner) public view returns (uint256) {
     return _spaceTokensByOwner[_owner].size();
   }
