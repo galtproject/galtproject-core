@@ -133,6 +133,12 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceLockerRegistry.getSpaceLockersCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
+      res = await this.spaceReputationAccountingWeb3.methods.isMember(alice).call();
+      assert.equal(res, false);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownerHasSpaceToken(alice, 0).call();
+      assert.equal(res, false);
+
       // APPROVE REPUTATION MINT
       await assertRevert(aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: charlie }));
       await aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: alice });
@@ -147,6 +153,12 @@ contract('SpaceReputationAccounting', accounts => {
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 800);
+
+      res = await this.spaceReputationAccountingWeb3.methods.isMember(alice).call();
+      assert.equal(res, true);
+
+      res = await this.spaceReputationAccountingWeb3.methods.ownerHasSpaceToken(alice, 0).call();
+      assert.equal(res, true);
 
       // TRANSFER #1
       await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
