@@ -156,6 +156,12 @@ contract MultiSigFactory is Ownable {
 
     multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitratorVoting, arbitratorStakeAccounting, g.oracleStakesAccounting);
 
+    g.arbitratorMultiSig.initialize(
+      address(g.arbitratorVoting),
+      address(g.oracleStakesAccounting),
+      arbitratorStakeAccounting
+    );
+
     emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting));
   }
 

@@ -102,6 +102,10 @@ contract ArbitratorStakeAccounting is Permissionable {
     emit ArbitratorStakeDeposit(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
 
+  function getCurrentPeriodAndTotalSupply() external view returns (uint256, uint256) {
+    return (((block.timestamp - _initialTimestamp) / periodLengthInSeconds), totalStakes);
+  }
+
   function getCurrentPeriod() external view returns (uint256) {
     return (block.timestamp - _initialTimestamp) / periodLengthInSeconds;
   }

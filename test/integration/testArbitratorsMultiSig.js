@@ -1,10 +1,8 @@
-const Oracles = artifacts.require('./Oracles.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const GaltToken = artifacts.require('./GaltToken.sol');
 const Web3 = require('web3');
 const { initHelperWeb3 } = require('../helpers');
 
-const web3 = new Web3(Oracles.web3.currentProvider);
+const web3 = new Web3(ArbitratorsMultiSig.web3.currentProvider);
 
 initHelperWeb3(web3);
 
@@ -13,10 +11,7 @@ contract('ArbitratorsMultiSig', accounts => {
   const [coreTeam, alice, bob, charlie, dan] = accounts;
 
   beforeEach(async function() {
-    this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
     this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, { from: coreTeam });
-    // this.abMultiSigWeb3 = new web3.eth.Contract(this.abMultiSig.abi, this.abMultiSig.address);
   });
 
   describe('forbidden methods', () => {

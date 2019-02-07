@@ -15,16 +15,28 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
+import "./ArbitratorStakeAccounting.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
+  event GaltRunningTotalIncrease(
+    uint256 periodId,
+    uint256 runningTotalBefore,
+    uint256 runningTotalAfter,
+    uint256 amount
+  );
 
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
 
   address public arbitratorVoting;
+  ArbitratorStakeAccounting public arbitratorStakeAccounting;
   address public oracleStakesAccounting;
+  address public galtToken;
+  address initializer;
   bool initialized;
+
+  mapping(uint256 => uint256) _periodRunningTotal;
 
   modifier forbidden() {
     assert(false);
@@ -38,6 +50,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     public
     MultiSigWallet(_initialOwners, _required)
   {
+    initializer = msg.sender;
   }
 
   function addOwner(address owner) public forbidden {}
@@ -91,16 +104,75 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     emit NewAuditorsSet(owners, m, n);
   }
 
+  // WARNING: GaltToken address should be hardcoded in production version
+  function setGaltToken(address _galtToken) external {
+    galtToken = _galtToken;
+  }
+
+  function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
+    if (destination == galtToken) {
+      checkGaltLimits(data);
+    }
+
+      // TODO: repeat logic
+  }
+
+  function checkGaltLimits(bytes memory data) internal {
+    uint256 galtValue;
+
+    assembly {
+      let code := mload(add(data, 0x20))
+      code := and(code, 0xffffffff00000000000000000000000000000000000000000000000000000000)
+
+      switch code
+      // transfer(address,uint256)
+      case 0xa9059cbb00000000000000000000000000000000000000000000000000000000 {
+        galtValue := mload(add(data, 0x40))
+      }
+      default {
+        // Methods other than transfer are prohibited for GALT contract
+        revert(0, 0)
+      }
+    }
+
+    if (galtValue == 0) {
+      return;
+    }
+
+    (uint256 currentPeriodId, uint256 totalStakes) = arbitratorStakeAccounting.getCurrentPeriodAndTotalSupply();
+    uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
+    uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
+
+    assert(runningTotalAfter > runningTotalBefore);
+    assert(runningTotalAfter <= totalStakes);
+
+    _periodRunningTotal[currentPeriodId] = runningTotalAfter;
+
+    emit GaltRunningTotalIncrease(
+      currentPeriodId,
+      runningTotalBefore,
+      runningTotalAfter,
+      galtValue
+    );
+  }
+
+  function checkGaltLimitsExternal(bytes calldata data) external {
+    checkGaltLimits(data);
+  }
+
   function initialize(
     address _arbitratorVoting,
-    address _oracleStakesAccounting
+    address _oracleStakesAccounting,
+    ArbitratorStakeAccounting _arbitratorStakeAccounting
   )
     external
   {
-    require(initialized == false, "Already initialized");
+    assert(initialized == false);
+    assert(initializer == msg.sender);
 
     arbitratorVoting = _arbitratorVoting;
     oracleStakesAccounting = _oracleStakesAccounting;
+    arbitratorStakeAccounting = _arbitratorStakeAccounting;
     initialized = true;
   }
 
