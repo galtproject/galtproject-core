@@ -514,6 +514,7 @@ contract ClaimManager is AbstractApplication {
     bytes32 _cId
   )
     external
+    view
     returns (
       address applicant,
       address beneficiary,
@@ -551,6 +552,7 @@ contract ClaimManager is AbstractApplication {
     bytes32 _cId
   )
     external
+    view
     returns (
       Currency currency,
       uint256 arbitratorsReward,
