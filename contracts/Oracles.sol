@@ -244,6 +244,7 @@ contract Oracles is Permissionable {
   // NOTIFIERS
 
   // TODO: array support
+  // TODO: allow only one multisig per address
   function onOracleStakeChanged(
     address _multiSig,
     address _oracle,
