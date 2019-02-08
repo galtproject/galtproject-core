@@ -112,8 +112,10 @@ contract ArbitratorVoting is Permissionable {
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
 
-  uint256 public n;
+  // required
   uint256 public m;
+  // total
+  uint256 public n;
 
   ArbitratorsMultiSig arbitratorsMultiSig;
 
@@ -127,6 +129,7 @@ contract ArbitratorVoting is Permissionable {
     arbitratorsMultiSig = _arbitratorsMultiSig;
     spaceReputationAccounting = _spaceReputationAccounting;
     oracleStakesAccounting = _oracleStakesAccounting;
+    m = 2;
     n = 10;
     votingData.maxCount = n;
     votingList.withTail = true;
@@ -338,6 +341,8 @@ contract ArbitratorVoting is Permissionable {
   }
 
   // TODO: define permissions
+  // _m - required
+  // _n - total limit
   function setMofN(
     uint256 _m,
     uint256 _n

@@ -121,10 +121,6 @@ contract MultiSigFactory is Ownable {
 
     oracleStakesAccounting.setVotingAddress(arbitratorVoting);
 
-    arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
-    arbitratorVoting.removeRoleFrom(address(this), "role_manager");
-    oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
-
     MultiSigContractGroup storage g = multiSigContractGroups[groupId];
 
     require(g.nextStep == Step.FIRST);
@@ -150,17 +146,21 @@ contract MultiSigFactory is Ownable {
 
     ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(galtToken, g.arbitratorMultiSig, _periodLength);
     arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
-    arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
-
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
-
-    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitratorVoting, arbitratorStakeAccounting, g.oracleStakesAccounting);
 
     g.arbitratorMultiSig.initialize(
       address(g.arbitratorVoting),
       address(g.oracleStakesAccounting),
       arbitratorStakeAccounting
     );
+
+    // Revoke role management permissions from this factory address
+    arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
+    g.arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
+    g.arbitratorVoting.removeRoleFrom(address(this), "role_manager");
+    g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
+
+    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitratorVoting, arbitratorStakeAccounting, g.oracleStakesAccounting);
 
     emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting));
   }

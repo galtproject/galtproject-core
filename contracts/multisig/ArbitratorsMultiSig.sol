@@ -33,7 +33,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   ArbitratorStakeAccounting public arbitratorStakeAccounting;
   address public oracleStakesAccounting;
   address public galtToken;
-  address initializer;
+  address public initializer;
   bool initialized;
 
   mapping(uint256 => uint256) _periodRunningTotal;
@@ -89,18 +89,20 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    require(descArbitrators.length >= n, "Arbitrators array size less than required");
+    require(descArbitrators.length <= n, "Arbitrators array size greater than required");
     required = m;
 
     delete owners;
 
-    for (uint8 i = 0; i < n; i++) {
+    for (uint8 i = 0; i < descArbitrators.length; i++) {
       address o = descArbitrators[i];
 
       isOwner[o] = true;
       owners.push(o);
+
       emit OwnerAddition(o);
     }
+
     emit NewAuditorsSet(owners, m, n);
   }
 
@@ -168,7 +170,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     external
   {
     assert(initialized == false);
-    assert(initializer == msg.sender);
+    assert(hasRole(msg.sender, "role_manager"));
 
     arbitratorVoting = _arbitratorVoting;
     oracleStakesAccounting = _oracleStakesAccounting;
