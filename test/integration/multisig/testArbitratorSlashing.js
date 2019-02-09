@@ -48,7 +48,7 @@ const ClaimApplicationStatus = {
   REVERTED: 4
 };
 
-contract('Arbitrator Stake Slashing', accounts => {
+contract.only('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
     slashManager,
@@ -224,27 +224,13 @@ contract('Arbitrator Stake Slashing', accounts => {
       assert.sameMembers(res, [alice, bob, charlie, eve]);
       res = await this.abVotingX.getCandidatesWithStakes();
       assert.sameMembers(res, []);
-
-      await assertRevert(this.abVotingX.pushArbitrators());
     })();
-  });
 
-  describe('#slashing ()', () => {
-    it.only('should slash', async function() {
-      // Arbitrator Stake Slashing
-      //
-      // * 4 Arbitrator makes their stake
-      // * 3 Oracles added by oracleManager
-      // * Unknown user makes a new claim using Claim Manager
-      // * Arbitrator 1 makes his proposal to fine [Oracle 1] and Arbitrator [2, 3]
-      // * Proposal is accepted
-      // * Verify that oracles were punished
-      // * Verify that arbitrator was punished
-      // * Re-push a new arbitrators list
-      // * Check that Arbitrator () 2 was excluded from the list and Arbitrator 3 still remain (his stake wasn’t reduced before the minimum level)
-      // No way to push arbitrators without stake
+    // Push arbitrators
+    await assertRevert(this.abVotingX.pushArbitrators());
 
-      // > 4 arbitrators make their stake...
+    // > 4 arbitrators make their stake...
+    await (async () => {
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: alice });
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: bob });
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: charlie });
@@ -269,7 +255,11 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
+    })();
+  });
 
+  describe('#slashing ()', () => {
+    it('should slash', async function() {
       // > Setup an application, its roles and shares
       await this.oracles.setApplicationTypeOracleTypes(
         MY_APPLICATION,
@@ -316,7 +306,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.oracleStakesAccountingX.stake(oliver, PC_CUSTODIAN_ORACLE_TYPE, ether(350), { from: alice });
 
       // > Asserting that oracles have all their roles active
-      res = await this.oracles.getOracle(mike);
+      let res = await this.oracles.getOracle(mike);
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
@@ -415,5 +405,46 @@ contract('Arbitrator Stake Slashing', accounts => {
     });
   });
 
-  // TODO: describe limits
+  describe('ignoredCandidates', () => {
+    it('should recalculate balance of ignored candidate to 0', async function() {
+      await this.abVotingX.ignoreMe(true, { from: alice });
+
+      assert.equal(await this.abVotingX.isIgnored(alice), true);
+      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+
+      await this.abVotingX.recalculate(alice);
+
+      assert.equal(await this.abVotingX.getWeight(alice), 0);
+
+      let res = await this.abVotingX.getCandidates();
+      assert.sameMembers(res, [bob, charlie, eve]);
+      res = await this.abVotingX.getCandidatesWithStakes();
+      assert.sameMembers(res, [bob, charlie, eve]);
+
+      this.abVotingX.pushArbitrators();
+
+      res = await this.abMultiSigX.getOwners();
+      assert.sameMembers(res, [bob, charlie, eve]);
+
+      // and turn in on again
+      await this.abVotingX.ignoreMe(false, { from: alice });
+
+      assert.equal(await this.abVotingX.isIgnored(alice), false);
+      assert.equal(await this.abVotingX.getWeight(alice), 0);
+
+      await this.abVotingX.recalculate(alice);
+
+      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+
+      res = await this.abVotingX.getCandidates();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+      res = await this.abVotingX.getCandidatesWithStakes();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+
+      this.abVotingX.pushArbitrators();
+
+      res = await this.abMultiSigX.getOwners();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+    });
+  });
 });

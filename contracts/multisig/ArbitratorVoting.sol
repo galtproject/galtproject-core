@@ -60,6 +60,7 @@ contract ArbitratorVoting is Permissionable {
 
   event Recalculate(
     address delegate,
+    bool isIgnored,
     uint256 candidateSpaceReputation,
     uint256 candidateOracleStake,
     uint256 totalSpaceReputation,
@@ -97,6 +98,8 @@ contract ArbitratorVoting is Permissionable {
   mapping(address => uint256) private lockedReputation;
   // Candidate/Delegate => balance
   mapping(address => uint256) private reputationBalance;
+
+  mapping(address => bool) private ignoredCandidates;
 
   struct Oracle {
     address candidate;
@@ -143,15 +146,16 @@ contract ArbitratorVoting is Permissionable {
     }
 
     uint256 combinedRatio = (spaceReputationRatio + oracleStakeRatio);
-
     uint256 weight = 0;
+    bool ignore = (ignoredCandidates[_candidate] == true);
 
-    if (combinedRatio > 0) {
+    if (combinedRatio > 0 && !ignore) {
       weight = combinedRatio / 2;
     }
 
     emit Recalculate(
       _candidate,
+      ignore,
       candidateSpaceReputation,
       candidateOracleStake,
       totalSpaceReputation,
@@ -338,6 +342,10 @@ contract ArbitratorVoting is Permissionable {
       .setArbitrators(getCandidatesWithStakes());
   }
 
+  function ignoreMe(bool _value) external {
+    ignoredCandidates[msg.sender] = _value;
+  }
+
   // Getters
 
   function getCandidatesWithStakes() public view returns (address[] memory) {
@@ -403,6 +411,10 @@ contract ArbitratorVoting is Permissionable {
 
   function isCandidateInList(address _candidate) external view returns (bool) {
     return VotingLinkedList.isExists(votingList, _candidate);
+  }
+
+  function isIgnored(address _candidate) external view returns (bool) {
+    return ignoredCandidates[_candidate];
   }
 
   function getSize() external view returns (uint256 size) {
