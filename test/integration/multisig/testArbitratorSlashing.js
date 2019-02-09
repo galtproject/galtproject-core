@@ -6,12 +6,12 @@ const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MockSRA = artifacts.require('./MockSRA.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
-const sra = artifacts.require('./MockSRA.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -145,14 +145,15 @@ contract('Arbitrator Stake Slashing', accounts => {
     await (async () => {
       await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
-      // let res = await this.multiSigFactory.buildFirstStep([alice, bob, charlie, dan, eve], 3, { from: alice });
-      let res = await this.multiSigFactory.buildFirstStep([a1, a2, a3], 2, { from: alice });
+      let res = await this.multiSigFactory.buildFirstStep([a1, a2, a3], 2, 7, 10, ether(1000), [80, 80, 70, 90], {
+        from: alice
+      });
       this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
       this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-      this.abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
       this.multiSigXGroupId = res.logs[0].args.groupId;
 
       res = await this.multiSigFactory.buildSecondStep(this.multiSigXGroupId, 60, { from: alice });
+      this.abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
       this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
 
       this.mX = this.abMultiSigX.address;
@@ -203,12 +204,19 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.abVotingX.grantReputation(alice, 500, { from: charlie });
       await this.abVotingX.grantReputation(bob, 500, { from: charlie });
 
-      this.abVotingX.recalculate(alice, { from: unauthorized });
-      this.abVotingX.recalculate(bob, { from: unauthorized });
-      this.abVotingX.recalculate(charlie, { from: unauthorized });
-      this.abVotingX.recalculate(dan, { from: unauthorized });
+      assert.equal(await this.abVotingX.getSpaceReputation(alice), 1000);
 
-      let res = await this.abVotingX.getCandidates();
+      await this.abVotingX.recalculate(alice, { from: unauthorized });
+      await this.abVotingX.recalculate(bob, { from: unauthorized });
+      await this.abVotingX.recalculate(charlie, { from: unauthorized });
+      await this.abVotingX.recalculate(dan, { from: unauthorized });
+
+      assert.equal(await this.abVotingX.getWeight(alice), 125000);
+
+      let res = await this.abVotingX.getSize();
+      assert.equal(res, 3);
+
+      res = await this.abVotingX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie]);
 
       await this.abVotingX.pushArbitrators();
@@ -380,7 +388,10 @@ contract('Arbitrator Stake Slashing', accounts => {
       res = await this.arbitratorStakeAccountingX.balanceOf(bob);
       assert.equal(res, ether(500));
 
+      // > Re-push the arbitrators list
       // one of the punished arbitrators is kicked of the arbitrators list
+
+      await this.abVotingX.pushArbitrators();
     });
   });
 });

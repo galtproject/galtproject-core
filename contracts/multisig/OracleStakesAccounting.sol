@@ -18,8 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../Oracles.sol";
-import "./ArbitratorVoting.sol";
-import "./ArbitratorsMultiSig.sol";
+import "./ArbitrationConfig.sol";
 
 
 contract OracleStakesAccounting is Permissionable {
@@ -45,12 +44,10 @@ contract OracleStakesAccounting is Permissionable {
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
   address slashManager;
-  ArbitratorsMultiSig public multiSigWallet;
-  ArbitratorVoting public voting;
+  ArbitrationConfig public arbitrationConfig;
   IERC20 public galtToken;
   Oracles public oracles;
   mapping(address => OracleTypes) oracleTypes;
-
 
   struct OracleTypes {
     int256 totalStakes;
@@ -66,17 +63,13 @@ contract OracleStakesAccounting is Permissionable {
   constructor(
     Oracles _oracles,
     IERC20 _galtToken,
-    ArbitratorsMultiSig _multiSigWallet
+    ArbitrationConfig _arbitrationConfig
   )
     public
   {
     oracles = _oracles;
     galtToken = _galtToken;
-    multiSigWallet = _multiSigWallet;
-  }
-
-  function setVotingAddress(ArbitratorVoting _voting) external onlyRole(ROLE_ROLE_MANAGER) {
-    voting = _voting;
+    arbitrationConfig = _arbitrationConfig;
   }
 
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
@@ -106,15 +99,15 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    oracles.onOracleStakeChanged(address(multiSigWallet), _oracle, _oracleType, finalOracleTypeStake);
-    voting.onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
+    oracles.onOracleStakeChanged(_oracle, _oracleType, finalOracleTypeStake);
+    arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
     oracles.requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    galtToken.transferFrom(msg.sender, address(multiSigWallet), _amount);
+    galtToken.transferFrom(msg.sender, address(arbitrationConfig.getMultiSig()), _amount);
 
     require(_amount > 0, "Expect positive amount");
 
@@ -129,8 +122,8 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    oracles.onOracleStakeChanged(address(multiSigWallet), _oracle, _oracleType, finalRoleStake);
-    voting.onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
+    oracles.onOracleStakeChanged(_oracle, _oracleType, finalRoleStake);
+    arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }

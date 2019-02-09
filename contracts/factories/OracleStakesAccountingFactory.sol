@@ -26,16 +26,14 @@ contract OracleStakesAccountingFactory is Ownable {
   function build(
     Oracles _oracles,
     IERC20 _galtToken,
-    ArbitratorsMultiSig _arbitratorMultiSig
+    ArbitrationConfig _arbitrationConfig
   )
     external
-    returns (OracleStakesAccounting)
+    returns (OracleStakesAccounting oracleStakes)
   {
-    OracleStakesAccounting oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitratorMultiSig);
+    oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitrationConfig);
 
     oracleStakes.addRoleTo(msg.sender, "role_manager");
     oracleStakes.removeRoleFrom(address(this), "role_manager");
-
-    return oracleStakes;
   }
 }

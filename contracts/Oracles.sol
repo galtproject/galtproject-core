@@ -246,7 +246,6 @@ contract Oracles is Permissionable {
   // TODO: array support
   // TODO: allow only one multisig per address
   function onOracleStakeChanged(
-    address _multiSig,
     address _oracle,
     bytes32 _oracleType,
     int256 _newDepositValue

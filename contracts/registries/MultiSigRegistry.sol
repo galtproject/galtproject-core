@@ -16,8 +16,7 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitratorVoting.sol";
-import "../multisig/ArbitratorStakeAccounting.sol";
+import "../multisig/ArbitrationConfig.sol";
 import "../multisig/OracleStakesAccounting.sol";
 
 
@@ -33,17 +32,13 @@ contract MultiSigRegistry is Permissionable {
 
   struct MultiSig {
     bool active;
-    ArbitratorVoting voting;
-    OracleStakesAccounting oracleStakesAccounting;
-    ArbitratorStakeAccounting arbitratorStakeAccounting;
+    ArbitrationConfig arbitrationConfig;
     address factoryAddress;
   }
 
   function addMultiSig(
     ArbitratorsMultiSig _abMultiSig,
-    ArbitratorVoting _abVoting,
-    ArbitratorStakeAccounting _arbitratorStakeAccounting,
-    OracleStakesAccounting _oracleStakesAccounting
+    ArbitrationConfig _arbitrationConfig
   )
     external
     onlyRole(ROLE_FACTORY)
@@ -51,9 +46,7 @@ contract MultiSigRegistry is Permissionable {
     MultiSig storage ms = multiSigs[address(_abMultiSig)];
 
     ms.active = true;
-    ms.voting = _abVoting;
-    ms.oracleStakesAccounting = _oracleStakesAccounting;
-    ms.arbitratorStakeAccounting = _arbitratorStakeAccounting;
+    ms.arbitrationConfig = _arbitrationConfig;
     ms.factoryAddress = msg.sender;
 
     multiSigArray.add(address(_abMultiSig));
@@ -67,16 +60,8 @@ contract MultiSigRegistry is Permissionable {
 
   // GETTERS
 
-  function getArbitratorVoting(address _multiSig) external view returns (ArbitratorVoting) {
-    return multiSigs[_multiSig].voting;
-  }
-
-  function getArbitratorStakeAccounting(address _multiSig) external view returns (ArbitratorStakeAccounting) {
-    return multiSigs[_multiSig].arbitratorStakeAccounting;
-  }
-
-  function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
-    return multiSigs[_multiSig].oracleStakesAccounting;
+  function getArbitrationConfig(address _multiSig) external view returns (ArbitrationConfig) {
+    return multiSigs[_multiSig].arbitrationConfig;
   }
 
   function getMultiSigList() external returns (address[] memory) {

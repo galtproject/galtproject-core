@@ -16,18 +16,19 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
-import "../multisig/ArbitratorsMultiSig.sol";
+import "../multisig/ArbitrationConfig.sol";
 
 
 contract ArbitratorsMultiSigFactory is Ownable {
   function build(
     address[] calldata _initialOwners,
-    uint256 _multiSigRequired
+    uint256 _multiSigRequired,
+    ArbitrationConfig _arbitrationConfig
   )
     external
     returns (ArbitratorsMultiSig)
   {
-    ArbitratorsMultiSig multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired);
+    ArbitratorsMultiSig multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired, _arbitrationConfig);
 
     multiSig.addRoleTo(msg.sender, "role_manager");
     multiSig.removeRoleFrom(address(this), "role_manager");

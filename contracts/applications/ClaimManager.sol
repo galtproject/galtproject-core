@@ -372,11 +372,13 @@ contract ClaimManager is AbstractApplication {
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
         multiSigRegistry
-          .getOracleStakesAccounting(c.multiSig)
+          .getArbitrationConfig(c.multiSig)
+          .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
         multiSigRegistry
-          .getArbitratorStakeAccounting(c.multiSig)
+          .getArbitrationConfig(c.multiSig)
+          .getArbitratorStakes()
           .slashMultiple(p.arbitrators, p.arbitratorFines);
 
         c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(

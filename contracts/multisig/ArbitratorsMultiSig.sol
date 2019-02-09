@@ -16,6 +16,7 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
 import "./ArbitratorStakeAccounting.sol";
+import "./ArbitrationConfig.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
@@ -29,11 +30,9 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
 
-  address public arbitratorVoting;
-  ArbitratorStakeAccounting public arbitratorStakeAccounting;
-  address public oracleStakesAccounting;
+  ArbitrationConfig public arbitrationConfig;
+
   address public galtToken;
-  address public initializer;
   bool initialized;
 
   mapping(uint256 => uint256) _periodRunningTotal;
@@ -45,12 +44,13 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   constructor(
     address[] memory _initialOwners,
-    uint256 _required
+    uint256 _required,
+    ArbitrationConfig _arbitrationConfig
   )
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    initializer = msg.sender;
+    arbitrationConfig = _arbitrationConfig;
   }
 
   function addOwner(address owner) public forbidden {}
@@ -77,18 +77,25 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   /**
    * @dev Set a new arbitrators list with (N-of-M multisig)
-   * @param m required number of signatures
-   * @param n number of validators to slice for a new list
    * @param descArbitrators list of all arbitrators from voting
    */
   function setArbitrators(
-    uint256 m,
-    uint256 n,
     address[] calldata descArbitrators
   )
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
+    uint256 m = arbitrationConfig.m();
+    uint256 n = arbitrationConfig.n();
+
+    require(descArbitrators.length >= 3, "List should be L >= 3");
+
+    // If the pushed array is smaller than even `m`, assign both `m` and `n` its size
+    if (m > descArbitrators.length) {
+      m = descArbitrators.length;
+      n = descArbitrators.length;
+    }
+
     require(descArbitrators.length <= n, "Arbitrators array size greater than required");
     required = m;
 
@@ -141,7 +148,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
       return;
     }
 
-    (uint256 currentPeriodId, uint256 totalStakes) = arbitratorStakeAccounting.getCurrentPeriodAndTotalSupply();
+    (uint256 currentPeriodId, uint256 totalStakes) = arbitrationConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
     uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
 
@@ -160,22 +167,6 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   function checkGaltLimitsExternal(bytes calldata data) external {
     checkGaltLimits(data);
-  }
-
-  function initialize(
-    address _arbitratorVoting,
-    address _oracleStakesAccounting,
-    ArbitratorStakeAccounting _arbitratorStakeAccounting
-  )
-    external
-  {
-    assert(initialized == false);
-    assert(hasRole(msg.sender, "role_manager"));
-
-    arbitratorVoting = _arbitratorVoting;
-    oracleStakesAccounting = _oracleStakesAccounting;
-    arbitratorStakeAccounting = _arbitratorStakeAccounting;
-    initialized = true;
   }
 
   // GETTERS

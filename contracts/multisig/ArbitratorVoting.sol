@@ -18,6 +18,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../SpaceReputationAccounting.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./OracleStakesAccounting.sol";
+import "./ArbitrationConfig.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
 
@@ -112,27 +113,17 @@ contract ArbitratorVoting is Permissionable {
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
 
-  // required
-  uint256 public m;
-  // total
-  uint256 public n;
-
-  ArbitratorsMultiSig arbitratorsMultiSig;
+  ArbitrationConfig arbitrationConfig;
 
   constructor(
-    ArbitratorsMultiSig _arbitratorsMultiSig,
-    SpaceReputationAccounting _spaceReputationAccounting,
-    OracleStakesAccounting _oracleStakesAccounting
+    ArbitrationConfig _arbitrationConfig
   )
     public
   {
-    arbitratorsMultiSig = _arbitratorsMultiSig;
-    spaceReputationAccounting = _spaceReputationAccounting;
-    oracleStakesAccounting = _oracleStakesAccounting;
-    m = 2;
-    n = 10;
-    votingData.maxCount = n;
+    arbitrationConfig = _arbitrationConfig;
     votingList.withTail = true;
+    // FIX: should rely on arbitrationConfig
+    votingData.maxCount = _arbitrationConfig.n();
   }
 
 
@@ -340,32 +331,10 @@ contract ArbitratorVoting is Permissionable {
     );
   }
 
-  // TODO: define permissions
-  // _m - required
-  // _n - total limit
-  function setMofN(
-    uint256 _m,
-    uint256 _n
-  )
-    external
-  {
-    // NOTICE: n < 3 doesn't supported by recalculation logic
-    require(2 <= _m, "Should satisfy `2 <= m`");
-    require(3 <= _n, "Should satisfy `3 <= n`");
-    require(_m <= _n, "Should satisfy `m <= n`");
-
-    m = _m;
-    n = _n;
-    votingData.maxCount = n;
-  }
-
   function pushArbitrators() external {
     address[] memory c = getCandidates();
 
-    require(c.length >= 3, "List should be L >= 3");
-    assert(c.length >= m);
-
-    arbitratorsMultiSig.setArbitrators(m, n, c);
+    arbitrationConfig.getMultiSig().setArbitrators(c);
   }
 
   // Getters
