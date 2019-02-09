@@ -19,6 +19,7 @@ import "../SpaceReputationAccounting.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./OracleStakesAccounting.sol";
 import "./ArbitrationConfig.sol";
+import "./ArbitratorStakeAccounting.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
 
@@ -332,12 +333,43 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function pushArbitrators() external {
-    address[] memory c = getCandidates();
-
-    arbitrationConfig.getMultiSig().setArbitrators(c);
+    arbitrationConfig
+      .getMultiSig()
+      .setArbitrators(getCandidatesWithStakes());
   }
 
   // Getters
+
+  function getCandidatesWithStakes() public view returns (address[] memory) {
+    if (votingList.count == 0) {
+      return new address[](0);
+    }
+
+    ArbitratorStakeAccounting arbitratorStakes = arbitrationConfig.getArbitratorStakes();
+    address[] memory p = new address[](votingList.count);
+    uint256 minimalStake = arbitrationConfig.minimalArbitratorStake();
+    uint256 pI = 0;
+
+    address currentAddress = votingList.head;
+
+    for (uint256 i = 0; i < p.length; i++) {
+      if (arbitratorStakes.balanceOf(currentAddress) >= minimalStake) {
+        p[pI] = currentAddress;
+        pI += 1;
+      }
+
+      currentAddress = votingList.nodes[currentAddress].next;
+    }
+
+    if (pI == 0) {
+      return new address[](0);
+    }
+
+    // p.length = pI
+    assembly { mstore(p, pI) }
+
+    return p;
+  }
 
   function getCandidates() public view returns (address[] memory) {
     if (votingList.count == 0) {

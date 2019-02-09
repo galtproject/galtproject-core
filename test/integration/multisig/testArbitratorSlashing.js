@@ -97,6 +97,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
       await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
       await this.galtToken.mint(dan, ether(10000000), { from: coreTeam });
+      await this.galtToken.mint(eve, ether(10000000), { from: coreTeam });
 
       await this.galtToken.mint(mike, ether(10000000), { from: coreTeam });
       await this.galtToken.mint(nick, ether(10000000), { from: coreTeam });
@@ -189,12 +190,13 @@ contract('Arbitrator Stake Slashing', accounts => {
 
     // Mint and distribute SRA reputation using mock
     await (async () => {
-      await this.sra.mintAll([alice, bob, charlie, dan], 500);
+      await this.sra.mintAll([alice, bob, charlie, dan, eve], 500);
       assert.equal(await this.sra.balanceOf(alice), 500);
       await this.sra.lockReputation(this.mX, 500, { from: alice });
       await this.sra.lockReputation(this.mX, 500, { from: bob });
       await this.sra.delegate(charlie, dan, 500, { from: dan });
       await this.sra.lockReputation(this.mX, 1000, { from: charlie });
+      await this.sra.lockReputation(this.mX, 500, { from: eve });
     })();
 
     // Vote for arbitrators
@@ -203,6 +205,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.abVotingX.grantReputation(charlie, 500, { from: alice });
       await this.abVotingX.grantReputation(alice, 500, { from: charlie });
       await this.abVotingX.grantReputation(bob, 500, { from: charlie });
+      await this.abVotingX.grantReputation(eve, 500, { from: eve });
 
       assert.equal(await this.abVotingX.getSpaceReputation(alice), 1000);
 
@@ -210,19 +213,19 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.abVotingX.recalculate(bob, { from: unauthorized });
       await this.abVotingX.recalculate(charlie, { from: unauthorized });
       await this.abVotingX.recalculate(dan, { from: unauthorized });
+      await this.abVotingX.recalculate(eve, { from: unauthorized });
 
-      assert.equal(await this.abVotingX.getWeight(alice), 125000);
+      assert.equal(await this.abVotingX.getWeight(alice), 100000);
 
       let res = await this.abVotingX.getSize();
-      assert.equal(res, 3);
+      assert.equal(res, 4);
 
       res = await this.abVotingX.getCandidates();
-      assert.sameMembers(res, [alice, bob, charlie]);
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+      res = await this.abVotingX.getCandidatesWithStakes();
+      assert.sameMembers(res, []);
 
-      await this.abVotingX.pushArbitrators();
-
-      res = await this.abMultiSigX.getOwners();
-      assert.sameMembers(res, [alice, bob, charlie]);
+      await assertRevert(this.abVotingX.pushArbitrators());
     })();
   });
 
@@ -246,16 +249,26 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: bob });
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: charlie });
       await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: dan });
+      await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(2000), { from: eve });
 
       await this.arbitratorStakeAccountingX.stake(alice, ether(2000), { from: alice });
       await this.arbitratorStakeAccountingX.stake(bob, ether(2000), { from: bob });
       await this.arbitratorStakeAccountingX.stake(charlie, ether(2000), { from: charlie });
       await this.arbitratorStakeAccountingX.stake(dan, ether(2000), { from: dan });
+      await this.arbitratorStakeAccountingX.stake(eve, ether(2000), { from: eve });
 
       let res = await this.arbitratorStakeAccountingX.balanceOf(alice);
       assert.equal(res, ether(2000));
 
-      // TODO: push arbitrators
+      res = await this.abVotingX.getCandidates();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+      res = await this.abVotingX.getCandidatesWithStakes();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+
+      this.abVotingX.pushArbitrators();
+
+      res = await this.abMultiSigX.getOwners();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
 
       // > Setup an application, its roles and shares
       await this.oracles.setApplicationTypeOracleTypes(
@@ -390,8 +403,17 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       // > Re-push the arbitrators list
       // one of the punished arbitrators is kicked of the arbitrators list
+      res = await this.abVotingX.getCandidates();
+      assert.sameMembers(res, [alice, bob, charlie, eve]);
+      res = await this.abVotingX.getCandidatesWithStakes();
+      assert.sameMembers(res, [alice, charlie, eve]);
 
-      await this.abVotingX.pushArbitrators();
+      this.abVotingX.pushArbitrators();
+
+      res = await this.abMultiSigX.getOwners();
+      assert.sameMembers(res, [alice, charlie, eve]);
     });
   });
+
+  // TODO: describe limits
 });
