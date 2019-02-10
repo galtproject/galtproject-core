@@ -98,8 +98,10 @@ contract ArbitratorVoting is Permissionable {
   mapping(address => uint256) private lockedReputation;
   // Candidate/Delegate => balance
   mapping(address => uint256) private reputationBalance;
-
+  // Candidate => isIgnored
   mapping(address => bool) private ignoredCandidates;
+
+  uint256 public totalWeight;
 
   struct Oracle {
     address candidate;
@@ -130,8 +132,8 @@ contract ArbitratorVoting is Permissionable {
     votingData.maxCount = _arbitrationConfig.n();
   }
 
-
   function recalculate(address _candidate) external {
+    uint256 weightBefore = getWeight(_candidate);
     uint256 candidateSpaceReputation = lockedReputation[_candidate];
     uint256 candidateOracleStake = oracleStakes[_candidate];
     uint256 spaceReputationRatio = 0;
@@ -146,11 +148,11 @@ contract ArbitratorVoting is Permissionable {
     }
 
     uint256 combinedRatio = (spaceReputationRatio + oracleStakeRatio);
-    uint256 weight = 0;
+    uint256 weightAfter = 0;
     bool ignore = (ignoredCandidates[_candidate] == true);
 
     if (combinedRatio > 0 && !ignore) {
-      weight = combinedRatio / 2;
+      weightAfter = combinedRatio / 2;
     }
 
     emit Recalculate(
@@ -163,10 +165,16 @@ contract ArbitratorVoting is Permissionable {
       spaceReputationRatio,
       oracleStakeRatio,
       combinedRatio,
-      weight
+      weightAfter
     );
 
-    VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weight);
+    if (weightBefore > weightAfter) {
+      totalWeight -= (weightBefore - weightAfter);
+    } else {
+      totalWeight += (weightAfter - weightBefore);
+    }
+
+    VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weightAfter);
   }
 
   // 'Oracle Stake Locking' accounting only inside this contract
@@ -323,6 +331,7 @@ contract ArbitratorVoting is Permissionable {
 
     // Change candidate weight
     oracleStakes[currentCandidate] = oracleStakes[currentCandidate] - currentWeight + _newWeight;
+    totalOracleStakes = totalOracleStakes + _newWeight - currentWeight;
 
     // Change oracle weight
     oracles[_oracle].weight = _newWeight;
@@ -397,15 +406,23 @@ contract ArbitratorVoting is Permissionable {
     return c;
   }
 
-  function getOracleStakes(address _candidate) external view returns (uint256) {
-    return oracleStakes[_candidate];
+  function getOracleShare(address _oracle) external view returns (uint256) {
+    return oracleStakes[_oracle] * 100 / totalOracleStakes;
+  }
+
+  function getDelegateShare(address _delegate) external view returns (uint256) {
+    return reputationBalance[_delegate] * 100 / totalSpaceReputation;
+  }
+
+  function getOracleStakes(address _oracle) external view returns (uint256) {
+    return oracleStakes[_oracle];
   }
 
   function getSpaceReputation(address _delegate) external view returns (uint256) {
     return reputationBalance[_delegate];
   }
 
-  function getWeight(address _candidate) external view returns (uint256) {
+  function getWeight(address _candidate) public view returns (uint256) {
     return votingData.votes[_candidate];
   }
 
