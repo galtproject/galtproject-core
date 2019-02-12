@@ -203,6 +203,16 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceReputationAccounting.ownedBalanceOf(charlie);
       assert.equal(res, 400);
 
+      // check delegatedBy
+      res = await this.spaceReputationAccounting.delegatedBy(alice);
+      assert.sameMembers(res, []);
+
+      res = await this.spaceReputationAccounting.delegatedBy(bob);
+      assert.sameMembers(res, [alice]);
+
+      res = await this.spaceReputationAccounting.delegatedBy(charlie);
+      assert.sameMembers(res, [alice]);
+
       // check delegations
       res = await this.spaceReputationAccounting.delegations(alice);
       assert.sameMembers(res, [alice, bob, charlie]);
