@@ -60,7 +60,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     IERC721 _spaceToken,
     ISpaceLockerRegistry _spaceLockerRegistry
   )
-    public
+  public
   {
     spaceToken = _spaceToken;
     spaceLockerRegistry = _spaceLockerRegistry;
@@ -79,7 +79,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function mint(
     ISpaceLocker _spaceLocker
   )
-    public
+  public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
@@ -99,7 +99,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function approveBurn(
     ISpaceLocker _spaceLocker
   )
-    public
+  public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
@@ -168,7 +168,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _delegatedBalances[_owner][_account] += _amount;
 
     _delegations[_owner].addSilent(_account);
-    if(_account != _owner) {
+    if (_account != _owner) {
       _delegatedBy[_account].addSilent(_owner);
     }
   }
@@ -182,7 +182,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
     if (_delegatedBalances[_owner][_account] == 0) {
       _delegations[_owner].remove(_account);
-      if(_account != _owner) {
+      if (_account != _owner) {
         _delegatedBy[_account].remove(_owner);
       }
     }
