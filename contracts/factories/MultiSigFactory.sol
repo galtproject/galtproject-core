@@ -121,7 +121,7 @@ contract MultiSigFactory is Ownable {
 
     MultiSigContractGroup storage g = multiSigContractGroups[groupId];
 
-    require(g.nextStep == Step.FIRST);
+    require(g.nextStep == Step.FIRST, "Requires FIRST step");
 
     ArbitrationConfig arbitrationConfig = arbitrationConfigFactory.build(
       _m,
@@ -192,5 +192,10 @@ contract MultiSigFactory is Ownable {
 
   function setCommission(uint256 _commission) external onlyOwner {
     commission = _commission;
+  }
+
+  function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    return (g.nextStep, g.creator);
   }
 }

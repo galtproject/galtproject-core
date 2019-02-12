@@ -313,6 +313,7 @@ contract ArbitratorVoting is Permissionable {
     }
   }
 
+  // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
   function onOracleStakeChanged(
     address _oracle,
@@ -324,6 +325,8 @@ contract ArbitratorVoting is Permissionable {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 currentWeight = oracles[_oracle].weight;
 
+    totalOracleStakes = totalOracleStakes + _newWeight - currentWeight;
+
     // The oracle hadn't vote or revoked his vote
     if (currentCandidate == address(0)) {
       return;
@@ -331,7 +334,6 @@ contract ArbitratorVoting is Permissionable {
 
     // Change candidate weight
     oracleStakes[currentCandidate] = oracleStakes[currentCandidate] - currentWeight + _newWeight;
-    totalOracleStakes = totalOracleStakes + _newWeight - currentWeight;
 
     // Change oracle weight
     oracles[_oracle].weight = _newWeight;
@@ -420,6 +422,30 @@ contract ArbitratorVoting is Permissionable {
 
   function getSpaceReputation(address _delegate) external view returns (uint256) {
     return reputationBalance[_delegate];
+  }
+
+  function getShare(address[] calldata _addresses) external view returns (uint256) {
+    uint256 totalShare = 0;
+
+    // delegates
+    uint256 delegatesAccumulator = 0;
+
+    for (uint256 i = 0; i < _addresses.length; i++) {
+      delegatesAccumulator += reputationBalance[_addresses[i]];
+    }
+
+    totalShare += delegatesAccumulator * 100 / totalSpaceReputation;
+
+    // oracles
+    uint256 oraclesAccumulator = 0;
+
+    for (uint256 i = 0; i < _addresses.length; i++) {
+      oraclesAccumulator += oracleStakes[_addresses[i]];
+    }
+
+    totalShare += oraclesAccumulator * 100 / totalOracleStakes;
+
+    return totalShare / 2;
   }
 
   function getWeight(address _candidate) public view returns (uint256) {
