@@ -37,7 +37,7 @@ const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract.only('ArbitratorVoting', accounts => {
+contract('ArbitratorVoting', accounts => {
   const [
     coreTeam,
     arbitratorManager,
@@ -3148,7 +3148,7 @@ contract.only('ArbitratorVoting', accounts => {
     });
   });
 
-  describe.only('#pushArbitrators()', () => {
+  describe('#pushArbitrators()', () => {
     let voting;
     let multiSig;
 
@@ -3203,7 +3203,7 @@ contract.only('ArbitratorVoting', accounts => {
       assert.equal(res, 5);
     });
 
-    it.only('should push arbitrators', async function() {
+    it('should push arbitrators', async function() {
       let res = await multiSig.getArbitrators();
       assert.sameMembers(res, [a1, a2, a3]);
 

@@ -20,11 +20,13 @@ import "../SpaceReputationAccounting.sol";
 import "../registries/MultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
+import "../multisig/proposals/interfaces/IProposalManager.sol";
 import "./ArbitratorsMultiSigFactory.sol";
 import "./ArbitratorVotingFactory.sol";
 import "./ArbitratorStakeAccountingFactory.sol";
 import "./OracleStakesAccountingFactory.sol";
 import "./ArbitrationConfigFactory.sol";
+import "./ArbitrationProposalsFactory.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -43,6 +45,7 @@ contract MultiSigFactory is Ownable {
   enum Step {
     FIRST,
     SECOND,
+    THIRD,
     DONE
   }
 
@@ -68,6 +71,7 @@ contract MultiSigFactory is Ownable {
   ArbitratorVotingFactory arbitratorVotingFactory;
   ArbitratorStakeAccountingFactory arbitratorStakeAccountingFactory;
   OracleStakesAccountingFactory oracleStakesAccountingFactory;
+  ArbitrationProposalsFactory arbitrationProposalsFactory;
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
@@ -83,7 +87,8 @@ contract MultiSigFactory is Ownable {
     ArbitratorVotingFactory _arbitratorVotingFactory,
     ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
     OracleStakesAccountingFactory _oracleStakesAccountingFactory,
-    ArbitrationConfigFactory _arbitrationConfigFactory
+    ArbitrationConfigFactory _arbitrationConfigFactory,
+    ArbitrationProposalsFactory arbitrationProposalsFactory
   ) public {
     commission = 10 ether;
 
@@ -160,34 +165,49 @@ contract MultiSigFactory is Ownable {
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(g.arbitrationConfig);
 
     arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
-    g.arbitratorStakeAccounting = arbitratorStakeAccounting;
-
-    // Revoke role management permissions from this factory address
-
     g.arbitratorMultiSig.addRoleTo(address(arbitratorVoting), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
     arbitratorVoting.addRoleTo(address(
         g.oracleStakesAccounting), arbitratorVoting.ORACLE_STAKES_NOTIFIER());
     arbitratorVoting.addRoleTo(address(spaceReputationAccounting), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
 
+    g.arbitratorStakeAccounting = arbitratorStakeAccounting;
+    g.arbitratorVoting = arbitratorVoting;
+
+    g.nextStep = Step.THIRD;
+
+    emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting), address(arbitratorVoting));
+  }
+
+  function buildThirdStep(
+    bytes32 _groupId,
+    uint256 _periodLength
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.THIRD, "THIRD step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    IProposalManager thresholdManager = arbitrationProposalsFactory.buildThresholdProposalManager(g.arbitrationConfig);
+
     multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
 
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,
-      arbitratorVoting,
-      arbitratorStakeAccounting,
+      g.arbitratorVoting,
+      g.arbitratorStakeAccounting,
       g.oracleStakesAccounting,
       spaceReputationAccounting
     );
 
-    arbitratorVoting.removeRoleFrom(address(this), "role_manager");
-    arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
+    // Revoke role management permissions from this factory address
+    g.arbitratorVoting.removeRoleFrom(address(this), "role_manager");
+    g.arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");
 
     g.nextStep = Step.DONE;
-
-    emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting), address(arbitratorVoting));
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

@@ -4,6 +4,7 @@ const ArbitratorVotingFactory = artifacts.require('./ArbitratorVotingFactory.sol
 const ArbitratorStakeAccountingFactory = artifacts.require('./ArbitratorStakeAccountingFactory.sol');
 const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountingFactory.sol');
 const ArbitrationConfigFactory = artifacts.require('./ArbitrationConfigFactory.sol');
+const ArbitrationProposalsFactory = artifacts.require('./ArbitrationProposalsFactory.sol');
 const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
 const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
 
@@ -26,6 +27,7 @@ const Helpers = {
     const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
     const arbitratorStakes = await ArbitratorStakeAccountingFactory.new({ from: owner });
     const arbitrationConfig = await ArbitrationConfigFactory.new({ from: owner });
+    const arbitrationProposals = await ArbitrationProposalsFactory.new({ from: owner });
 
     const multiSigFactory = await MultiSigFactory.new(
       multiSigRegistryContract.address,
@@ -38,6 +40,7 @@ const Helpers = {
       arbitratorStakes.address,
       oracleStakes.address,
       arbitrationConfig.address,
+      arbitrationProposals.address,
       { from: owner }
     );
 
