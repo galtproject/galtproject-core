@@ -1,34 +1,31 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
-const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
-const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
+const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
-const { utf8ToHex } = Web3.utils;
-const bytes32 = utf8ToHex;
 const web3 = new Web3(GaltToken.web3.currentProvider);
 
 initHelperWeb3(web3);
 
-// eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
-const MN = bytes32('MN');
-const BOB = bytes32('Bob');
-const CHARLIE = bytes32('Charlie');
-const DAN = bytes32('Dan');
-const EVE = bytes32('Eve');
-
 contract('ArbitratorStakeAccounting', accounts => {
-  const [coreTeam, slashManager, multiSig, alice, bob] = accounts;
+  const [coreTeam, slashManager, multiSig, alice, bob, zeroAddress] = accounts;
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.galtToken.address, multiSig, 60, {
-      from: coreTeam
-    });
+    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
+    this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(
+      this.galtToken.address,
+      this.config.address,
+      60,
+      {
+        from: coreTeam
+      }
+    );
 
     this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
+
+    this.config.initialize(multiSig, zeroAddress, this.arbitratorStakeAccountingX.address, zeroAddress, zeroAddress);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
