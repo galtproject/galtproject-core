@@ -1,12 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
-const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
-const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
-const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
@@ -17,7 +10,7 @@ const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
@@ -28,8 +21,6 @@ initHelperWeb3(web3);
 // eslint-disable-next-line no-underscore-dangle
 const _ES = bytes32('');
 const MN = bytes32('MN');
-const BOB = bytes32('Bob');
-const CHARLIE = bytes32('Charlie');
 
 const NICK = bytes32('Nick');
 const MIKE = bytes32('Mike');
@@ -51,11 +42,9 @@ const ClaimApplicationStatus = {
 contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
-    slashManager,
     feeManager,
     applicationTypeManager,
     oracleManager,
-    sraAddress,
     galtSpaceOrg,
 
     // initial arbitrators
@@ -145,17 +134,21 @@ contract('Arbitrator Stake Slashing', accounts => {
     // Setup multiSig
     await (async () => {
       await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
-
-      let res = await this.multiSigFactory.buildFirstStep([a1, a2, a3], 2, 7, 10, ether(1000), [80, 80, 70, 90], {
-        from: alice
-      });
-      this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-      this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-      this.multiSigXGroupId = res.logs[0].args.groupId;
-
-      res = await this.multiSigFactory.buildSecondStep(this.multiSigXGroupId, 60, { from: alice });
-      this.abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-      this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
+      this.abX = await buildArbitration(
+        this.multiSigFactory,
+        [a1, a2, a3],
+        2,
+        7,
+        10,
+        60,
+        ether(1000),
+        [80, 80, 70, 90, 90],
+        alice
+      );
+      this.abMultiSigX = this.abX.multiSig;
+      this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+      this.abVotingX = this.abX.voting;
+      this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
 
       this.mX = this.abMultiSigX.address;
     })();
