@@ -1,12 +1,9 @@
 /* eslint-disable prefer-arrow-callback */
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
@@ -18,7 +15,7 @@ const { ether, assertRevert, initHelperWeb3, initHelperArtifacts, deploySplitMer
 const web3 = new Web3(ArbitratorVoting.web3.currentProvider);
 const { utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
-const { deployMultiSigFactory } = require('../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -40,7 +37,6 @@ const EVE = bytes32('Eve');
 contract('ArbitratorVoting', accounts => {
   const [
     coreTeam,
-    arbitratorManager,
     oracleManager,
     claimManager,
     geoDateManagement,
@@ -116,52 +112,66 @@ contract('ArbitratorVoting', accounts => {
     await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
 
     // MultiSigX
-    let res = await this.multiSigFactory.buildFirstStep(
+    this.abX = await buildArbitration(
+      this.multiSigFactory,
       [bob, charlie, dan, eve],
       2,
       3,
       4,
+      60,
       ether(1000),
-      [30, 30, 30, 30],
-      { from: alice }
+      [30, 30, 30, 30, 30],
+      alice
     );
-    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-    this.groupIdX = res.logs[0].args.groupId;
-    res = await this.multiSigFactory.buildSecondStep(this.groupIdX, 60, { from: alice });
-    this.abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    this.abMultiSigX = this.abX.multiSig;
+    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.abVotingX = this.abX.voting;
 
     // MultiSigY
-    res = await this.multiSigFactory.buildFirstStep([bob, charlie, dan, eve], 2, 3, 4, ether(1000), [30, 30, 30, 30], {
-      from: bob
-    });
-    this.abMultiSigY = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.oracleStakesAccountingY = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-    this.groupIdY = res.logs[0].args.groupId;
-
-    // Only the initial allowed to continue build process.
-    await assertRevert(this.multiSigFactory.buildSecondStep(this.groupIdY, 60, { from: alice }));
-
-    res = await this.multiSigFactory.buildSecondStep(this.groupIdY, 60, { from: bob });
-    this.abVotingY = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    this.abY = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve],
+      2,
+      3,
+      4,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      bob
+    );
+    this.abMultiSigY = this.abY.multiSig;
+    this.oracleStakesAccountingY = this.abY.oracleStakeAccounting;
+    this.abVotingY = this.abY.voting;
 
     // MultiSigZ
-    res = await this.multiSigFactory.buildFirstStep([bob, charlie, dan, eve], 2, 3, 4, ether(1000), [30, 30, 30, 30], {
-      from: charlie
-    });
-    this.abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.groupIdZ = res.logs[0].args.groupId;
-    res = await this.multiSigFactory.buildSecondStep(this.groupIdZ, 60, { from: charlie });
-    this.abVotingZ = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    this.abZ = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve],
+      2,
+      3,
+      4,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      charlie
+    );
+    this.abMultiSigZ = this.abZ.multiSig;
+    this.abVotingZ = this.abZ.voting;
 
     // MultiSigF
-    res = await this.multiSigFactoryF.buildFirstStep([a1, a2, a3], 2, 2, 3, ether(1000), [30, 30, 30, 30], {
-      from: alice
-    });
-    this.groupIdF = res.logs[0].args.groupId;
-    this.abMultiSigF = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    res = await this.multiSigFactoryF.buildSecondStep(this.groupIdF, 60, { from: alice });
-    this.abVotingF = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    this.abF = await buildArbitration(
+      this.multiSigFactoryF,
+      [bob, charlie, dan, eve],
+      2,
+      2,
+      3,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      alice
+    );
+    this.abMultiSigF = this.abF.multiSig;
+    this.abVotingF = this.abF.voting;
 
     // ASSIGNING ROLES
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -648,7 +658,7 @@ contract('ArbitratorVoting', accounts => {
 
   describe('#getShare', () => {
     it('should return total shares both for oracles and delegates', async function() {
-      const config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30], { from: coreTeam });
+      const config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
       const voting = await ArbitratorVoting.new(config.address, { from: coreTeam });
 
       await voting.addRoleTo(notifier, await voting.ORACLE_STAKES_NOTIFIER(), { from: coreTeam });
@@ -3154,16 +3164,20 @@ contract('ArbitratorVoting', accounts => {
 
     beforeEach(async function() {
       await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: bob });
-
-      // MultiSigF
-      let res = await this.multiSigFactoryF.buildFirstStep([a1, a2, a3], 2, 3, 5, ether(1000), [30, 30, 30, 30], {
-        from: bob
-      });
-      this.groupIdF = res.logs[0].args.groupId;
-      this.abMultiSigF = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-      res = await this.multiSigFactoryF.buildSecondStep(this.groupIdF, 60, { from: bob });
-      this.abVotingF = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-      this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
+      this.abF = await buildArbitration(
+        this.multiSigFactoryF,
+        [a1, a2, a3],
+        2,
+        3,
+        5,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        bob
+      );
+      this.abMultiSigF = this.abF.multiSig;
+      this.abVotingF = this.abF.voting;
+      this.arbitratorStakeAccountingX = this.abF.arbitratorStakeAccounting;
 
       voting = this.abVotingF;
       multiSig = this.abMultiSigF;
@@ -3182,7 +3196,7 @@ contract('ArbitratorVoting', accounts => {
       await voting.recalculate(candidateE);
       await voting.recalculate(candidateF);
 
-      res = await voting.getSpaceReputation(candidateA);
+      let res = await voting.getSpaceReputation(candidateA);
       assert.equal(res, 800);
       res = await voting.getSpaceReputation(candidateB);
       assert.equal(res, 1200);
@@ -3207,7 +3221,7 @@ contract('ArbitratorVoting', accounts => {
       let res = await multiSig.getArbitrators();
       assert.sameMembers(res, [a1, a2, a3]);
 
-      await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(4000), { from: alice });
+      await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(5000), { from: alice });
 
       await this.arbitratorStakeAccountingX.stake(candidateC, ether(1000), { from: alice });
       await this.arbitratorStakeAccountingX.stake(candidateB, ether(1000), { from: alice });

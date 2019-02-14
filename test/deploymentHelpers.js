@@ -99,7 +99,17 @@ const Helpers = {
 
     return multiSigFactory;
   },
-  async buildArbitration(factory, initialOwners, initialRequired, m, n, minimalArbitratorStake, thresholds, owner) {
+  async buildArbitration(
+    factory,
+    initialOwners,
+    initialRequired,
+    m,
+    n,
+    periodLength,
+    minimalArbitratorStake,
+    thresholds,
+    owner
+  ) {
     let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, thresholds, {
       from: owner
     });
@@ -108,7 +118,7 @@ const Helpers = {
     const oracleStakeAccounting = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
     const { groupId } = res.logs[0].args;
 
-    res = await factory.buildSecondStep(groupId, 60, { from: owner });
+    res = await factory.buildSecondStep(groupId, periodLength, { from: owner });
     const voting = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
     const arbitratorStakeAccounting = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
 

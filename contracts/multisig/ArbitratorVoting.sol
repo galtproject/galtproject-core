@@ -84,9 +84,6 @@ contract ArbitratorVoting is Permissionable {
   string public constant ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
   string public constant SPACE_REPUTATION_NOTIFIER = "space_reputation_notifier";
 
-  OracleStakesAccounting oracleStakesAccounting;
-  SpaceReputationAccounting spaceReputationAccounting;
-
   // Oracle address => Oracle details
   mapping(address => Oracle) private oracles;
   // Oracle Candidate => totalWeights
@@ -181,7 +178,7 @@ contract ArbitratorVoting is Permissionable {
   function voteWithOracleStake(address _candidate) external {
     // TODO: check oracle is activev
 
-    uint256 newWeight = uint256(oracleStakesAccounting.balanceOf(msg.sender));
+    uint256 newWeight = uint256(arbitrationConfig.getOracleStakes().balanceOf(msg.sender));
     require(newWeight > 0, "Weight is 0 or less");
 
     address previousCandidate = oracles[msg.sender].candidate;

@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorsMultiSig.sol";
+import "./ArbitrationConfig.sol";
 
 
 contract ArbitratorStakeAccounting is Permissionable {
@@ -44,7 +45,7 @@ contract ArbitratorStakeAccounting is Permissionable {
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
-  ArbitratorsMultiSig public multiSigWallet;
+  ArbitrationConfig public arbitrationConfig;
   IERC20 public galtToken;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
@@ -57,13 +58,13 @@ contract ArbitratorStakeAccounting is Permissionable {
 
   constructor(
     IERC20 _galtToken,
-    ArbitratorsMultiSig _multiSigWallet,
+    ArbitrationConfig _arbitrationConfig,
     uint256 _periodLengthInSeconds
   )
     public
   {
     galtToken = _galtToken;
-    multiSigWallet = _multiSigWallet;
+    arbitrationConfig = _arbitrationConfig;
     periodLengthInSeconds = _periodLengthInSeconds;
     _initialTimestamp = block.timestamp;
   }
@@ -92,7 +93,9 @@ contract ArbitratorStakeAccounting is Permissionable {
   function stake(address _arbitrator, uint256 _amount) external {
     require(_amount > 0, "Expect positive amount");
 
-    galtToken.transferFrom(msg.sender, address(multiSigWallet), _amount);
+    address multiSig = address(arbitrationConfig.getMultiSig());
+
+    galtToken.transferFrom(msg.sender, multiSig, _amount);
 
     uint256 arbitratorStakeBefore = _balances[_arbitrator];
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);

@@ -120,6 +120,7 @@ contract('Arbitrator Stake Slashing', accounts => {
         2,
         7,
         10,
+        60,
         ether(1000),
         [30, 30, 30, 30, 30],
         alice

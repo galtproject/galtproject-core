@@ -203,7 +203,11 @@ contract MultiSigFactory is Ownable {
     require(g.nextStep == Step.SECOND, "SECOND step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(galtToken, g.arbitratorMultiSig, _periodLength);
+    ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(
+      galtToken,
+      g.arbitrationConfig,
+      _periodLength
+    );
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(g.arbitrationConfig);
 
     arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());

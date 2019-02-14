@@ -20,18 +20,19 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 // This contract will be included into the current one
 import "../Oracles.sol";
 import "../multisig/ArbitratorStakeAccounting.sol";
+import "../multisig/ArbitrationConfig.sol";
 
 
 contract ArbitratorStakeAccountingFactory is Ownable {
   function build(
     IERC20 _galtToken,
-    ArbitratorsMultiSig _arbitratorMultiSig,
+    ArbitrationConfig _arbitrationConfig,
     uint256 _periodLength
   )
     external
     returns (ArbitratorStakeAccounting arbitratorStakeAccounting)
   {
-    arbitratorStakeAccounting = new ArbitratorStakeAccounting(_galtToken, _arbitratorMultiSig, _periodLength);
+    arbitratorStakeAccounting = new ArbitratorStakeAccounting(_galtToken, _arbitrationConfig, _periodLength);
 
     arbitratorStakeAccounting.addRoleTo(msg.sender, "role_manager");
     arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
