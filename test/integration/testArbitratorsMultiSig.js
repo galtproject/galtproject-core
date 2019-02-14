@@ -8,10 +8,10 @@ initHelperWeb3(web3);
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('ArbitratorsMultiSig', accounts => {
-  const [coreTeam, alice, bob, charlie, dan] = accounts;
+  const [coreTeam, alice, bob, charlie, dan, arbitrationConfig] = accounts;
 
   beforeEach(async function() {
-    this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, { from: coreTeam });
+    this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, arbitrationConfig, { from: coreTeam });
   });
 
   describe('forbidden methods', () => {
