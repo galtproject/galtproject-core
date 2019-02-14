@@ -1,12 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
-const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
-const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
-const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
@@ -14,10 +7,9 @@ const MockSRA = artifacts.require('./MockSRA.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 
 const Web3 = require('web3');
-const galt = require('@galtproject/utils');
 
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
@@ -25,37 +17,16 @@ const web3 = new Web3(GaltToken.web3.currentProvider);
 
 initHelperWeb3(web3);
 
-// eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
-const MN = bytes32('MN');
-const BOB = bytes32('Bob');
-const CHARLIE = bytes32('Charlie');
-
-const NICK = bytes32('Nick');
-const MIKE = bytes32('Mike');
-const OLIVER = bytes32('Oliver');
-
-const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
-const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
-
-const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
-
-const ClaimApplicationStatus = {
-  NOT_EXISTS: 0,
-  SUBMITTED: 1,
+const ProposalStatus = {
+  NULL: 0,
+  ACTIVE: 1,
   APPROVED: 2,
-  REJECTED: 3,
-  REVERTED: 4
+  REJECTED: 3
 };
 
 contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
-    slashManager,
-    feeManager,
-    applicationTypeManager,
-    oracleManager,
-    sraAddress,
     galtSpaceOrg,
 
     // initial arbitrators
@@ -76,10 +47,7 @@ contract('Arbitrator Stake Slashing', accounts => {
     oliver,
 
     // claimer
-    zack,
-
-    // unauthorized
-    unauthorized
+    zack
   ] = accounts;
 
   beforeEach(async function() {
@@ -146,35 +114,25 @@ contract('Arbitrator Stake Slashing', accounts => {
     await (async () => {
       await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
-      let res = await this.multiSigFactory.buildFirstStep([a1, a2, a3], 2, 7, 10, ether(1000), [80, 80, 70, 90], {
-        from: alice
-      });
-      console.log('step 1', res.receipt.gasUsed);
-      this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-      this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-      this.multiSigXGroupId = res.logs[0].args.groupId;
+      this.ab = await buildArbitration(
+        this.multiSigFactory,
+        [a1, a2, a3],
+        2,
+        7,
+        10,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        alice
+      );
 
-      res = await this.multiSigFactory.buildSecondStep(this.multiSigXGroupId, 60, { from: alice });
-      console.log('step 2', res.receipt.gasUsed);
-      this.abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
-      this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
-      // TODO: build all further multisigs
-      // - revokeArbitrators
-      // - modifyThreshold
-      // - minimalArbitratorStake
-      // - contractAddress
-
-      this.mX = this.abMultiSigX.address;
-      console.log('mX', this.mX);
+      this.mX = this.ab.multiSig.address;
     })();
-
 
     // Mint and distribute SRA reputation using mock
     await (async () => {
       await this.sra.mintAll([alice, bob, charlie, dan, eve], 500);
       assert.equal(await this.sra.balanceOf(alice), 500);
       await this.sra.lockReputation(this.mX, 500, { from: alice });
-      return;
       await this.sra.lockReputation(this.mX, 500, { from: bob });
       await this.sra.delegate(charlie, dan, 500, { from: dan });
       await this.sra.lockReputation(this.mX, 1000, { from: charlie });
@@ -183,8 +141,227 @@ contract('Arbitrator Stake Slashing', accounts => {
   });
 
   describe('ModifyThreshold Proposals', () => {
-    it.only('should change corresponding values', async function() {
-      // TODO: create proposal
+    it('should change corresponding values', async function() {
+      const key = await this.ab.config.SET_THRESHOLD_THRESHOLD();
+      let res = await this.ab.modifyThresholdProposalManager.propose(key, 42, 'its better', { from: alice });
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.modifyThresholdProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.modifyThresholdProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.modifyThresholdProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.modifyThresholdProposalManager.nay(proposalId, { from: bob });
+      await this.ab.modifyThresholdProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.modifyThresholdProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.modifyThresholdProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      await assertRevert(this.ab.modifyThresholdProposalManager.triggerReject(proposalId));
+      await this.ab.modifyThresholdProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.modifyThresholdProposalManager.getProposal(proposalId);
+      assert.equal(res.key, key);
+      assert.equal(res.value, 42);
+      assert.equal(res.description, 'its better');
+
+      res = await this.ab.modifyThresholdProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+      assert.sameMembers(res.ayes, [alice, charlie]);
+      assert.sameMembers(res.nays, [bob]);
+
+      res = await this.ab.modifyThresholdProposalManager.getActiveProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.ab.modifyThresholdProposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
+      res = await this.ab.modifyThresholdProposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+
+      res = await this.ab.config.thresholds(web3.utils.utf8ToHex('set_threshold_threshold'));
+      assert.equal(web3.utils.hexToNumberString(res), '42');
+    });
+  });
+
+  describe('Change MofN Proposals', () => {
+    it('should change corresponding values', async function() {
+      let res = await this.ab.modifyMofNProposalManager.propose(12, 13, 'its better', { from: alice });
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.modifyMofNProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.modifyMofNProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.modifyMofNProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.modifyMofNProposalManager.nay(proposalId, { from: bob });
+      await this.ab.modifyMofNProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.modifyMofNProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.modifyMofNProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      await assertRevert(this.ab.modifyMofNProposalManager.triggerReject(proposalId));
+      await this.ab.modifyMofNProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.modifyMofNProposalManager.getProposal(proposalId);
+      assert.equal(res.m, 12);
+      assert.equal(res.n, 13);
+      assert.equal(res.description, 'its better');
+
+      res = await this.ab.modifyMofNProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+      assert.sameMembers(res.ayes, [alice, charlie]);
+      assert.sameMembers(res.nays, [bob]);
+
+      res = await this.ab.modifyMofNProposalManager.getActiveProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.ab.modifyMofNProposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
+      res = await this.ab.modifyMofNProposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+
+      res = await this.ab.config.m();
+      assert.equal(res, 12);
+      res = await this.ab.config.n();
+      assert.equal(res, 13);
+    });
+  });
+
+  describe('Change Minimal Arbitrator Stake Proposals', () => {
+    it('should change corresponding values', async function() {
+      let res = await this.ab.modifyArbitratorStakeProposalManager.propose(ether(42), 'its better', { from: alice });
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.modifyArbitratorStakeProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.modifyArbitratorStakeProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.modifyArbitratorStakeProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.modifyArbitratorStakeProposalManager.nay(proposalId, { from: bob });
+      await this.ab.modifyArbitratorStakeProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.modifyArbitratorStakeProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.modifyArbitratorStakeProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      await assertRevert(this.ab.modifyArbitratorStakeProposalManager.triggerReject(proposalId));
+      await this.ab.modifyArbitratorStakeProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.modifyArbitratorStakeProposalManager.getProposal(proposalId);
+      assert.equal(res.value, ether(42));
+      assert.equal(res.description, 'its better');
+
+      res = await this.ab.modifyArbitratorStakeProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+      assert.sameMembers(res.ayes, [alice, charlie]);
+      assert.sameMembers(res.nays, [bob]);
+
+      res = await this.ab.modifyArbitratorStakeProposalManager.getActiveProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.ab.modifyArbitratorStakeProposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
+      res = await this.ab.modifyArbitratorStakeProposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+
+      res = await this.ab.config.minimalArbitratorStake();
+      assert.equal(res, ether(42));
+    });
+  });
+
+  describe('Change Contract Address Proposals', () => {
+    it('should change corresponding values', async function() {
+      let res = await this.ab.modifyContractAddressProposalManager.propose(
+        bytes32('oracle_stakes_contract'),
+        bob,
+        'its better',
+        { from: alice }
+      );
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.modifyContractAddressProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.modifyContractAddressProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.modifyContractAddressProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.modifyContractAddressProposalManager.nay(proposalId, { from: bob });
+      await this.ab.modifyContractAddressProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.modifyContractAddressProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.modifyContractAddressProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      await assertRevert(this.ab.modifyContractAddressProposalManager.triggerReject(proposalId));
+      await this.ab.modifyContractAddressProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.modifyContractAddressProposalManager.getProposal(proposalId);
+      assert.equal(hexToUtf8(res.key), 'oracle_stakes_contract');
+      assert.equal(res.value, bob);
+      assert.equal(res.description, 'its better');
+
+      res = await this.ab.modifyContractAddressProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+      assert.sameMembers(res.ayes, [alice, charlie]);
+      assert.sameMembers(res.nays, [bob]);
+
+      res = await this.ab.modifyContractAddressProposalManager.getActiveProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.ab.modifyContractAddressProposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
+      res = await this.ab.modifyContractAddressProposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+
+      res = await this.ab.config.getOracleStakes();
+      assert.equal(res, bob);
+    });
+  });
+
+  describe('Revoke Arbitrators Proposals', () => {
+    it('should set an empty owners list to multisig', async function() {
+      let res = await this.ab.revokeArbitratorsProposalManager.propose('they cheated', { from: alice });
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.revokeArbitratorsProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.revokeArbitratorsProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.revokeArbitratorsProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.revokeArbitratorsProposalManager.nay(proposalId, { from: bob });
+      await this.ab.revokeArbitratorsProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.revokeArbitratorsProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.revokeArbitratorsProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      res = await this.ab.multiSig.getOwners();
+      assert.sameMembers(res, [a1, a2, a3]);
+
+      await assertRevert(this.ab.revokeArbitratorsProposalManager.triggerReject(proposalId));
+      await this.ab.revokeArbitratorsProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.revokeArbitratorsProposalManager.getProposal(proposalId);
+      console.log('res', res);
+      assert.equal(res, 'they cheated');
+
+      res = await this.ab.revokeArbitratorsProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+
+      res = await this.ab.multiSig.getOwners();
+      assert.sameMembers(res, []);
     });
   });
 });

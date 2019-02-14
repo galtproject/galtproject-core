@@ -21,10 +21,8 @@ import "./AbstractProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
 
-contract ModifyThresholdProposalManager is IProposalManager, AbstractProposalManager {
+contract RevokeArbitratorsProposalManager is IProposalManager, AbstractProposalManager {
   struct Proposal {
-    bytes32 key;
-    uint256 value;
     string description;
   }
 
@@ -38,12 +36,10 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractProposalMan
   {
   }
 
-  function propose(bytes32 _key, uint256 _value, string calldata _description) external {
+  function propose(string calldata _description) external {
     uint256 id = idCounter.next();
 
     _proposals[id] = Proposal({
-      key: _key,
-      value: _value,
       description: _description
     });
 
@@ -55,22 +51,16 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractProposalMan
     proposalVoting.status = ProposalStatus.ACTIVE;
   }
 
-  // Should be implemented inside descendant
   function _execute(uint256 _proposalId) internal {
-    Proposal storage p = _proposals[_proposalId];
-
-    arbitrationConfig.setThreshold(
-      p.key,
-      p.value
-    );
+    arbitrationConfig.getMultiSig().revokeArbitrators();
   }
 
   function getThreshold() public view returns (uint256) {
-    return arbitrationConfig.thresholds(arbitrationConfig.SET_THRESHOLD_THRESHOLD());
+    return arbitrationConfig.thresholds(arbitrationConfig.REVOKE_ARBITRATORS_THRESHOLD());
   }
 
-  function getProposal(uint256 _id) external view returns (bytes32 key, uint256 value, string memory description) {
+  function getProposal(uint256 _id) external view returns (string memory description) {
     Proposal storage p = _proposals[_id];
-    return (p.key, p.value, p.description);
+    return (p.description);
   }
 }

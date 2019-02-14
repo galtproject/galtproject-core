@@ -21,12 +21,18 @@ import "../registries/MultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
 import "../multisig/proposals/interfaces/IProposalManager.sol";
+// Arbitration Factories
 import "./ArbitratorsMultiSigFactory.sol";
 import "./ArbitratorVotingFactory.sol";
 import "./ArbitratorStakeAccountingFactory.sol";
 import "./OracleStakesAccountingFactory.sol";
 import "./ArbitrationConfigFactory.sol";
-import "./ArbitrationProposalsFactory.sol";
+// Arbitration Proposal Factories
+import "./arbitration/ArbitrationModifyThresholdProposalFactory.sol";
+import "./arbitration/ArbitrationModifyMofNProposalFactory.sol";
+import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
+import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
+import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -38,14 +44,29 @@ contract MultiSigFactory is Ownable {
   );
 
   event BuildMultiSigSecondStep(
+    bytes32 groupId,
     address arbitratorStakeAccounting,
     address arbitratorVoting
+  );
+
+  event BuildMultiSigThirdStep(
+    bytes32 groupId,
+    address modifyThresholdProposalManager,
+    address modifyMofNProposalManager,
+    address modifyArbitratorStakeProposalManager
+  );
+
+  event BuildMultiSigFourthStep(
+    bytes32 groupId,
+    address modifyContractAddressProposalManager,
+    address revokeArbitratorsProposalManager
   );
 
   enum Step {
     FIRST,
     SECOND,
     THIRD,
+    FOURTH,
     DONE
   }
 
@@ -57,6 +78,12 @@ contract MultiSigFactory is Ownable {
     ArbitrationConfig arbitrationConfig;
     ArbitratorStakeAccounting arbitratorStakeAccounting;
     OracleStakesAccounting oracleStakesAccounting;
+
+    IProposalManager modifyThresholdProposalManager;
+    IProposalManager modifyMofNProposalManager;
+    IProposalManager modifyArbitratorStakeProposalManager;
+    IProposalManager modifyContractAddressProposalManager;
+    IProposalManager revokeArbitratorsProposalManager;
   }
 
   MultiSigRegistry multiSigRegistry;
@@ -71,7 +98,12 @@ contract MultiSigFactory is Ownable {
   ArbitratorVotingFactory arbitratorVotingFactory;
   ArbitratorStakeAccountingFactory arbitratorStakeAccountingFactory;
   OracleStakesAccountingFactory oracleStakesAccountingFactory;
-  ArbitrationProposalsFactory arbitrationProposalsFactory;
+
+  ArbitrationModifyThresholdProposalFactory arbitrationModifyThresholdProposalFactory;
+  ArbitrationModifyMofNProposalFactory arbitrationModifyMofNProposalFactory;
+  ArbitrationModifyArbitratorStakeProposalFactory arbitrationModifyArbitratorStakeProposalFactory;
+  ArbitrationModifyContractAddressProposalFactory arbitrationModifyContractAddressProposalFactory;
+  ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
@@ -88,7 +120,11 @@ contract MultiSigFactory is Ownable {
     ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
     OracleStakesAccountingFactory _oracleStakesAccountingFactory,
     ArbitrationConfigFactory _arbitrationConfigFactory,
-    ArbitrationProposalsFactory arbitrationProposalsFactory
+    ArbitrationModifyThresholdProposalFactory _arbitrationModifyThresholdProposalFactory,
+    ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
+    ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
+    ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
+    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory
   ) public {
     commission = 10 ether;
 
@@ -103,6 +139,12 @@ contract MultiSigFactory is Ownable {
     arbitratorStakeAccountingFactory = _arbitratorStakeAccountingFactory;
     oracleStakesAccountingFactory = _oracleStakesAccountingFactory;
     arbitrationConfigFactory = _arbitrationConfigFactory;
+
+    arbitrationModifyThresholdProposalFactory = _arbitrationModifyThresholdProposalFactory;
+    arbitrationModifyMofNProposalFactory = _arbitrationModifyMofNProposalFactory;
+    arbitrationModifyArbitratorStakeProposalFactory = _arbitrationModifyArbitratorStakeProposalFactory;
+    arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
+    arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
   }
 
   function buildFirstStep(
@@ -175,12 +217,11 @@ contract MultiSigFactory is Ownable {
 
     g.nextStep = Step.THIRD;
 
-    emit BuildMultiSigSecondStep(address(arbitratorStakeAccounting), address(arbitratorVoting));
+    emit BuildMultiSigSecondStep(_groupId, address(arbitratorStakeAccounting), address(arbitratorVoting));
   }
 
   function buildThirdStep(
-    bytes32 _groupId,
-    uint256 _periodLength
+    bytes32 _groupId
   )
     external
   {
@@ -188,9 +229,45 @@ contract MultiSigFactory is Ownable {
     require(g.nextStep == Step.THIRD, "THIRD step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    IProposalManager thresholdManager = arbitrationProposalsFactory.buildThresholdProposalManager(g.arbitrationConfig);
+    IProposalManager thresholdProposals = arbitrationModifyThresholdProposalFactory.build(g.arbitrationConfig);
+    IProposalManager mOfNProposals = arbitrationModifyMofNProposalFactory.build(g.arbitrationConfig);
+    IProposalManager arbitratorStakeProposals = arbitrationModifyArbitratorStakeProposalFactory.build(g.arbitrationConfig);
 
-    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
+    g.arbitrationConfig.addRoleTo(address(thresholdProposals), g.arbitrationConfig.THRESHOLD_MANAGER());
+    g.arbitrationConfig.addRoleTo(address(mOfNProposals), g.arbitrationConfig.M_N_MANAGER());
+    g.arbitrationConfig.addRoleTo(address(arbitratorStakeProposals), g.arbitrationConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
+
+    g.modifyThresholdProposalManager = thresholdProposals;
+    g.modifyMofNProposalManager = mOfNProposals;
+    g.modifyArbitratorStakeProposalManager = arbitratorStakeProposals;
+
+    g.nextStep = Step.FOURTH;
+
+    emit BuildMultiSigThirdStep(
+      _groupId,
+      address(thresholdProposals),
+      address(mOfNProposals),
+      address(arbitratorStakeProposals)
+    );
+  }
+
+  function buildFourthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.FOURTH, "FOURTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    IProposalManager changeAddressProposals = arbitrationModifyContractAddressProposalFactory.build(g.arbitrationConfig);
+    IProposalManager revokeArbitratorsProposals = arbitrationRevokeArbitratorsProposalFactory.build(g.arbitrationConfig);
+
+    g.arbitrationConfig.addRoleTo(address(changeAddressProposals), g.arbitrationConfig.CONTRACT_ADDRESS_MANAGER());
+    g.arbitratorMultiSig.addRoleTo(address(revokeArbitratorsProposals), g.arbitratorMultiSig.ROLE_REVOKE_MANAGER());
+
+    g.modifyContractAddressProposalManager = changeAddressProposals;
+    g.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
 
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,
@@ -200,6 +277,8 @@ contract MultiSigFactory is Ownable {
       spaceReputationAccounting
     );
 
+    // TODO: initialize proposal contracts too
+
     // Revoke role management permissions from this factory address
     g.arbitratorVoting.removeRoleFrom(address(this), "role_manager");
     g.arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
@@ -207,7 +286,21 @@ contract MultiSigFactory is Ownable {
     g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");
 
+    g.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
+    changeAddressProposals.removeRoleFrom(address(this), "role_manager");
+    revokeArbitratorsProposals.removeRoleFrom(address(this), "role_manager");
+
+    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
+
     g.nextStep = Step.DONE;
+
+    emit BuildMultiSigFourthStep(
+      _groupId,
+      address(changeAddressProposals),
+      address(revokeArbitratorsProposals)
+    );
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

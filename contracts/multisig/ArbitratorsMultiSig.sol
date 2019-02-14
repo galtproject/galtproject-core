@@ -19,7 +19,8 @@ import "./ArbitratorStakeAccounting.sol";
 import "./ArbitrationConfig.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
-  event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
+  event NewOwners(address[] auditors, uint256 required, uint256 total);
+  event RevokeOwners();
   event GaltRunningTotalIncrease(
     uint256 periodId,
     uint256 runningTotalBefore,
@@ -29,6 +30,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
+  string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
   ArbitrationConfig public arbitrationConfig;
 
@@ -106,14 +108,21 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
       isOwner[o] = true;
       owners.push(o);
-
-      emit OwnerAddition(o);
     }
 
-    emit NewAuditorsSet(owners, m, n);
+    emit NewOwners(owners, m, n);
   }
 
-  // WARNING: GaltToken address should be hardcoded in production version
+  function revokeArbitrators()
+    external
+    onlyRole(ROLE_REVOKE_MANAGER)
+  {
+    delete owners;
+
+    emit RevokeOwners();
+  }
+
+  // TODO: GaltToken address should be hardcoded in production version
   function setGaltToken(address _galtToken) external {
     galtToken = _galtToken;
   }
@@ -123,7 +132,23 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
       checkGaltLimits(data);
     }
 
-      // TODO: repeat logic
+    bool result;
+    assembly {
+      let x := mload(0x40)   // "Allocate" memory for output (0x40 is where "free memory" pointer is stored by convention)
+      let d := add(data, 32) // First 32 bytes are the padded length of data, so exclude that
+      result := call(
+      sub(gas, 34710),   // 34710 is the value that solidity is currently emitting
+      // It includes callGas (700) + callVeryLow (3, to pay for SUB) + callValueTransferGas (9000) +
+      // callNewAccountGas (25000, in case the destination address does not exist and needs creating)
+      destination,
+      value,
+      d,
+      dataLength,        // Size of the input (in bytes) - this is what fixes the padding problem
+      x,
+      0                  // Output is ignored, therefore the output size is zero
+      )
+    }
+    return result;
   }
 
   function checkGaltLimits(bytes memory data) internal {

@@ -16,21 +16,21 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
-import "../multisig/ArbitrationConfig.sol";
-import "../multisig/proposals/ModifyThresholdProposalManager.sol";
-import "../multisig/proposals/interfaces/IProposalManager.sol";
+import "../../multisig/ArbitrationConfig.sol";
+import "../../multisig/proposals/ModifyMofNProposalManager.sol";
+import "../../multisig/proposals/interfaces/IProposalManager.sol";
 
 
-contract ArbitrationProposalsFactory is Ownable {
-  function buildThresholdProposalManager(
+contract ArbitrationModifyMofNProposalFactory is Ownable {
+  function build(
     ArbitrationConfig _config
   )
     external
-    returns (IProposalManager thresholdProposal)
+    returns (IProposalManager proposalManager)
   {
-    thresholdProposal = new ModifyThresholdProposalManager(_config);
+    proposalManager = new ModifyMofNProposalManager(_config);
 
-    thresholdProposal.addRoleTo(msg.sender, "role_manager");
-    thresholdProposal.removeRoleFrom(address(this), "role_manager");
+    proposalManager.addRoleTo(msg.sender, "role_manager");
+    proposalManager.removeRoleFrom(address(this), "role_manager");
   }
 }

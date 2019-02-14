@@ -425,25 +425,25 @@ contract ArbitratorVoting is Permissionable {
   }
 
   function getShare(address[] calldata _addresses) external view returns (uint256) {
-    uint256 totalShare = 0;
-
     // delegates
     uint256 delegatesAccumulator = 0;
-
-    for (uint256 i = 0; i < _addresses.length; i++) {
-      delegatesAccumulator += reputationBalance[_addresses[i]];
-    }
-
-    totalShare += delegatesAccumulator * 100 / totalSpaceReputation;
-
     // oracles
     uint256 oraclesAccumulator = 0;
 
     for (uint256 i = 0; i < _addresses.length; i++) {
+      delegatesAccumulator += reputationBalance[_addresses[i]];
       oraclesAccumulator += oracleStakes[_addresses[i]];
     }
 
-    totalShare += oraclesAccumulator * 100 / totalOracleStakes;
+    uint256 totalShare = 0;
+
+    if (totalSpaceReputation != 0) {
+      totalShare += delegatesAccumulator * 100 / totalSpaceReputation;
+    }
+
+    if (totalOracleStakes != 0) {
+      totalShare += oraclesAccumulator * 100 / totalOracleStakes;
+    }
 
     return totalShare / 2;
   }

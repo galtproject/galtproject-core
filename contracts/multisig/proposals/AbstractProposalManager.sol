@@ -30,7 +30,7 @@ contract AbstractProposalManager is Permissionable {
 
   Counter.Counter idCounter;
 
-  ArbitrationConfig arbitrationConfig;
+  ArbitrationConfig public arbitrationConfig;
 
   ArraySet.Uint256Set private _activeProposals;
   uint256[] private _approvedProposals;

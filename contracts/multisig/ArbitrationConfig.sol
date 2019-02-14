@@ -25,15 +25,16 @@ import "../SpaceReputationAccounting.sol";
 
 
 contract ArbitrationConfig is Permissionable {
+  string public constant THRESHOLD_MANAGER = "threshold_manager";
   string public constant M_N_MANAGER = "m_n_manager";
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
-  string public constant THRESHOLD_MANAGER = "threshold_manager";
   string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
-  bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
+  bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = bytes32("arbitrator_stake_threshold");
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
+  bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
@@ -58,20 +59,22 @@ contract ArbitrationConfig is Permissionable {
     uint256 _minimalArbitratorStake,
     // 0 - SET_THRESHOLD_THRESHOLD
     // 1 - SET_M_OF_N_THRESHOLD
-    // 2 - REVOKE_ARBITRATORS_THRESHOLD
+    // 2 - CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD
     // 3 - CHANGE_CONTRACT_ADDRESS_THRESHOLD
+    // 4 - REVOKE_ARBITRATORS_THRESHOLD
     uint256[] memory _thresholds
   ) public {
     m = _m;
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 4, "Invalid thresholds passed in");
+    require(_thresholds.length == 5, "Invalid number of thresholds passed in");
 
     thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
     thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
-    thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[2];
+    thresholds[CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD] = _thresholds[2];
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
+    thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
   }
 
   function initialize(
