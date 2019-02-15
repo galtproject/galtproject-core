@@ -440,11 +440,11 @@ contract('PlotManager', accounts => {
           await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [bytes32('🦆')], { from: coreTeam });
           await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [bytes32('🦋')], { from: coreTeam });
 
-          await this.oracles.onOracleStakeChanged(multiSigX, charlie, bytes32('🦄'), ether(30), {
+          await this.oracles.onOracleStakeChanged(charlie, bytes32('🦄'), ether(30), {
             from: stakesNotifier
           });
-          await this.oracles.onOracleStakeChanged(multiSigX, dan, bytes32('🦆'), ether(30), { from: stakesNotifier });
-          await this.oracles.onOracleStakeChanged(multiSigX, eve, bytes32('🦋'), ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(dan, bytes32('🦆'), ether(30), { from: stakesNotifier });
+          await this.oracles.onOracleStakeChanged(eve, bytes32('🦋'), ether(30), { from: stakesNotifier });
 
           await this.plotManager.lockApplicationForReview(this.aId, bytes32('🦄'), { from: charlie });
           await this.plotManager.lockApplicationForReview(this.aId, bytes32('🦆'), { from: dan });
@@ -475,10 +475,10 @@ contract('PlotManager', accounts => {
         await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
         await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(dan, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(eve, DOG, ether(30), { from: stakesNotifier });
 
         await this.galtToken.approve(this.plotManager.address, ether(20), { from: alice });
         const res = await this.plotManager.submitApplication(
@@ -577,10 +577,10 @@ contract('PlotManager', accounts => {
         await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
         await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, CAT, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(dan, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(eve, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(eve, DOG, ether(30), { from: stakesNotifier });
 
         await this.plotManager.addGeohashesToApplication(this.aId, [], [], [], { from: alice });
         let geohashes = ['sezu1100', 'sezu1110', 'sezu2200'].map(galt.geohashToGeohash5);
@@ -670,10 +670,10 @@ contract('PlotManager', accounts => {
         await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
         await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
-        await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(dan, CAT, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(eve, DOG, ether(30), { from: stakesNotifier });
 
         await this.plotManager.lockApplicationForReview(this.aId, HUMAN, { from: bob });
         await this.plotManager.lockApplicationForReview(this.aId, CAT, { from: dan });
@@ -812,10 +812,10 @@ contract('PlotManager', accounts => {
       await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
       await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
 
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, HUMAN, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, HUMAN, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, CAT, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, DOG, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(dan, CAT, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(eve, DOG, ether(30), { from: stakesNotifier });
     });
 
     describe('#submitApplication()', () => {
@@ -1232,7 +1232,7 @@ contract('PlotManager', accounts => {
 
         await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [FOO], { from: coreTeam });
 
-        await this.oracles.onOracleStakeChanged(multiSigX, frank, FOO, ether(30), { from: stakesNotifier });
+        await this.oracles.onOracleStakeChanged(frank, FOO, ether(30), { from: stakesNotifier });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
       });
 
