@@ -85,93 +85,11 @@ contract('ArbitratorVoting', accounts => {
       this.spaceLockerRegistry.address,
       { from: coreTeam }
     );
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.galtToken.address,
-      this.oracles,
-      claimManager,
-      this.multiSigRegistry,
-      this.spaceReputationAccounting.address,
-      coreTeam
-    );
-    this.multiSigFactoryF = await deployMultiSigFactory(
-      this.galtToken.address,
-      this.oracles,
-      claimManager,
-      this.multiSigRegistry,
-      fakeSRA,
-      coreTeam
-    );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(dan, ether(10000000), { from: coreTeam });
-    await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
-    await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
-    await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
-    await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
-
-    // MultiSigX
-    this.abX = await buildArbitration(
-      this.multiSigFactory,
-      [bob, charlie, dan, eve],
-      2,
-      3,
-      4,
-      60,
-      ether(1000),
-      [30, 30, 30, 30, 30],
-      alice
-    );
-    this.abMultiSigX = this.abX.multiSig;
-    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.abVotingX = this.abX.voting;
-
-    // MultiSigY
-    this.abY = await buildArbitration(
-      this.multiSigFactory,
-      [bob, charlie, dan, eve],
-      2,
-      3,
-      4,
-      60,
-      ether(1000),
-      [30, 30, 30, 30, 30],
-      bob
-    );
-    this.abMultiSigY = this.abY.multiSig;
-    this.oracleStakesAccountingY = this.abY.oracleStakeAccounting;
-    this.abVotingY = this.abY.voting;
-
-    // MultiSigZ
-    this.abZ = await buildArbitration(
-      this.multiSigFactory,
-      [bob, charlie, dan, eve],
-      2,
-      3,
-      4,
-      60,
-      ether(1000),
-      [30, 30, 30, 30, 30],
-      charlie
-    );
-    this.abMultiSigZ = this.abZ.multiSig;
-    this.abVotingZ = this.abZ.voting;
-
-    // MultiSigF
-    this.abF = await buildArbitration(
-      this.multiSigFactoryF,
-      [bob, charlie, dan, eve],
-      2,
-      2,
-      3,
-      60,
-      ether(1000),
-      [30, 30, 30, 30, 30],
-      alice
-    );
-    this.abMultiSigF = this.abF.multiSig;
-    this.abVotingF = this.abF.voting;
 
     // ASSIGNING ROLES
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -194,67 +112,107 @@ contract('ArbitratorVoting', accounts => {
       }
     );
 
-    // CONFIGURING
-    await this.oracles.setApplicationTypeOracleTypes(
-      MY_APPLICATION,
-      [TYPE_A, TYPE_B, TYPE_C],
-      [50, 25, 25],
-      [_ES, _ES, _ES],
-      { from: oracleManager }
-    );
-
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_A, 200, { from: oracleManager });
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
-
-    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, [], [TYPE_A], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
-      from: oracleManager
-    });
-
     // CREATING WEB3 1.X INSTANCES
-    this.abVotingXWeb3 = new web3.eth.Contract(this.abVotingX.abi, this.abVotingX.address);
-    this.abVotingYWeb3 = new web3.eth.Contract(this.abVotingY.abi, this.abVotingY.address);
-    this.abVotingZWeb3 = new web3.eth.Contract(this.abVotingZ.abi, this.abVotingZ.address);
-    this.abVotingFWeb3 = new web3.eth.Contract(this.abVotingF.abi, this.abVotingF.address);
-    // this.abMultiSigXWeb3 = new web3.eth.Contract(this.abMultiSigX.abi, this.abMultiSigX.address);
-    this.abMultiSigFWeb3 = new web3.eth.Contract(this.abMultiSigF.abi, this.abMultiSigF.address);
-    // this.oracleStakesXWeb3 = new web3.eth.Contract(
-    //   this.oracleStakesAccountingX.abi,
-    //   this.oracleStakesAccountingX.address
-    // );
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
       this.spaceReputationAccounting.abi,
       this.spaceReputationAccounting.address
     );
-
-    // SHORT LINKS
-    this.X = this.abMultiSigX.address;
-    this.Y = this.abMultiSigY.address;
-    this.Z = this.abMultiSigZ.address;
   });
 
   describe('scenarios', () => {
-    // oracle 1 votes for candidate A without stake and fails
-    // oracle 1 deposit stake for role L 200
-    // oracle 2 deposit stake for role M 200
-    // oracle 2 deposit stake for role L 200
-    // oracle 3 deposit insufficient stake for role M 150
-    // oracle 3 deposit stake for role L 200
-    // oracle 3 deposit stake for role N 200
+    beforeEach(async function() {
+      this.multiSigFactory = await deployMultiSigFactory(
+        this.galtToken.address,
+        this.oracles,
+        claimManager,
+        this.multiSigRegistry,
+        this.spaceReputationAccounting.address,
+        coreTeam
+      );
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
 
-    // oracle 1 votes for candidate A
-    // oracle 2 votes for candidate B
-    // oracle 2 revotes for candidate A
-    // oracle 3 votes for candidate C
+      // MultiSigX
+      this.abX = await buildArbitration(
+        this.multiSigFactory,
+        [bob, charlie, dan, eve],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        alice
+      );
+      this.abMultiSigX = this.abX.multiSig;
+      this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+      this.abVotingX = this.abX.voting;
+
+      // MultiSigY
+      this.abY = await buildArbitration(
+        this.multiSigFactory,
+        [bob, charlie, dan, eve],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        bob
+      );
+      this.abMultiSigY = this.abY.multiSig;
+      this.oracleStakesAccountingY = this.abY.oracleStakeAccounting;
+      this.abVotingY = this.abY.voting;
+
+      // MultiSigZ
+      this.abZ = await buildArbitration(
+        this.multiSigFactory,
+        [bob, charlie, dan, eve],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        charlie
+      );
+      this.abMultiSigZ = this.abZ.multiSig;
+      this.abVotingZ = this.abZ.voting;
+
+      // CONFIGURING
+      await this.oracles.setApplicationTypeOracleTypes(
+        MY_APPLICATION,
+        [TYPE_A, TYPE_B, TYPE_C],
+        [50, 25, 25],
+        [_ES, _ES, _ES],
+        { from: oracleManager }
+      );
+
+      await this.oracles.setOracleTypeMinimalDeposit(TYPE_A, 200, { from: oracleManager });
+      await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
+      await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
+
+      await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, [], [TYPE_A], {
+        from: oracleManager
+      });
+      await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+        from: oracleManager
+      });
+      await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+        from: oracleManager
+      });
+      await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+        from: oracleManager
+      });
+
+      this.X = this.abMultiSigX.address;
+      this.Y = this.abMultiSigY.address;
+      this.Z = this.abMultiSigZ.address;
+      this.abVotingXWeb3 = new web3.eth.Contract(this.abVotingX.abi, this.abVotingX.address);
+      this.abVotingYWeb3 = new web3.eth.Contract(this.abVotingY.abi, this.abVotingY.address);
+      this.abVotingZWeb3 = new web3.eth.Contract(this.abVotingZ.abi, this.abVotingZ.address);
+    });
 
     it('Scenario #1. Three oracles voting, no space owners', async function() {
       await this.galtToken.approve(this.oracleStakesAccountingY.address, ether(2000), { from: alice });
@@ -711,6 +669,30 @@ contract('ArbitratorVoting', accounts => {
     let voting;
     let votingWeb3;
     beforeEach(async function() {
+      this.multiSigFactoryF = await deployMultiSigFactory(
+        this.galtToken.address,
+        this.oracles,
+        claimManager,
+        this.multiSigRegistry,
+        fakeSRA,
+        coreTeam
+      );
+      await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
+      // MultiSigF
+      this.abF = await buildArbitration(
+        this.multiSigFactoryF,
+        [bob, charlie, dan, eve],
+        2,
+        2,
+        3,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        alice
+      );
+      this.abMultiSigF = this.abF.multiSig;
+      this.abVotingF = this.abF.voting;
+      this.abVotingFWeb3 = new web3.eth.Contract(this.abVotingF.abi, this.abVotingF.address);
       voting = this.abVotingF;
       votingWeb3 = this.abVotingFWeb3;
     });
@@ -3015,6 +2997,33 @@ contract('ArbitratorVoting', accounts => {
   });
 
   describe('#onReputationChanged()', () => {
+    beforeEach(async function() {
+      this.multiSigFactoryF = await deployMultiSigFactory(
+        this.galtToken.address,
+        this.oracles,
+        claimManager,
+        this.multiSigRegistry,
+        fakeSRA,
+        coreTeam
+      );
+      await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: alice });
+      // MultiSigF
+      this.abF = await buildArbitration(
+        this.multiSigFactoryF,
+        [bob, charlie, dan, eve],
+        2,
+        2,
+        3,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        alice
+      );
+      this.abMultiSigF = this.abF.multiSig;
+      this.abVotingF = this.abF.voting;
+      this.abVotingFWeb3 = new web3.eth.Contract(this.abVotingF.abi, this.abVotingF.address);
+    });
+
     describe('full reputation revoke', () => {
       it('should revoke reputation from multiple candidates', async function() {
         await this.abVotingF.onDelegateReputationChanged(alice, 800, { from: fakeSRA });
@@ -3163,6 +3172,14 @@ contract('ArbitratorVoting', accounts => {
     let multiSig;
 
     beforeEach(async function() {
+      this.multiSigFactoryF = await deployMultiSigFactory(
+        this.galtToken.address,
+        this.oracles,
+        claimManager,
+        this.multiSigRegistry,
+        fakeSRA,
+        coreTeam
+      );
       await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: bob });
       this.abF = await buildArbitration(
         this.multiSigFactoryF,
