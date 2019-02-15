@@ -361,28 +361,28 @@ contract('PlotCustodianManager', (accounts) => {
         from: oracleManager
       });
 
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
 
@@ -726,34 +726,34 @@ contract('PlotCustodianManager', (accounts) => {
         from: oracleManager
       });
 
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, bob, FOO, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, BAR, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, dan, BUZZ, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
+      await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
-      await this.oracles.onOracleStakeChanged(multiSigX, george, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+      await this.oracles.onOracleStakeChanged(george, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
         from: stakesNotifier
       });
 
