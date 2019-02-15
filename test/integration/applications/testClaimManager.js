@@ -15,7 +15,7 @@ const {
   assertEthBalanceChanged,
   assertRevert
 } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 const { utf8ToHex, hexToString } = Web3.utils;
@@ -115,12 +115,22 @@ contract("ClaimManager", (accounts) => {
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
-    let res = await this.multiSigFactory.buildFirstStep([bob, charlie, dan, eve, frank], 3, { from: alice });
-    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-    this.multiSigXGroupId = res.logs[0].args.groupId;
+    this.abX = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve, frank],
+      3,
+      7,
+      10,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      alice
+    );
 
-    res = await this.multiSigFactory.buildSecondStep(this.multiSigXGroupId, 60, { from: alice });
+    this.mX = this.abX.multiSig.address;
+    this.abMultiSigX = this.abX.multiSig;
+    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.abVotingX = this.abX.voting;
 
     this.mX = this.abMultiSigX.address;
 
