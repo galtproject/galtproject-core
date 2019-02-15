@@ -45,6 +45,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   mapping(address => uint256) private _locks;
 
   mapping(address => ArraySet.AddressSet) private _delegations;
+  mapping(address => ArraySet.AddressSet) private _delegatedBy;
 
   ArraySet.AddressSet private _spaceTokenOwners;
 
@@ -59,7 +60,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     IERC721 _spaceToken,
     ISpaceLockerRegistry _spaceLockerRegistry
   )
-    public
+  public
   {
     spaceToken = _spaceToken;
     spaceLockerRegistry = _spaceLockerRegistry;
@@ -78,7 +79,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function mint(
     ISpaceLocker _spaceLocker
   )
-    public
+  public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
@@ -98,7 +99,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function approveBurn(
     ISpaceLocker _spaceLocker
   )
-    public
+  public
   {
     spaceLockerRegistry.requireValidLocker(_spaceLocker);
 
@@ -167,6 +168,9 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _delegatedBalances[_owner][_account] += _amount;
 
     _delegations[_owner].addSilent(_account);
+    if (_account != _owner) {
+      _delegatedBy[_account].addSilent(_owner);
+    }
   }
 
   function _debitAccount(address _account, address _owner, uint256 _amount) internal {
@@ -178,6 +182,9 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
     if (_delegatedBalances[_owner][_account] == 0) {
       _delegations[_owner].remove(_account);
+      if (_account != _owner) {
+        _delegatedBy[_account].remove(_owner);
+      }
     }
   }
 
@@ -189,6 +196,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
     if (_delegatedBalances[msg.sender][_account] == 0) {
       _delegations[msg.sender].remove(_account);
+      _delegatedBy[_account].remove(msg.sender);
     }
 
     _creditAccount(msg.sender, msg.sender, _amount);
@@ -215,6 +223,14 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
   function delegationCount(address _owner) public view returns (uint256) {
     return _delegations[_owner].size();
+  }
+
+  function delegatedBy(address _account) public view returns (address[] memory) {
+    return _delegatedBy[_account].elements();
+  }
+
+  function delegatedByCount(address _account) public view returns (uint256) {
+    return _delegatedBy[_account].size();
   }
 
   function spaceTokenOwners() public view returns (address[] memory) {
