@@ -41,6 +41,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   event SpaceTokenHeightsChange(bytes32 id, int256[] heights);
   event SpaceTokenContourChange(bytes32 id, uint256[] contour);
   event SpaceTokenLevelChange(bytes32 id, int256 level);
+  event SpaceTokenAreaChange(bytes32 id, uint256 area);
   event SplitOperationStart(uint256 spaceTokenId, address splitOperation);
   event NewSplitSpaceToken(uint256 id);
 
@@ -199,6 +200,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
       emit SpaceTokenContourChange(bytes32(newPackageId), packageToContour[newPackageId]);
 
+      tokenArea[newPackageId] = calculateTokenArea(newPackageId);
+      emit SpaceTokenAreaChange(bytes32(newPackageId), tokenArea[newPackageId]);
+
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
         packageToHeights[newPackageId].push(minHeight);
       }
@@ -209,6 +213,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
       
       emit NewSplitSpaceToken(newPackageId);
     }
+
+    tokenArea[_spaceTokenId] = calculateTokenArea(_spaceTokenId);
+    emit SpaceTokenAreaChange(bytes32(_spaceTokenId), tokenArea[_spaceTokenId]);
 
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -258,6 +265,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
     packageToHeights[_destinationSpaceTokenId] = packageHeights;
     emit SpaceTokenHeightsChange(bytes32(_destinationSpaceTokenId), packageToHeights[_destinationSpaceTokenId]);
+
+    tokenArea[_destinationSpaceTokenId] = calculateTokenArea(_destinationSpaceTokenId);
+    emit SpaceTokenAreaChange(bytes32(_destinationSpaceTokenId), tokenArea[_destinationSpaceTokenId]);
     
     delete packageToContour[_sourceSpaceTokenId];
     emit SpaceTokenContourChange(bytes32(_sourceSpaceTokenId), packageToContour[_sourceSpaceTokenId]);
@@ -267,6 +277,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
     delete packageToLevel[_sourceSpaceTokenId];
     emit SpaceTokenLevelChange(bytes32(_sourceSpaceTokenId), packageToLevel[_sourceSpaceTokenId]);
+
+    tokenArea[_sourceSpaceTokenId] = 0;
+    emit SpaceTokenAreaChange(bytes32(_sourceSpaceTokenId), tokenArea[_sourceSpaceTokenId]);
     
     spaceToken.burn(_sourceSpaceTokenId);
   }
