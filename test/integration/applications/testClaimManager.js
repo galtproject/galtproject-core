@@ -1,5 +1,3 @@
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
