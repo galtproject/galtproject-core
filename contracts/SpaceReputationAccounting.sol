@@ -65,7 +65,8 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _revokeDelegated(_delegate, _amount);
 
     multiSigRegistry
-      .getArbitratorVoting(_multiSig)
+      .getArbitrationConfig(_multiSig)
+      .getArbitratorVoting()
       .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
   }
 
@@ -77,7 +78,8 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _locks[msg.sender][_multiSig] += _amount;
 
     multiSigRegistry
-      .getArbitratorVoting(_multiSig)
+      .getArbitrationConfig(_multiSig)
+      .getArbitratorVoting()
       .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
   }
 
@@ -95,7 +97,8 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _totalLocked[msg.sender] -= _amount;
 
     multiSigRegistry
-      .getArbitratorVoting(_multiSig)
+      .getArbitrationConfig(_multiSig)
+      .getArbitratorVoting()
       .onDelegateReputationChanged(msg.sender, afterUnlock);
   }
 

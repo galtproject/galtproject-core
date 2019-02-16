@@ -15,16 +15,29 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
+import "./ArbitratorStakeAccounting.sol";
+import "./ArbitrationConfig.sol";
 
 contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
-  event NewAuditorsSet(address[] auditors, uint256 required, uint256 total);
+  event NewOwners(address[] auditors, uint256 required, uint256 total);
+  event RevokeOwners();
+  event GaltRunningTotalIncrease(
+    uint256 periodId,
+    uint256 runningTotalBefore,
+    uint256 runningTotalAfter,
+    uint256 amount
+  );
 
   string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
+  string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
-  address public arbitratorVoting;
-  address public oracleStakesAccounting;
+  ArbitrationConfig public arbitrationConfig;
+
+  address public galtToken;
   bool initialized;
+
+  mapping(uint256 => uint256) _periodRunningTotal;
 
   modifier forbidden() {
     assert(false);
@@ -33,11 +46,13 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   constructor(
     address[] memory _initialOwners,
-    uint256 _required
+    uint256 _required,
+    ArbitrationConfig _arbitrationConfig
   )
     public
     MultiSigWallet(_initialOwners, _required)
   {
+    arbitrationConfig = _arbitrationConfig;
   }
 
   function addOwner(address owner) public forbidden {}
@@ -64,44 +79,119 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   /**
    * @dev Set a new arbitrators list with (N-of-M multisig)
-   * @param m required number of signatures
-   * @param n number of validators to slice for a new list
    * @param descArbitrators list of all arbitrators from voting
    */
   function setArbitrators(
-    uint256 m,
-    uint256 n,
     address[] calldata descArbitrators
   )
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    require(descArbitrators.length >= n, "Arbitrators array size less than required");
+    uint256 m = arbitrationConfig.m();
+    uint256 n = arbitrationConfig.n();
+
+    require(descArbitrators.length >= 3, "List should be L >= 3");
+
+    // If the pushed array is smaller than even `m`, assign both `m` and `n` its size
+    if (m > descArbitrators.length) {
+      m = descArbitrators.length;
+      n = descArbitrators.length;
+    }
+
+    require(descArbitrators.length <= n, "Arbitrators array size greater than required");
     required = m;
 
     delete owners;
 
-    for (uint8 i = 0; i < n; i++) {
+    for (uint8 i = 0; i < descArbitrators.length; i++) {
       address o = descArbitrators[i];
 
       isOwner[o] = true;
       owners.push(o);
-      emit OwnerAddition(o);
     }
-    emit NewAuditorsSet(owners, m, n);
+
+    emit NewOwners(owners, m, n);
   }
 
-  function initialize(
-    address _arbitratorVoting,
-    address _oracleStakesAccounting
-  )
+  function revokeArbitrators()
     external
+    onlyRole(ROLE_REVOKE_MANAGER)
   {
-    require(initialized == false, "Already initialized");
+    delete owners;
 
-    arbitratorVoting = _arbitratorVoting;
-    oracleStakesAccounting = _oracleStakesAccounting;
-    initialized = true;
+    emit RevokeOwners();
+  }
+
+  // TODO: GaltToken address should be hardcoded in production version
+  function setGaltToken(address _galtToken) external {
+    galtToken = _galtToken;
+  }
+
+  function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
+    if (destination == galtToken) {
+      checkGaltLimits(data);
+    }
+
+    bool result;
+    assembly {
+      let x := mload(0x40)   // "Allocate" memory for output (0x40 is where "free memory" pointer is stored by convention)
+      let d := add(data, 32) // First 32 bytes are the padded length of data, so exclude that
+      result := call(
+      sub(gas, 34710),   // 34710 is the value that solidity is currently emitting
+      // It includes callGas (700) + callVeryLow (3, to pay for SUB) + callValueTransferGas (9000) +
+      // callNewAccountGas (25000, in case the destination address does not exist and needs creating)
+      destination,
+      value,
+      d,
+      dataLength,        // Size of the input (in bytes) - this is what fixes the padding problem
+      x,
+      0                  // Output is ignored, therefore the output size is zero
+      )
+    }
+    return result;
+  }
+
+  function checkGaltLimits(bytes memory data) internal {
+    uint256 galtValue;
+
+    assembly {
+      let code := mload(add(data, 0x20))
+      code := and(code, 0xffffffff00000000000000000000000000000000000000000000000000000000)
+
+      switch code
+      // transfer(address,uint256)
+      case 0xa9059cbb00000000000000000000000000000000000000000000000000000000 {
+        galtValue := mload(add(data, 0x40))
+      }
+      default {
+        // Methods other than transfer are prohibited for GALT contract
+        revert(0, 0)
+      }
+    }
+
+    if (galtValue == 0) {
+      return;
+    }
+
+    (uint256 currentPeriodId, uint256 totalStakes) = arbitrationConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
+    uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
+    uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
+
+    assert(runningTotalAfter > runningTotalBefore);
+    assert(runningTotalAfter <= totalStakes);
+
+    _periodRunningTotal[currentPeriodId] = runningTotalAfter;
+
+    emit GaltRunningTotalIncrease(
+      currentPeriodId,
+      runningTotalBefore,
+      runningTotalAfter,
+      galtValue
+    );
+  }
+
+  function checkGaltLimitsExternal(bytes calldata data) external {
+    checkGaltLimits(data);
   }
 
   // GETTERS

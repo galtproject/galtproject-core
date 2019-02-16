@@ -16,7 +16,7 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitratorVoting.sol";
+import "../multisig/ArbitrationConfig.sol";
 import "../multisig/OracleStakesAccounting.sol";
 
 
@@ -28,19 +28,17 @@ contract MultiSigRegistry is Permissionable {
   // MultiSig address => Details
   // TODO: need to be a private?
   mapping(address => MultiSig) public multiSigs;
-  ArraySet.AddressSet private multiSigsArray;
+  ArraySet.AddressSet private multiSigArray;
 
   struct MultiSig {
     bool active;
-    ArbitratorVoting voting;
-    OracleStakesAccounting oracleStakesAccounting;
+    ArbitrationConfig arbitrationConfig;
     address factoryAddress;
   }
 
   function addMultiSig(
     ArbitratorsMultiSig _abMultiSig,
-    ArbitratorVoting _abVoting,
-    OracleStakesAccounting _oracleStakesAccounting
+    ArbitrationConfig _arbitrationConfig
   )
     external
     onlyRole(ROLE_FACTORY)
@@ -48,11 +46,10 @@ contract MultiSigRegistry is Permissionable {
     MultiSig storage ms = multiSigs[address(_abMultiSig)];
 
     ms.active = true;
-    ms.voting = _abVoting;
-    ms.oracleStakesAccounting = _oracleStakesAccounting;
+    ms.arbitrationConfig = _arbitrationConfig;
     ms.factoryAddress = msg.sender;
 
-    multiSigsArray.add(address(_abMultiSig));
+    multiSigArray.add(address(_abMultiSig));
   }
 
   // REQUIRES
@@ -63,20 +60,16 @@ contract MultiSigRegistry is Permissionable {
 
   // GETTERS
 
-  function getArbitratorVoting(address _multiSig) external view returns (ArbitratorVoting) {
-    return multiSigs[_multiSig].voting;
-  }
-
-  function getOracleStakesAccounting(address _multiSig) external view returns (OracleStakesAccounting) {
-    return multiSigs[_multiSig].oracleStakesAccounting;
+  function getArbitrationConfig(address _multiSig) external view returns (ArbitrationConfig) {
+    return multiSigs[_multiSig].arbitrationConfig;
   }
 
   function getMultiSigList() external returns (address[] memory) {
-    return multiSigsArray.elements();
+    return multiSigArray.elements();
   }
 
   function getMultiSigCount() external returns (uint256) {
-    return multiSigsArray.size();
+    return multiSigArray.size();
   }
   // TODO: how to update Factory Address?
   // TODO: how to deactivate multiSig?

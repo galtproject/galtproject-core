@@ -29,7 +29,7 @@ library AddressLinkedList {
 
   event SetHead(address head);
 
-  function insertByFoundAndComparator(Data storage data, address newAddress, address foundAddress, int8 compareResult) public {
+  function insertByFoundAndComparator(Data storage data, address newAddress, address foundAddress, int8 compareResult) internal {
     if (data.head == address(0)) {
       data.count += 1;
 
@@ -62,7 +62,7 @@ library AddressLinkedList {
 
   event InsertAfter(address addr, address prev, uint count);
 
-  function insertAfter(Data storage data, address newAddress, address prev) public {
+  function insertAfter(Data storage data, address newAddress, address prev) internal {
     data.count += 1;
 
     data.nodes[newAddress].next = data.nodes[prev].next;
@@ -81,7 +81,7 @@ library AddressLinkedList {
 
   event Remove(address addr, address prev, address next, address head, address tail, uint count);
 
-  function remove(Data storage data, address addr) public {
+  function remove(Data storage data, address addr) internal {
     if (addr == address(0)) {
       return;
     }
@@ -109,7 +109,7 @@ library AddressLinkedList {
     delete data.nodes[addr];
   }
 
-  function swap(Data storage data, address a, address b) public {
+  function swap(Data storage data, address a, address b) internal {
     Node storage aNode = data.nodes[a];
     Node storage bNode = data.nodes[b];
     address aNodePrevId = aNode.prev;
@@ -158,7 +158,7 @@ library AddressLinkedList {
     }
   }
 
-  function getIndex(Data storage data, address addr) public returns (uint256) {
+  function getIndex(Data storage data, address addr) internal returns (uint256) {
     if (addr == address(0)) {
       require(false, "id not exists in LinkedList");
     }
@@ -176,7 +176,7 @@ library AddressLinkedList {
 
   event LogPop(address popAddress, address head, uint256 count);
 
-  function pop(Data storage data) public returns (address) {
+  function pop(Data storage data) internal returns (address) {
     address popAddress = data.head;
 
     if (data.nodes[popAddress].next != address(0)) {

@@ -15,9 +15,9 @@ pragma solidity 0.5.3;
 
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 // This contract will be included into the current one
-import "../GaltToken.sol";
 import "../Oracles.sol";
 import "../multisig/OracleStakesAccounting.sol";
 
@@ -25,17 +25,15 @@ import "../multisig/OracleStakesAccounting.sol";
 contract OracleStakesAccountingFactory is Ownable {
   function build(
     Oracles _oracles,
-    GaltToken _galtToken,
-    ArbitratorsMultiSig _arbitratorMultiSig
+    IERC20 _galtToken,
+    ArbitrationConfig _arbitrationConfig
   )
     external
-    returns (OracleStakesAccounting)
+    returns (OracleStakesAccounting oracleStakes)
   {
-    OracleStakesAccounting oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitratorMultiSig);
+    oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitrationConfig);
 
     oracleStakes.addRoleTo(msg.sender, "role_manager");
     oracleStakes.removeRoleFrom(address(this), "role_manager");
-
-    return oracleStakes;
   }
 }

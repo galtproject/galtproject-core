@@ -15,7 +15,7 @@ pragma solidity 0.5.3;
 
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/OracleStakesAccounting.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
@@ -87,7 +87,6 @@ contract ClaimManager is AbstractApplication {
   }
 
   struct Proposal {
-    bytes32 id;
     Action action;
     ArraySet.AddressSet votesFor;
     address from;
@@ -96,6 +95,8 @@ contract ClaimManager is AbstractApplication {
     address[] oracles;
     bytes32[] oracleTypes;
     uint256[] fines;
+    address[] arbitrators;
+    uint256[] arbitratorFines;
   }
 
   struct Message {
@@ -103,6 +104,17 @@ contract ClaimManager is AbstractApplication {
     uint256 timestamp;
     address from;
     string text;
+  }
+
+  struct ArbitratorFine {
+    address addr;
+    uint256 amount;
+  }
+
+  struct OracleFine {
+    address addr;
+    bytes32 oracleType;
+    uint256 amount;
   }
 
   mapping(bytes32 => Claim) claims;
@@ -130,7 +142,7 @@ contract ClaimManager is AbstractApplication {
 
   function initialize(
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )
@@ -258,46 +270,53 @@ contract ClaimManager is AbstractApplication {
     bytes32 _cId,
     string calldata _msg,
     uint256 _amount,
-    address[] calldata _a,
-    bytes32[] calldata _r,
-    uint256[] calldata _f
+    address[] calldata _oracles,
+    bytes32[] calldata _oracleTypes,
+    uint256[] calldata _oracleFines,
+    address[] calldata _arbitrators,
+    uint256[] calldata _arbitratorFines
   )
     external
   {
-    require(_a.length == _r.length, "Address/Role arrays should be equal");
-    require(_r.length == _f.length, "Role/Fine arrays should be equal");
+    require(_oracles.length == _oracleTypes.length, "Oracle/OracleType arrays should be equal");
+    require(_oracleTypes.length == _oracleFines.length, "OracleType/Fine arrays should be equal");
+    require(_arbitrators.length == _arbitratorFines.length, "Arbitrator list/fines arrays should be equal");
+    require(_oracles.length > 0 || _arbitratorFines.length > 0, "Either oracles or arbitrators should be fined");
 
-    require(_a.length > 0, "Accused oracles array should contain at leas one element");
+    require(oracles.oraclesHasTypesAssigned(_oracles, _oracleTypes), "Some roles are invalid");
 
+    Proposal storage p = createProposal(_cId);
+
+    p.from = msg.sender;
+    p.action = Action.APPROVE;
+    p.amount = _amount;
+    p.message = _msg;
+    p.arbitrators = _arbitrators;
+    p.arbitratorFines = _arbitratorFines;
+    p.fines = _oracleFines;
+    p.oracleTypes = _oracleTypes;
+    p.oracles = _oracles;
+  }
+
+  function createProposal(bytes32 _cId) internal returns (Proposal storage p) {
     Claim storage c = claims[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
-    require(oracles.oraclesHasTypesAssigned(_a, _r), "Some roles are invalid");
+    bytes32 pId = keccak256(abi.encode(_cId, block.number, msg.sender));
 
-    bytes32 id = keccak256(abi.encode(_cId, _msg, _a, _r, _f, msg.sender));
-    require(c.proposalDetails[id].from == address(0), "Proposal already exists");
+    require(c.proposalDetails[pId].from == address(0), "Proposal already exists");
 
-    Proposal memory p;
+    emit NewProposal(_cId, pId, Action.APPROVE, msg.sender);
 
-    p.id = id;
-    p.from = msg.sender;
-    p.action = Action.APPROVE;
-    p.message = _msg;
-    p.amount = _amount;
-    p.oracles = _a;
-    p.oracleTypes = _r;
-    p.fines = _f;
-
-    c.proposalDetails[id] = p;
-    c.proposals.push(id);
+    c.proposals.push(pId);
 
     // arbitrator immediately votes for the proposal
-    _voteFor(c, id);
     // as we have minimum n equal 2, a brand new proposal could not be executed in this step
+    _voteFor(c, pId);
 
-    emit NewProposal(_cId, id, Action.APPROVE, msg.sender);
+    p = c.proposalDetails[pId];
   }
 
   /**
@@ -318,7 +337,6 @@ contract ClaimManager is AbstractApplication {
     p.from = msg.sender;
     p.message = _msg;
     p.action = Action.REJECT;
-    p.id = id;
 
     c.proposalDetails[id] = p;
     c.proposals.push(id);
@@ -354,8 +372,14 @@ contract ClaimManager is AbstractApplication {
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
         multiSigRegistry
-          .getOracleStakesAccounting(c.multiSig)
+          .getArbitrationConfig(c.multiSig)
+          .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
+
+        multiSigRegistry
+          .getArbitrationConfig(c.multiSig)
+          .getArbitratorStakes()
+          .slashMultiple(p.arbitrators, p.arbitratorFines);
 
         c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
           address(galtToken),
@@ -436,7 +460,7 @@ contract ClaimManager is AbstractApplication {
       _c.proposalDetails[_c.votes[msg.sender]].votesFor.remove(msg.sender);
     }
 
-    _c.votes[msg.sender] = _p.id;
+    _c.votes[msg.sender] = _pId;
     _p.votesFor.add(msg.sender);
   }
 
@@ -492,6 +516,7 @@ contract ClaimManager is AbstractApplication {
     bytes32 _cId
   )
     external
+    view
     returns (
       address applicant,
       address beneficiary,
@@ -529,6 +554,7 @@ contract ClaimManager is AbstractApplication {
     bytes32 _cId
   )
     external
+    view
     returns (
       Currency currency,
       uint256 arbitratorsReward,
@@ -588,28 +614,45 @@ contract ClaimManager is AbstractApplication {
     view
     returns (
       Action action,
-      bytes32 id,
       address from,
       string memory message,
-      address[] memory votesFor,
-      uint256 votesSize,
       address[] memory oracles,
       bytes32[] memory oracleTypes,
-      uint256[] memory fines
+      uint256[] memory oracleFines,
+      address[] memory arbitrators,
+      uint256[] memory arbitratorFines
     )
   {
     Proposal storage p = claims[_cId].proposalDetails[_pId];
 
     return (
       p.action,
-      _pId,
       p.from,
       p.message,
-      p.votesFor.elements(),
-      p.votesFor.size(),
       p.oracles,
       p.oracleTypes,
-      p.fines
+      p.fines,
+      p.arbitrators,
+      p.arbitratorFines
+    );
+  }
+
+  function getProposalVotes(
+    bytes32 _cId,
+    bytes32 _pId
+  )
+    external
+    view
+    returns (
+      uint256 votesSize,
+      address[] memory votesFor
+    )
+  {
+    Proposal storage p = claims[_cId].proposalDetails[_pId];
+
+    return (
+      p.votesFor.size(),
+      p.votesFor.elements()
     );
   }
 }

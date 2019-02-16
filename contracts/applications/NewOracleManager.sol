@@ -14,6 +14,7 @@
 pragma solidity 0.5.3;
 
 
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../registries/MultiSigRegistry.sol";
@@ -39,7 +40,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
 
   function initialize(
     Oracles _oracles,
-    ERC20 _galtToken,
+    IERC20 _galtToken,
     MultiSigRegistry _multiSigRegistry,
     address _galtSpaceRewardsAddress
   )

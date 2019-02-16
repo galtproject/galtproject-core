@@ -2,8 +2,7 @@ const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
-const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
-const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
+const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
@@ -41,7 +40,8 @@ contract('OracleStakesAccounting', accounts => {
     applicationTypeManager,
     oracleManager,
     multiSig,
-    spaceReputationAccounting,
+    spaceReputationAccountingAddress,
+    zeroAddress,
     alice,
     bob,
     charlie,
@@ -52,23 +52,16 @@ contract('OracleStakesAccounting', accounts => {
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
+
+    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
+    this.arbitratorVoting = await ArbitratorVoting.new(this.config.address, { from: coreTeam });
     this.oracleStakesAccountingX = await OracleStakesAccounting.new(
       this.oracles.address,
       this.galtToken.address,
-      multiSig,
+      this.config.address,
       { from: coreTeam }
     );
 
-    VotingLinkedList.link('AddressLinkedList', (await AddressLinkedList.new()).address);
-    const votingLinkedList = await VotingLinkedList.new();
-    ArbitratorVoting.link('VotingLinkedList', votingLinkedList.address);
-
-    this.arbitratorVoting = await ArbitratorVoting.new(
-      multiSig,
-      spaceReputationAccounting,
-      this.oracleStakesAccountingX.address,
-      { from: coreTeam }
-    );
     await this.arbitratorVoting.addRoleTo(
       this.oracleStakesAccountingX.address,
       await this.arbitratorVoting.ORACLE_STAKES_NOTIFIER(),
@@ -76,7 +69,15 @@ contract('OracleStakesAccounting', accounts => {
         from: coreTeam
       }
     );
-    this.oracleStakesAccountingX.setVotingAddress(this.arbitratorVoting.address, { from: coreTeam });
+
+    this.config.initialize(
+      multiSig,
+      this.arbitratorVoting.address,
+      zeroAddress,
+      this.oracleStakesAccountingX.address,
+      spaceReputationAccountingAddress
+    );
+
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     this.mX = multiSig;

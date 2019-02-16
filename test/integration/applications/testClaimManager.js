@@ -1,5 +1,3 @@
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -15,7 +13,7 @@ const {
   assertEthBalanceChanged,
   assertRevert
 } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 const { utf8ToHex, hexToString } = Web3.utils;
@@ -115,9 +113,22 @@ contract("ClaimManager", (accounts) => {
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
-    const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank], 3, { from: alice });
-    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.oracleStakesAccountingX = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    this.abX = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve, frank],
+      3,
+      7,
+      10,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      alice
+    );
+
+    this.mX = this.abX.multiSig.address;
+    this.abMultiSigX = this.abX.multiSig;
+    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.abVotingX = this.abX.voting;
 
     this.mX = this.abMultiSigX.address;
 
@@ -579,6 +590,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -592,6 +605,8 @@ contract("ClaimManager", (accounts) => {
           [bob, eve],
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [ether(10), ether(20)],
+          [],
+          [],
           { from: dan }
         );
         const pId2 = res.logs[0].args.proposalId;
@@ -608,7 +623,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.action, Action.APPROVE);
         assert.sameMembers(res.oracles, [dan]);
         assert.sameMembers(res.oracleTypes.map(hexToString), [PC_AUDITOR_ORACLE_TYPE].map(hexToString));
-        assert.sameMembers(res.fines, [ether(20)]);
+        assert.sameMembers(res.oracleFines, [ether(20)]);
 
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, pId2).call();
         assert.equal(res.from, dan);
@@ -619,18 +634,18 @@ contract("ClaimManager", (accounts) => {
           res.oracleTypes.map(web3.utils.hexToString),
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToString)
         );
-        assert.sameMembers(res.fines, [ether(10), ether(20)]);
+        assert.sameMembers(res.oracleFines, [ether(10), ether(20)]);
       });
 
       it('should deny non-oracle proposing a proposal', async function() {
         await assertRevert(
-          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], { from: coreTeam })
+          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], [], [], { from: coreTeam })
         );
       });
 
       it('should deny oracle proposing when claim is not locked', async function() {
         await assertRevert(
-          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], { from: eve })
+          this.claimManager.proposeApproval(this.cId, 'looks good', ether(10), [], [], [], [], [], { from: eve })
         );
       });
 
@@ -642,6 +657,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -653,6 +670,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(30)],
+          [],
+          [],
           {
             from: bob
           }
@@ -729,6 +748,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -742,6 +763,8 @@ contract("ClaimManager", (accounts) => {
           [bob, eve],
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [ether(10), ether(20)],
+          [],
+          [],
           { from: dan }
         );
         this.pId2 = res.logs[0].args.proposalId;
@@ -752,13 +775,13 @@ contract("ClaimManager", (accounts) => {
 
       it('should automatically count proposer voice', async function() {
         // empty array since the vote reassigned to pId3
-        let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        let res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId1).call();
         assert.sameMembers(res.votesFor, []);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, [dan]);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId3).call();
         assert.sameMembers(res.votesFor, [bob]);
       });
 
@@ -769,13 +792,13 @@ contract("ClaimManager", (accounts) => {
         let res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId1).call();
         assert.sameMembers(res.votesFor, [bob, dan]);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, []);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId3).call();
         assert.sameMembers(res.votesFor, []);
       });
 
@@ -787,9 +810,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId1, { from: bob });
         await this.claimManager.vote(this.cId, this.pId1, { from: dan });
 
-        let res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        let res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId1).call();
         assert.sameMembers(res.votesFor, [bob, dan]);
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, []);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId1);
@@ -798,9 +821,9 @@ contract("ClaimManager", (accounts) => {
 
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId1).call();
         assert.sameMembers(res.votesFor, [dan]);
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.sameMembers(res.votesFor, [bob]);
         res = await this.claimManagerWeb3.methods.getVotedFor(this.cId, bob).call();
         assert.equal(res, this.pId2);
@@ -828,6 +851,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId1).call();
         assert.equal(res.from, bob);
         assert.equal(res.action, Action.APPROVE);
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId1).call();
         assert.sameMembers(res.votesFor, [dan, bob, charlie]);
       });
 
@@ -848,6 +872,8 @@ contract("ClaimManager", (accounts) => {
             [bob, eve],
             [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
             [ether(15), ether(20)],
+            [],
+            [],
             { from: dan }
           )
         );
@@ -885,6 +911,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -898,6 +926,8 @@ contract("ClaimManager", (accounts) => {
           [bob, eve],
           [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [ether(10), ether(20)],
+          [],
+          [],
           { from: dan }
         );
         this.pId2 = res.logs[0].args.proposalId;
@@ -923,7 +953,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.oracles.isOracleTypeActive(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.equal(res.votesFor.length, 1);
 
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
@@ -948,7 +978,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.oracles.isOracleTypeActive(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, false);
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId2).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId2).call();
         assert.equal(res.votesFor.length, 3);
 
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
@@ -1023,7 +1053,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId3, { from: bob });
         await this.claimManager.vote(this.cId, this.pId3, { from: eve });
 
-        res = await this.claimManagerWeb3.methods.getProposal(this.cId, this.pId3).call();
+        res = await this.claimManagerWeb3.methods.getProposalVotes(this.cId, this.pId3).call();
         assert.equal(res.votesFor.length, 3);
         res = await this.claimManagerWeb3.methods.claim(this.cId).call();
         assert.equal(res.status, ApplicationStatus.REJECTED);
@@ -1074,6 +1104,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -1087,6 +1119,8 @@ contract("ClaimManager", (accounts) => {
           [bob, eve],
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [ether(10), ether(20)],
+          [],
+          [],
           { from: dan }
         );
         this.pId2 = res.logs[0].args.proposalId;
@@ -1339,6 +1373,8 @@ contract("ClaimManager", (accounts) => {
           [dan],
           [PC_AUDITOR_ORACLE_TYPE],
           [ether(20)],
+          [],
+          [],
           {
             from: bob
           }
@@ -1352,6 +1388,8 @@ contract("ClaimManager", (accounts) => {
           [bob, eve],
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
           [ether(10), ether(20)],
+          [],
+          [],
           { from: dan }
         );
         this.pId2 = res.logs[0].args.proposalId;

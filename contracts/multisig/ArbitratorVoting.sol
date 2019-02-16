@@ -18,6 +18,8 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../SpaceReputationAccounting.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./OracleStakesAccounting.sol";
+import "./ArbitrationConfig.sol";
+import "./ArbitratorStakeAccounting.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
 
@@ -58,6 +60,7 @@ contract ArbitratorVoting is Permissionable {
 
   event Recalculate(
     address delegate,
+    bool isIgnored,
     uint256 candidateSpaceReputation,
     uint256 candidateOracleStake,
     uint256 totalSpaceReputation,
@@ -81,9 +84,6 @@ contract ArbitratorVoting is Permissionable {
   string public constant ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
   string public constant SPACE_REPUTATION_NOTIFIER = "space_reputation_notifier";
 
-  OracleStakesAccounting oracleStakesAccounting;
-  SpaceReputationAccounting spaceReputationAccounting;
-
   // Oracle address => Oracle details
   mapping(address => Oracle) private oracles;
   // Oracle Candidate => totalWeights
@@ -95,6 +95,10 @@ contract ArbitratorVoting is Permissionable {
   mapping(address => uint256) private lockedReputation;
   // Candidate/Delegate => balance
   mapping(address => uint256) private reputationBalance;
+  // Candidate => isIgnored
+  mapping(address => bool) private ignoredCandidates;
+
+  uint256 public totalWeight;
 
   struct Oracle {
     address candidate;
@@ -112,28 +116,21 @@ contract ArbitratorVoting is Permissionable {
   uint256 public totalSpaceReputation;
   uint256 public totalOracleStakes;
 
-  uint256 public n;
-  uint256 public m;
-
-  ArbitratorsMultiSig arbitratorsMultiSig;
+  ArbitrationConfig arbitrationConfig;
 
   constructor(
-    ArbitratorsMultiSig _arbitratorsMultiSig,
-    SpaceReputationAccounting _spaceReputationAccounting,
-    OracleStakesAccounting _oracleStakesAccounting
+    ArbitrationConfig _arbitrationConfig
   )
     public
   {
-    arbitratorsMultiSig = _arbitratorsMultiSig;
-    spaceReputationAccounting = _spaceReputationAccounting;
-    oracleStakesAccounting = _oracleStakesAccounting;
-    n = 10;
-    votingData.maxCount = n;
+    arbitrationConfig = _arbitrationConfig;
     votingList.withTail = true;
+    // FIX: should rely on arbitrationConfig
+    votingData.maxCount = _arbitrationConfig.n();
   }
 
-
   function recalculate(address _candidate) external {
+    uint256 weightBefore = getWeight(_candidate);
     uint256 candidateSpaceReputation = lockedReputation[_candidate];
     uint256 candidateOracleStake = oracleStakes[_candidate];
     uint256 spaceReputationRatio = 0;
@@ -148,15 +145,16 @@ contract ArbitratorVoting is Permissionable {
     }
 
     uint256 combinedRatio = (spaceReputationRatio + oracleStakeRatio);
+    uint256 weightAfter = 0;
+    bool ignore = (ignoredCandidates[_candidate] == true);
 
-    uint256 weight = 0;
-
-    if (combinedRatio > 0) {
-      weight = combinedRatio / 2;
+    if (combinedRatio > 0 && !ignore) {
+      weightAfter = combinedRatio / 2;
     }
 
     emit Recalculate(
       _candidate,
+      ignore,
       candidateSpaceReputation,
       candidateOracleStake,
       totalSpaceReputation,
@@ -164,17 +162,23 @@ contract ArbitratorVoting is Permissionable {
       spaceReputationRatio,
       oracleStakeRatio,
       combinedRatio,
-      weight
+      weightAfter
     );
 
-    VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weight);
+    if (weightBefore > weightAfter) {
+      totalWeight -= (weightBefore - weightAfter);
+    } else {
+      totalWeight += (weightAfter - weightBefore);
+    }
+
+    VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, weightAfter);
   }
 
   // 'Oracle Stake Locking' accounting only inside this contract
   function voteWithOracleStake(address _candidate) external {
     // TODO: check oracle is activev
 
-    uint256 newWeight = uint256(oracleStakesAccounting.balanceOf(msg.sender));
+    uint256 newWeight = uint256(arbitrationConfig.getOracleStakes().balanceOf(msg.sender));
     require(newWeight > 0, "Weight is 0 or less");
 
     address previousCandidate = oracles[msg.sender].candidate;
@@ -306,6 +310,7 @@ contract ArbitratorVoting is Permissionable {
     }
   }
 
+  // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
   function onOracleStakeChanged(
     address _oracle,
@@ -316,6 +321,8 @@ contract ArbitratorVoting is Permissionable {
   {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 currentWeight = oracles[_oracle].weight;
+
+    totalOracleStakes = totalOracleStakes + _newWeight - currentWeight;
 
     // The oracle hadn't vote or revoked his vote
     if (currentCandidate == address(0)) {
@@ -337,33 +344,48 @@ contract ArbitratorVoting is Permissionable {
     );
   }
 
-  // TODO: define permissions
-  function setMofN(
-    uint256 _m,
-    uint256 _n
-  )
-    external
-  {
-    // NOTICE: n < 3 doesn't supported by recalculation logic
-    require(2 <= _m, "Should satisfy `2 <= m`");
-    require(3 <= _n, "Should satisfy `3 <= n`");
-    require(_m <= _n, "Should satisfy `m <= n`");
-
-    m = _m;
-    n = _n;
-    votingData.maxCount = n;
+  function pushArbitrators() external {
+    arbitrationConfig
+      .getMultiSig()
+      .setArbitrators(getCandidatesWithStakes());
   }
 
-  function pushArbitrators() external {
-    address[] memory c = getCandidates();
-
-    require(c.length >= 3, "List should be L >= 3");
-    assert(c.length >= m);
-
-    arbitratorsMultiSig.setArbitrators(m, n, c);
+  function ignoreMe(bool _value) external {
+    ignoredCandidates[msg.sender] = _value;
   }
 
   // Getters
+
+  function getCandidatesWithStakes() public view returns (address[] memory) {
+    if (votingList.count == 0) {
+      return new address[](0);
+    }
+
+    ArbitratorStakeAccounting arbitratorStakes = arbitrationConfig.getArbitratorStakes();
+    address[] memory p = new address[](votingList.count);
+    uint256 minimalStake = arbitrationConfig.minimalArbitratorStake();
+    uint256 pI = 0;
+
+    address currentAddress = votingList.head;
+
+    for (uint256 i = 0; i < p.length; i++) {
+      if (arbitratorStakes.balanceOf(currentAddress) >= minimalStake) {
+        p[pI] = currentAddress;
+        pI += 1;
+      }
+
+      currentAddress = votingList.nodes[currentAddress].next;
+    }
+
+    if (pI == 0) {
+      return new address[](0);
+    }
+
+    // p.length = pI
+    assembly { mstore(p, pI) }
+
+    return p;
+  }
 
   function getCandidates() public view returns (address[] memory) {
     if (votingList.count == 0) {
@@ -383,20 +405,56 @@ contract ArbitratorVoting is Permissionable {
     return c;
   }
 
-  function getOracleStakes(address _candidate) external view returns (uint256) {
-    return oracleStakes[_candidate];
+  function getOracleShare(address _oracle) external view returns (uint256) {
+    return oracleStakes[_oracle] * 100 / totalOracleStakes;
+  }
+
+  function getDelegateShare(address _delegate) external view returns (uint256) {
+    return reputationBalance[_delegate] * 100 / totalSpaceReputation;
+  }
+
+  function getOracleStakes(address _oracle) external view returns (uint256) {
+    return oracleStakes[_oracle];
   }
 
   function getSpaceReputation(address _delegate) external view returns (uint256) {
     return reputationBalance[_delegate];
   }
 
-  function getWeight(address _candidate) external view returns (uint256) {
+  function getShare(address[] calldata _addresses) external view returns (uint256) {
+    // delegates
+    uint256 delegatesAccumulator = 0;
+    // oracles
+    uint256 oraclesAccumulator = 0;
+
+    for (uint256 i = 0; i < _addresses.length; i++) {
+      delegatesAccumulator += reputationBalance[_addresses[i]];
+      oraclesAccumulator += oracleStakes[_addresses[i]];
+    }
+
+    uint256 totalShare = 0;
+
+    if (totalSpaceReputation != 0) {
+      totalShare += delegatesAccumulator * 100 / totalSpaceReputation;
+    }
+
+    if (totalOracleStakes != 0) {
+      totalShare += oraclesAccumulator * 100 / totalOracleStakes;
+    }
+
+    return totalShare / 2;
+  }
+
+  function getWeight(address _candidate) public view returns (uint256) {
     return votingData.votes[_candidate];
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {
     return VotingLinkedList.isExists(votingList, _candidate);
+  }
+
+  function isIgnored(address _candidate) external view returns (bool) {
+    return ignoredCandidates[_candidate];
   }
 
   function getSize() external view returns (uint256 size) {

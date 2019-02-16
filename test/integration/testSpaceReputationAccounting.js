@@ -5,13 +5,12 @@ const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../helpers');
-const { deployMultiSigFactory } = require('../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
 
 const web3 = new Web3(SpaceReputationAccounting.web3.currentProvider);
 
@@ -325,17 +324,53 @@ contract('SpaceReputationAccounting', accounts => {
         this.spaceReputationAccounting.address,
         coreTeam
       );
-      await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
-      let res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
+      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
 
-      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigY = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+      // MultiSigX
+      this.abX = await buildArbitration(
+        this.multiSigFactory,
+        [a1, a2, a3],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        alice
+      );
+      const abMultiSigX = this.abX.multiSig;
 
-      res = await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
-      const abMultiSigZ = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
+      // MultiSigY
+      this.abY = await buildArbitration(
+        this.multiSigFactory,
+        [a1, a2, a3],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        bob
+      );
+      const abMultiSigY = this.abY.multiSig;
 
-      res = await this.spaceToken.mint(alice, { from: minter });
+      // MultiSigZ
+      this.abZ = await buildArbitration(
+        this.multiSigFactory,
+        [a1, a2, a3],
+        2,
+        3,
+        4,
+        60,
+        ether(1000),
+        [30, 30, 30, 30, 30],
+        charlie
+      );
+      const abMultiSigZ = this.abZ.multiSig;
+
+      let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.mint(bob, { from: minter });
       const token2 = res.logs[0].args.tokenId.toNumber();
@@ -479,7 +514,7 @@ contract('SpaceReputationAccounting', accounts => {
         coreTeam
       );
       await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
-      await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
+      // await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
 
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();

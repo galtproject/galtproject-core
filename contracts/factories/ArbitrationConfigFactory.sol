@@ -16,26 +16,31 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
-import "../multisig/ArbitratorVoting.sol";
 import "../multisig/ArbitrationConfig.sol";
-import "../multisig/OracleStakesAccounting.sol";
-import "../SpaceReputationAccounting.sol";
 
 
-contract ArbitratorVotingFactory is Ownable {
+contract ArbitrationConfigFactory is Ownable {
   function build(
-    ArbitrationConfig arbitrationConfig
+    uint256 _m,
+    uint256 _n,
+    uint256 _minimalArbitratorStake,
+  // 0 - SET_THRESHOLD_THRESHOLD
+  // 1 - SET_M_OF_N_THRESHOLD
+  // 2 - REVOKE_ARBITRATORS_THRESHOLD
+  // 3 - CHANGE_CONTRACT_ADDRESS_THRESHOLD
+    uint256[] calldata _thresholds
   )
     external
-    returns (ArbitratorVoting)
+    returns (ArbitrationConfig config)
   {
-    ArbitratorVoting voting = new ArbitratorVoting(
-      arbitrationConfig
+    config = new ArbitrationConfig(
+      _m,
+      _n,
+      _minimalArbitratorStake,
+      _thresholds
     );
 
-    voting.addRoleTo(msg.sender, "role_manager");
-    voting.removeRoleFrom(address(this), "role_manager");
-
-    return voting;
+    config.addRoleTo(msg.sender, "role_manager");
+    config.removeRoleFrom(address(this), "role_manager");
   }
 }

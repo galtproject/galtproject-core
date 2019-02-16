@@ -1,9 +1,7 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
@@ -13,7 +11,7 @@ const {
   assertGaltBalanceChanged,
   assertRevert
 } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
@@ -107,12 +105,22 @@ contract('NewOracleManager', (accounts) => {
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+    this.abX = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve, frank, george],
+      3,
+      7,
+      10,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30],
+      alice
+    );
 
-    const res = await this.multiSigFactory.build([bob, charlie, dan, eve, frank, george], 3, { from: alice });
-    this.abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    this.abVotingX = res.logs[0].args.arbitratorVoting;
-    this.oracleStakesAccountingX = OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
-    this.mX = this.abMultiSigX.address;
+    this.mX = this.abX.multiSig.address;
+    this.abMultiSigX = this.abX.multiSig;
+    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.abVotingX = this.abX.voting;
 
     await this.newOracle.initialize(
       this.oracles.address,

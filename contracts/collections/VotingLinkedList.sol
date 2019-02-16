@@ -31,7 +31,7 @@ library VotingLinkedList {
     address newAddress,
     uint256 value
   )
-    public
+    internal
   {
     emit InsertOrUpdate(newAddress, value);
 
@@ -61,13 +61,13 @@ library VotingLinkedList {
     }
   }
   
-  function isExists(AddressLinkedList.Data storage votingList, address addr) public view returns (bool) {
+  function isExists(AddressLinkedList.Data storage votingList, address addr) internal view returns (bool) {
     return votingList.head == addr || votingList.tail == addr || votingList.nodes[addr].next != address(0) || votingList.nodes[addr].prev != address(0);
   }
 
   event CompareResult(int8 compareResult);
 
-  function compare(Data storage votingData, address a, address b) public returns (int8 compareResult) {
+  function compare(Data storage votingData, address a, address b) internal returns (int8 compareResult) {
     if (votingData.votes[a] > votingData.votes[b]) {
       compareResult = - 1;
     } else {
@@ -83,7 +83,7 @@ library VotingLinkedList {
     address valueAddress,
     bool returnLeft
   )
-    public
+    internal
     returns (address)
   {
     if (votingList.head == address(0)) {
