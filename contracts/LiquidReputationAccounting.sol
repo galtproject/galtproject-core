@@ -167,8 +167,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _balances[_account] += _amount;
     _delegatedBalances[_owner][_account] += _amount;
 
-    _delegations[_owner].addSilent(_account);
     if (_account != _owner) {
+      _delegations[_owner].addSilent(_account);
       _delegatedBy[_account].addSilent(_owner);
     }
   }
@@ -181,8 +181,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _delegatedBalances[_owner][_account] -= _amount;
 
     if (_delegatedBalances[_owner][_account] == 0) {
-      _delegations[_owner].remove(_account);
       if (_account != _owner) {
+        _delegations[_owner].remove(_account);
         _delegatedBy[_account].remove(_owner);
       }
     }

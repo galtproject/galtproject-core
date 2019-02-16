@@ -214,13 +214,13 @@ contract('SpaceReputationAccounting', accounts => {
 
       // check delegations
       res = await this.spaceReputationAccounting.delegations(alice);
-      assert.sameMembers(res, [alice, bob, charlie]);
+      assert.sameMembers(res, [bob, charlie]);
 
       res = await this.spaceReputationAccounting.delegations(bob);
-      assert.sameMembers(res, [bob]);
+      assert.sameMembers(res, []);
 
       res = await this.spaceReputationAccounting.delegations(charlie);
-      assert.sameMembers(res, [charlie]);
+      assert.sameMembers(res, []);
 
       // REVOKE #1
       await this.spaceReputationAccounting.revoke(bob, 200, { from: alice });
@@ -259,13 +259,13 @@ contract('SpaceReputationAccounting', accounts => {
 
       // check delegations
       res = await this.spaceReputationAccounting.delegations(alice);
-      assert.sameMembers(res, [alice]);
+      assert.sameMembers(res, []);
 
       res = await this.spaceReputationAccounting.delegations(bob);
-      assert.sameMembers(res, [bob]);
+      assert.sameMembers(res, []);
 
       res = await this.spaceReputationAccounting.delegations(charlie);
-      assert.sameMembers(res, [charlie]);
+      assert.sameMembers(res, []);
 
       // WITHDRAW TOKEN
       await assertRevert(this.spaceReputationAccounting.approveBurn(aliceLockerAddress, { from: charlie }));
@@ -286,10 +286,10 @@ contract('SpaceReputationAccounting', accounts => {
       assert.sameMembers(res, []);
 
       res = await this.spaceReputationAccounting.delegations(bob);
-      assert.sameMembers(res, [bob]);
+      assert.sameMembers(res, []);
 
       res = await this.spaceReputationAccounting.delegations(charlie);
-      assert.sameMembers(res, [charlie]);
+      assert.sameMembers(res, []);
 
       await aliceLocker.burn(this.spaceReputationAccounting.address, { from: alice });
       await aliceLocker.withdraw(token1, { from: alice });
