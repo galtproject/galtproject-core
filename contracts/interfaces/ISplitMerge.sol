@@ -13,14 +13,22 @@
 
 pragma solidity 0.5.3;
 
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+
 interface ISplitMerge {
+  enum AreaSource {
+    USER_INPUT,
+    CONTRACT
+  }
+  
+//  IGeodesic public geodesic;
+  
   function setPackageContour(uint256 _spaceTokenId, uint256[] calldata _geohashesContour) external;
   function setPackageHeights(uint256 _spaceTokenId, int256[] calldata _heightsList) external;
   function setPackageLevel(uint256 _spaceTokenId, int256 _level) external;
-  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external;
-  function setContourArea(uint256 _tokenId, uint256 _amount) external view returns (uint256);
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external;
   function initPackage(address _owner) external returns (uint256);
   function getContourArea(uint256 _tokenId) external view returns (uint256);
-  function geodesic() external view returns (address);
   function getPackageContour(uint256 _tokenId) external view returns (uint256[] memory);
+  function geodesic() external view returns (IGeodesic);
 }

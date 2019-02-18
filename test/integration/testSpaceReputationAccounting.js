@@ -81,9 +81,9 @@ contract('SpaceReputationAccounting', accounts => {
       assert.equal(res, charlie);
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token2, 600, { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token3, 400, { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token2, 600, '0', { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -378,9 +378,9 @@ contract('SpaceReputationAccounting', accounts => {
       const token3 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token2, 600, { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token3, 400, { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token2, 600, '0', { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -520,7 +520,7 @@ contract('SpaceReputationAccounting', accounts => {
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, { from: geoDateManagement });
+      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
 
       // CREATE LOCKER
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });

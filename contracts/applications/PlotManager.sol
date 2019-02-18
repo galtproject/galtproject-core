@@ -48,11 +48,6 @@ contract PlotManager is AbstractOracleApplication {
     REVERTED
   }
 
-  enum AreaSource {
-    USER_INPUT,
-    CONTRACT
-  }
-
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
@@ -91,7 +86,7 @@ contract PlotManager is AbstractOracleApplication {
     bytes32 ledgerIdentifier;
     int256 level;
     uint256 area;
-    AreaSource areaSource;
+    ISplitMerge.AreaSource areaSource;
     uint256[] packageContour;
     int256[] heights;
   }
@@ -219,7 +214,7 @@ contract PlotManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
-      details.areaSource = AreaSource.CONTRACT;
+      details.areaSource = ISplitMerge.AreaSource.CONTRACT;
       details.area = geodesic.calculateContourArea(_packageContour);
     } else {
       details.area = _customArea;
@@ -436,7 +431,7 @@ contract PlotManager is AbstractOracleApplication {
     splitMerge.setPackageContour(tokenId, a.details.packageContour);
     splitMerge.setPackageHeights(tokenId, a.details.heights);
     splitMerge.setPackageLevel(tokenId, a.details.level);
-    splitMerge.setTokenArea(tokenId, a.details.area);
+    splitMerge.setTokenArea(tokenId, a.details.area, a.details.areaSource);
   }
 
   function rejectApplication(
@@ -713,7 +708,7 @@ contract PlotManager is AbstractOracleApplication {
       bytes32 ledgerIdentifier,
       int256 level,
       uint256 area,
-      AreaSource areaSource,
+      ISplitMerge.AreaSource areaSource,
       uint256[] memory packageContour,
       int256[] memory heights
     )
