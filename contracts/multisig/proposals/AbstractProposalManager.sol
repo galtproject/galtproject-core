@@ -31,10 +31,14 @@ contract AbstractProposalManager is Permissionable {
   Counter.Counter idCounter;
 
   ArraySet.Uint256Set private _activeProposals;
+  mapping(address => ArraySet.Uint256Set) private _activeProposalsBySender;
+
+  mapping(uint256 => address) private _proposalToSender;
+
   uint256[] private _approvedProposals;
   uint256[] private _rejectedProposals;
 
-//  string public constant RSRA_CONTRACT = "rsra_contract";
+  //  string public constant RSRA_CONTRACT = "rsra_contract";
 
   mapping(uint256 => ProposalVoting) internal _proposalVotings;
 
@@ -60,13 +64,14 @@ contract AbstractProposalManager is Permissionable {
 
   modifier onlyMember() {
     // TODO: define
-//    require(rsra.balanceOf(msg.sender) > 0, "Not valid member");
+    //    require(rsra.balanceOf(msg.sender) > 0, "Not valid member");
 
     _;
   }
 
   // Should be implemented inside descendant
   function _execute(uint256 _proposalId) internal;
+
   function getThreshold() public view returns (uint256);
 
   function aye(uint256 _proposalId) external onlyMember {
@@ -94,6 +99,7 @@ contract AbstractProposalManager is Permissionable {
     proposalVoting.status = ProposalStatus.APPROVED;
 
     _activeProposals.remove(_proposalId);
+    _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _approvedProposals.push(_proposalId);
 
     _execute(_proposalId);
@@ -113,6 +119,7 @@ contract AbstractProposalManager is Permissionable {
 
     proposalVoting.status = ProposalStatus.REJECTED;
     _activeProposals.remove(_proposalId);
+    _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _rejectedProposals.push(_proposalId);
 
     emit Rejected(nayShare, threshold);
@@ -139,6 +146,8 @@ contract AbstractProposalManager is Permissionable {
 
   function _onNewProposal(uint256 _proposalId) internal {
     _activeProposals.add(_proposalId);
+    _activeProposalsBySender[msg.sender].add(_proposalId);
+    _proposalToSender[_proposalId] = msg.sender;
   }
 
   // GETTERS
@@ -146,9 +155,21 @@ contract AbstractProposalManager is Permissionable {
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare);
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare);
-
+  
   function getActiveProposals() public view returns (uint256[] memory) {
     return _activeProposals.elements();
+  }
+
+  function getActiveProposalsCount() public view returns (uint256) {
+    return _activeProposals.size();
+  }
+
+  function getActiveProposalsBySender(address _sender) external view returns (uint256[] memory) {
+    return _activeProposalsBySender[_sender].elements();
+  }
+
+  function getActiveProposalsBySenderCount(address _sender) external view returns (uint256) {
+    return _activeProposalsBySender[_sender].size();
   }
 
   function getApprovedProposals() public view returns (uint256[] memory) {
@@ -162,16 +183,34 @@ contract AbstractProposalManager is Permissionable {
   function getProposalVoting(
     uint256 _proposalId
   )
-    external
-    view
-    returns (
-      ProposalStatus status,
-      address[] memory ayes,
-      address[] memory nays
-    )
+  external
+  view
+  returns (
+    ProposalStatus status,
+    address[] memory ayes,
+    address[] memory nays)
   {
     ProposalVoting storage p = _proposalVotings[_proposalId];
 
     return (p.status, p.ayes.elements(), p.nays.elements());
+  }
+
+  function getProposalStatus(
+    uint256 _proposalId
+  )
+  external
+  view
+  returns (
+    ProposalStatus status,
+    uint256 ayesCount,
+    uint256 naysCount)
+  {
+    ProposalVoting storage p = _proposalVotings[_proposalId];
+
+    return (p.status, p.ayes.size(), p.nays.size());
+  }
+
+  function getParticipantProposalChoice(uint256 _proposalId, address _participant) external view returns (Choice) {
+    return _proposalVotings[_proposalId].participants[_participant];
   }
 }
