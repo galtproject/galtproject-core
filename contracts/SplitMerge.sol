@@ -206,6 +206,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
       tokenArea[newPackageId] = calculateTokenArea(newPackageId);
       emit SpaceTokenAreaChange(bytes32(newPackageId), tokenArea[newPackageId]);
+      tokenAreaSource[newPackageId] = AreaSource.CONTRACT;
 
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
         packageToHeights[newPackageId].push(minHeight);
@@ -219,6 +220,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     }
 
     tokenArea[_spaceTokenId] = calculateTokenArea(_spaceTokenId);
+    tokenAreaSource[_spaceTokenId] = AreaSource.CONTRACT;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), tokenArea[_spaceTokenId]);
 
     activeSplitOperations[splitOperationAddress] = false;
@@ -274,6 +276,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
     tokenArea[_destinationSpaceTokenId] = calculateTokenArea(_destinationSpaceTokenId);
     emit SpaceTokenAreaChange(bytes32(_destinationSpaceTokenId), tokenArea[_destinationSpaceTokenId]);
+    tokenAreaSource[_destinationSpaceTokenId] = AreaSource.CONTRACT;
     
     delete packageToContour[_sourceSpaceTokenId];
     emit SpaceTokenContourChange(bytes32(_sourceSpaceTokenId), packageToContour[_sourceSpaceTokenId]);
@@ -286,6 +289,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
     tokenArea[_sourceSpaceTokenId] = 0;
     emit SpaceTokenAreaChange(bytes32(_sourceSpaceTokenId), tokenArea[_sourceSpaceTokenId]);
+    tokenAreaSource[_sourceSpaceTokenId] = AreaSource.CONTRACT;
     
     spaceToken.burn(_sourceSpaceTokenId);
   }
@@ -330,7 +334,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     int256[] memory heights,
     int256 level,
     uint256 area,
-    AreaSource area
+    AreaSource areaSource
   )
   {
     return (
