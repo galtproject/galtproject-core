@@ -17,11 +17,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../ArbitrationConfig.sol";
-import "./AbstractProposalManager.sol";
+import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
 
-contract ModifyMofNProposalManager is IProposalManager, AbstractProposalManager {
+contract ModifyMofNProposalManager is IProposalManager, AbstractArbitrationProposalManager {
   struct Proposal {
     uint256 m;
     uint256 n;
@@ -34,7 +34,7 @@ contract ModifyMofNProposalManager is IProposalManager, AbstractProposalManager 
     ArbitrationConfig _arbitrationConfig
   )
     public
-    AbstractProposalManager(_arbitrationConfig)
+    AbstractArbitrationProposalManager(_arbitrationConfig)
   {
   }
 

@@ -30,8 +30,6 @@ contract AbstractProposalManager is Permissionable {
 
   Counter.Counter idCounter;
 
-  ArbitrationConfig public arbitrationConfig;
-
   ArraySet.Uint256Set private _activeProposals;
   uint256[] private _approvedProposals;
   uint256[] private _rejectedProposals;
@@ -58,10 +56,6 @@ contract AbstractProposalManager is Permissionable {
     mapping(address => Choice) participants;
     ArraySet.AddressSet ayes;
     ArraySet.AddressSet nays;
-  }
-
-  constructor(ArbitrationConfig _arbitrationConfig) public {
-    arbitrationConfig = _arbitrationConfig;
   }
 
   modifier onlyMember() {
@@ -149,17 +143,9 @@ contract AbstractProposalManager is Permissionable {
 
   // GETTERS
 
-  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return arbitrationConfig
-      .getArbitratorVoting()
-      .getShare(_proposalVotings[_proposalId].ayes.elements());
-  }
+  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare);
 
-  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return arbitrationConfig
-      .getArbitratorVoting()
-      .getShare(_proposalVotings[_proposalId].nays.elements());
-  }
+  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare);
 
   function getActiveProposals() public view returns (uint256[] memory) {
     return _activeProposals.elements();

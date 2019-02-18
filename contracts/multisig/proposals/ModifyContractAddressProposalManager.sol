@@ -17,11 +17,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../ArbitrationConfig.sol";
-import "./AbstractProposalManager.sol";
+import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
 
-contract ModifyContractAddressProposalManager is IProposalManager, AbstractProposalManager {
+contract ModifyContractAddressProposalManager is IProposalManager, AbstractArbitrationProposalManager {
   struct Proposal {
     bytes32 key;
     address value;
@@ -34,7 +34,7 @@ contract ModifyContractAddressProposalManager is IProposalManager, AbstractPropo
     ArbitrationConfig _arbitrationConfig
   )
     public
-    AbstractProposalManager(_arbitrationConfig)
+    AbstractArbitrationProposalManager(_arbitrationConfig)
   {
   }
 
