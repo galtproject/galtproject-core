@@ -1,0 +1,25 @@
+image: galtspace/node-test-runner:0.5.3
+
+stages:
+  - test
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+  - node_modules/
+
+before_script:
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+
+test_async:
+  stage: test
+  script:
+   - npm install
+   - npm run eslint && npm run ethlint && npm run test
+  tags:
+    - docker
