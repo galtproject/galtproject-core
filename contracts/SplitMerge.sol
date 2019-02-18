@@ -50,7 +50,6 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   mapping(uint256 => int256[]) public packageToHeights;
   mapping(uint256 => int256) public packageToLevel;
 
-  // HACK: there is no token area accounting anywhere else yet
   mapping(uint256 => uint256) public tokenArea;
   mapping(uint256 => AreaSource) public tokenAreaSource;
 
