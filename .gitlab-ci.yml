@@ -7,7 +7,6 @@ test_async:
   stage: test
   script:
    - npm install
-   - npm install -g eslint ethlint
    - npm run eslint && npm run ethlint && npm run test
   tags:
     - docker
