@@ -16,8 +16,7 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../ArbitrationConfig.sol";
-
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 contract AbstractProposalManager is Permissionable {
   using Counter for Counter.Counter;
