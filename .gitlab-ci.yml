@@ -1,0 +1,13 @@
+image: galtspace/node-test-runner:0.5.3
+
+stages:
+  - test
+
+test_async:
+  stage: test
+  script:
+   - npm install
+   - npm install -g eslint ethlint
+   - npm run eslint && npm run ethlint && npm run test
+  tags:
+    - docker
