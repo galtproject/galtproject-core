@@ -25,7 +25,6 @@ chai.should();
 
 contract('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
-
   const areaAccurancy = 7;
 
   beforeEach(async function() {
