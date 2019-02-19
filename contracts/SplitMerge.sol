@@ -57,6 +57,13 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
   address[] public allSplitOperations;
 
+  struct TokenInfo {
+    bytes32 ledgerIdentifier;
+    string description;
+  }
+
+  mapping(uint256 => TokenInfo) public tokenInfo;
+  
   function initialize(SpaceToken _spaceToken) public isInitializer {
     spaceToken = _spaceToken;
   }
@@ -328,20 +335,31 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     return tokenArea[_spaceTokenId];
   }
 
+  function setTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
+    TokenInfo storage ti = tokenInfo[_spaceTokenId];
+    ti.ledgerIdentifier = _ledgerIdentifier;
+    ti.description = _description;
+  }
+
   function getPackageGeoData(uint256 _spaceTokenId) public view returns (
     uint256[] memory contour,
     int256[] memory heights,
     int256 level,
     uint256 area,
-    AreaSource areaSource
+    AreaSource areaSource,
+    bytes32 ledgerIdentifier,
+    string memory description
   )
   {
+    TokenInfo storage ti = tokenInfo[_spaceTokenId];
     return (
       packageToContour[_spaceTokenId],
       packageToHeights[_spaceTokenId],
       packageToLevel[_spaceTokenId],
       tokenArea[_spaceTokenId],
-      tokenAreaSource[_spaceTokenId]
+      tokenAreaSource[_spaceTokenId],
+      ti.ledgerIdentifier,
+      ti.description
     );
   }
 }

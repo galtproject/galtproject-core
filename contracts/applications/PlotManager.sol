@@ -84,6 +84,7 @@ contract PlotManager is AbstractOracleApplication {
   struct ApplicationDetails {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
+    string description;
     int256 level;
     uint256 area;
     ISplitMerge.AreaSource areaSource;
@@ -187,6 +188,7 @@ contract PlotManager is AbstractOracleApplication {
     uint256 _customArea,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
+    string calldata _description,
     uint256 _submissionFeeInGalt
   )
     external
@@ -209,36 +211,34 @@ contract PlotManager is AbstractOracleApplication {
     );
 
     Application storage a = applications[_id];
-    ApplicationDetails storage details = a.details;
+//    ApplicationDetails storage details = a.details;
 
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
-      details.areaSource = ISplitMerge.AreaSource.CONTRACT;
-      details.area = geodesic.calculateContourArea(_packageContour);
+      a.details.areaSource = ISplitMerge.AreaSource.CONTRACT;
+      a.details.area = geodesic.calculateContourArea(_packageContour);
     } else {
-      details.area = _customArea;
+      a.details.area = _customArea;
       // Default a.areaSource is AreaSource.USER_INPUT
     }
-
-    uint256 fee;
 
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(Currency.GALT, details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(Currency.GALT, a.details.area), "Incorrect fee passed in");
 
       galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
 
-      fee = _submissionFeeInGalt;
+      a.fees.totalPaidFee = _submissionFeeInGalt;
       a.currency = Currency.GALT;
     // ETH
     } else {
-      fee = msg.value;
+      a.fees.totalPaidFee = msg.value;
       // Default a.currency is Currency.ETH
 
       require(
-        msg.value >= getSubmissionFeeByArea(Currency.ETH, details.area),
+        msg.value >= getSubmissionFeeByArea(Currency.ETH, a.details.area),
         "Incorrect msg.value passed in");
     }
 
@@ -246,13 +246,14 @@ contract PlotManager is AbstractOracleApplication {
     a.id = _id;
     a.applicant = msg.sender;
 
-    calculateAndStoreFee(a, fee);
+    calculateAndStoreFee(a, a.fees.totalPaidFee);
 
-    details.ledgerIdentifier = _ledgerIdentifier;
-    details.credentialsHash = _credentialsHash;
-    details.level = _level;
-    details.packageContour = _packageContour;
-    details.heights = _heights;
+    a.details.ledgerIdentifier = _ledgerIdentifier;
+    a.details.description = _description;
+    a.details.credentialsHash = _credentialsHash;
+    a.details.level = _level;
+    a.details.packageContour = _packageContour;
+    a.details.heights = _heights;
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -280,6 +281,7 @@ contract PlotManager is AbstractOracleApplication {
     bytes32 _aId,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
+    string calldata _description,
     uint256[] calldata _newPackageContour,
     int256[] calldata _newHeights,
     int256 _newLevel,
@@ -288,31 +290,34 @@ contract PlotManager is AbstractOracleApplication {
   )
     external
     payable
-    onlyApplicant(_aId)
   {
-    Application storage a = applications[_aId];
-
     require(
-      a.status == ApplicationStatus.REVERTED,
+      applications[_aId].applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
+      "Applicant invalid");
+    require(
+      applications[_aId].status == ApplicationStatus.REVERTED,
       "Application status should be REVERTED");
 
-    checkResubmissionPayment(a, _resubmissionFeeInGalt, _newPackageContour);
+    checkResubmissionPayment(applications[_aId], _resubmissionFeeInGalt, _newPackageContour);
 
-    uint256 len = a.assignedOracleTypes.length;
+    applications[_aId].details.level = _newLevel;
+    applications[_aId].details.heights = _newHeights;
+    applications[_aId].details.packageContour = _newPackageContour;
+    applications[_aId].details.description = _description;
+    applications[_aId].details.ledgerIdentifier = _ledgerIdentifier;
+    applications[_aId].details.credentialsHash = _credentialsHash;
 
-    a.details.credentialsHash = _credentialsHash;
-    a.details.ledgerIdentifier = _ledgerIdentifier;
-    a.details.packageContour = _newPackageContour;
-    a.details.level = _newLevel;
-    a.details.heights = _newHeights;
+    assignLockedStatus(_aId);
 
-    for (uint8 i = 0; i < len; i++) {
-      if (a.validationStatus[a.assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, a.assignedOracleTypes[i], ValidationStatus.LOCKED);
+    changeApplicationStatus(applications[_aId], ApplicationStatus.SUBMITTED);
+  }
+  
+  function assignLockedStatus(bytes32 _aId) internal {
+    for (uint8 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
+      if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
+        changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
       }
     }
-
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   function checkResubmissionPayment(
@@ -432,6 +437,7 @@ contract PlotManager is AbstractOracleApplication {
     splitMerge.setPackageHeights(tokenId, a.details.heights);
     splitMerge.setPackageLevel(tokenId, a.details.level);
     splitMerge.setTokenArea(tokenId, a.details.area, a.details.areaSource);
+    splitMerge.setTokenInfo(tokenId, a.details.ledgerIdentifier, a.details.description);
   }
 
   function rejectApplication(
@@ -645,6 +651,7 @@ contract PlotManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       bytes32 ledgerIdentifier,
+      string memory description,
       bytes32[] memory assignedOracleTypes
     )
   {
@@ -659,6 +666,7 @@ contract PlotManager is AbstractOracleApplication {
       m.status,
       m.currency,
       m.details.ledgerIdentifier,
+      m.details.description,
       m.assignedOracleTypes
     );
   }
