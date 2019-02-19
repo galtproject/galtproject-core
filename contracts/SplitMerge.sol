@@ -23,8 +23,9 @@ import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./SpaceToken.sol";
 import "./SplitMergeLib.sol";
+import "./interfaces/ISplitMerge.sol";
 
-contract SplitMerge is Initializable, Ownable, Permissionable {
+contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
@@ -49,8 +50,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
   mapping(uint256 => int256[]) public packageToHeights;
   mapping(uint256 => int256) public packageToLevel;
 
-  // HACK: there is no token area accounting anywhere else yet
   mapping(uint256 => uint256) public tokenArea;
+  mapping(uint256 => AreaSource) public tokenAreaSource;
 
   mapping(address => bool) public activeSplitOperations;
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
@@ -142,6 +143,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     onlySpaceTokenOwner(_spaceTokenId)
     returns (address)
   {
+    require(tokenAreaSource[_spaceTokenId] == AreaSource.CONTRACT, "Split available only for contract calculated token's area");
+    
     address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
 
     address newSplitOperationAddress = splitOperationFactory.build(_spaceTokenId, _clippingContour);
@@ -202,6 +205,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
       tokenArea[newPackageId] = calculateTokenArea(newPackageId);
       emit SpaceTokenAreaChange(bytes32(newPackageId), tokenArea[newPackageId]);
+      tokenAreaSource[newPackageId] = AreaSource.CONTRACT;
 
       for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
         packageToHeights[newPackageId].push(minHeight);
@@ -215,6 +219,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     }
 
     tokenArea[_spaceTokenId] = calculateTokenArea(_spaceTokenId);
+    tokenAreaSource[_spaceTokenId] = AreaSource.CONTRACT;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), tokenArea[_spaceTokenId]);
 
     activeSplitOperations[splitOperationAddress] = false;
@@ -240,6 +245,8 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     onlySpaceTokenOwner(_sourceSpaceTokenId)
     onlySpaceTokenOwner(_destinationSpaceTokenId)
   {
+    require(tokenAreaSource[_sourceSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
+    require(tokenAreaSource[_destinationSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
     require(
       getPackageLevel(_sourceSpaceTokenId) == getPackageLevel(_destinationSpaceTokenId),
       "Space tokens levels should be equal"
@@ -268,6 +275,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
     tokenArea[_destinationSpaceTokenId] = calculateTokenArea(_destinationSpaceTokenId);
     emit SpaceTokenAreaChange(bytes32(_destinationSpaceTokenId), tokenArea[_destinationSpaceTokenId]);
+    tokenAreaSource[_destinationSpaceTokenId] = AreaSource.CONTRACT;
     
     delete packageToContour[_sourceSpaceTokenId];
     emit SpaceTokenContourChange(bytes32(_sourceSpaceTokenId), packageToContour[_sourceSpaceTokenId]);
@@ -280,6 +288,7 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
 
     tokenArea[_sourceSpaceTokenId] = 0;
     emit SpaceTokenAreaChange(bytes32(_sourceSpaceTokenId), tokenArea[_sourceSpaceTokenId]);
+    tokenAreaSource[_sourceSpaceTokenId] = AreaSource.CONTRACT;
     
     spaceToken.burn(_sourceSpaceTokenId);
   }
@@ -310,8 +319,9 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     return geodesic.calculateContourArea(packageToContour[_spaceTokenId]);
   }
 
-  function setTokenArea(uint256 _spaceTokenId, uint256 _area) external onlyGeoDataManager {
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     tokenArea[_spaceTokenId] = _area;
+    tokenAreaSource[_spaceTokenId] = _areaSource;
   }
 
   function getContourArea(uint256 _spaceTokenId) external view returns (uint256) {
@@ -322,14 +332,16 @@ contract SplitMerge is Initializable, Ownable, Permissionable {
     uint256[] memory contour,
     int256[] memory heights,
     int256 level,
-    uint256 area
+    uint256 area,
+    AreaSource areaSource
   )
   {
     return (
       packageToContour[_spaceTokenId],
       packageToHeights[_spaceTokenId],
       packageToLevel[_spaceTokenId],
-      tokenArea[_spaceTokenId]
+      tokenArea[_spaceTokenId],
+      tokenAreaSource[_spaceTokenId]
     );
   }
 }

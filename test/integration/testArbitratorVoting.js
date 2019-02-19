@@ -295,13 +295,13 @@ contract('ArbitratorVoting', accounts => {
 
       // SET AREAS
       let p = [
-        this.splitMerge.setTokenArea(x1, '300', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x2, '500', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x3, '400', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x4, '700', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x5, '100', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x6, '1000', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x7, '0', { from: geoDateManagement })
+        this.splitMerge.setTokenArea(x1, '300', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x2, '500', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x3, '400', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x4, '700', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x5, '100', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x6, '1000', '0', { from: geoDateManagement }),
+        this.splitMerge.setTokenArea(x7, '0', '0', { from: geoDateManagement })
       ];
 
       await Promise.all(p);

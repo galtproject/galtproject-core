@@ -25,7 +25,6 @@ chai.should();
 
 contract('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
-
   const areaAccurancy = 7;
 
   beforeEach(async function() {
@@ -74,6 +73,11 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       await this.splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
       await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
+      await this.splitMerge.setTokenArea(
+        tokenId,
+        web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
+        '1'
+      );
       return tokenId;
     };
 

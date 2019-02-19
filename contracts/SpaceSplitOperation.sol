@@ -58,7 +58,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] memory _subjectContour, uint256[] memory _clippingContour) public {
     splitMerge = ISplitMerge(_splitMerge);
     spaceToken = ISpaceToken(_spaceToken);
-    geodesic = IGeodesic(splitMerge.geodesic());
+    geodesic = splitMerge.geodesic();
 
     subjectTokenOwner = _subjectTokenOwner;
     subjectTokenId = _subjectTokenId;
