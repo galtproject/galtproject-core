@@ -329,6 +329,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     tokenArea[_spaceTokenId] = _area;
     tokenAreaSource[_spaceTokenId] = _areaSource;
+    emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
   }
 
   function getContourArea(uint256 _spaceTokenId) external view returns (uint256) {

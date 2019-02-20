@@ -40,10 +40,17 @@ contract SplitMergeSandbox is SplitMerge {
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
   }
 
-  function createPackage(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList) public returns (uint256) {
+  function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
+    tokenArea[_spaceTokenId] = _area;
+    tokenAreaSource[_spaceTokenId] = _areaSource;
+    emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
+  }
+
+  function createPackage(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList, uint256 _area, AreaSource _areaSource) public returns (uint256) {
     uint256 _spaceTokenId = initPackage(spaceTokenOwner);
     setPackageContour(_spaceTokenId, _geohashesContour);
     setPackageHeights(_spaceTokenId, _heightsList);
+    setTokenArea(_spaceTokenId, _area, _areaSource);
     return _spaceTokenId;
   }
 }
