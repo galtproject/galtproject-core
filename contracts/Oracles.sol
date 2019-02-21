@@ -383,6 +383,7 @@ contract Oracles is Permissionable {
     returns (
       bytes32 name,
       bytes32 position,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory activeOracleTypes,
       bytes32[] memory assignedOracleTypes,
@@ -392,12 +393,13 @@ contract Oracles is Permissionable {
     Oracle storage o = oracles[oracle];
 
     return (
-    o.name,
-    o.position,
-    o.descriptionHashes,
-    o.activeOracleTypes.elements(),
-    o.assignedOracleTypes.elements(),
-    o.active
+      o.name,
+      o.position,
+      o.description,
+      o.descriptionHashes,
+      o.activeOracleTypes.elements(),
+      o.assignedOracleTypes.elements(),
+      o.active
     );
   }
 
