@@ -51,6 +51,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     bytes32 id;
     address applicant;
     bytes32 ledgerIdentifier;
+    string description;
     uint256 spaceTokenId;
     
     uint256 oraclesReward;
@@ -135,6 +136,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
   function submitApplication(
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
+    string calldata _description,
     uint256[] calldata _newContour,
     int256[] calldata _newHeights,
     int256 _newLevel,
@@ -186,6 +188,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
 
     a.spaceTokenId = _spaceTokenId;
     a.ledgerIdentifier = _ledgerIdentifier;
+    a.description = _description;
 
     applications[_id] = a;
     applicationsArray.push(_id);
@@ -245,6 +248,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
       splitMerge.setPackageContour(a.spaceTokenId, a.newContour);
       splitMerge.setPackageHeights(a.spaceTokenId, a.newHeights);
       splitMerge.setPackageLevel(a.spaceTokenId, a.newLevel);
+      splitMerge.setTokenInfo(a.spaceTokenId, a.ledgerIdentifier, a.description);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
@@ -416,14 +420,15 @@ contract PlotClarificationManager is AbstractOracleApplication {
       uint256[] memory newContour,
       int256[] memory newHeights,
       int256 newLevel,
-      bytes32 ledgerIdentifier
+      bytes32 ledgerIdentifier,
+      string memory description
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
     Application storage m = applications[_id];
 
-    return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier);
+    return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier, m.description);
   }
 
   function getApplicationOracle(
