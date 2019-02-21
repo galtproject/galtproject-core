@@ -103,7 +103,7 @@ contract('PlotCustodianManager', (accounts) => {
       'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
       'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
-    ];
+    ].map(galt.ipfsHashToBytes32);
 
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
@@ -1352,7 +1352,9 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('with current custodians exist', () => {
       beforeEach(async function() {
-        await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], { from: manualCustodianManager });
+        await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], this.attachedDocuments, {
+          from: manualCustodianManager
+        });
         const res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
         assert.sameMembers(res, [charlie, frank]);
       });
@@ -1431,9 +1433,14 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should allow simple pipeline', async function() {
-          await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], { from: manualCustodianManager });
+          await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], this.attachedDocuments, {
+            from: manualCustodianManager
+          });
           let res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
           assert.sameMembers(res, [charlie, frank, bob, george]);
+
+          res = await this.spaceCustodianRegistry.spaceDocuments(this.spaceTokenId);
+          assert.sameMembers(res, this.attachedDocuments);
 
           // Now there are 4 custodians: [charlie, frank, bob, george]
           res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, george], 0, {

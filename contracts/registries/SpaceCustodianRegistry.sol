@@ -24,11 +24,13 @@ contract SpaceCustodianRegistry is Permissionable {
 
   // SpaceLocker address => Details
   mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
+  mapping(uint256 => bytes32[]) private assignedDocuments;
 
 
   function attach(
     uint256 _spaceTokenId,
-    address[] calldata _custodians
+    address[] calldata _custodians,
+    bytes32[] calldata _documents
   )
     external
     onlyRole(ROLE_APPLICATION)
@@ -36,11 +38,13 @@ contract SpaceCustodianRegistry is Permissionable {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].add(_custodians[i]);
     }
+    assignedDocuments[_spaceTokenId] = _documents;
   }
 
   function detach(
     uint256 _spaceTokenId,
-    address[] calldata _custodians
+    address[] calldata _custodians,
+    bytes32[] calldata _documents
   )
     external
     onlyRole(ROLE_APPLICATION)
@@ -48,6 +52,7 @@ contract SpaceCustodianRegistry is Permissionable {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].remove(_custodians[i]);
     }
+    assignedDocuments[_spaceTokenId] = _documents;
   }
 
   function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool) {
@@ -60,5 +65,9 @@ contract SpaceCustodianRegistry is Permissionable {
 
   function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256) {
     return assignedCustodians[_spaceTokenId].size();
+  }
+
+  function spaceDocuments(uint256 _spaceTokenId) external view returns (bytes32[] memory) {
+    return assignedDocuments[_spaceTokenId];
   }
 }
