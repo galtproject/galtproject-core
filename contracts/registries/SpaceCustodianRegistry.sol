@@ -19,11 +19,13 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 contract SpaceCustodianRegistry is Permissionable {
   using ArraySet for ArraySet.AddressSet;
+  using ArraySet for ArraySet.Uint256Set;
 
   string public constant ROLE_APPLICATION = "application";
 
   // SpaceLocker address => Details
   mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
+  mapping(address => ArraySet.Uint256Set) private spaceTokensOfCustodian;
   mapping(uint256 => bytes32[]) private assignedDocuments;
 
 
@@ -37,6 +39,7 @@ contract SpaceCustodianRegistry is Permissionable {
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].add(_custodians[i]);
+      spaceTokensOfCustodian[_custodians[i]].add(_spaceTokenId);
     }
     assignedDocuments[_spaceTokenId] = _documents;
   }
@@ -51,6 +54,7 @@ contract SpaceCustodianRegistry is Permissionable {
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].remove(_custodians[i]);
+      spaceTokensOfCustodian[_custodians[i]].remove(_spaceTokenId);
     }
     assignedDocuments[_spaceTokenId] = _documents;
   }
@@ -69,5 +73,13 @@ contract SpaceCustodianRegistry is Permissionable {
 
   function spaceDocuments(uint256 _spaceTokenId) external view returns (bytes32[] memory) {
     return assignedDocuments[_spaceTokenId];
+  }
+  
+  function custodianTokens(address _custodian) external view returns (uint256[] memory) {
+    return spaceTokensOfCustodian[_custodian].elements();
+  }
+
+  function custodianTokensCount(address _custodian) external view returns (uint256) {
+    return spaceTokensOfCustodian[_custodian].size();
   }
 }
