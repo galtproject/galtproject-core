@@ -53,6 +53,7 @@ contract Oracles is Permissionable {
   struct Oracle {
     bytes32 name;
     address multiSig;
+    string description;
     bytes32[] descriptionHashes;
     ArraySet.Bytes32Set assignedOracleTypes;
     ArraySet.Bytes32Set activeOracleTypes;
@@ -194,11 +195,13 @@ contract Oracles is Permissionable {
 
   // >>> Oracles management
   // TODO: add to a specific multisig
+  // TODO: remove _description field
   function addOracle(
     address _multiSig,
     address _oracle,
     bytes32 _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes
   )
@@ -215,6 +218,7 @@ contract Oracles is Permissionable {
     o.name = _name;
     o.descriptionHashes = _descriptionHashes;
     o.position = _position;
+    o.description = _description;
     o.active = true;
     o.multiSig = _multiSig;
 

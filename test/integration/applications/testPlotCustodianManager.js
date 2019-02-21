@@ -314,6 +314,7 @@ contract('PlotCustodianManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         [],
         [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
@@ -325,16 +326,17 @@ contract('PlotCustodianManager', (accounts) => {
         charlie,
         CHARLIE,
         MN,
+        '',
         [],
         [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -636,6 +638,7 @@ contract('PlotCustodianManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         [],
         [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
@@ -647,22 +650,23 @@ contract('PlotCustodianManager', (accounts) => {
         charlie,
         CHARLIE,
         MN,
+        '',
         [],
         [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
 

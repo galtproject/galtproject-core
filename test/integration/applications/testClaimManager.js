@@ -453,9 +453,9 @@ contract("ClaimManager", (accounts) => {
         from: applicationTypeManager
       });
 
-      await this.oracles.addOracle(this.mX, bob, BOB, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, dan, DAN, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, eve, EVE, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+      await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
       const res = await this.claimManager.submit(
         this.mX,
@@ -888,11 +888,11 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.slotsThreshold, 3);
         assert.equal(res.totalSlots, 5);
 
-        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
         await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
 
@@ -1062,13 +1062,22 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by GALT', () => {
       beforeEach(async function() {
-        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(
+          this.mX,
+          bob,
+          BOB,
+          MN,
+          '',
+          [],
+          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+          {
+            from: oracleManager
+          }
+        );
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
-          from: oracleManager
-        });
-        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
 
@@ -1331,13 +1340,22 @@ contract("ClaimManager", (accounts) => {
 
     describe('claims fee paid by ETH', () => {
       beforeEach(async function() {
-        await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(
+          this.mX,
+          bob,
+          BOB,
+          MN,
+          '',
+          [],
+          [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+          {
+            from: oracleManager
+          }
+        );
+        await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
-        await this.oracles.addOracle(this.mX, eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
-          from: oracleManager
-        });
-        await this.oracles.addOracle(this.mX, dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+        await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
           from: oracleManager
         });
 

@@ -315,10 +315,10 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN, FOO], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR, HUMAN], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT, BUZZ], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN, FOO], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [BAR, HUMAN], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT, BUZZ], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
@@ -684,10 +684,10 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN, FOO], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT, BUZZ], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN, FOO], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [BAR], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT, BUZZ], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });

@@ -80,6 +80,7 @@ contract('UpdateOracleManager', (accounts) => {
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
     this.attachedDocumentsBytes32 = this.attachedDocuments.map(galt.ipfsHashToBytes32);
+    this.description = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
@@ -211,7 +212,7 @@ contract('UpdateOracleManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(this.mX, bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
     });
@@ -224,6 +225,7 @@ contract('UpdateOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          this.description,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -244,6 +246,7 @@ contract('UpdateOracleManager', (accounts) => {
             galtSpaceOrg,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(45),
@@ -262,6 +265,7 @@ contract('UpdateOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          this.description,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -282,6 +286,7 @@ contract('UpdateOracleManager', (accounts) => {
             galtSpaceOrg,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -312,6 +317,7 @@ contract('UpdateOracleManager', (accounts) => {
         bob,
         BOB,
         MN,
+        this.description,
         this.attachedDocumentsBytes32,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         ether(47),
@@ -338,6 +344,7 @@ contract('UpdateOracleManager', (accounts) => {
         bob,
         BOB,
         MN,
+        this.description,
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE],
         ether(47),

@@ -88,6 +88,7 @@ contract('NewOracleManager', (accounts) => {
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
     this.attachedDocumentsBytes32 = this.attachedDocuments.map(galt.ipfsHashToBytes32);
+    this.description = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
@@ -276,6 +277,7 @@ contract('NewOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          this.description,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -297,6 +299,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              this.description,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -315,6 +318,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              this.description,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               ether(10),
@@ -332,6 +336,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(53),
@@ -360,6 +365,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(47),
@@ -436,6 +442,7 @@ contract('NewOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          this.description,
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -473,6 +480,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              this.description,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -490,6 +498,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              this.description,
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -507,6 +516,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -535,6 +545,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            this.description,
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -629,6 +640,7 @@ contract('NewOracleManager', (accounts) => {
         eve,
         EVE,
         MN,
+        this.description,
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
         0,
