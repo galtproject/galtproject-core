@@ -930,22 +930,18 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should allow a custodian attaching documents to an application', async function() {
-          await this.plotCustodianManager.attachDocuments(
-            this.aId,
-            this.attachedDocuments.map(galt.ipfsHashToBytes32),
-            {
-              from: bob
-            }
-          );
+          await this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments, {
+            from: bob
+          });
 
           const res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.REVIEW);
-          assert.sameMembers(res.custodianDocuments.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
+          assert.sameMembers(res.custodianDocuments, this.attachedDocuments);
         });
 
         it('should deny a non-custodian of the application attaching documents to it', async function() {
           await assertRevert(
-            this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments.map(galt.ipfsHashToBytes32), {
+            this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments, {
               from: dan
             })
           );
