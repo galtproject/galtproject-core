@@ -175,8 +175,16 @@ contract AbstractProposalManager is Permissionable {
     return _approvedProposals;
   }
 
+  function getApprovedProposalsCount() public view returns (uint256) {
+    return _approvedProposals.length;
+  }
+
   function getRejectedProposals() public view returns (uint256[] memory) {
     return _rejectedProposals;
+  }
+
+  function getRejectedProposalsCount() public view returns (uint256) {
+    return _rejectedProposals.length;
   }
 
   function getProposalVoting(

@@ -533,9 +533,9 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     if (v.approveCount == v.required) {
       if (a.action == Action.DETACH) {
-        spaceCustodianRegistry.detach(a.spaceTokenId, a.custodiansToModify.elements());
+        spaceCustodianRegistry.detach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
       } else {
-        spaceCustodianRegistry.attach(a.spaceTokenId, a.custodiansToModify.elements());
+        spaceCustodianRegistry.attach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
       }
 
       changeApplicationStatus(a, ApplicationStatus.APPROVED);

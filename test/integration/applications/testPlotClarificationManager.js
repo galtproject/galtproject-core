@@ -106,6 +106,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.newLevel = 1;
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
+    this.description = 'test description';
 
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
@@ -314,10 +315,10 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN, FOO], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR, HUMAN], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT, BUZZ], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN, FOO], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [BAR, HUMAN], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT, BUZZ], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
@@ -341,6 +342,7 @@ contract('PlotClarificationManager', (accounts) => {
         0,
         this.credentials,
         this.ledgerIdentifier,
+        this.description,
         galts,
         {
           from: alice
@@ -371,6 +373,7 @@ contract('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -393,6 +396,7 @@ contract('PlotClarificationManager', (accounts) => {
             this.plotClarificationManager.submitApplication(
               this.spaceTokenId,
               this.ledgerIdentifier,
+              this.description,
               this.newContour,
               this.newHeights,
               this.newLevel,
@@ -409,6 +413,7 @@ contract('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.newHeights,
             this.newLevel,
@@ -433,6 +438,7 @@ contract('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.newHeights,
             this.newLevel,
@@ -467,6 +473,7 @@ contract('PlotClarificationManager', (accounts) => {
         const res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -677,10 +684,10 @@ contract('PlotClarificationManager', (accounts) => {
         { from: applicationTypeManager }
       );
 
-      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN, FOO], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [BAR], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT, BUZZ], { from: oracleManager });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN, FOO], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [BAR], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT, BUZZ], { from: oracleManager });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: oracleManager });
 
       await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
@@ -697,6 +704,7 @@ contract('PlotClarificationManager', (accounts) => {
         0,
         this.credentials,
         this.ledgerIdentifier,
+        this.description,
         0,
         {
           from: alice,
@@ -727,6 +735,7 @@ contract('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -756,6 +765,7 @@ contract('PlotClarificationManager', (accounts) => {
             this.plotClarificationManager.submitApplication(
               this.spaceTokenId,
               this.ledgerIdentifier,
+              this.description,
               this.newContour,
               this.newHeights,
               this.newLevel,
@@ -772,6 +782,7 @@ contract('PlotClarificationManager', (accounts) => {
           await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.newHeights,
             this.newLevel,
@@ -787,6 +798,7 @@ contract('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.newHeights,
             this.newLevel,
@@ -809,6 +821,7 @@ contract('PlotClarificationManager', (accounts) => {
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.newHeights,
             this.newLevel,
@@ -842,6 +855,7 @@ contract('PlotClarificationManager', (accounts) => {
         const res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -890,6 +904,7 @@ contract('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -947,6 +962,7 @@ contract('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -1015,6 +1031,7 @@ contract('PlotClarificationManager', (accounts) => {
         let res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -1063,6 +1080,7 @@ contract('PlotClarificationManager', (accounts) => {
         const res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,
@@ -1096,6 +1114,7 @@ contract('PlotClarificationManager', (accounts) => {
         const res = await this.plotClarificationManager.submitApplication(
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.description,
           this.newContour,
           this.newHeights,
           this.newLevel,

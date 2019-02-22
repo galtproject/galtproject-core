@@ -19,9 +19,9 @@ import "../registries/interfaces/ISpaceLockerRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "../SpaceLocker.sol";
+import "./interfaces/ISpaceLockerFactory.sol";
 
-
-contract SpaceLockerFactory is Ownable {
+contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   event SpaceLockerCreated(address owner, address locker);
 
   ISpaceLockerRegistry public spaceLockerRegistry;

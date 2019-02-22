@@ -193,16 +193,16 @@ contract('ArbitratorVoting', accounts => {
       await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
       await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
 
-      await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, [], [TYPE_A], {
+      await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, '', [], [TYPE_A], {
         from: oracleManager
       });
-      await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+      await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, '', [], [TYPE_B, TYPE_C], {
         from: oracleManager
       });
-      await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleManager
       });
-      await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleManager
       });
 

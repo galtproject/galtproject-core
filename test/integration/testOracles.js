@@ -153,14 +153,14 @@ contract('Oracles', accounts => {
 
     describe('#addOracle()', () => {
       it('should allow an oracleManager to assign oracles', async function() {
-        await this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), [], [bytes32('🦄')], {
+        await this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), '', [], [bytes32('🦄')], {
           from: oracleManager
         });
       });
 
       it('should deny an oracleManager to assign oracle with non-existent role', async function() {
         await assertRevert(
-          this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), [], [bytes32('🦄'), bytes32('🦆️')], {
+          this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), '', [], [bytes32('🦄'), bytes32('🦆️')], {
             from: oracleManager
           })
         );
@@ -168,7 +168,7 @@ contract('Oracles', accounts => {
 
       it('should deny any other person than oracleManager to assign oracles', async function() {
         await assertRevert(
-          this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), [], [bytes32('🦄')], { from: alice })
+          this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('sezu06'), '', [], [bytes32('🦄')], { from: alice })
         );
       });
     });
@@ -186,7 +186,7 @@ contract('Oracles', accounts => {
     describe('#isOracleActive()', () => {
       it('return true if oracle is active', async function() {
         assert(!(await this.oracles.isOracleActive(alice)));
-        await this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('IN'), [], [bytes32('🦄')], {
+        await this.oracles.addOracle(multiSigX, alice, ALICE, bytes32('IN'), '', [], [bytes32('🦄')], {
           from: oracleManager
         });
         assert(await this.oracles.isOracleActive(alice));

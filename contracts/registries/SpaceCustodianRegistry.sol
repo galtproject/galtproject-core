@@ -19,35 +19,44 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 contract SpaceCustodianRegistry is Permissionable {
   using ArraySet for ArraySet.AddressSet;
+  using ArraySet for ArraySet.Uint256Set;
 
   string public constant ROLE_APPLICATION = "application";
 
   // SpaceLocker address => Details
   mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
+  mapping(address => ArraySet.Uint256Set) private spaceTokensOfCustodian;
+  mapping(uint256 => bytes32[]) private assignedDocuments;
 
 
   function attach(
     uint256 _spaceTokenId,
-    address[] calldata _custodians
+    address[] calldata _custodians,
+    bytes32[] calldata _documents
   )
     external
     onlyRole(ROLE_APPLICATION)
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].add(_custodians[i]);
+      spaceTokensOfCustodian[_custodians[i]].add(_spaceTokenId);
     }
+    assignedDocuments[_spaceTokenId] = _documents;
   }
 
   function detach(
     uint256 _spaceTokenId,
-    address[] calldata _custodians
+    address[] calldata _custodians,
+    bytes32[] calldata _documents
   )
     external
     onlyRole(ROLE_APPLICATION)
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].remove(_custodians[i]);
+      spaceTokensOfCustodian[_custodians[i]].remove(_spaceTokenId);
     }
+    assignedDocuments[_spaceTokenId] = _documents;
   }
 
   function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool) {
@@ -60,5 +69,17 @@ contract SpaceCustodianRegistry is Permissionable {
 
   function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256) {
     return assignedCustodians[_spaceTokenId].size();
+  }
+
+  function spaceDocuments(uint256 _spaceTokenId) external view returns (bytes32[] memory) {
+    return assignedDocuments[_spaceTokenId];
+  }
+  
+  function custodianTokens(address _custodian) external view returns (uint256[] memory) {
+    return spaceTokensOfCustodian[_custodian].elements();
+  }
+
+  function custodianTokensCount(address _custodian) external view returns (uint256) {
+    return spaceTokensOfCustodian[_custodian].size();
   }
 }

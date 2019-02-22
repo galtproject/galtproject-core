@@ -272,17 +272,36 @@ contract('Arbitrator Stake Slashing', accounts => {
       });
 
       // > 3 oracles are added by oracleManager
-      await this.oracles.addOracle(this.mX, mike, MIKE, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(this.mX, nick, NICK, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
+      await this.oracles.addOracle(
+        this.mX,
+        mike,
+        MIKE,
+        MN,
+        '',
+        [_ES],
+        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        {
+          from: oracleManager
+        }
+      );
+      await this.oracles.addOracle(
+        this.mX,
+        nick,
+        NICK,
+        MN,
+        '',
+        [_ES],
+        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+        {
+          from: oracleManager
+        }
+      );
       await this.oracles.addOracle(
         this.mX,
         oliver,
         OLIVER,
         MN,
+        '',
         [_ES],
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {

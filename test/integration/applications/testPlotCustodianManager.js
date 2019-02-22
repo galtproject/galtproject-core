@@ -103,7 +103,7 @@ contract('PlotCustodianManager', (accounts) => {
       'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
       'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
-    ];
+    ].map(galt.ipfsHashToBytes32);
 
     this.contour = this.initContour.map(galt.geohashToNumber);
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
@@ -314,6 +314,7 @@ contract('PlotCustodianManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         [],
         [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
@@ -325,16 +326,17 @@ contract('PlotCustodianManager', (accounts) => {
         charlie,
         CHARLIE,
         MN,
+        '',
         [],
         [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -636,6 +638,7 @@ contract('PlotCustodianManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         [],
         [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
         {
@@ -647,22 +650,23 @@ contract('PlotCustodianManager', (accounts) => {
         charlie,
         CHARLIE,
         MN,
+        '',
         [],
         [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         {
           from: oracleManager
         }
       );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
-      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, [], [PC_CUSTODIAN_ORACLE_TYPE], {
+      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
         from: oracleManager
       });
 
@@ -926,22 +930,18 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should allow a custodian attaching documents to an application', async function() {
-          await this.plotCustodianManager.attachDocuments(
-            this.aId,
-            this.attachedDocuments.map(galt.ipfsHashToBytes32),
-            {
-              from: bob
-            }
-          );
+          await this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments, {
+            from: bob
+          });
 
           const res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.REVIEW);
-          assert.sameMembers(res.custodianDocuments.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
+          assert.sameMembers(res.custodianDocuments, this.attachedDocuments);
         });
 
         it('should deny a non-custodian of the application attaching documents to it', async function() {
           await assertRevert(
-            this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments.map(galt.ipfsHashToBytes32), {
+            this.plotCustodianManager.attachDocuments(this.aId, this.attachedDocuments, {
               from: dan
             })
           );
@@ -1348,7 +1348,9 @@ contract('PlotCustodianManager', (accounts) => {
 
     describe('with current custodians exist', () => {
       beforeEach(async function() {
-        await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], { from: manualCustodianManager });
+        await this.spaceCustodianRegistry.attach(this.spaceTokenId, [charlie, frank], this.attachedDocuments, {
+          from: manualCustodianManager
+        });
         const res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
         assert.sameMembers(res, [charlie, frank]);
       });
@@ -1427,9 +1429,14 @@ contract('PlotCustodianManager', (accounts) => {
         });
 
         it('should allow simple pipeline', async function() {
-          await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], { from: manualCustodianManager });
+          await this.spaceCustodianRegistry.attach(this.spaceTokenId, [bob, george], this.attachedDocuments, {
+            from: manualCustodianManager
+          });
           let res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
           assert.sameMembers(res, [charlie, frank, bob, george]);
+
+          res = await this.spaceCustodianRegistry.spaceDocuments(this.spaceTokenId);
+          assert.sameMembers(res, this.attachedDocuments);
 
           // Now there are 4 custodians: [charlie, frank, bob, george]
           res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, george], 0, {

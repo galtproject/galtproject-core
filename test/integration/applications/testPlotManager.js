@@ -111,6 +111,7 @@ contract('PlotManager', accounts => {
     this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
+    this.description = 'test description';
 
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
@@ -303,6 +304,7 @@ contract('PlotManager', accounts => {
         0,
         this.credentials,
         this.ledgerIdentifier,
+        this.description,
         this.fee,
         {
           from: alice
@@ -328,6 +330,7 @@ contract('PlotManager', accounts => {
         assert.equal(res2.status, 1);
         assert.equal(res2.applicant, alice);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+        assert.equal(res2.description, this.description);
       });
     });
 
@@ -345,6 +348,7 @@ contract('PlotManager', accounts => {
           0,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           this.fee,
           { from: alice, value: this.deposit }
         );
@@ -359,6 +363,7 @@ contract('PlotManager', accounts => {
             0,
             this.credentials,
             this.ledgerIdentifier,
+            this.description,
             this.fee,
             { from: alice }
           );
@@ -378,6 +383,7 @@ contract('PlotManager', accounts => {
               0,
               this.credentials,
               this.ledgerIdentifier,
+              this.description,
               // expect minimum is 20
               ether(10),
               { from: alice, value: this.deposit }
@@ -404,6 +410,7 @@ contract('PlotManager', accounts => {
             0,
             this.credentials,
             this.ledgerIdentifier,
+            this.description,
             expectedFee,
             { from: alice }
           );
@@ -449,6 +456,7 @@ contract('PlotManager', accounts => {
           600,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           ether(5),
           { from: alice }
         );
@@ -458,9 +466,9 @@ contract('PlotManager', accounts => {
     describe('#closeApplication()', () => {
       describe('with status REVERTED', () => {
         it('should change status to CLOSED', async function() {
-          await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [bytes32('🦄')], { from: coreTeam });
-          await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [bytes32('🦆')], { from: coreTeam });
-          await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [bytes32('🦋')], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [bytes32('🦄')], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [bytes32('🦆')], { from: coreTeam });
+          await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [bytes32('🦋')], { from: coreTeam });
 
           await this.oracles.onOracleStakeChanged(charlie, bytes32('🦄'), ether(30), {
             from: stakesNotifier
@@ -490,11 +498,11 @@ contract('PlotManager', accounts => {
           [_ES, _ES, _ES],
           { from: coreTeam }
         );
-        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [HUMAN], { from: coreTeam });
 
-        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: coreTeam });
 
         await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
@@ -515,6 +523,7 @@ contract('PlotManager', accounts => {
           0,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           // expect minimum is 20
           ether(15),
           { from: alice }
@@ -545,6 +554,7 @@ contract('PlotManager', accounts => {
             this.aId,
             this.credentials,
             this.ledgerIdentifier,
+            this.description,
             this.newContour,
             this.heights,
             9,
@@ -563,6 +573,7 @@ contract('PlotManager', accounts => {
               this.aId,
               this.credentials,
               this.ledgerIdentifier,
+              this.description,
               this.newContour,
               this.heights,
               9,
@@ -588,6 +599,7 @@ contract('PlotManager', accounts => {
             this.aId,
             this.credentials,
             this.ledgerIdentifier,
+            this.description,
             smallerContour,
             this.heights,
             9,
@@ -608,14 +620,27 @@ contract('PlotManager', accounts => {
 
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
         const newLedgerIdentifier = bytes32('foo-123');
+        const newDescripton = 'new-test-description';
 
-        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, 0, {
-          from: alice
-        });
+        await this.plotManager.resubmitApplication(
+          this.aId,
+          newCredentiasHash,
+          newLedgerIdentifier,
+          newDescripton,
+          [],
+          [],
+          9,
+          0,
+          0,
+          {
+            from: alice
+          }
+        );
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, newCredentiasHash);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
+        assert.equal(res.description, newDescripton);
       });
     });
 
@@ -640,6 +665,7 @@ contract('PlotManager', accounts => {
           0,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           this.fee,
           {
             from: alice
@@ -650,11 +676,11 @@ contract('PlotManager', accounts => {
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [HUMAN], { from: coreTeam });
 
-        await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
-        await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: coreTeam });
 
         await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
         await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
@@ -787,6 +813,7 @@ contract('PlotManager', accounts => {
         0,
         this.credentials,
         this.ledgerIdentifier,
+        this.description,
         0,
         {
           from: alice,
@@ -800,11 +827,11 @@ contract('PlotManager', accounts => {
       this.packageTokenId = res.packageTokenId;
       assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-      await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [HUMAN], { from: coreTeam });
-      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [HUMAN], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [HUMAN], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [HUMAN], { from: coreTeam });
 
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [CAT], { from: coreTeam });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, [], [DOG], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [CAT], { from: coreTeam });
+      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [DOG], { from: coreTeam });
 
       await this.oracles.onOracleStakeChanged(bob, HUMAN, ether(30), { from: stakesNotifier });
       await this.oracles.onOracleStakeChanged(charlie, HUMAN, ether(30), { from: stakesNotifier });
@@ -839,6 +866,7 @@ contract('PlotManager', accounts => {
               0,
               this.credentials,
               this.ledgerIdentifier,
+              this.description,
               0,
               {
                 from: alice,
@@ -857,6 +885,7 @@ contract('PlotManager', accounts => {
               0,
               this.credentials,
               this.ledgerIdentifier,
+              this.description,
               0,
               {
                 from: alice,
@@ -938,9 +967,20 @@ contract('PlotManager', accounts => {
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
         const newLedgerIdentifier = bytes32('foo-123');
 
-        await this.plotManager.resubmitApplication(this.aId, newCredentiasHash, newLedgerIdentifier, [], [], 9, 0, 0, {
-          from: alice
-        });
+        await this.plotManager.resubmitApplication(
+          this.aId,
+          newCredentiasHash,
+          newLedgerIdentifier,
+          this.description,
+          [],
+          [],
+          9,
+          0,
+          0,
+          {
+            from: alice
+          }
+        );
 
         res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.credentialsHash, newCredentiasHash);
@@ -967,6 +1007,7 @@ contract('PlotManager', accounts => {
             this.aId,
             newCredentiasHash,
             newLedgerIdentifier,
+            this.description,
             newContour,
             [],
             9,
@@ -982,6 +1023,7 @@ contract('PlotManager', accounts => {
           this.aId,
           newCredentiasHash,
           newLedgerIdentifier,
+          this.description,
           newContour,
           [],
           9,
@@ -999,9 +1041,20 @@ contract('PlotManager', accounts => {
       });
 
       it('should allow submit reverted application to the same oracle who reverted it', async function() {
-        await this.plotManager.resubmitApplication(this.aId, this.credentials, this.ledgerIdentifier, [], [], 9, 0, 0, {
-          from: alice
-        });
+        await this.plotManager.resubmitApplication(
+          this.aId,
+          this.credentials,
+          this.ledgerIdentifier,
+          this.description,
+          [],
+          [],
+          9,
+          0,
+          0,
+          {
+            from: alice
+          }
+        );
 
         let res = await this.plotManagerWeb3.methods.getApplicationById(this.aId).call();
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1061,6 +1114,7 @@ contract('PlotManager', accounts => {
           0,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           0,
           {
             from: charlie,
@@ -1080,6 +1134,7 @@ contract('PlotManager', accounts => {
           0,
           this.credentials,
           this.ledgerIdentifier,
+          this.description,
           0,
           {
             from: charlie,
@@ -1208,7 +1263,7 @@ contract('PlotManager', accounts => {
           { from: coreTeam }
         );
 
-        await this.oracles.addOracle(multiSigX, frank, FRANK, MN, [], [FOO], { from: coreTeam });
+        await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [FOO], { from: coreTeam });
 
         await this.oracles.onOracleStakeChanged(frank, FOO, ether(30), { from: stakesNotifier });
         await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));

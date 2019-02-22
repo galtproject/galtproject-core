@@ -28,6 +28,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     address addr;
     bytes32 name;
     bytes32 position;
+    string description;
     bytes32[] descriptionHashes;
     bytes32[] oracleTypes;
   }
@@ -56,6 +57,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     address _oracleAddress,
     bytes32 _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
@@ -80,6 +82,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
     o.name = _name;
     o.position = _position;
+    o.description = _description;
     o.descriptionHashes = _descriptionHashes;
     o.oracleTypes = _oracleTypes;
 
@@ -91,7 +94,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
-    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -106,6 +109,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       address addr,
       bytes32 name,
       bytes32 position,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory oracleTypes
     )
@@ -118,6 +122,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       o.addr,
       o.name,
       o.position,
+      o.description,
       o.descriptionHashes,
       o.oracleTypes
     );
