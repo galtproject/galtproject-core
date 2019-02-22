@@ -183,7 +183,7 @@ contract('Arbitrator Stake Slashing', accounts => {
 
     // Mint and distribute SRA reputation using mock
     await (async () => {
-      await this.sra.mintAll([alice, bob, charlie, dan, eve], 500);
+      await this.sra.mintAll([alice, bob, charlie, dan, eve], ['10', '11', '12', '13', '14'], 500);
       assert.equal(await this.sra.balanceOf(alice), 500);
       await this.sra.lockReputation(this.mX, 500, { from: alice });
       await this.sra.lockReputation(this.mX, 500, { from: bob });
