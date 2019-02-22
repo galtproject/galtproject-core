@@ -13,8 +13,6 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-
 interface ISplitMerge {
   enum AreaSource {
     USER_INPUT,
