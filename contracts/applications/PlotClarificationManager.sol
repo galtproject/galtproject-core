@@ -157,7 +157,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     bytes32 _id = keccak256(
       abi.encodePacked(
         _spaceTokenId,
-        blockhash(block.number)
+        blockhash(block.number - 1)
       )
     );
 
