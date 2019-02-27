@@ -433,7 +433,6 @@ contract('PlotClarificationManager', (accounts) => {
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
-          const { aId } = this;
           await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
           let res = await this.plotClarificationManager.submitApplication(
             this.spaceTokenId,
@@ -455,13 +454,13 @@ contract('PlotClarificationManager', (accounts) => {
           res = await this.plotClarificationManagerWeb3.methods.getApplicationById(this.aId).call();
           assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [CAT, DOG, HUMAN].map(hexToUtf8));
 
-          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(aId, CAT).call();
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, CAT).call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(aId, DOG).call();
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, DOG).call();
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(aId, HUMAN).call();
+          res = await this.plotClarificationManagerWeb3.methods.getApplicationOracle(this.aId, HUMAN).call();
           assert.equal(res.reward.toString(), '20445000000000000000');
         });
       });

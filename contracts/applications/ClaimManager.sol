@@ -213,7 +213,7 @@ contract ClaimManager is AbstractApplication {
         msg.sender,
         _beneficiary,
         _documents,
-        blockhash(block.number),
+        blockhash(block.number - 1),
         applicationsArray.length
       )
     );
