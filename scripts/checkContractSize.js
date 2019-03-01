@@ -1,8 +1,8 @@
 const fs = require('fs');
 const Table = require('cli-table');
 const table = new Table({
-    head: ['Contract', 'Size (bytes)']
-  , colWidths: [50, 10]
+  head: ['Contract', 'Size (bytes)'],
+  colWidths: [50, 10]
 });
 
 const testFolder = './build/contracts/';
@@ -13,8 +13,8 @@ fs.readdirSync(testFolder).forEach(file => {
   contracts.push([file.substring(0, file.length - 5), getSize(file)]);
 });
 
-contracts.sort(function(a, b) {
-    return a[1] - b[1];
+contracts.sort(function (a, b) {
+  return a[1] - b[1];
 });
 
 contracts.forEach(value => {
@@ -22,7 +22,7 @@ contracts.forEach(value => {
 });
 
 console.log(table.toString());
-console.log('\n Size cap isis about', 24577, '\n');
+console.log('\n Size cap is about', 24577, '\n');
 
 function getSize(contract) {
   let abi;
