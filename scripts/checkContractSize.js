@@ -1,38 +1,42 @@
 const fs = require('fs');
+const Table = require('cli-table');
 
-console.log('\nSize limit is about', 24577, '\n');
-checkSize('AbstractApplication');
-checkSize('ArbitratorMultiSig');
-checkSize('ArbitratorVoting');
-checkSize('Auditors');
-checkSize('ClaimManager');
-checkSize('GaltToken');
-checkSize('MultiSigRegistry');
-checkSize('OracleStakesAccounting');
-checkSize('Oracles');
-checkSize('PlotClarificationManager');
-checkSize('PlotCustodianManager');
-checkSize('PlotManager');
-checkSize('PlotManagerLib');
-checkSize('SpaceDex');
-checkSize('SpaceToken');
-checkSize('SpaceReputationAccounting');
-checkSize('SplitMerge');
-checkSize('SpaceSplitOperation');
+const table = new Table({
+  head: ['Contract', 'Size (bytes)'],
+  colWidths: [50, 10]
+});
 
-console.log('\nFactories...');
-checkSize('MultiSigFactory');
-checkSize('ArbitratorsMultiSigFactory');
-checkSize('ArbitratorVotingFactory');
-checkSize('OracleStakesAccountingFactory');
-console.log('\n');
+const testFolder = './build/contracts/';
 
-function checkSize(contract) {
+const contracts = [];
+
+fs.readdirSync(testFolder).forEach(file => {
+  contracts.push([file.substring(0, file.length - 5), getSize(file)]);
+});
+
+contracts.sort(function(a, b) {
+  return a[1] - b[1];
+});
+
+contracts.forEach(value => {
+  table.push(value);
+});
+
+console.log(table.toString());
+console.log('\n Size cap is about', 24577, '\n');
+
+/**
+ * Get contract size in bytes
+ *
+ * @param contract
+ * @returns {number}
+ */
+function getSize(contract) {
   let abi;
   try {
-    abi = JSON.parse(fs.readFileSync(`build/contracts/${contract}.json`));
+    abi = JSON.parse(fs.readFileSync(`build/contracts/${contract}`));
+    return Buffer.byteLength(abi.deployedBytecode, 'utf8') / 2;
   } catch (e) {
-    return;
+    return 0;
   }
-  console.log(contract, Buffer.byteLength(abi.deployedBytecode, 'utf8') / 2, 'bytes');
 }
