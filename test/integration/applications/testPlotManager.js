@@ -84,7 +84,30 @@ Object.freeze(Currency);
  * Bob is a validator
  */
 contract('PlotManager', accounts => {
-  before(clearLibCache);
+  before(async function() {
+    clearLibCache()
+
+    this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
+    this.initContour2 = ['dddd', 'bbbb', 'cccc'];
+    this.initContour3 = ['qqqq', 'wwww', 'eeee'];
+    this.initLedgerIdentifier = 'шц50023中222ائِيل';
+
+    this.contour = this.initContour.map(galt.geohashToNumber);
+    this.contour2 = this.initContour2.map(galt.geohashToNumber);
+    this.contour3 = this.initContour3.map(galt.geohashToNumber);
+    this.heights = [1, 2, 3];
+    this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
+    this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
+    this.description = 'test description';
+
+    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
+    this.geodesicMock = await Geodesic.new({ from: coreTeam });
+    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
+    this.galtToken = await GaltToken.new({ from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
+  });
+
   const [
     coreTeam,
     galtSpaceOrg,
@@ -100,30 +123,13 @@ contract('PlotManager', accounts => {
   ] = accounts;
 
   beforeEach(async function() {
-    this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
-    this.initContour2 = ['dddd', 'bbbb', 'cccc'];
-    this.initContour3 = ['qqqq', 'wwww', 'eeee'];
-    this.initLedgerIdentifier = 'шц50023中222ائِيل';
-
-    this.contour = this.initContour.map(galt.geohashToNumber);
-    this.contour2 = this.initContour2.map(galt.geohashToNumber);
-    this.contour3 = this.initContour3.map(galt.geohashToNumber);
-    this.heights = [1, 2, 3];
-    this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
-    this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
-    this.description = 'test description';
-
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
-    this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.geodesicMock = await Geodesic.new({ from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
-    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
 
     await this.plotManager.initialize(
       this.spaceToken.address,
@@ -183,7 +189,6 @@ contract('PlotManager', accounts => {
     await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦆'), ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦄'), ether(30), { from: coreTeam });
 
-    await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);

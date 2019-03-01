@@ -76,7 +76,6 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotCustodianManager', (accounts) => {
-  before(clearLibCache);
   const [
     coreTeam,
     galtSpaceOrg,
@@ -96,7 +95,9 @@ contract('PlotCustodianManager', (accounts) => {
     george
   ] = accounts;
 
-  beforeEach(async function() {
+  before(async function() {
+    clearLibCache();
+
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
     this.attachedDocuments = [
@@ -111,6 +112,11 @@ contract('PlotCustodianManager', (accounts) => {
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+  });
+
+  beforeEach(async function() {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
     this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
@@ -194,8 +200,6 @@ contract('PlotCustodianManager', (accounts) => {
       from: applicationTypeManager
     });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
-
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
   });
 
   it('should be initialized successfully', async function() {

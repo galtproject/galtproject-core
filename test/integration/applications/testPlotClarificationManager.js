@@ -78,23 +78,9 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotClarificationManager', (accounts) => {
-  before(clearLibCache);
-  const [
-    coreTeam,
-    galtSpaceOrg,
-    multiSigX,
-    feeManager,
-    stakesNotifier,
-    applicationTypeManager,
-    oracleManager,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve
-  ] = accounts;
+  before(async function() {
+    clearLibCache();
 
-  beforeEach(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.newContourRaw = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
@@ -111,14 +97,34 @@ contract('PlotClarificationManager', (accounts) => {
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
+    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
+    this.geodesic = await Geodesic.new({ from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
+  });
+
+  const [
+    coreTeam,
+    galtSpaceOrg,
+    multiSigX,
+    feeManager,
+    stakesNotifier,
+    applicationTypeManager,
+    oracleManager,
+    alice,
+    bob,
+    charlie,
+    dan,
+    eve
+  ] = accounts;
+
+  beforeEach(async function() {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.geodesic = await Geodesic.new({ from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.spaceToken.address);
-    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
 
     await this.plotManager.initialize(
       this.spaceToken.address,
@@ -198,8 +204,6 @@ contract('PlotClarificationManager', (accounts) => {
     await this.oracles.setOracleTypeMinimalDeposit(HUMAN, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(DOG, ether(30), { from: applicationTypeManager });
     await this.oracles.setOracleTypeMinimalDeposit(CAT, ether(30), { from: applicationTypeManager });
-
-    await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.plotClarificationManagerWeb3 = new web3.eth.Contract(

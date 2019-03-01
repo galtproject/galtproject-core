@@ -62,7 +62,7 @@ const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 
 // eslint-disable-next-line
-contract('NewOracleManager', (accounts) => {
+contract.only('NewOracleManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
@@ -81,7 +81,7 @@ contract('NewOracleManager', (accounts) => {
     henrey
   ] = accounts;
 
-  beforeEach(async function() {
+  before(async function() {
     this.attachedDocuments = [
       'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
       'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
@@ -91,10 +91,15 @@ contract('NewOracleManager', (accounts) => {
     this.description = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+  });
+
+  beforeEach(async function() {
     this.oracles = await Oracles.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.multiSigFactory = await deployMultiSigFactory(
       this.galtToken.address,
       this.oracles,
@@ -104,7 +109,6 @@ contract('NewOracleManager', (accounts) => {
       coreTeam
     );
 
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
     this.abX = await buildArbitration(
       this.multiSigFactory,
