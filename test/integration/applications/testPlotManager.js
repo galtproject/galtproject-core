@@ -84,8 +84,22 @@ Object.freeze(Currency);
  * Bob is a validator
  */
 contract('PlotManager', accounts => {
+  const [
+    coreTeam,
+    galtSpaceOrg,
+    feeManager,
+    multiSigX,
+    stakesNotifier,
+    alice,
+    bob,
+    charlie,
+    dan,
+    eve,
+    frank
+  ] = accounts;
+
   before(async function() {
-    clearLibCache()
+    clearLibCache();
 
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initContour2 = ['dddd', 'bbbb', 'cccc'];
@@ -107,20 +121,6 @@ contract('PlotManager', accounts => {
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
   });
-
-  const [
-    coreTeam,
-    galtSpaceOrg,
-    feeManager,
-    multiSigX,
-    stakesNotifier,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve,
-    frank
-  ] = accounts;
 
   beforeEach(async function() {
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
@@ -188,7 +188,6 @@ contract('PlotManager', accounts => {
     await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦋'), ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦆'), ether(30), { from: coreTeam });
     await this.oracles.setOracleTypeMinimalDeposit(bytes32('🦄'), ether(30), { from: coreTeam });
-
 
     this.plotManagerWeb3 = new web3.eth.Contract(this.plotManager.abi, this.plotManager.address);
     this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);

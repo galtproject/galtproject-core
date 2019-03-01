@@ -78,6 +78,21 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotClarificationManager', (accounts) => {
+  const [
+    coreTeam,
+    galtSpaceOrg,
+    multiSigX,
+    feeManager,
+    stakesNotifier,
+    applicationTypeManager,
+    oracleManager,
+    alice,
+    bob,
+    charlie,
+    dan,
+    eve
+  ] = accounts;
+
   before(async function() {
     clearLibCache();
 
@@ -103,21 +118,6 @@ contract('PlotClarificationManager', (accounts) => {
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
   });
-
-  const [
-    coreTeam,
-    galtSpaceOrg,
-    multiSigX,
-    feeManager,
-    stakesNotifier,
-    applicationTypeManager,
-    oracleManager,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve
-  ] = accounts;
 
   beforeEach(async function() {
     this.oracles = await Oracles.new({ from: coreTeam });
