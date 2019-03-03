@@ -1,4 +1,6 @@
 const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const Oracles = artifacts.require('./Oracles.sol');
 const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
 const ArbitratorVotingFactory = artifacts.require('./ArbitratorVotingFactory.sol');
 const ArbitratorStakeAccountingFactory = artifacts.require('./ArbitratorStakeAccountingFactory.sol');
@@ -30,23 +32,12 @@ const ModifyMinimalArbitratrorStakeProposalManager = artifacts.require(
 const ModifyContractAddressProposalManager = artifacts.require('./ModifyContractAddressProposalManager.sol');
 const RevokeArbitratorsProposalManager = artifacts.require('./RevokeArbitratorsProposalManager.sol');
 
-const AddressLinkedList = artifacts.require('./AddressLinkedList.sol');
-const VotingLinkedList = artifacts.require('./VotingLinkedList.sol');
-
 const Helpers = {
   async deployMultiSigFactory(
-    galtTokenAddress,
-    oraclesContract,
-    claimManagerAddress,
-    multiSigRegistryContract,
-    spaceReputationAccountingAddress,
+    ggr,
     owner
   ) {
     const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });
-
-    VotingLinkedList.link('AddressLinkedList', (await AddressLinkedList.new()).address);
-    const votingLinkedList = await VotingLinkedList.new();
-    ArbitratorVotingFactory.link('VotingLinkedList', votingLinkedList.address);
 
     const voting = await ArbitratorVotingFactory.new({ from: owner });
     const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
@@ -68,11 +59,7 @@ const Helpers = {
     });
 
     const multiSigFactory = await MultiSigFactory.new(
-      multiSigRegistryContract.address,
-      galtTokenAddress,
-      oraclesContract.address,
-      claimManagerAddress,
-      spaceReputationAccountingAddress,
+      ggr.address,
       multiSig.address,
       voting.address,
       arbitratorStakes.address,
@@ -85,6 +72,9 @@ const Helpers = {
       arbitrationRevokeArbitratorsProposalFactory.address,
       { from: owner }
     );
+
+    const multiSigRegistryContract = await MultiSigRegistry.at(await ggr.getMultiSigRegistryAddress());
+    const oraclesContract = await Oracles.at(await ggr.getOraclesAddress());
 
     await multiSigRegistryContract.addRoleTo(multiSigFactory.address, await multiSigRegistryContract.ROLE_FACTORY(), {
       from: owner

@@ -62,7 +62,7 @@ const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 
 // eslint-disable-next-line
-contract.only('NewOracleManager', (accounts) => {
+contract('NewOracleManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,

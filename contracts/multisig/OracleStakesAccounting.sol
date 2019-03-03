@@ -19,9 +19,10 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../Oracles.sol";
 import "./ArbitrationConfig.sol";
+import "./interfaces/IOracleStakesAccounting.sol";
 
 
-contract OracleStakesAccounting is Permissionable {
+contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 

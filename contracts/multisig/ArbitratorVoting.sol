@@ -22,8 +22,9 @@ import "./ArbitrationConfig.sol";
 import "./ArbitratorStakeAccounting.sol";
 import "../collections/AddressLinkedList.sol";
 import "../collections/VotingLinkedList.sol";
+import "./interfaces/IArbitratorVoting.sol";
 
-contract ArbitratorVoting is Permissionable {
+contract ArbitratorVoting is IArbitratorVoting, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -361,7 +362,7 @@ contract ArbitratorVoting is Permissionable {
       return new address[](0);
     }
 
-    ArbitratorStakeAccounting arbitratorStakes = arbitrationConfig.getArbitratorStakes();
+    IArbitratorStakeAccounting arbitratorStakes = arbitrationConfig.getArbitratorStakes();
     address[] memory p = new address[](votingList.count);
     uint256 minimalStake = arbitrationConfig.minimalArbitratorStake();
     uint256 pI = 0;

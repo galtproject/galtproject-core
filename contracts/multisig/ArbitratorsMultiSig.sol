@@ -17,8 +17,9 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
 import "./ArbitratorStakeAccounting.sol";
 import "./ArbitrationConfig.sol";
+import "./interfaces/IArbitratorsMultiSig.sol";
 
-contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
+contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permissionable {
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
   event GaltRunningTotalIncrease(

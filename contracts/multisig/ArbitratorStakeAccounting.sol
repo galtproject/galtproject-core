@@ -19,9 +19,10 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./ArbitrationConfig.sol";
+import "./interfaces/IArbitratorStakeAccounting.sol";
 
 
-contract ArbitratorStakeAccounting is Permissionable {
+contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 

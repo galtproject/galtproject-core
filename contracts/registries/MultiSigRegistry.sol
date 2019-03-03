@@ -16,11 +16,12 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/ArbitrationConfig.sol";
 import "../multisig/OracleStakesAccounting.sol";
+import "./interfaces/IMultiSigRegistry.sol";
+import "../multisig/interfaces/IArbitrationConfig.sol";
 
 
-contract MultiSigRegistry is Permissionable {
+contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
   using ArraySet for ArraySet.AddressSet;
 
   string public constant ROLE_FACTORY = "space_token";
@@ -32,13 +33,13 @@ contract MultiSigRegistry is Permissionable {
 
   struct MultiSig {
     bool active;
-    ArbitrationConfig arbitrationConfig;
+    IArbitrationConfig arbitrationConfig;
     address factoryAddress;
   }
 
   function addMultiSig(
     ArbitratorsMultiSig _abMultiSig,
-    ArbitrationConfig _arbitrationConfig
+    IArbitrationConfig _arbitrationConfig
   )
     external
     onlyRole(ROLE_FACTORY)
@@ -60,7 +61,7 @@ contract MultiSigRegistry is Permissionable {
 
   // GETTERS
 
-  function getArbitrationConfig(address _multiSig) external view returns (ArbitrationConfig) {
+  function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig) {
     return multiSigs[_multiSig].arbitrationConfig;
   }
 

@@ -33,6 +33,7 @@ import "./arbitration/ArbitrationModifyMofNProposalFactory.sol";
 import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
 import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
 import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -88,7 +89,6 @@ contract MultiSigFactory is Ownable {
 
   MultiSigRegistry multiSigRegistry;
   ClaimManager claimManager;
-
   IERC20 galtToken;
   Oracles oracles;
   SpaceReputationAccounting spaceReputationAccounting;
@@ -110,11 +110,7 @@ contract MultiSigFactory is Ownable {
   uint256 commission;
 
   constructor (
-    MultiSigRegistry _multiSigRegistry,
-    IERC20 _galtToken,
-    Oracles _oracles,
-    ClaimManager _claimManager,
-    SpaceReputationAccounting _spaceReputationAccounting,
+    GaltGlobalRegistry _ggr,
     ArbitratorsMultiSigFactory _arbitratorMultiSigFactory,
     ArbitratorVotingFactory _arbitratorVotingFactory,
     ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
@@ -128,11 +124,18 @@ contract MultiSigFactory is Ownable {
   ) public {
     commission = 10 ether;
 
-    multiSigRegistry = _multiSigRegistry;
-    galtToken = _galtToken;
-    oracles = _oracles;
-    claimManager = _claimManager;
-    spaceReputationAccounting = _spaceReputationAccounting;
+    multiSigRegistry = MultiSigRegistry(_ggr.getMultiSigRegistryAddress());
+    galtToken = _ggr.getGaltToken();
+    oracles = Oracles(_ggr.getOraclesAddress());
+    // TODO: ClaimManager should be provided by GaltApplicationRegistry
+    claimManager = ClaimManager(_ggr.getClaimManagerAddress());
+    spaceReputationAccounting = SpaceReputationAccounting(_ggr.getSpaceReputationAccountingAddress());
+
+    MultiSigRegistry multiSigRegistry;
+    ClaimManager claimManager;
+    IERC20 galtToken;
+    Oracles oracles;
+    SpaceReputationAccounting spaceReputationAccounting;
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
     arbitratorVotingFactory = _arbitratorVotingFactory;

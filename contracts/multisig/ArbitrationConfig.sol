@@ -17,14 +17,16 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/IArbitrationConfig.sol";
+import "./interfaces/IArbitratorStakeAccounting.sol";
+import "./interfaces/IOracleStakesAccounting.sol";
+import "./interfaces/IArbitratorVoting.sol";
+import "./interfaces/IArbitratorsMultiSig.sol";
 import "./ArbitratorsMultiSig.sol";
-import "./ArbitratorVoting.sol";
-import "./ArbitratorStakeAccounting.sol";
-import "./OracleStakesAccounting.sol";
 import "../SpaceReputationAccounting.sol";
 
 
-contract ArbitrationConfig is Permissionable {
+contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   string public constant THRESHOLD_MANAGER = "threshold_manager";
   string public constant M_N_MANAGER = "m_n_manager";
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
@@ -78,10 +80,10 @@ contract ArbitrationConfig is Permissionable {
   }
 
   function initialize(
-    ArbitratorsMultiSig _arbitratorMultiSig,
-    ArbitratorVoting _arbitratorVoting,
-    ArbitratorStakeAccounting _arbitratorStakeAccounting,
-    OracleStakesAccounting _oracleStakesAccounting,
+    IArbitratorsMultiSig _arbitratorMultiSig,
+    IArbitratorVoting _arbitratorVoting,
+    IArbitratorStakeAccounting _arbitratorStakeAccounting,
+    IOracleStakesAccounting _oracleStakesAccounting,
     SpaceReputationAccounting _spaceReputationAccounting
   )
     external
@@ -121,20 +123,20 @@ contract ArbitrationConfig is Permissionable {
   }
 
   // GETTERS (TODO: replace contract getters with interfaces only)
-  function getMultiSig() external view returns (ArbitratorsMultiSig) {
+  function getMultiSig() external view returns (IArbitratorsMultiSig) {
     address payable ms = address(uint160(contracts[MULTI_SIG_CONTRACT]));
-    return ArbitratorsMultiSig(ms);
+    return IArbitratorsMultiSig(ms);
   }
 
-  function getArbitratorVoting() external view returns (ArbitratorVoting) {
-    return ArbitratorVoting(contracts[ARBITRATOR_VOTING_CONTRACT]);
+  function getArbitratorVoting() external view returns (IArbitratorVoting) {
+    return IArbitratorVoting(contracts[ARBITRATOR_VOTING_CONTRACT]);
   }
 
-  function getArbitratorStakes() external view returns (ArbitratorStakeAccounting) {
-    return ArbitratorStakeAccounting(contracts[ARBITRATOR_STAKES_CONTRACT]);
+  function getArbitratorStakes() external view returns (IArbitratorStakeAccounting) {
+    return IArbitratorStakeAccounting(contracts[ARBITRATOR_STAKES_CONTRACT]);
   }
 
-  function getOracleStakes() external view returns (OracleStakesAccounting) {
-    return OracleStakesAccounting(contracts[ORACLE_STAKES_CONTRACT]);
+  function getOracleStakes() external view returns (IOracleStakesAccounting) {
+    return IOracleStakesAccounting(contracts[ORACLE_STAKES_CONTRACT]);
   }
 }
