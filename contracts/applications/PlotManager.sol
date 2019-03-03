@@ -36,6 +36,9 @@ contract PlotManager is AbstractOracleApplication {
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32('PM_LAWYER_ORACLE_TYPE');
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32('PM_SURVEYOR_ORACLE_TYPE');
 
+  bytes32 private constant CONFIG_FEE_CALCULATOR = bytes32('PM_FEE_CALCULATOR');
+  bytes32 private constant CONFIG_PAYMENT_METHOD = bytes32('PM_PAYMENT_METHOD');
+
   enum ApplicationStatus {
     NOT_EXISTS,
     SUBMITTED,
@@ -103,30 +106,24 @@ contract PlotManager is AbstractOracleApplication {
   mapping(bytes32 => Application) private applications;
 
   GaltGlobalRegistry public ggr;
-  IPlotManagerFeeCalculator public feeCalculator;
 
   constructor () public {}
 
   function initialize(
     GaltGlobalRegistry _ggr,
-    IPlotManagerFeeCalculator _feeCalculator,
+    // NO OPTION TO CHANGE
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
     ggr = _ggr;
-    feeCalculator = _feeCalculator;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     oracles = Oracles(ggr.getOraclesAddress());
 
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
+    // TODO: figure out where to store these values
+    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 33;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -152,10 +149,6 @@ contract PlotManager is AbstractOracleApplication {
     require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracle type list not complete");
 
     _;
-  }
-
-  function setFeeCalculator(IPlotManagerFeeCalculator _feeCalculator) external onlyFeeManager {
-    feeCalculator = _feeCalculator;
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -190,7 +183,7 @@ contract PlotManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
-    IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).requireValidMultiSig(multiSig);
+    multiSigRegistry().requireValidMultiSig(multiSig);
 
     bytes32 _id = keccak256(
       abi.encodePacked(
@@ -217,7 +210,7 @@ contract PlotManager is AbstractOracleApplication {
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(Currency.GALT, a.details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(a.multiSig, Currency.GALT, a.details.area), "Incorrect fee passed in");
 
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
@@ -230,7 +223,7 @@ contract PlotManager is AbstractOracleApplication {
       // Default a.currency is Currency.ETH
 
       require(
-        msg.value >= getSubmissionFeeByArea(Currency.ETH, a.details.area),
+        msg.value >= getSubmissionFeeByArea(a.multiSig, Currency.ETH, a.details.area),
         "Incorrect msg.value passed in");
     }
 
@@ -332,7 +325,7 @@ contract PlotManager is AbstractOracleApplication {
     }
 
     uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newPackageContour);
-    uint256 newMinimalFee = getSubmissionFeeByArea(a.currency, area);
+    uint256 newMinimalFee = getSubmissionFeeByArea(a.multiSig, a.currency, area);
     uint256 alreadyPaid = a.fees.latestCommittedFee;
 
     if (newMinimalFee > alreadyPaid) {
@@ -548,6 +541,35 @@ contract PlotManager is AbstractOracleApplication {
     }
   }
 
+  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
+    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
+  }
+
+  function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
+    return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
+  }
+
+  function feeCalculator(address _multiSig) internal view returns (IPlotManagerFeeCalculator) {
+    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
+  }
+
+  // TODO: rename `paymentMethod`
+  function fetchPaymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+  }
+
+  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
+    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
+
+    assert(val <= 100);
+
+    return val;
+  }
+
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode("PM", "share", _oracleType));
+  }
+
   function calculateAndStoreFee(
     Application storage _a,
     uint256 _fee
@@ -743,11 +765,11 @@ contract PlotManager is AbstractOracleApplication {
   /**
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
    */
-  function getSubmissionFeeByArea(Currency _currency, uint256 _area) public view returns (uint256) {
+  function getSubmissionFeeByArea(address _multiSig, Currency _currency, uint256 _area) public view returns (uint256) {
     if (_currency == Currency.GALT) {
-      return feeCalculator.calculateGaltFee(_area);
+      return feeCalculator(_multiSig).calculateGaltFee(_area);
     } else {
-      return feeCalculator.calculateEthFee(_area);
+      return feeCalculator(_multiSig).calculateEthFee(_area);
     }
   }
 
@@ -756,7 +778,7 @@ contract PlotManager is AbstractOracleApplication {
    */
   function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
     Application storage a = applications[_aId];
-    uint256 newTotalFee = getSubmissionFeeByArea(a.currency, _area);
+    uint256 newTotalFee = getSubmissionFeeByArea(a.multiSig, a.currency, _area);
     uint256 latest = a.fees.latestCommittedFee;
 
     if (newTotalFee <= latest) {

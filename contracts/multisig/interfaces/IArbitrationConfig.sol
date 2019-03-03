@@ -24,6 +24,7 @@ interface IArbitrationConfig {
   function setMofN(uint256 _m, uint256 _n) external;
   function setMinimalArbitratorStake(uint256 _value) external;
   function setContractAddress(bytes32 _key, address _address) external;
+  function applicationConfig(bytes32) external view returns (bytes32);
   function getMultiSig() external view returns (IArbitratorsMultiSig);
   function getArbitratorVoting() external view returns (IArbitratorVoting);
   function getArbitratorStakes() external view returns (IArbitratorStakeAccounting);

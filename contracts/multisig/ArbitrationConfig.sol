@@ -81,8 +81,6 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
     thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
     thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
-    // TODO: set default values for applicationConfig
-    applicationConfig["PM_PAYMENT_METHOD"] = bytes32(uint256(4));
   }
 
   function initialize(

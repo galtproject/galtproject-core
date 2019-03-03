@@ -75,6 +75,7 @@ contract MultiSigFactory is Ownable {
     THIRD,
     FOURTH,
     FIFTH,
+    SIXTH,
     DONE
   }
 
@@ -310,6 +311,24 @@ contract MultiSigFactory is Ownable {
 
     g.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
 
+    g.nextStep = Step.SIXTH;
+
+    emit BuildMultiSigFifthStep(
+      _groupId,
+      address(modifyApplicationConfigProposals)
+    );
+  }
+
+  function buildSixthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.SIXTH, "SIXTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,
       g.arbitratorVoting,
@@ -332,16 +351,11 @@ contract MultiSigFactory is Ownable {
     g.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
     g.modifyContractAddressProposalManager.removeRoleFrom(address(this), "role_manager");
     g.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
-    modifyApplicationConfigProposals.removeRoleFrom(address(this), "role_manager");
+    g.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
     multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
 
     g.nextStep = Step.DONE;
-
-    emit BuildMultiSigFifthStep(
-      _groupId,
-      address(modifyApplicationConfigProposals)
-    );
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

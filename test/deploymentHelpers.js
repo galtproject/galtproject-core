@@ -140,6 +140,12 @@ const Helpers = {
       res.logs[0].args.modifyApplicationConfigProposalManager
     );
 
+    await factory.buildSixthStep(groupId, [], { from: owner });
+    // PlotManager
+    // address feeCalculator
+    // address roleShares
+    // uint256 paymentMethod [NONE, ETH_ONLY, GALT_ONLY, ETH_AND_GALT]
+
     return {
       groupId,
       multiSig,

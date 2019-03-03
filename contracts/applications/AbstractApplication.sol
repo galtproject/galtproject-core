@@ -56,33 +56,33 @@ contract AbstractApplication is Initializable, Permissionable {
 
   function claimGaltSpaceReward(bytes32 _aId) external;
 
-  function setGaltSpaceRewardsAddress(address _newAddress) external onlyRole(ROLE_GALT_SPACE) {
-    galtSpaceRewardsAddress = _newAddress;
-  }
-
-  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
-    paymentMethod = _newMethod;
-  }
-
-  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInEth = _newFee;
-  }
-
-  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInGalt = _newFee;
-  }
-
-  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-
-    galtSpaceEthShare = _newShare;
-  }
-
-  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-
-    galtSpaceGaltShare = _newShare;
-  }
+//  function setGaltSpaceRewardsAddress(address _newAddress) external onlyRole(ROLE_GALT_SPACE) {
+//    galtSpaceRewardsAddress = _newAddress;
+//  }
+//
+//  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
+//    paymentMethod = _newMethod;
+//  }
+//
+//  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
+//    minimalApplicationFeeInEth = _newFee;
+//  }
+//
+//  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
+//    minimalApplicationFeeInGalt = _newFee;
+//  }
+//
+//  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
+//    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
+//
+//    galtSpaceEthShare = _newShare;
+//  }
+//
+//  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
+//    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
+//
+//    galtSpaceGaltShare = _newShare;
+//  }
 
   function getAllApplications() external view returns (bytes32[] memory) {
     return applicationsArray;
