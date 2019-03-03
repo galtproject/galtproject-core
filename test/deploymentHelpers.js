@@ -8,6 +8,7 @@ const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountin
 const ArbitrationConfigFactory = artifacts.require('./ArbitrationConfigFactory.sol');
 
 const ArbitrationModifyThresholdProposalFactory = artifacts.require('./ArbitrationModifyThresholdProposalFactory.sol');
+const ArbitrationModifyApplicationConfigProposalFactory = artifacts.require('./ArbitrationModifyApplicationConfigProposalFactory.sol');
 const ArbitrationModifyMofNProposalFactory = artifacts.require('./ArbitrationModifyMofNProposalFactory.sol');
 const ArbitrationModifyArbitratorStakeProposalFactory = artifacts.require(
   './ArbitrationModifyArbitratorStakeProposalFactory.sol'
@@ -25,6 +26,7 @@ const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const ModifyThresholdProposalManager = artifacts.require('./ModifyThresholdProposalManager.sol');
+const ModifyApplicationConfigProposalManager = artifacts.require('./ModifyApplicationConfigProposalManager.sol');
 const ModifyMofNProposalManager = artifacts.require('./ModifyMofNProposalManager.sol');
 const ModifyMinimalArbitratrorStakeProposalManager = artifacts.require(
   './ModifyMinimalArbitratorStakeProposalManager.sol'
@@ -57,6 +59,9 @@ const Helpers = {
     const arbitrationRevokeArbitratorsProposalFactory = await ArbitrationRevokeArbitratorsProposalFactory.new({
       from: owner
     });
+    const arbitrationModifyApplicationConfigProposalFactory = await ArbitrationModifyApplicationConfigProposalFactory.new({
+      from: owner
+    });
 
     const multiSigFactory = await MultiSigFactory.new(
       ggr.address,
@@ -70,6 +75,7 @@ const Helpers = {
       arbitrationModifyArbitratorStakeProposalFactory.address,
       arbitrationModifyContractAddressProposalFactory.address,
       arbitrationRevokeArbitratorsProposalFactory.address,
+      arbitrationModifyApplicationConfigProposalFactory.address,
       { from: owner }
     );
 
@@ -129,6 +135,11 @@ const Helpers = {
       res.logs[0].args.revokeArbitratorsProposalManager
     );
 
+    res = await factory.buildFifthStep(groupId, { from: owner });
+    const modifyApplicationConfigProposalManager = await ModifyApplicationConfigProposalManager.at(
+      res.logs[0].args.modifyApplicationConfigProposalManager
+    );
+
     return {
       groupId,
       multiSig,
@@ -140,6 +151,7 @@ const Helpers = {
       modifyMofNProposalManager,
       modifyArbitratorStakeProposalManager,
       modifyContractAddressProposalManager,
+      modifyApplicationConfigProposalManager,
       revokeArbitratorsProposalManager
     };
   }

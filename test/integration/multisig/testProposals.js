@@ -5,10 +5,11 @@ const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MockSRA = artifacts.require('./MockSRA.sol');
 const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
 
-const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
+const { assertRevert, ether, initHelperWeb3, numberToEvmWord } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -28,6 +29,7 @@ contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
     galtSpaceOrg,
+    claimManagerAddress,
 
     // initial arbitrators
     a1,
@@ -79,6 +81,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
       this.oracles = await Oracles.new({ from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
+      this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
       this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
@@ -90,12 +93,15 @@ contract('Arbitrator Stake Slashing', accounts => {
         { from: coreTeam }
       );
 
+      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+      // await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.sra.address, { from: coreTeam });
+
       this.multiSigFactory = await deployMultiSigFactory(
-        this.galtToken.address,
-        this.oracles,
-        this.claimManager.address,
-        this.multiSigRegistry,
-        this.sra.address,
+        this.ggr,
         coreTeam
       );
 
@@ -122,7 +128,7 @@ contract('Arbitrator Stake Slashing', accounts => {
         10,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30],
         alice
       );
 
@@ -139,6 +145,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.sra.lockReputation(this.mX, 1000, { from: charlie });
       await this.sra.lockReputation(this.mX, 500, { from: eve });
     })();
+
   });
 
   describe('ModifyThreshold Proposals', () => {
@@ -355,7 +362,6 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.ab.revokeArbitratorsProposalManager.triggerApprove(proposalId);
 
       res = await this.ab.revokeArbitratorsProposalManager.getProposal(proposalId);
-      console.log('res', res);
       assert.equal(res, 'they cheated');
 
       res = await this.ab.revokeArbitratorsProposalManager.getProposalVoting(proposalId);
@@ -365,4 +371,55 @@ contract('Arbitrator Stake Slashing', accounts => {
       assert.sameMembers(res, []);
     });
   });
+
+  describe('Change Application Config Proposals', () => {
+    it('should change a corresponding application config value', async function() {
+      let res = await this.ab.modifyApplicationConfigProposalManager.propose(
+        bytes32('my_key'),
+        numberToEvmWord(42),
+        'its better',
+        { from: alice }
+      );
+      const { proposalId } = res.logs[0].args;
+
+      await this.ab.modifyApplicationConfigProposalManager.aye(proposalId, { from: alice });
+
+      res = await this.ab.modifyApplicationConfigProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 10);
+      res = await this.ab.modifyApplicationConfigProposalManager.getNayShare(proposalId);
+      assert.equal(res, 0);
+
+      await this.ab.modifyApplicationConfigProposalManager.nay(proposalId, { from: bob });
+      await this.ab.modifyApplicationConfigProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.modifyApplicationConfigProposalManager.getAyeShare(proposalId);
+      assert.equal(res, 30);
+      res = await this.ab.modifyApplicationConfigProposalManager.getNayShare(proposalId);
+      assert.equal(res, 10);
+
+      await assertRevert(this.ab.modifyApplicationConfigProposalManager.triggerReject(proposalId));
+      await this.ab.modifyApplicationConfigProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.modifyApplicationConfigProposalManager.getProposal(proposalId);
+      assert.equal(hexToUtf8(res.key), 'my_key');
+      assert.equal(res.value, '0x000000000000000000000000000000000000000000000000000000000000002a');
+      assert.equal(res.description, 'its better');
+
+      res = await this.ab.modifyApplicationConfigProposalManager.getProposalVoting(proposalId);
+      assert.equal(res.status, ProposalStatus.APPROVED);
+      assert.sameMembers(res.ayes, [alice, charlie]);
+      assert.sameMembers(res.nays, [bob]);
+
+      res = await this.ab.modifyApplicationConfigProposalManager.getActiveProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.ab.modifyApplicationConfigProposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
+      res = await this.ab.modifyApplicationConfigProposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+
+      res = await this.ab.config.applicationConfig(bytes32('my_key'));
+      assert.equal(res, '0x000000000000000000000000000000000000000000000000000000000000002a');
+    });
+  });
 });
+

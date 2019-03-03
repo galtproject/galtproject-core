@@ -37,6 +37,9 @@ const Helpers = {
   weiToEtherRound(wei, precision = 4) {
     return Helpers.roundToPrecision(parseFloat(web3.utils.fromWei(wei.toFixed(), 'ether')), precision);
   },
+  numberToEvmWord(number) {
+    return web3.utils.padLeft(web3.utils.numberToHex(number), 64);
+  },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
   },

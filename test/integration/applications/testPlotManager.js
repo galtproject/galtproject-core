@@ -91,7 +91,7 @@ Object.freeze(Currency);
  * Alice is an applicant
  * Bob is a validator
  */
-contract.only('PlotManager', accounts => {
+contract('PlotManager', accounts => {
   const [
     coreTeam,
     feeMixer,
@@ -158,7 +158,7 @@ contract.only('PlotManager', accounts => {
       10,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30],
       alice
     );
 

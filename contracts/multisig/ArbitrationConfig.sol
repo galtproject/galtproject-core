@@ -31,12 +31,14 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   string public constant M_N_MANAGER = "m_n_manager";
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
   string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
+  string public constant APPLICATION_CONFIG_MANAGER = "application_config_manager";
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
   bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = bytes32("arbitrator_stake_threshold");
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
   bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
+  bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
@@ -46,6 +48,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
+  mapping(bytes32 => bytes32) public applicationConfig;
   uint256 public minimalArbitratorStake;
 
   bool initialized;
@@ -70,13 +73,16 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 5, "Invalid number of thresholds passed in");
+    require(_thresholds.length == 6, "Invalid number of thresholds passed in");
 
     thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
     thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
     thresholds[CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD] = _thresholds[2];
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
     thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
+    thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
+    // TODO: set default values for applicationConfig
+    applicationConfig["PM_PAYMENT_METHOD"] = bytes32(uint256(4));
   }
 
   function initialize(
@@ -120,6 +126,10 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function setContractAddress(bytes32 _key, address _address) external onlyRole(CONTRACT_ADDRESS_MANAGER) {
     contracts[_key] = _address;
+  }
+
+  function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyRole(APPLICATION_CONFIG_MANAGER) {
+    applicationConfig[_key] = _value;
   }
 
   // GETTERS (TODO: replace contract getters with interfaces only)
