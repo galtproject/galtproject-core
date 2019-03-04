@@ -31,11 +31,6 @@ const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
-const ANOTHER_APPLICATION = '0x2baf79c183ad5c683c3f4ffdffdd719a123a402f9474acde6ca3060ac1e46095';
-
-const FOO = bytes32('foo');
-const BAR = bytes32('bar');
-const BUZZ = bytes32('buzz');
 // eslint-disable-next-line no-underscore-dangle
 const _ES = bytes32('');
 const MN = bytes32('MN');
@@ -43,10 +38,6 @@ const BOB = bytes32('Bob');
 const CHARLIE = bytes32('Charlie');
 const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
-const FRANK = bytes32('Frank');
-const DOG = bytes32('dog');
-const CAT = bytes32('cat');
-const HUMAN = bytes32('human');
 
 const PM_SURVEYOR = bytes32('PM_SURVEYOR_ORACLE_TYPE');
 const PM_LAWYER = bytes32('PM_LAWYER_ORACLE_TYPE');

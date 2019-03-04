@@ -32,12 +32,12 @@ contract PlotManager is AbstractOracleApplication {
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-  bytes32 public constant PM_AUDITOR_ORACLE_TYPE = bytes32('PM_AUDITOR_ORACLE_TYPE');
-  bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32('PM_LAWYER_ORACLE_TYPE');
-  bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32('PM_SURVEYOR_ORACLE_TYPE');
+  bytes32 public constant PM_AUDITOR_ORACLE_TYPE = bytes32("PM_AUDITOR_ORACLE_TYPE");
+  bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
+  bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
-  bytes32 private constant CONFIG_FEE_CALCULATOR = bytes32('PM_FEE_CALCULATOR');
-  bytes32 private constant CONFIG_PAYMENT_METHOD = bytes32('PM_PAYMENT_METHOD');
+  bytes32 private constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
+  bytes32 private constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
 
   enum ApplicationStatus {
     NOT_EXISTS,
