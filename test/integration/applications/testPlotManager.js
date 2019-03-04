@@ -7,6 +7,7 @@ const Oracles = artifacts.require('./Oracles.sol');
 const Geodesic = artifacts.require('./MockGeodesic.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const MockSplitMerge = artifacts.require('./MockSplitMerge.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -19,6 +20,8 @@ const {
   assertRevert,
   zeroAddress,
   deploySplitMerge,
+  addressToEvmWord,
+  numberToEvmWord,
   clearLibCache
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
@@ -87,11 +90,7 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-/**
- * Alice is an applicant
- * Bob is a validator
- */
-contract('PlotManager', accounts => {
+contract.only('PlotManager', accounts => {
   const [
     coreTeam,
     feeMixer,
@@ -117,8 +116,6 @@ contract('PlotManager', accounts => {
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
     this.contour = this.initContour.map(galt.geohashToNumber);
-    this.contour2 = this.initContour2.map(galt.geohashToNumber);
-    this.contour3 = this.initContour3.map(galt.geohashToNumber);
     this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -148,7 +145,23 @@ contract('PlotManager', accounts => {
       coreTeam
     );
 
+    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
+
+    this.plotManager = await PlotManager.new({ from: coreTeam });
+    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    // this.splitMerge = await MockSplitMerge.new();
+    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+
+    const applicationConfig = {};
+    applicationConfig[bytes32('PM_FEE_CALCULATOR')] = addressToEvmWord(this.feeCalculator.address, 64);
+    applicationConfig[bytes32('PM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
+    // [52, 47, 1],
+    applicationConfig[await this.plotManager.getOracleTypeShareKey(PM_SURVEYOR)] = numberToEvmWord(52);
+    applicationConfig[await this.plotManager.getOracleTypeShareKey(PM_LAWYER)] = numberToEvmWord(47);
+    applicationConfig[await this.plotManager.getOracleTypeShareKey(PM_AUDITOR)] = numberToEvmWord(1);
 
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -159,26 +172,21 @@ contract('PlotManager', accounts => {
       60,
       ether(1000),
       [30, 30, 30, 30, 30, 30],
+      applicationConfig,
       alice
     );
 
     this.mX = this.abX.multiSig.address;
     this.abMultiSigX = this.abX.multiSig;
+    this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
-
-    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
-
-    this.plotManager = await PlotManager.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
 
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
     await this.plotManager.initialize(
       this.ggr.address,
-      this.feeCalculator.address,
       feeMixer,
       {
         from: coreTeam
@@ -190,12 +198,7 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
-
-    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
+    // await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
 
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -221,9 +224,7 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    const res = await this.plotManager.feeCalculator();
-    assert.equal(res, this.feeCalculator.address);
-
+    // TODO: remove after oracle active status check be implemented in multiSig-level
     await this.oracles.setApplicationTypeOracleTypes(
       NEW_APPLICATION,
       [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR],
@@ -247,7 +248,6 @@ contract('PlotManager', accounts => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     await this.plotManager.initialize(
       this.ggr.address,
-      this.feeCalculator.address,
       feeMixer,
       {
         from: coreTeam
@@ -258,102 +258,6 @@ contract('PlotManager', accounts => {
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
-
-    await this.plotManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotManager.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotManager.setGaltSpaceGaltShare(13, { from: feeManager });
-  });
-
-  it('should be initialized successfully', async function() {
-    assert.equal(await this.plotManager.minimalApplicationFeeInEth(), ether(6));
-  });
-
-  describe('contract config modifiers', () => {
-    describe('#setGaltSpaceRewardsAddress()', () => {
-      it.skip('should allow an galt space oracle type set rewards address', async function() {
-        await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
-          from: coreTeam
-        });
-        await this.plotManager.setGaltSpaceRewardsAddress(bob, { from: feeManager });
-        // const res = await web3.eth.getStorageAt(this.plotManager.address, 5);
-        // assert.equal(res, bob);
-      });
-
-      it('should deny any other than a fee manager account set rewards address', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceRewardsAddress(bob, { from: alice }));
-      });
-    });
-
-    describe('#setPaymentMethod()', () => {
-      it('should allow a fee manager set a payment method', async function() {
-        await this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
-        const res = await this.plotManager.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_ONLY);
-      });
-
-      it.skip('should deny any other than a fee manager account set a payment method', async function() {
-        await assertRevert(this.plotManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: coreTeam }));
-        const res = await this.plotManager.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_AND_GALT);
-      });
-    });
-
-    describe('#setMinimalApplicationFeeInEth()', () => {
-      it('should allow a fee manager set a new minimum fee in ETH', async function() {
-        await this.plotManager.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
-        const res = await this.plotManager.minimalApplicationFeeInEth();
-        assert.equal(res, ether(0.05));
-      });
-
-      it('should deny any other than a fee manager account set fee in ETH', async function() {
-        await assertRevert(this.plotManager.setMinimalApplicationFeeInEth(ether(0.05), { from: coreTeam }));
-      });
-    });
-
-    describe('#setMinimalApplicationFeeInGalt()', () => {
-      it('should allow a fee manager set a new minimum fee in GALT', async function() {
-        await this.plotManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
-        const res = await this.plotManager.minimalApplicationFeeInGalt();
-        assert.equal(res, ether(0.15));
-      });
-
-      it('should deny any other than a fee manager account set fee in GALT', async function() {
-        await assertRevert(this.plotManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: coreTeam }));
-      });
-    });
-
-    describe('#setGaltSpaceEthShare()', () => {
-      it('should allow fee manager set galtSpace ETH share in percents', async function() {
-        await this.plotManager.setGaltSpaceEthShare('42', { from: feeManager });
-        const res = await this.plotManager.galtSpaceEthShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny fee manager set Galt Space EHT share grater than 100 percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than a fee manager account set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceEthShare('20', { from: coreTeam }));
-      });
-    });
-
-    describe('#setGaltSpaceGaltShare()', () => {
-      it('should allow a fee manager set galtSpace Galt share in percents', async function() {
-        await this.plotManager.setGaltSpaceGaltShare('42', { from: feeManager });
-        const res = await this.plotManager.galtSpaceGaltShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny a fee manager set Galt Space Galt share grater than 100 percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than a fee manager account set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotManager.setGaltSpaceGaltShare('20', { from: coreTeam }));
-      });
-    });
   });
 
   describe('application pipeline for GALT payment method', () => {
@@ -361,14 +265,11 @@ contract('PlotManager', accounts => {
       await this.geodesicMock.calculateContourArea(this.contour);
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
-      this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, area);
+      this.fee = await this.plotManager.getSubmissionFeeByArea(this.abMultiSigX.address, Currency.GALT, area);
       assert.equal(this.fee, ether(15));
-
     });
 
     beforeEach(async function() {
-      // TODO: set share in a multisig
-
       await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
       const res = await this.plotManager.submitApplication(
         this.abMultiSigX.address,
@@ -509,7 +410,7 @@ contract('PlotManager', accounts => {
 
     describe('#submitApplication() with area provided by the applicant', () => {
       beforeEach(async function() {
-        this.fee = await this.plotManager.getSubmissionFeeByArea(Currency.GALT, ether(600));
+        this.fee = await this.plotManager.getSubmissionFeeByArea(this.abMultiSigX.address, Currency.GALT, ether(600));
         assert.equal(this.fee, ether(5));
 
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
@@ -664,17 +565,12 @@ contract('PlotManager', accounts => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-        await this.oracles.setApplicationTypeOracleTypes(
-          NEW_APPLICATION,
-          [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR],
-          [50, 25, 25],
-          [_ES, _ES, _ES],
-          { from: coreTeam }
-        );
-
         let res = await this.oracles.getOracleTypeRewardShare(PM_SURVEYOR);
-        assert.equal(res, 50);
+        assert.equal(res, 52);
+        res = await this.oracles.getOracleTypeRewardShare(PM_LAWYER);
+        assert.equal(res, 47);
+        res = await this.oracles.getOracleTypeRewardShare(PM_AUDITOR);
+        assert.equal(res, 1);
 
         // const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
         this.fee = ether(20);
@@ -728,11 +624,11 @@ contract('PlotManager', accounts => {
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '8700000000000000000');
+          assert.equal(res.reward.toString(), '9048000000000000000');
 
-          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
-          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('4350000000000000000')));
-          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('4350000000000000000')));
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('9048000000000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('8178000000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('174000000000000000')));
           assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('2600000000000000000')));
         });
       });
@@ -759,11 +655,11 @@ contract('PlotManager', accounts => {
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '8700000000000000000');
+          assert.equal(res.reward.toString(), '9048000000000000000');
 
-          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
-          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('4350000000000000000')));
-          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('4350000000000000000')));
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('9048000000000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('8178000000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('174000000000000000')));
           assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('2600000000000000000')));
         });
       });
@@ -789,11 +685,11 @@ contract('PlotManager', accounts => {
           const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '8700000000000000000');
+          assert.equal(res.reward.toString(), '9048000000000000000');
 
-          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8700000000000000000')));
-          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('4350000000000000000')));
-          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('4350000000000000000')));
+          assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('9048000000000000000')));
+          assertEqualBN(dansFinalBalance, dansInitialBalance.add(new BN('8178000000000000000')));
+          assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('174000000000000000')));
           assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('2600000000000000000')));
         });
       });
@@ -805,7 +701,7 @@ contract('PlotManager', accounts => {
       await this.geodesicMock.calculateContourArea(this.contour);
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
-      const expectedFee = await this.plotManager.getSubmissionFeeByArea(Currency.ETH, area);
+      const expectedFee = await this.plotManager.getSubmissionFeeByArea(this.abMultiSigX.address, Currency.ETH, area);
       assert.equal(expectedFee, ether(1.5));
       this.fee = ether(2);
     });
@@ -904,15 +800,15 @@ contract('PlotManager', accounts => {
 
           // 52%
           res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '670000000000000000');
+          assert.equal(res.reward.toString(), '696800000000000000');
 
           // 47%
           res = await this.plotManager.getApplicationOracle(this.aId, PM_LAWYER);
-          assert.equal(res.reward.toString(), '335000000000000000');
+          assert.equal(res.reward.toString(), '629800000000000000');
 
           // 1%
           res = await this.plotManager.getApplicationOracle(this.aId, PM_AUDITOR);
-          assert.equal(res.reward.toString(), '335000000000000000');
+          assert.equal(res.reward.toString(), '13400000000000000');
         });
       });
     });
@@ -1246,22 +1142,6 @@ contract('PlotManager', accounts => {
       });
 
       // eslint-disable-next-line
-      it("should deny oracle whose role doesnt present in application type to approve application", async function() {
-        await this.oracles.setApplicationTypeOracleTypes(
-          ANOTHER_APPLICATION,
-          [FOO, BAR, BUZZ],
-          [50, 25, 25],
-          [_ES, _ES, _ES],
-          { from: coreTeam }
-        );
-
-        await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [FOO], { from: coreTeam });
-
-        await this.oracles.onOracleStakeChanged(frank, FOO, ether(30), { from: stakesNotifier });
-        await assertRevert(this.plotManager.approveApplication(this.aId, this.credentials, { from: frank }));
-      });
-
-      // eslint-disable-next-line
       it("should deny oracle approve application with other than consideration or partially locked status", async function() {
         await this.plotManager.rejectApplication(this.aId, 'suspicious', { from: bob });
 
@@ -1411,17 +1291,6 @@ contract('PlotManager', accounts => {
     });
 
     describe('claim reward', () => {
-      before(async function() {
-        await this.oracles.deleteApplicationType(NEW_APPLICATION, { from: coreTeam });
-        await this.oracles.setApplicationTypeOracleTypes(
-          NEW_APPLICATION,
-          [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR],
-          [52, 47, 1],
-          [_ES, _ES, _ES],
-          { from: coreTeam }
-        );
-      });
-
       beforeEach(async function() {
         const res = await this.plotManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);

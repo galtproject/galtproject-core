@@ -104,6 +104,7 @@ const Helpers = {
     periodLength,
     minimalArbitratorStake,
     thresholds,
+    applicationConfigs,
     owner
   ) {
     let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, thresholds, {
@@ -140,7 +141,14 @@ const Helpers = {
       res.logs[0].args.modifyApplicationConfigProposalManager
     );
 
-    await factory.buildSixthStep(groupId, [], { from: owner });
+    const keys = Object.keys(applicationConfigs);
+    const values = [];
+
+    for(let i = 0; i < keys.length; i++) {
+      values[i] = applicationConfigs[keys[i]];
+    }
+
+    await factory.buildSixthStep(groupId, keys, values, { from: owner });
     // PlotManager
     // address feeCalculator
     // address roleShares

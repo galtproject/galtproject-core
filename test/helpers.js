@@ -40,6 +40,9 @@ const Helpers = {
   numberToEvmWord(number) {
     return web3.utils.padLeft(web3.utils.numberToHex(number), 64);
   },
+  addressToEvmWord(address) {
+    return web3.utils.padLeft(address, 64);
+  },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
   },

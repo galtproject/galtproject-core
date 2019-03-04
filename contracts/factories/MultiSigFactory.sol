@@ -320,14 +320,23 @@ contract MultiSigFactory is Ownable {
   }
 
   function buildSixthStep(
-    bytes32 _groupId
+    bytes32 _groupId,
+    bytes32[] calldata _keys,
+    bytes32[] calldata _values
   )
     external
   {
+    require(_keys.length == _values.length, "Keys and values arrays should have the same lengths");
 
     MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
     require(g.nextStep == Step.SIXTH, "SIXTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+    for (uint256 i = 0; i < _keys.length; i++) {
+      g.arbitrationConfig.setApplicationConfigValue(_keys[i], _values[i]);
+    }
+    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
 
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,

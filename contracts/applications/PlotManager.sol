@@ -123,7 +123,7 @@ contract PlotManager is AbstractOracleApplication {
     // TODO: figure out where to store these values
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
+    galtSpaceGaltShare = 13;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -164,7 +164,7 @@ contract PlotManager is AbstractOracleApplication {
   }
 
   function submitApplication(
-    address multiSig,
+    address _multiSig,
     uint256[] calldata _packageContour,
     int256[] calldata _heights,
     int256 _level,
@@ -183,11 +183,11 @@ contract PlotManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
-    multiSigRegistry().requireValidMultiSig(multiSig);
+    multiSigRegistry().requireValidMultiSig(_multiSig);
 
     bytes32 _id = keccak256(
       abi.encodePacked(
-        multiSig,
+        _multiSig,
         _packageContour,
         _credentialsHash,
         msg.sender,
@@ -210,7 +210,7 @@ contract PlotManager is AbstractOracleApplication {
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(a.multiSig, Currency.GALT, a.details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(_multiSig, Currency.GALT, a.details.area), "Incorrect fee passed in");
 
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
@@ -223,13 +223,13 @@ contract PlotManager is AbstractOracleApplication {
       // Default a.currency is Currency.ETH
 
       require(
-        msg.value >= getSubmissionFeeByArea(a.multiSig, Currency.ETH, a.details.area),
+        msg.value >= getSubmissionFeeByArea(_multiSig, Currency.ETH, a.details.area),
         "Incorrect msg.value passed in");
     }
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
-    a.multiSig = multiSig;
+    a.multiSig = _multiSig;
     a.applicant = msg.sender;
 
     calculateAndStoreFee(a, a.fees.totalPaidFee);
@@ -549,7 +549,7 @@ contract PlotManager is AbstractOracleApplication {
     return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
   }
 
-  function feeCalculator(address _multiSig) internal view returns (IPlotManagerFeeCalculator) {
+  function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
     return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
   }
 
@@ -609,7 +609,7 @@ contract PlotManager is AbstractOracleApplication {
       uint256 rewardShare = a
       .fees
       .oraclesReward
-      .mul(oracles.getOracleTypeRewardShare(oracleType))
+      .mul(oracleTypeShare(a.multiSig, oracleType))
       .div(100);
 
       a.assignedRewards[oracleType] = rewardShare;
