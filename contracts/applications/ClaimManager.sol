@@ -34,6 +34,11 @@ contract ClaimManager is AbstractApplication {
   // `bytes4(keccak256('transfer(address,uint256)'))`
   bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
 
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("CM_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("CM_MINIMAL_FEE_GALT");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("CM_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_PREFIX = bytes32("CM");
+
   enum ApplicationStatus {
     NOT_EXISTS,
     SUBMITTED,
@@ -126,7 +131,6 @@ contract ClaimManager is AbstractApplication {
   uint256 public n;
 
   Oracles oracles;
-  MultiSigRegistry multiSigRegistry;
 
   mapping(address => bytes32[]) applicationsByArbitrator;
 
@@ -141,29 +145,33 @@ contract ClaimManager is AbstractApplication {
   }
 
   function initialize(
-    Oracles _oracles,
-    IERC20 _galtToken,
-    MultiSigRegistry _multiSigRegistry,
+    GaltGlobalRegistry _ggr,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    oracles = _oracles;
-    galtToken = _galtToken;
-    multiSigRegistry = _multiSigRegistry;
+    ggr = _ggr;
     galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+    oracles = Oracles(ggr.getOraclesAddress());
 
+    // TODO: figure out where to store these values
+    galtSpaceEthShare = 33;
+    galtSpaceGaltShare = 13;
     m = 3;
     n = 5;
+  }
 
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
+  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  }
+
+  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   /**
@@ -187,7 +195,7 @@ contract ClaimManager is AbstractApplication {
     payable
     returns (bytes32)
   {
-    multiSigRegistry.requireValidMultiSig(_multiSig);
+    multiSigRegistry().requireValidMultiSig(_multiSig);
 
     // Default is ETH
     Currency currency;
@@ -196,13 +204,13 @@ contract ClaimManager is AbstractApplication {
     // ETH
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
+      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Incorrect fee passed in");
       fee = msg.value;
     // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Incorrect fee passed in");
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
     }
@@ -371,18 +379,18 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        multiSigRegistry
+        multiSigRegistry()
           .getArbitrationConfig(c.multiSig)
           .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        multiSigRegistry
+        multiSigRegistry()
           .getArbitrationConfig(c.multiSig)
           .getArbitratorStakes()
           .slashMultiple(p.arbitrators, p.arbitratorFines);
 
         c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
-          address(galtToken),
+          address(ggr.getGaltToken()),
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
         );
@@ -409,7 +417,7 @@ contract ClaimManager is AbstractApplication {
     if (c.fees.currency == Currency.ETH) {
       msg.sender.transfer(c.fees.arbitratorReward);
     } else if (c.fees.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, c.fees.arbitratorReward);
+      ggr.getGaltToken().transfer(msg.sender, c.fees.arbitratorReward);
     }
   }
 
@@ -434,7 +442,7 @@ contract ClaimManager is AbstractApplication {
     if (c.fees.currency == Currency.ETH) {
       msg.sender.transfer(c.fees.galtSpaceReward);
     } else if (c.fees.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, c.fees.galtSpaceReward);
+      ggr.getGaltToken().transfer(msg.sender, c.fees.galtSpaceReward);
     } else {
       revert("Unknown currency");
     }

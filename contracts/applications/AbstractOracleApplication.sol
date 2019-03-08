@@ -29,7 +29,7 @@ contract AbstractOracleApplication is AbstractApplication {
 
   constructor() public {}
 
-  function claimOracleReward(bytes32 _aId) external;
+//  function claimOracleReward(bytes32 _aId) external;
 
   function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {
     return applicationsByOracle[_oracle];

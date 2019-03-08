@@ -17,20 +17,21 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../Oracles.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
   string public constant ROLE_FEE_MANAGER = "fee_manager";
   string public constant ROLE_GALT_SPACE = "galt_space";
 
-  PaymentMethod public paymentMethod;
-  uint256 public minimalApplicationFeeInEth;
-  uint256 public minimalApplicationFeeInGalt;
+//  uint256 public minimalApplicationFeeInEth;
+//  uint256 public minimalApplicationFeeInGalt;
   uint256 public galtSpaceEthShare;
   uint256 public galtSpaceGaltShare;
   address internal galtSpaceRewardsAddress;
 
-  IERC20 public galtToken;
+  GaltGlobalRegistry public ggr;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
@@ -55,34 +56,24 @@ contract AbstractApplication is Initializable, Permissionable {
   constructor() public {}
 
   function claimGaltSpaceReward(bytes32 _aId) external;
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
 
-//  function setGaltSpaceRewardsAddress(address _newAddress) external onlyRole(ROLE_GALT_SPACE) {
-//    galtSpaceRewardsAddress = _newAddress;
-//  }
-//
-//  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
-//    paymentMethod = _newMethod;
-//  }
-//
-//  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
-//    minimalApplicationFeeInEth = _newFee;
-//  }
-//
-//  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
-//    minimalApplicationFeeInGalt = _newFee;
-//  }
-//
-//  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-//    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-//
-//    galtSpaceEthShare = _newShare;
-//  }
-//
-//  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-//    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-//
-//    galtSpaceGaltShare = _newShare;
-//  }
+  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
+    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
+  }
+
+  function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
+    return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
+  }
+
+  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
+    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
+
+    assert(val <= 100);
+
+    return val;
+  }
 
   function getAllApplications() external view returns (bytes32[] memory) {
     return applicationsArray;

@@ -3,6 +3,9 @@ const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
@@ -10,6 +13,7 @@ const {
   initHelperArtifacts,
   assertEthBalanceChanged,
   ether,
+  numberToEvmWord,
   assertEqualBN,
   assertRevert,
   zeroAddress,
@@ -17,6 +21,7 @@ const {
   clearLibCache,
   applicationStatus
 } = require('../../helpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(PlotCustodianManager.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;

@@ -81,7 +81,7 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-contract.only('PlotManager', accounts => {
+contract('PlotManager', accounts => {
   const [
     coreTeam,
     feeMixer,
@@ -185,6 +185,7 @@ contract.only('PlotManager', accounts => {
     );
     await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
+    // TODO: remove this
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });

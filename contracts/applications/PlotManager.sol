@@ -36,8 +36,9 @@ contract PlotManager is AbstractOracleApplication {
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
-  bytes32 private constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
-  bytes32 private constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_PREFIX = bytes32("PM");
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -105,8 +106,6 @@ contract PlotManager is AbstractOracleApplication {
 
   mapping(bytes32 => Application) private applications;
 
-  GaltGlobalRegistry public ggr;
-
   constructor () public {}
 
   function initialize(
@@ -149,6 +148,18 @@ contract PlotManager is AbstractOracleApplication {
     require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracle type list not complete");
 
     _;
+  }
+
+  function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
+    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
+  }
+
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -539,35 +550,6 @@ contract PlotManager is AbstractOracleApplication {
     } else {
       revert("Unknown currency");
     }
-  }
-
-  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
-    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
-  }
-
-  function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
-    return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
-  }
-
-  function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
-    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
-  }
-
-  // TODO: rename `paymentMethod`
-  function fetchPaymentMethod(address _multiSig) internal view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
-  }
-
-  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
-    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
-
-    assert(val <= 100);
-
-    return val;
-  }
-
-  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
-    return keccak256(abi.encode("PM", "share", _oracleType));
   }
 
   function calculateAndStoreFee(

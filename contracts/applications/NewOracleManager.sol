@@ -40,16 +40,14 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   constructor() public {}
 
   function initialize(
-    Oracles _oracles,
-    IERC20 _galtToken,
-    MultiSigRegistry _multiSigRegistry,
+    GaltGlobalRegistry _ggr,
     address _galtSpaceRewardsAddress
   )
     public
     isInitializer
   {
-    _initialize(_multiSigRegistry, _galtToken, _galtSpaceRewardsAddress);
-    oracles = _oracles;
+    _initialize(_ggr, _galtSpaceRewardsAddress);
+    oracles = Oracles(ggr.getOraclesAddress());
   }
 
   function submit(

@@ -320,6 +320,18 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
+  async deploySplitMergeMock(spaceTokenAddress) {
+    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+    const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
+    const splitMergeLib = await Helpers.getSplitMergeLib();
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
+
+    const splitMerge = await SplitMerge.new();
+    const geodesic = await Geodesic.new();
+    await splitMerge.setGeodesic(geodesic.address);
+
+    return { splitMerge, geodesic };
+  },
   async deploySplitMerge(spaceTokenAddress) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');

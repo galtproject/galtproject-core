@@ -18,12 +18,10 @@ import "../registries/MultiSigRegistry.sol";
 import "./AbstractApplication.sol";
 
 contract AbstractArbitratorApplication is AbstractApplication {
-  MultiSigRegistry multiSigRegistry;
-
   mapping(address => bytes32[]) public applicationsByArbitrator;
 
   modifier anyArbitrator(address payable _multiSig) {
-    multiSigRegistry.requireValidMultiSig(_multiSig);
+    multiSigRegistry().requireValidMultiSig(_multiSig);
     require(ArbitratorsMultiSig(_multiSig).isOwner(msg.sender), "Not active arbitrator");
     _;
   }
