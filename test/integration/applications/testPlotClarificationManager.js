@@ -140,6 +140,8 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(
       this.ggr,
@@ -178,9 +180,6 @@ contract('PlotClarificationManager', (accounts) => {
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
-
-    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
     await this.plotManager.initialize(
       this.ggr.address,

@@ -27,8 +27,8 @@ contract AbstractApplication is Initializable, Permissionable {
 
 //  uint256 public minimalApplicationFeeInEth;
 //  uint256 public minimalApplicationFeeInGalt;
-  uint256 public galtSpaceEthShare;
-  uint256 public galtSpaceGaltShare;
+  uint256 internal galtSpaceEthShare;
+  uint256 internal galtSpaceGaltShare;
   address internal galtSpaceRewardsAddress;
 
   GaltGlobalRegistry public ggr;
@@ -46,11 +46,6 @@ contract AbstractApplication is Initializable, Permissionable {
     ETH_ONLY,
     GALT_ONLY,
     ETH_AND_GALT
-  }
-
-  modifier onlyFeeManager() {
-    requireRole(msg.sender, ROLE_FEE_MANAGER);
-    _;
   }
 
   constructor() public {}

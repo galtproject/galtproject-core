@@ -34,10 +34,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   bytes32 public constant PC_CUSTODIAN_ORACLE_TYPE = bytes32("PC_CUSTODIAN_ORACLE_TYPE");
   bytes32 public constant PC_AUDITOR_ORACLE_TYPE = bytes32("PC_AUDITOR_ORACLE_TYPE");
 
-  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("PU_MINIMAL_FEE_ETH");
-  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PU_MINIMAL_FEE_GALT");
-  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PU_PAYMENT_METHOD");
-  bytes32 public constant CONFIG_PREFIX = bytes32("PU");
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("PC_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PC_MINIMAL_FEE_GALT");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PC_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_PREFIX = bytes32("PC");
 
   // TODO: move values to the custodian registry
   uint256 public constant MODIFY_CUSTODIAN_LIMIT = 10;
