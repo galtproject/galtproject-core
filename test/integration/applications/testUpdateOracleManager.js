@@ -3,16 +3,21 @@ const Oracles = artifacts.require('./Oracles.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
 const UpdateOracleManager = artifacts.require('./UpdateOracleManager.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
-const { initHelperWeb3, ether, assertRevert } = require('../../helpers');
+const { initHelperWeb3, ether, assertRevert, numberToEvmWord } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
+GaltToken.numberFormat = "String";
+
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
+const ANOTHER_APPLICATION = '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
 
 const ES = bytes32('');
 const MN = bytes32('MN');
@@ -62,7 +67,7 @@ contract('UpdateOracleManager', (accounts) => {
     galtSpaceOrg,
     feeManager,
     applicationTypeManager,
-    claimManager,
+    claimManagerAddress,
     spaceReputationAccounting,
     oracleManager,
     alice,
@@ -73,7 +78,7 @@ contract('UpdateOracleManager', (accounts) => {
     george
   ] = accounts;
 
-  beforeEach(async function() {
+  before(async function() {
     this.attachedDocuments = [
       'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
       'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
@@ -87,17 +92,36 @@ contract('UpdateOracleManager', (accounts) => {
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
     this.updateOracle = await UpdateOracleManager.new({ from: coreTeam });
 
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    // await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, { from: coreTeam });
+
     this.multiSigFactory = await deployMultiSigFactory(
-      this.galtToken.address,
-      this.oracles,
-      claimManager,
-      this.multiSigRegistry,
-      spaceReputationAccounting,
+      this.ggr,
       coreTeam
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+
+    const applicationConfig = {};
+    applicationConfig[bytes32('NO_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
+    applicationConfig[bytes32('NO_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
+    applicationConfig[bytes32('NO_M')] = numberToEvmWord(3);
+    applicationConfig[bytes32('NO_N')] = numberToEvmWord(5);
+    applicationConfig[bytes32('NO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+    applicationConfig[bytes32('UO_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
+    applicationConfig[bytes32('UO_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
+    applicationConfig[bytes32('UO_M')] = numberToEvmWord(3);
+    applicationConfig[bytes32('UO_N')] = numberToEvmWord(5);
+    applicationConfig[bytes32('UO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
     this.abX = await buildArbitration(
@@ -108,7 +132,8 @@ contract('UpdateOracleManager', (accounts) => {
       10,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30],
+      applicationConfig,
       alice
     );
 
@@ -118,9 +143,7 @@ contract('UpdateOracleManager', (accounts) => {
     this.abVotingX = this.abX.voting;
 
     await this.newOracle.initialize(
-      this.oracles.address,
-      this.galtToken.address,
-      this.multiSigRegistry.address,
+      this.ggr.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -128,9 +151,7 @@ contract('UpdateOracleManager', (accounts) => {
     );
 
     await this.updateOracle.initialize(
-      this.oracles.address,
-      this.galtToken.address,
-      this.multiSigRegistry.address,
+      this.ggr.address,
       galtSpaceOrg,
       {
         from: coreTeam
@@ -177,46 +198,24 @@ contract('UpdateOracleManager', (accounts) => {
       from: applicationTypeManager
     });
 
-    await this.updateOracle.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.updateOracle.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.updateOracle.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.updateOracle.setGaltSpaceGaltShare(13, { from: feeManager });
+    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
+      CUSTODIAN_APPLICATION,
+      [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      [60, 40],
+      [ES, ES],
+      { from: applicationTypeManager }
+    );
 
-    await this.updateOracle.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.updateOracle.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.updateOracle.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.updateOracle.setGaltSpaceGaltShare(13, { from: feeManager });
-
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
-
-    this.newOracleWeb3 = new web3.eth.Contract(this.newOracle.abi, this.newOracle.address);
-    this.updateOracleWeb3 = new web3.eth.Contract(this.updateOracle.abi, this.updateOracle.address);
-    this.oraclesWeb3 = new web3.eth.Contract(this.oracles.abi, this.oracles.address);
-    this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
+    await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      from: oracleManager
+    });
   });
 
   it('should be initialized successfully', async function() {
-    assert.equal(await this.updateOracleWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
+    assert.equal(await this.updateOracle.ggr(), this.ggr.address);
   });
 
   describe('#submit()', () => {
-    beforeEach(async function() {
-      await this.newOracle.setMofN(3, 5, { from: galtSpaceOrg });
-      await this.updateOracle.setMofN(3, 5, { from: galtSpaceOrg });
-
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        [60, 40],
-        [ES, ES],
-        { from: applicationTypeManager }
-      );
-
-      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-    });
-
     describe('with GALT payment', () => {
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
@@ -234,7 +233,7 @@ contract('UpdateOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.updateOracleWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.updateOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -275,7 +274,7 @@ contract('UpdateOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.updateOracleWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.updateOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -303,7 +302,7 @@ contract('UpdateOracleManager', (accounts) => {
   describe('update oracle', async () => {
     it('should merge roles on update', async function() {
       this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
+        ANOTHER_APPLICATION,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE],
         [30, 40, 30],
         [ES, ES, ES],
@@ -364,7 +363,7 @@ contract('UpdateOracleManager', (accounts) => {
       await this.updateOracle.aye(this.aId, { from: dan });
       await this.updateOracle.aye(this.aId, { from: frank });
 
-      res = await this.oraclesWeb3.methods.getOracle(bob).call();
+      res = await this.oracles.getOracle(bob);
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE].map(hexToUtf8)

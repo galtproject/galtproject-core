@@ -23,6 +23,13 @@ import "./AbstractApplication.sol";
 contract UpdateOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("UO_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("UO_MINIMAL_FEE_GALT");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("UO_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_M = bytes32("UO_M");
+  bytes32 public constant CONFIG_N = bytes32("UO_N");
+  bytes32 public constant CONFIG_PREFIX = bytes32("UO");
+
   struct OracleDetails {
     address multiSig;
     address addr;
@@ -48,6 +55,28 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   {
     _initialize(_ggr, _galtSpaceRewardsAddress);
     oracles = Oracles(ggr.getOraclesAddress());
+  }
+
+  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  }
+
+  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  // arbitrators count required
+  function m(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_M));
+  }
+
+  // total arbitrators count able to lock the claim
+  function n(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_N));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
