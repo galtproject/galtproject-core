@@ -53,7 +53,7 @@ contract('OracleStakesAccounting', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
-    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
+    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30, 30], { from: coreTeam });
     this.arbitratorVoting = await ArbitratorVoting.new(this.config.address, { from: coreTeam });
     this.oracleStakesAccountingX = await OracleStakesAccounting.new(
       this.oracles.address,
