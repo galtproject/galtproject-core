@@ -25,7 +25,7 @@ const ProposalStatus = {
   REJECTED: 3
 };
 
-contract('Arbitrator Stake Slashing', accounts => {
+contract('Proposals', accounts => {
   const [
     coreTeam,
     galtSpaceOrg,
