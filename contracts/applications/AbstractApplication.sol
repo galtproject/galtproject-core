@@ -25,8 +25,6 @@ contract AbstractApplication is Initializable, Permissionable {
   string public constant ROLE_FEE_MANAGER = "fee_manager";
   string public constant ROLE_GALT_SPACE = "galt_space";
 
-//  uint256 public minimalApplicationFeeInEth;
-//  uint256 public minimalApplicationFeeInGalt;
   uint256 internal galtSpaceEthShare;
   uint256 internal galtSpaceGaltShare;
   address internal galtSpaceRewardsAddress;
@@ -52,7 +50,6 @@ contract AbstractApplication is Initializable, Permissionable {
 
   function claimGaltSpaceReward(bytes32 _aId) external;
   function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
-  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
 
   function multiSigRegistry() internal view returns(IMultiSigRegistry) {
     return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
@@ -60,14 +57,6 @@ contract AbstractApplication is Initializable, Permissionable {
 
   function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
     return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
-  }
-
-  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
-    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
-
-    assert(val <= 100);
-
-    return val;
   }
 
   function getAllApplications() external view returns (bytes32[] memory) {

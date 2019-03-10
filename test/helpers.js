@@ -63,6 +63,45 @@ const Helpers = {
       setTimeout(resolve, timeout);
     });
   },
+  async evmMineBlock() {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'evm_mine',
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
+  async evmIncreaseTime(seconds) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'evm_increaseTime',
+          params: [seconds],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
   async assertInvalid(promise) {
     try {
       await promise;

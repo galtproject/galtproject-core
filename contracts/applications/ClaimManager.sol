@@ -37,6 +37,8 @@ contract ClaimManager is AbstractApplication {
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("CM_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("CM_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("CM_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_M = bytes32("CM_M");
+  bytes32 public constant CONFIG_N = bytes32("CM_N");
   bytes32 public constant CONFIG_PREFIX = bytes32("CM");
 
   enum ApplicationStatus {
@@ -122,27 +124,12 @@ contract ClaimManager is AbstractApplication {
     uint256 amount;
   }
 
-  mapping(bytes32 => Claim) claims;
-
-  // arbitrators count required to
-  uint256 public m;
-
-  // total arbitrators count able to lock the claim
-  uint256 public n;
-
   Oracles oracles;
 
+  mapping(bytes32 => Claim) claims;
   mapping(address => bytes32[]) applicationsByArbitrator;
 
   constructor () public {}
-
-  function setMofN(uint256 _m, uint256 _n) external onlyRole(ROLE_GALT_SPACE) {
-    require(2 <= _m, "Should satisfy `2 <= n`");
-    require(_m <= _n, "Should satisfy `n <= m`");
-
-    m = _m;
-    n = _n;
-  }
 
   function initialize(
     GaltGlobalRegistry _ggr,
@@ -158,8 +145,8 @@ contract ClaimManager is AbstractApplication {
     // TODO: figure out where to store these values
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
-    m = 3;
-    n = 5;
+//    m = 3;
+//    n = 5;
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
@@ -168,6 +155,16 @@ contract ClaimManager is AbstractApplication {
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
     return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  // arbitrators count required
+  function m(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_M));
+  }
+
+  // total arbitrators count able to lock the claim
+  function n(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
@@ -236,8 +233,8 @@ contract ClaimManager is AbstractApplication {
     c.applicant = msg.sender;
     c.attachedDocuments = _documents;
     c.fees.currency = currency;
-    c.n = n;
-    c.m = m;
+    c.n = n(_multiSig);
+    c.m = m(_multiSig);
 
     calculateAndStoreFee(c, fee);
 
@@ -263,11 +260,11 @@ contract ClaimManager is AbstractApplication {
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(c.arbitrators.size() < n, "All arbitrator slots are locked");
+    require(c.arbitrators.size() < n(c.multiSig), "All arbitrator slots are locked");
 
     c.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n);
+    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n(c.multiSig));
   }
 
   /**
@@ -379,6 +376,8 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
+        IArbitrationConfig config = multiSigRegistry().getArbitrationConfig(c.multiSig);
+        config.getOracleStakes();
         multiSigRegistry()
           .getArbitrationConfig(c.multiSig)
           .getOracleStakes()
@@ -551,7 +550,7 @@ contract ClaimManager is AbstractApplication {
       c.arbitrators.elements(),
       c.arbitrators.size(),
       c.m,
-      n,
+      c.n,
       c.multiSigTransactionId,
       c.messageCount,
       c.status
