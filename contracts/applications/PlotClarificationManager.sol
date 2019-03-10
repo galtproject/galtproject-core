@@ -342,7 +342,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     emit LogPackageTokenWithdrawn(a.id, a.spaceTokenId);
   }
 
-  function claimOracleReward(bytes32 _aId) external  {
+  function claimOracleReward(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
     require(

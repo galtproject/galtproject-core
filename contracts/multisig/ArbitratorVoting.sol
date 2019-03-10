@@ -225,14 +225,14 @@ contract ArbitratorVoting is IArbitratorVoting, Permissionable {
 
   // @dev SpaceOwner balance changed
   // Handles SRA stakeReputation and revokeReputation calls
+  // TODO: fix this using ggr
+  // onlySpaceReputationNotifier
+  // onlyRole(SPACE_REPUTATION_NOTIFIER)
   function onDelegateReputationChanged(
     address _delegate,
     uint256 _newLocked
   )
     external
-    // TODO: fix this using ggr
-//    onlySpaceReputationNotifier
-//    onlyRole(SPACE_REPUTATION_NOTIFIER)
   {
     // need more details
     uint256 currentLocked = lockedReputation[_delegate];
