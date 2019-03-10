@@ -73,9 +73,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     bool galtSpaceRewardPaidOut;
   }
 
-  uint256 m;
-  uint256 n;
-
   mapping(bytes32 => Application) applications;
 
   Oracles oracles;
@@ -85,14 +82,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   function _execute(bytes32) internal;
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256);
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256);
-
-  function setMofN(uint256 _m, uint256 _n) external onlyRole(ROLE_GALT_SPACE) {
-    require(2 <= _m, "Should satisfy `2 <= n`");
-    require(_m <= _n, "Should satisfy `n <= m`");
-
-    m = _m;
-    n = _n;
-  }
+  function m(address _multiSig) public view returns (uint256);
+  function n(address _multiSig) public view returns (uint256);
 
   /**
    * @dev Any arbitrator locks an application if an empty slots available
@@ -106,11 +97,11 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(a.arbitrators.size() < n, "All arbitrator slots are locked");
+    require(a.arbitrators.size() < n(a.multiSig), "All arbitrator slots are locked");
 
     a.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n);
+    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n(a.multiSig));
   }
 
   function aye(bytes32 _aId) external {
@@ -214,8 +205,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     // TODO: figure out where to store these values
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
-    m = 3;
-    n = 5;
   }
 
   function _submit(
@@ -251,8 +240,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     a.status = ApplicationStatus.SUBMITTED;
     a.multiSig = _multiSig;
     a.applicant = msg.sender;
-    a.m = m;
-    a.n = n;
+    a.m = m(_multiSig);
+    a.n = n(_multiSig);
 
     a.fees.currency = currency;
 

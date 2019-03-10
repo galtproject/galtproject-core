@@ -24,6 +24,13 @@ import "./ArbitratorApprovableApplication.sol";
 contract NewOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("NO_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("NO_MINIMAL_FEE_GALT");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("NO_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_M = bytes32("NO_M");
+  bytes32 public constant CONFIG_N = bytes32("NO_N");
+  bytes32 public constant CONFIG_PREFIX = bytes32("NO");
+
   struct OracleDetails {
     address addr;
     bytes32 name;
@@ -48,6 +55,28 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   {
     _initialize(_ggr, _galtSpaceRewardsAddress);
     oracles = Oracles(ggr.getOraclesAddress());
+  }
+
+  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  }
+
+  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  // arbitrators count required
+  function m(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_M));
+  }
+
+  // total arbitrators count able to lock the claim
+  function n(address _multiSig) public view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_N));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
@@ -76,15 +105,13 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       )
     );
 
-    OracleDetails memory o;
+    OracleDetails storage o = oracleDetails[id];
     o.addr = _oracleAddress;
     o.name = _name;
     o.position = _position;
     o.description = _description;
     o.descriptionHashes = _descriptionHashes;
     o.oracleTypes = _oracleTypes;
-
-    oracleDetails[id] = o;
 
     return _submit(id, _multiSig, _applicationFeeInGalt);
   }
