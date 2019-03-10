@@ -106,9 +106,7 @@ contract('Proposals', accounts => {
       );
 
       await this.claimManager.initialize(
-        this.oracles.address,
-        this.galtToken.address,
-        this.multiSigRegistry.address,
+        this.ggr.address,
         galtSpaceOrg,
         {
           from: coreTeam
@@ -129,6 +127,7 @@ contract('Proposals', accounts => {
         60,
         ether(1000),
         [30, 30, 30, 30, 30, 30],
+        {},
         alice
       );
 
