@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../Oracles.sol";
 import "../SpaceReputationAccounting.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
 import "../multisig/proposals/interfaces/IProposalManager.sol";
@@ -33,8 +33,8 @@ import "./arbitration/ArbitrationModifyMofNProposalFactory.sol";
 import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
 import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
 import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
-import "../registries/GaltGlobalRegistry.sol";
 import "./arbitration/ArbitrationModifyApplicationConfigProposalFactory.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -96,11 +96,7 @@ contract MultiSigFactory is Ownable {
     IProposalManager revokeArbitratorsProposalManager;
   }
 
-  MultiSigRegistry multiSigRegistry;
-  ClaimManager claimManager;
-  IERC20 galtToken;
-  Oracles oracles;
-  SpaceReputationAccounting spaceReputationAccounting;
+  GaltGlobalRegistry ggr;
 
   ArbitrationConfigFactory arbitrationConfigFactory;
   ArbitratorsMultiSigFactory arbitratorMultiSigFactory;
@@ -135,18 +131,7 @@ contract MultiSigFactory is Ownable {
   ) public {
     commission = 10 ether;
 
-    multiSigRegistry = MultiSigRegistry(_ggr.getMultiSigRegistryAddress());
-    galtToken = _ggr.getGaltToken();
-    oracles = Oracles(_ggr.getOraclesAddress());
-    // TODO: ClaimManager should be provided by GaltApplicationRegistry
-    claimManager = ClaimManager(_ggr.getClaimManagerAddress());
-    spaceReputationAccounting = SpaceReputationAccounting(_ggr.getSpaceReputationAccountingAddress());
-
-    MultiSigRegistry multiSigRegistry;
-    ClaimManager claimManager;
-    IERC20 galtToken;
-    Oracles oracles;
-    SpaceReputationAccounting spaceReputationAccounting;
+    ggr = _ggr;
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
     arbitratorVotingFactory = _arbitratorVotingFactory;
@@ -177,9 +162,12 @@ contract MultiSigFactory is Ownable {
     external
     returns (bytes32 groupId)
   {
+    IERC20 galtToken = ggr.getGaltToken();
+    address claimManager = ggr.getClaimManagerAddress();
+
     galtToken.transferFrom(msg.sender, address(this), commission);
 
-    groupId = keccak256(abi.encode(block.timestamp, _initialMultiSigRequired, msg.sender));
+    groupId = keccak256(abi.encode(blockhash(block.number - 1), _initialMultiSigRequired, msg.sender));
 
     MultiSigContractGroup storage g = multiSigContractGroups[groupId];
 
@@ -193,11 +181,11 @@ contract MultiSigFactory is Ownable {
     );
 
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _initialMultiSigRequired, arbitrationConfig);
-    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(oracles, galtToken, arbitrationConfig);
+    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(Oracles(ggr.getOraclesAddress()), galtToken, arbitrationConfig);
 
-    arbitratorMultiSig.addRoleTo(address(claimManager), arbitratorMultiSig.ROLE_PROPOSER());
-    oracleStakesAccounting.addRoleTo(address(claimManager), oracleStakesAccounting.ROLE_SLASH_MANAGER());
-    oracles.addOracleNotifierRoleTo(address(oracleStakesAccounting));
+    arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
+    oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
+    Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     g.creator = msg.sender;
     g.arbitratorMultiSig = arbitratorMultiSig;
@@ -219,16 +207,17 @@ contract MultiSigFactory is Ownable {
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(
-      galtToken,
+      ggr.getGaltToken(),
       g.arbitrationConfig,
       _periodLength
     );
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(g.arbitrationConfig);
 
-    arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
+    arbitratorStakeAccounting.addRoleTo(ggr.getClaimManagerAddress(), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(arbitratorVoting), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
     arbitratorVoting.addRoleTo(address(g.oracleStakesAccounting), arbitratorVoting.ORACLE_STAKES_NOTIFIER());
-    arbitratorVoting.addRoleTo(address(spaceReputationAccounting), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
+    // TODO: replace with ggr itself
+    arbitratorVoting.addRoleTo(ggr.getSpaceReputationAccountingAddress(), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
 
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
     g.arbitratorVoting = arbitratorVoting;
@@ -343,7 +332,8 @@ contract MultiSigFactory is Ownable {
       g.arbitratorVoting,
       g.arbitratorStakeAccounting,
       g.oracleStakesAccounting,
-      spaceReputationAccounting
+      // TODO: replace with ggr itself
+      SpaceReputationAccounting(ggr.getSpaceReputationAccountingAddress())
     );
 
     // TODO: initialize proposal contracts too
@@ -362,7 +352,7 @@ contract MultiSigFactory is Ownable {
     g.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
     g.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
-    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
+    IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
 
     g.nextStep = Step.DONE;
   }

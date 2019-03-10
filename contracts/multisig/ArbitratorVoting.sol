@@ -230,7 +230,9 @@ contract ArbitratorVoting is IArbitratorVoting, Permissionable {
     uint256 _newLocked
   )
     external
-    onlyRole(SPACE_REPUTATION_NOTIFIER)
+    // TODO: fix this using ggr
+//    onlySpaceReputationNotifier
+//    onlyRole(SPACE_REPUTATION_NOTIFIER)
   {
     // need more details
     uint256 currentLocked = lockedReputation[_delegate];
