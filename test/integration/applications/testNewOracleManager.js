@@ -16,7 +16,7 @@ const {
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
-GaltToken.numberFormat = "String";
+GaltToken.numberFormat = 'String';
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
@@ -108,15 +108,14 @@ contract('NewOracleManager', (accounts) => {
     // await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(),claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, {
+      from: coreTeam
+    });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     const applicationConfig = {};
     applicationConfig[bytes32('NO_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
@@ -182,13 +181,9 @@ contract('NewOracleManager', (accounts) => {
 
   beforeEach(async function() {
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
-    await this.newOracle.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.newOracle.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
     await this.oracles.addRoleTo(this.newOracle.address, await this.oracles.ROLE_ORACLE_MANAGER(), {
       from: coreTeam
     });

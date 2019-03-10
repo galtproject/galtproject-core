@@ -71,7 +71,9 @@ contract('SpaceReputationAccounting', accounts => {
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
+      from: coreTeam
+    });
   });
 
   describe('transfer', () => {
@@ -326,10 +328,7 @@ contract('SpaceReputationAccounting', accounts => {
 
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.ggr,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
@@ -514,10 +513,7 @@ contract('SpaceReputationAccounting', accounts => {
 
   describe('SpaceLocker burn', () => {
     it('should deny minting reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.ggr,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
       // await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
 

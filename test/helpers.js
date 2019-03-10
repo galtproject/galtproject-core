@@ -359,7 +359,7 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySplitMergeMock(spaceTokenAddress) {
+  async deploySplitMergeMock() {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
     const splitMergeLib = await Helpers.getSplitMergeLib();

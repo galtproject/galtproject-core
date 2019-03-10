@@ -4,7 +4,6 @@ const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.s
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Geodesic = artifacts.require('./MockGeodesic.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
@@ -139,14 +138,13 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+      from: coreTeam
+    });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -181,13 +179,9 @@ contract('PlotClarificationManager', (accounts) => {
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
 
-    await this.plotManager.initialize(
-      this.ggr.address,
-      feeMixer,
-      {
-        from: coreTeam
-      }
-    );
+    await this.plotManager.initialize(this.ggr.address, feeMixer, {
+      from: coreTeam
+    });
 
     await this.spaceToken.addRoleTo(minter, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -230,10 +224,18 @@ contract('PlotClarificationManager', (accounts) => {
       { from: coreTeam }
     );
 
-    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], { from: coreTeam });
-    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, '', [], [PM_LAWYER, PL_LAWYER], { from: coreTeam });
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [PM_LAWYER, PL_LAWYER], { from: coreTeam });
-    await this.oracles.addOracle(this.abMultiSigX.address, eve, EVE, MN, '', [], [PM_AUDITOR, PL_AUDITOR], { from: coreTeam });
+    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], {
+      from: coreTeam
+    });
+    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, '', [], [PM_LAWYER, PL_LAWYER], {
+      from: coreTeam
+    });
+    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [PM_LAWYER, PL_LAWYER], {
+      from: coreTeam
+    });
+    await this.oracles.addOracle(this.abMultiSigX.address, eve, EVE, MN, '', [], [PM_AUDITOR, PL_AUDITOR], {
+      from: coreTeam
+    });
 
     await this.oracles.onOracleStakeChanged(bob, PM_SURVEYOR, ether(30), { from: stakesNotifier });
     await this.oracles.onOracleStakeChanged(charlie, PM_LAWYER, ether(30), { from: stakesNotifier });
@@ -252,13 +254,9 @@ contract('PlotClarificationManager', (accounts) => {
   beforeEach(async function() {
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
 
-    await this.plotClarificationManager.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.plotClarificationManager.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
     await this.plotClarificationManager.addRoleTo(feeManager, await this.plotClarificationManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
@@ -373,7 +371,10 @@ contract('PlotClarificationManager', (accounts) => {
           // galtspace share - 13%
 
           res = await this.plotClarificationManager.getApplicationById(this.aId);
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PL_SURVEYOR, PL_LAWYER, PL_AUDITOR].map(hexToUtf8));
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PL_SURVEYOR, PL_LAWYER, PL_AUDITOR].map(hexToUtf8)
+          );
 
           res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
           assert.equal(res.reward.toString(), '10222500000000000000');
@@ -712,7 +713,10 @@ contract('PlotClarificationManager', (accounts) => {
           // galtspace share - 33%
 
           res = await this.plotClarificationManager.getApplicationById(this.aId);
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PL_LAWYER, PL_AUDITOR, PL_SURVEYOR].map(hexToUtf8));
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PL_LAWYER, PL_AUDITOR, PL_SURVEYOR].map(hexToUtf8)
+          );
 
           res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
           assert.equal(res.reward.toString(), '2177500000000000000');
@@ -768,11 +772,15 @@ contract('PlotClarificationManager', (accounts) => {
       // eslint-disable-next-line
       it('should deny a oracle with the same role to lock an application which is already on consideration', async function() {
         await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await assertRevert(this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: charlie }));
+        await assertRevert(
+          this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: charlie })
+        );
       });
 
       it('should deny non-oracle lock application', async function() {
-        await assertRevert(this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: coreTeam }));
+        await assertRevert(
+          this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: coreTeam })
+        );
       });
     });
 

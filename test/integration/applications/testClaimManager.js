@@ -18,10 +18,10 @@ const {
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
-GaltToken.numberFormat = "String";
+GaltToken.numberFormat = 'String';
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
-const { utf8ToHex, hexToString, BN } = Web3.utils;
+const { utf8ToHex, hexToString } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
@@ -112,17 +112,16 @@ contract("ClaimManager", (accounts) => {
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, {
+      from: coreTeam
+    });
     // await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -171,13 +170,9 @@ contract("ClaimManager", (accounts) => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-    await this.claimManager.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.claimManager.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
   });
   it('should be initialized successfully', async function() {
     assert.equal(await this.claimManager.ggr(), this.ggr.address);
@@ -353,25 +348,15 @@ contract("ClaimManager", (accounts) => {
       await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
       await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
 
-      await this.oracles.addOracle(
-        this.mX,
-        bob,
-        BOB,
-        MN,
-        '',
-        [],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
+      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        from: oracleManager
+      });
       await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
       await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
         from: oracleManager
       });
-
     });
 
     beforeEach(async function() {
@@ -920,7 +905,7 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should create transfer claim value to a beneficiary', async function() {
-        let txCount = await this.abMultiSigX.getTransactionCount(true, false);
+        const txCount = await this.abMultiSigX.getTransactionCount(true, false);
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
@@ -928,7 +913,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
         res = await this.abMultiSigX.getTransactionCount(true, false);
-        assert.equal(res, parseInt(txCount) + 1);
+        assert.equal(res, parseInt(txCount, 10) + 1);
 
         const txId = (await this.abMultiSigX.transactionCount()).toNumber(10) - 1;
         res = await this.abMultiSigX.transactions(txId);

@@ -14,7 +14,7 @@ const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-GaltToken.numberFormat = "String";
+GaltToken.numberFormat = 'String';
 
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
 const ANOTHER_APPLICATION = '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470';
@@ -101,12 +101,11 @@ contract('UpdateOracleManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, {
+      from: coreTeam
+    });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
@@ -142,21 +141,13 @@ contract('UpdateOracleManager', (accounts) => {
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
 
-    await this.newOracle.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.newOracle.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
 
-    await this.updateOracle.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.updateOracle.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
 
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam

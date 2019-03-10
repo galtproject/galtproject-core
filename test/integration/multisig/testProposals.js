@@ -93,25 +93,20 @@ contract('Proposals', accounts => {
         { from: coreTeam }
       );
 
-      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+        from: coreTeam
+      });
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
       // await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.sra.address, { from: coreTeam });
 
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.ggr,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
-      await this.claimManager.initialize(
-        this.ggr.address,
-        galtSpaceOrg,
-        {
-          from: coreTeam
-        }
-      );
+      await this.claimManager.initialize(this.ggr.address, galtSpaceOrg, {
+        from: coreTeam
+      });
     })();
 
     // Setup multiSig
@@ -144,7 +139,6 @@ contract('Proposals', accounts => {
       await this.sra.lockReputation(this.mX, 1000, { from: charlie });
       await this.sra.lockReputation(this.mX, 500, { from: eve });
     })();
-
   });
 
   describe('ModifyThreshold Proposals', () => {
@@ -421,4 +415,3 @@ contract('Proposals', accounts => {
     });
   });
 });
-

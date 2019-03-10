@@ -7,7 +7,6 @@ const Oracles = artifacts.require('./Oracles.sol');
 const Geodesic = artifacts.require('./MockGeodesic.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
-const MockSplitMerge = artifacts.require('./MockSplitMerge.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -127,14 +126,13 @@ contract('PlotManager', accounts => {
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+      from: coreTeam
+    });
 
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
@@ -176,13 +174,9 @@ contract('PlotManager', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    await this.plotManager.initialize(
-      this.ggr.address,
-      feeMixer,
-      {
-        from: coreTeam
-      }
-    );
+    await this.plotManager.initialize(this.ggr.address, feeMixer, {
+      from: coreTeam
+    });
     await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
     // TODO: remove this
@@ -238,13 +232,9 @@ contract('PlotManager', accounts => {
 
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: coreTeam });
-    await this.plotManager.initialize(
-      this.ggr.address,
-      feeMixer,
-      {
-        from: coreTeam
-      }
-    );
+    await this.plotManager.initialize(this.ggr.address, feeMixer, {
+      from: coreTeam
+    });
 
     await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
@@ -386,7 +376,10 @@ contract('PlotManager', accounts => {
           assert.equal(res.galtSpaceReward, 3380000000000000000);
 
           res = await this.plotManager.getApplicationById(aId);
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR].map(hexToUtf8));
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR].map(hexToUtf8)
+          );
 
           res = await this.plotManager.getApplicationOracle(aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '11762400000000000000');
@@ -788,7 +781,10 @@ contract('PlotManager', accounts => {
           assert.equal(res.oraclesReward, 1340000000000000000);
 
           res = await this.plotManager.getApplicationById(this.aId);
-          assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR].map(hexToUtf8));
+          assert.sameMembers(
+            res.assignedOracleTypes.map(hexToUtf8),
+            [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR].map(hexToUtf8)
+          );
 
           // 52%
           res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
@@ -1113,7 +1109,7 @@ contract('PlotManager', accounts => {
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: bob });
         await this.plotManager.approveApplication(this.aId, this.credentials, { from: dan });
         let res = await this.plotManager.approveApplication(this.aId, this.credentials, { from: eve });
-        const tokenId = res.logs[2].args.tokenId;
+        const { tokenId } = res.logs[2].args;
 
         res = await this.spaceToken.balanceOf(this.plotManager.address);
         assert.equal(res.toString(), 1);

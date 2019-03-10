@@ -39,7 +39,6 @@ const PaymentMethods = {
   ETH_AND_GALT: 3
 };
 
-
 const ClaimApplicationStatus = {
   NOT_EXISTS: 0,
   SUBMITTED: 1,
@@ -115,11 +114,15 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
 
-      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+        from: coreTeam
+      });
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+        from: coreTeam
+      });
 
       this.sra = await MockSRA.new(
         this.spaceToken.address,
@@ -128,18 +131,11 @@ contract('Arbitrator Stake Slashing', accounts => {
         { from: coreTeam }
       );
 
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.ggr,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
-      await this.claimManager.initialize(
-        this.ggr.address,
-        galtSpaceOrg,
-        {
-          from: coreTeam
-        }
-      );
+      await this.claimManager.initialize(this.ggr.address, galtSpaceOrg, {
+        from: coreTeam
+      });
     })();
 
     // Setup multiSig

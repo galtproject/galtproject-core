@@ -134,16 +134,17 @@ contract('PlotCustodianManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, {
+      from: coreTeam
+    });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+      from: coreTeam
+    });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.ggr,
-      coreTeam
-    );
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -233,30 +234,12 @@ contract('PlotCustodianManager', (accounts) => {
       }
     );
 
-    await this.oracles.addOracle(
-      multiSigX,
-      bob,
-      BOB,
-      MN,
-      '',
-      [],
-      [PC_CUSTODIAN, FOO],
-      {
-        from: oracleManager
-      }
-    );
-    await this.oracles.addOracle(
-      multiSigX,
-      charlie,
-      CHARLIE,
-      MN,
-      '',
-      [],
-      [PC_CUSTODIAN, PC_AUDITOR, BAR],
-      {
-        from: oracleManager
-      }
-    );
+    await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [PC_CUSTODIAN, FOO], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [PC_CUSTODIAN, PC_AUDITOR, BAR], {
+      from: oracleManager
+    });
     await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [BUZZ], {
       from: oracleManager
     });
@@ -307,13 +290,9 @@ contract('PlotCustodianManager', (accounts) => {
   beforeEach(async function() {
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
-    await this.plotCustodianManager.initialize(
-      this.ggr.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
+    await this.plotCustodianManager.initialize(this.ggr.address, galtSpaceOrg, {
+      from: coreTeam
+    });
     await this.plotCustodianManager.addRoleTo(galtSpaceOrg, await this.plotCustodianManager.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
@@ -344,9 +323,16 @@ contract('PlotCustodianManager', (accounts) => {
     describe('#submit()', () => {
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
-        let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], ether(45), {
-          from: alice
-        });
+        let res = await this.plotCustodianManager.submit(
+          this.abMultiSigX.address,
+          this.spaceTokenId,
+          Action.ATTACH,
+          [bob],
+          ether(45),
+          {
+            from: alice
+          }
+        );
         this.aId = res.logs[0].args.id;
         res = await this.plotCustodianManager.getApplicationById(this.aId);
         assert.equal(res.status, applicationStatus.SUBMITTED);
@@ -355,18 +341,32 @@ contract('PlotCustodianManager', (accounts) => {
       it('should deny attaching non-unique custodians', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
         await assertRevert(
-          this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, bob], ether(45), {
-            from: alice
-          })
+          this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, bob],
+            ether(45),
+            {
+              from: alice
+            }
+          )
         );
       });
 
       it('should deny detaching non-attached custodian', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
         await assertRevert(
-          this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [bob], ether(45), {
-            from: alice
-          })
+          this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.DETACH,
+            [bob],
+            ether(45),
+            {
+              from: alice
+            }
+          )
         );
       });
 
@@ -383,17 +383,31 @@ contract('PlotCustodianManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [bob], ether(43), {
-              from: alice
-            })
+            this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.DETACH,
+              [bob],
+              ether(43),
+              {
+                from: alice
+              }
+            )
           );
         });
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
-          let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], ether(47), {
-            from: alice
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob],
+            ether(47),
+            {
+              from: alice
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           // oracle share - 87%
@@ -591,10 +605,17 @@ contract('PlotCustodianManager', (accounts) => {
     describe('without current custodians exist', () => {
       describe('#submit() by an applicant', () => {
         it('should allow an applicant pay commission in ETH', async function() {
-          let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.SUBMITTED);
@@ -628,17 +649,31 @@ contract('PlotCustodianManager', (accounts) => {
           });
 
           it('should allow applications with payment greater than required', async function() {
-            await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
-              from: alice,
-              value: ether(23)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob],
+              0,
+              {
+                from: alice,
+                value: ether(23)
+              }
+            );
           });
 
           it('should calculate corresponding oracle and galtspace rewards', async function() {
-            let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            let res = await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
             this.aId = res.logs[0].args.id;
             // oracle share - 67%
             // galtspace share - 33%
@@ -655,10 +690,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#accept() by a modifying custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
         });
 
@@ -692,10 +734,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#revert() by a new custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
         });
 
@@ -722,10 +771,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#resubmit() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.revert(this.aId, { from: bob });
         });
@@ -767,10 +823,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#attachToken() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -796,10 +859,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#attachDocuments() by a custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -830,10 +900,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#audotirLock() by an auditor', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -877,10 +954,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#approve() by 4 of 4 (applicant, custodian and auditors)', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -927,10 +1011,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#reject() by custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -958,10 +1049,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#withdrawToken() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -998,10 +1096,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#close() by an applicant', () => {
         beforeEach(async function() {
-          let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           await this.plotCustodianManager.accept(this.aId, { from: bob });
@@ -1054,10 +1159,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('claim reward', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -1239,26 +1351,47 @@ contract('PlotCustodianManager', (accounts) => {
         describe('#submit()', () => {
           it('should deny attaching existing custodians', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, frank], 0, {
-                from: alice,
-                value: ether(7)
-              })
+              this.plotCustodianManager.submit(
+                this.abMultiSigX.address,
+                this.spaceTokenId,
+                Action.ATTACH,
+                [bob, frank],
+                0,
+                {
+                  from: alice,
+                  value: ether(7)
+                }
+              )
             );
           });
 
           it('should allow submitting non existing custodians', async function() {
-            await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob, george],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
           });
         });
 
         it('should allow simple pipeline', async function() {
-          let res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, george],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: george });
@@ -1291,20 +1424,34 @@ contract('PlotCustodianManager', (accounts) => {
         describe('#submit()', () => {
           it('should deny detaching non-existing custodians', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [bob, frank], 0, {
-                from: alice,
-                value: ether(7)
-              })
+              this.plotCustodianManager.submit(
+                this.abMultiSigX.address,
+                this.spaceTokenId,
+                Action.DETACH,
+                [bob, frank],
+                0,
+                {
+                  from: alice,
+                  value: ether(7)
+                }
+              )
             );
           });
 
           it('should allow detaching existing custodians', async function() {
             const res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
             assert.sameMembers(res, [charlie, frank]);
-            await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [charlie, frank], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.DETACH,
+              [charlie, frank],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
           });
         });
 
@@ -1319,10 +1466,17 @@ contract('PlotCustodianManager', (accounts) => {
           assert.sameMembers(res, this.attachedDocuments);
 
           // Now there are 4 custodians: [charlie, frank, bob, george]
-          res = await this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [charlie, george], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.DETACH,
+            [charlie, george],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
