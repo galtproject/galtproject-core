@@ -13,7 +13,7 @@ contract('ArbitratorStakeAccounting', accounts => {
 
   beforeEach(async function() {
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
+    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30, 30], { from: coreTeam });
     this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(
       this.galtToken.address,
       this.config.address,
