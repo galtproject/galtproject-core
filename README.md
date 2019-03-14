@@ -1,28 +1,51 @@
-# About Galt Project
-## Who is John Galt?
-What is John Galt Project in 10 sentences.
+# Galt Project Core Contracts (@galtproject/core)
 
-John Galt Project - open-source software for land tokenization (accounting on blockchain) and self-governance in the form of a set of smart contracts in the Ethereum blockchain, which gives effective tools for any group of people (crypto-enthusiasts, landowners, small nationalities and local tribes):
+[![Build Status](https://travis-ci.org/galtspace/galtproject-core.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-core)
+[![Contracts Version](https://img.shields.io/badge/version-0.6.0-orange.svg)](https://github.com/galtspace/galtproject-core)
+[![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
-- add his own Land plot to the Project for Free and be a part of a global Comminity;
-- buy or use their own territory of land and raise an investment fund for its development: the construction of roads, hospitals, schools, the development of the economy by investing in companies and start-ups;
-- to divide whole territory into land plots between project participants by auction if needed;
-- determine the weight of each participant in voting in elections in proportion to the contribution to the fund;
-- elect fund managers and give them the right to dispose of the fund's money;
-- to make sure that fund managers increase the amount of money in the fund by means of competent investments in infrastructure, companies and people;
-- at any time, withdraw the cryptographic keys from the current fund managers and transfer them to another managers;
-- at any time, withdraw money from the fund;
-- at any time, split the fund into several funds by participants voting;
-- to regulate the relationship between the Project Participants by means of cryptography;
-- confirm the one’s right to own or lease a land plot using cryptography.
 
-## Main goal
-The main goal of Galt Project is to create self - governed community runned by smart contracts. 
+### About Galt Project
+The main goal of Galt Project is to create sofware for land tokenization (accounting, buying and selling on blockchain) and self-governance. And to create a communities, runned by a smart contracts with the help of this software.
 
-## Galt Project Tokens
-GALT - ERC20 standart ethereum based token.
-
-SPACE - ERC721 standart ethereum based token.
-## Galt Project Contact information
 https://galtproject.io/
+
+### Other Galt Project Modules
+
+* [@galtproject/galt-token](https://github.com/galtspace/galtproject-galt-token)
+* [@galtproject/galt-distribution](https://github.com/galtspace/galtproject-galt-distribution)
+* [@galtproject/libs](https://github.com/galtspace/galtproject-libs)
+* [@galtproject/geodesic](https://github.com/galtspace/galtproject-geodesic)
+* [@galtproject/math](https://github.com/galtspace/galtproject-math)
+* [@galtproject/market](https://github.com/galtspace/galtproject-market)
+* [@galtproject/token-fund-basic](https://github.com/galtspace/galtproject-fund-basic)
+
+### UI
+
+Check out our UI application at https://registry.galtproject.io/
+
+For testnet ether see the section below.
+
+### Testnet
+
+Currently we have all our contracts deployed at our private network named `testnet-57`:
+
+* HTTP RPC server `https://testnet-rpc.galtproject.io/`
+* WS RPC server `wss://testnet-rpc.galtproject.io:8556/`
+* Explorer: `https://explorer.testnet.galtproject.io/`
+* Faucet `http://faucet-dev.galtproject.io/`
+
+### Roadmap
+
+* `v0.6.0` - Current version
+* `v0.7.0` - Migrate to Truffle v5.0
+* `v0.8.0` - Introduce Fund contracts
+* `v0.9.0` - Internal contracts review
+* `v0.10.0` - External peer review; Public testnet deployment
+* `v1.0.0` - External audit; Mainnet deployment
+
+### About Copyright and Software licenses
+The main purpose of Galt Protocol is to create open and reliable instrument for self-government communities of Property Owners. According to that, one of our main goals in Galt Project is to create pure community driven and open software product. For now Galt Project if fully self-funded, we have certain vision and we want to implement it. To ensure the achievement of our vision, before the launch, protocol is open-sourced, but it is and it will be our intellectual property. You need to ask us, if you want to participate or use our code. We will decide if it's possible at that moment.
+
+After the first version of protocol will be released in Ethereum Mainnet and initial Galt Auction will end, we will release all software (including front-end) under one of public licences. But before that, please, respect the time and work of others and the will of the creators!
 
