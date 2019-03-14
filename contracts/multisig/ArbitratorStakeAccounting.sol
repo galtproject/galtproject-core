@@ -87,6 +87,7 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.sub(_amount);
 
     _balances[_arbitrator] = arbitratorStakeAfter;
+    totalStakes -= _amount;
 
     emit ArbitratorStakeSlash(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
@@ -102,6 +103,7 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);
 
     _balances[_arbitrator] = arbitratorStakeAfter;
+    totalStakes += _amount;
 
     emit ArbitratorStakeDeposit(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }

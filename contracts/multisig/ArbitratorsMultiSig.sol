@@ -26,6 +26,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
     uint256 periodId,
     uint256 runningTotalBefore,
     uint256 runningTotalAfter,
+    uint256 totalArbitratorStakes,
     uint256 amount
   );
 
@@ -162,7 +163,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
       switch code
       // transfer(address,uint256)
       case 0xa9059cbb00000000000000000000000000000000000000000000000000000000 {
-        galtValue := mload(add(data, 0x40))
+        galtValue := mload(add(data, 0x44))
       }
       default {
         // Methods other than transfer are prohibited for GALT contract
@@ -179,7 +180,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
 
     assert(runningTotalAfter > runningTotalBefore);
-    assert(runningTotalAfter <= totalStakes);
+    require(runningTotalAfter <= totalStakes, "Arbitrator expenses running total exceeds their total stakes");
 
     _periodRunningTotal[currentPeriodId] = runningTotalAfter;
 
@@ -187,6 +188,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
       currentPeriodId,
       runningTotalBefore,
       runningTotalAfter,
+      totalStakes,
       galtValue
     );
   }
