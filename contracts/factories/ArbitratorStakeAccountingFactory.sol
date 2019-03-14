@@ -25,14 +25,13 @@ import "../multisig/ArbitrationConfig.sol";
 
 contract ArbitratorStakeAccountingFactory is Ownable {
   function build(
-    IERC20 _galtToken,
     ArbitrationConfig _arbitrationConfig,
     uint256 _periodLength
   )
     external
     returns (ArbitratorStakeAccounting arbitratorStakeAccounting)
   {
-    arbitratorStakeAccounting = new ArbitratorStakeAccounting(_galtToken, _arbitrationConfig, _periodLength);
+    arbitratorStakeAccounting = new ArbitratorStakeAccounting(_arbitrationConfig, _periodLength);
 
     arbitratorStakeAccounting.addRoleTo(msg.sender, "role_manager");
     arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");

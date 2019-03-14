@@ -96,7 +96,7 @@ contract MultiSigFactory is Ownable {
     IProposalManager revokeArbitratorsProposalManager;
   }
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry public ggr;
 
   ArbitrationConfigFactory arbitrationConfigFactory;
   ArbitratorsMultiSigFactory arbitratorMultiSigFactory;
@@ -162,10 +162,7 @@ contract MultiSigFactory is Ownable {
     external
     returns (bytes32 groupId)
   {
-    IERC20 galtToken = ggr.getGaltToken();
-    address claimManager = ggr.getClaimManagerAddress();
-
-    galtToken.transferFrom(msg.sender, address(this), commission);
+    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
 
     groupId = keccak256(abi.encode(blockhash(block.number - 1), _initialMultiSigRequired, msg.sender));
 
@@ -174,6 +171,7 @@ contract MultiSigFactory is Ownable {
     require(g.nextStep == Step.FIRST, "Requires FIRST step");
 
     ArbitrationConfig arbitrationConfig = arbitrationConfigFactory.build(
+      ggr,
       _m,
       _n,
       _minimalArbitratorStake,
@@ -181,8 +179,9 @@ contract MultiSigFactory is Ownable {
     );
 
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _initialMultiSigRequired, arbitrationConfig);
-    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(Oracles(ggr.getOraclesAddress()), galtToken, arbitrationConfig);
+    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(arbitrationConfig);
 
+    address claimManager = ggr.getClaimManagerAddress();
     arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
     oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
     Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
@@ -207,7 +206,6 @@ contract MultiSigFactory is Ownable {
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(
-      ggr.getGaltToken(),
       g.arbitrationConfig,
       _periodLength
     );

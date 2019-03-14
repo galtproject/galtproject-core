@@ -42,12 +42,10 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
 
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
-  address slashManager;
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
   ArbitrationConfig public arbitrationConfig;
-  IERC20 public galtToken;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
 
@@ -58,13 +56,11 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
   }
 
   constructor(
-    IERC20 _galtToken,
     ArbitrationConfig _arbitrationConfig,
     uint256 _periodLengthInSeconds
   )
     public
   {
-    galtToken = _galtToken;
     arbitrationConfig = _arbitrationConfig;
     periodLengthInSeconds = _periodLengthInSeconds;
     _initialTimestamp = block.timestamp;
@@ -97,7 +93,7 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
 
     address multiSig = address(arbitrationConfig.getMultiSig());
 
-    galtToken.transferFrom(msg.sender, multiSig, _amount);
+    arbitrationConfig.ggr().getGaltToken().transferFrom(msg.sender, multiSig, _amount);
 
     uint256 arbitratorStakeBefore = _balances[_arbitrator];
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);

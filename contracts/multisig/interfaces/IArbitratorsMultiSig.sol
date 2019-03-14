@@ -18,7 +18,6 @@ interface IArbitratorsMultiSig {
   function proposeTransaction(address destination, uint value, bytes calldata data) external returns (uint transactionId);
   function setArbitrators(address[] calldata descArbitrators) external;
   function revokeArbitrators() external;
-  function setGaltToken(address _galtToken) external;
   function checkGaltLimitsExternal(bytes calldata data) external;
   function getArbitrators() external view returns (address[] memory);
 }

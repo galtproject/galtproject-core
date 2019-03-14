@@ -93,6 +93,11 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[SPLIT_MERGE];
   }
 
+  function getGaltTokenAddress() external view returns (address) {
+    require(contracts[GALT_TOKEN] != ZERO_ADDRESS, "GGR: GALT_TOKEN not set");
+    return contracts[GALT_TOKEN];
+  }
+
   function getSpaceTokenAddress() external view returns (address) {
     require(contracts[SPACE_TOKEN] != ZERO_ADDRESS, "GGR: SPACE_TOKEN not set");
     return contracts[SPACE_TOKEN];

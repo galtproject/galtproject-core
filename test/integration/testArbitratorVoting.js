@@ -646,7 +646,9 @@ contract('ArbitratorVoting', accounts => {
 
   describe('#getShare', () => {
     it('should return total shares both for oracles and delegates', async function() {
-      const config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30, 30], { from: coreTeam });
+      const config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
+        from: coreTeam
+      });
       const voting = await ArbitratorVoting.new(config.address, { from: coreTeam });
 
       await voting.addRoleTo(notifier, await voting.ORACLE_STAKES_NOTIFIER(), { from: coreTeam });

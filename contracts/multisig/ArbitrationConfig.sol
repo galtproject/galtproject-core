@@ -24,6 +24,7 @@ import "./interfaces/IArbitratorVoting.sol";
 import "./interfaces/IArbitratorsMultiSig.sol";
 import "./ArbitratorsMultiSig.sol";
 import "../SpaceReputationAccounting.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract ArbitrationConfig is IArbitrationConfig, Permissionable {
@@ -53,12 +54,15 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   bool initialized;
 
-  // required
+  // initial voting => multiSig required
   uint256 public m;
-  // total
+  // initial voting => multiSig total
   uint256 public n;
 
+  GaltGlobalRegistry public ggr;
+
   constructor (
+    GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
@@ -69,6 +73,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     // 4 - REVOKE_ARBITRATORS_THRESHOLD
     uint256[] memory _thresholds
   ) public {
+    ggr = _ggr;
+
     m = _m;
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;

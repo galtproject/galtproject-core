@@ -36,7 +36,6 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
 
   ArbitrationConfig public arbitrationConfig;
 
-  address public galtToken;
   bool initialized;
 
   mapping(uint256 => uint256) _periodRunningTotal;
@@ -124,13 +123,8 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
     emit RevokeOwners();
   }
 
-  // TODO: GaltToken address should be hardcoded in production version
-  function setGaltToken(address _galtToken) external {
-    galtToken = _galtToken;
-  }
-
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
-    if (destination == galtToken) {
+    if (destination == arbitrationConfig.ggr().getGaltTokenAddress()) {
       checkGaltLimits(data);
     }
 

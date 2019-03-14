@@ -377,7 +377,6 @@ contract ClaimManager is AbstractApplication {
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
         IArbitrationConfig config = multiSigRegistry().getArbitrationConfig(c.multiSig);
-        config.getOracleStakes();
         multiSigRegistry()
           .getArbitrationConfig(c.multiSig)
           .getOracleStakes()

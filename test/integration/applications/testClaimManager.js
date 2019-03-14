@@ -118,8 +118,8 @@ contract("ClaimManager", (accounts) => {
     // await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
-    await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
+    await this.galtToken.mint(alice, ether(1000000000), { from: coreTeam });
+    await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
@@ -148,9 +148,17 @@ contract("ClaimManager", (accounts) => {
     this.mX = this.abX.multiSig.address;
     this.abMultiSigX = this.abX.multiSig;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
     this.abVotingX = this.abX.voting;
-
     this.mX = this.abMultiSigX.address;
+
+    await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: alice });
+    await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: bob });
+    await this.arbitratorStakeAccountingX.stake(alice, ether(1000000), { from: alice });
+    await this.arbitratorStakeAccountingX.stake(bob, ether(1000000), { from: bob });
+
+    const res = await this.arbitratorStakeAccountingX.totalStakes();
+    assert.equal(res, ether(2000000));
 
     await this.claimManager.addRoleTo(feeManager, await this.claimManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
@@ -174,6 +182,7 @@ contract("ClaimManager", (accounts) => {
       from: coreTeam
     });
   });
+
   it('should be initialized successfully', async function() {
     assert.equal(await this.claimManager.ggr(), this.ggr.address);
   });
@@ -1281,6 +1290,7 @@ contract("ClaimManager", (accounts) => {
         beforeEach(async function() {
           await this.claimManager.lock(this.cId, { from: charlie });
           await this.claimManager.lock(this.cId, { from: frank });
+
           await this.claimManager.vote(this.cId, this.pId2, { from: eve });
           await this.claimManager.vote(this.cId, this.pId3, { from: charlie });
           await this.claimManager.vote(this.cId, this.pId2, { from: bob });
