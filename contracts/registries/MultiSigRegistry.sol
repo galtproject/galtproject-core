@@ -15,10 +15,9 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
-import "../multisig/OracleStakesAccounting.sol";
 import "./interfaces/IMultiSigRegistry.sol";
 import "../multisig/interfaces/IArbitrationConfig.sol";
+import "../multisig/interfaces/IArbitratorsMultiSig.sol";
 
 
 contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
@@ -38,7 +37,7 @@ contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
   }
 
   function addMultiSig(
-    ArbitratorsMultiSig _abMultiSig,
+    IArbitratorsMultiSig _abMultiSig,
     IArbitrationConfig _arbitrationConfig
   )
     external

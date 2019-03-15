@@ -14,13 +14,12 @@
 pragma solidity 0.5.3;
 
 import "../../multisig/interfaces/IArbitrationConfig.sol";
-import "../../multisig/ArbitratorsMultiSig.sol";
-// TODO: use interfaces instead
+import "../../multisig/interfaces/IArbitratorsMultiSig.sol";
 
 
 interface IMultiSigRegistry {
   function addMultiSig(
-    ArbitratorsMultiSig _abMultiSig,
+    IArbitratorsMultiSig _abMultiSig,
     IArbitrationConfig _arbitrationConfig
   ) external;
   function requireValidMultiSig(address _multiSig) external view;

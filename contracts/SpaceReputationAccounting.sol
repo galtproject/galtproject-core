@@ -19,8 +19,9 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/ArbitratorVoting.sol";
-import "./registries/MultiSigRegistry.sol";
 import "./registries/interfaces/ISpaceLockerRegistry.sol";
+import "./registries/interfaces/IMultiSigRegistry.sol";
+import "./registries/GaltGlobalRegistry.sol";
 import "./LiquidReputationAccounting.sol";
 
 
@@ -29,7 +30,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  MultiSigRegistry multiSigRegistry;
+  GaltGlobalRegistry _ggr;
 
   // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
@@ -39,14 +40,11 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
   uint256 private totalStakedSpace;
 
   constructor(
-    IERC721 _spaceToken,
-    MultiSigRegistry _multiSigRegistry,
-    ISpaceLockerRegistry _spaceLockerRegistry
+    GaltGlobalRegistry _ggr
   )
     public
-    LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)
+    LiquidReputationAccounting(_ggr)
   {
-    multiSigRegistry = _multiSigRegistry;
   }
 
   function revoke(address _from, uint256 _amount) public {
@@ -64,9 +62,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _locks[_delegate][_multiSig] -= _amount;
     _revokeDelegated(_delegate, _amount);
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
+    arbitratorVoting(_multiSig)
       .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
   }
 
@@ -77,9 +73,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _totalLocked[msg.sender] += _amount;
     _locks[msg.sender][_multiSig] += _amount;
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
+    arbitratorVoting(_multiSig)
       .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
   }
 
@@ -96,10 +90,14 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _locks[msg.sender][_multiSig] -= _amount;
     _totalLocked[msg.sender] -= _amount;
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
+    arbitratorVoting(_multiSig)
       .onDelegateReputationChanged(msg.sender, afterUnlock);
+  }
+
+  function arbitratorVoting(address _multiSig) internal returns (IArbitratorVoting) {
+    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
+      .getArbitrationConfig(_multiSig)
+      .getArbitratorVoting();
   }
 
   // GETTERS

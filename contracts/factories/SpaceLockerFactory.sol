@@ -18,39 +18,28 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ISpaceLockerRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
-import "../SpaceLocker.sol";
 import "./interfaces/ISpaceLockerFactory.sol";
+import "../SpaceLocker.sol";
 
 contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   event SpaceLockerCreated(address owner, address locker);
 
-  ISpaceLockerRegistry public spaceLockerRegistry;
-  IERC20 public galtToken;
-  ISpaceToken public spaceToken;
-  ISplitMerge public splitMerge;
+  GaltGlobalRegistry ggr;
 
   uint256 public commission;
 
   constructor (
-    ISpaceLockerRegistry _spaceLockerRegistry,
-    IERC20 _galtToken,
-    ISpaceToken _spaceToken,
-    ISplitMerge _splitMerge
+    GaltGlobalRegistry _ggr
   ) public {
     commission = 10 ether;
-
-    spaceLockerRegistry = _spaceLockerRegistry;
-    galtToken = _galtToken;
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
   }
 
   function build() external returns (ISpaceLocker) {
-    galtToken.transferFrom(msg.sender, address(this), commission);
+    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
 
-    ISpaceLocker locker = new SpaceLocker(spaceToken, splitMerge, msg.sender);
+    ISpaceLocker locker = new SpaceLocker(ggr, msg.sender);
 
-    spaceLockerRegistry.addSpaceLocker(locker);
+    ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress()).addSpaceLocker(locker);
 
     emit SpaceLockerCreated(msg.sender, address(locker));
 

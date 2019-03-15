@@ -34,6 +34,7 @@ contract GaltGlobalRegistry is Ownable {
   // Registries
   bytes32 public constant MULTI_SIG_REGISTRY = bytes32("multi_sig_registry");
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
+  bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
 
   // TODO: move to the arbitration level
   bytes32 public constant ORACLES = bytes32("oracles");
@@ -68,6 +69,11 @@ contract GaltGlobalRegistry is Ownable {
   function getSpaceCustodianRegistryAddress() external view returns (address) {
     require(contracts[SPACE_CUSTODIAN_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_CUSTODIAN_REGISTRY not set");
     return contracts[SPACE_CUSTODIAN_REGISTRY];
+  }
+
+  function getSpaceLockerRegistryAddress() external view returns (address) {
+    require(contracts[SPACE_LOCKER_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_LOCKER_REGISTRY not set");
+    return contracts[SPACE_LOCKER_REGISTRY];
   }
 
   function getGeodesicAddress() external view returns (address) {
