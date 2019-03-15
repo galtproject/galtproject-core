@@ -1,13 +1,15 @@
 pragma solidity 0.5.3;
 
 import "../SplitMerge.sol";
+import "../interfaces/ISpaceToken.sol";
+
 
 contract SplitMergeSandbox is SplitMerge {
 
   constructor() public {}
 
   function initPackage(address spaceTokenOwner) public returns (uint256) {
-    uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
+    uint256 _packageTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(spaceTokenOwner);
 
     emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
 

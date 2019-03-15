@@ -29,5 +29,4 @@ interface ISplitMerge {
   function initPackage(address _owner) external returns (uint256);
   function getContourArea(uint256 _tokenId) external view returns (uint256);
   function getPackageContour(uint256 _tokenId) external view returns (uint256[] memory);
-  function getGeodesic() external view returns (address);
 }

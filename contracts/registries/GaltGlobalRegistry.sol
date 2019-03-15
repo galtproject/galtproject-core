@@ -46,6 +46,9 @@ contract GaltGlobalRegistry is Ownable {
   bytes32 public constant GEODESIC = bytes32("geodesic");
   bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
 
+  // Factories
+  bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
+
   mapping(bytes32 => address) private contracts;
 
   function setContract(bytes32 _key, address _value) external onlyOwner {
@@ -91,6 +94,11 @@ contract GaltGlobalRegistry is Ownable {
   function getSplitMergeAddress() external view returns (address) {
     require(contracts[SPLIT_MERGE] != ZERO_ADDRESS, "GGR: SPLIT_MERGE not set");
     return contracts[SPLIT_MERGE];
+  }
+
+  function getSpaceSplitOperationFactoryAddress() external view returns (address) {
+    require(contracts[SPACE_SPLIT_OPERATION_FACTORY] != ZERO_ADDRESS, "GGR: SPACE_SPLIT_OPERATION_FACTORY not set");
+    return contracts[SPACE_SPLIT_OPERATION_FACTORY];
   }
 
   function getGaltTokenAddress() external view returns (address) {

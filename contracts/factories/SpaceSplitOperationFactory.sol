@@ -18,24 +18,20 @@ import "../interfaces/ISpaceSplitOperationFactory.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "../SpaceSplitOperation.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
-  ISpaceToken spaceToken;
-  ISplitMerge splitMerge;
+  GaltGlobalRegistry ggr;
   
-  constructor(ISpaceToken _spaceToken, ISplitMerge _splitMerge) public {
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
+  constructor(GaltGlobalRegistry _ggr) public {
+    ggr = _ggr;
   }
 
   function build(uint256 _spaceTokenId, uint256[] calldata _clippingContour) external returns (address) {
     SpaceSplitOperation newSplitOperation = new SpaceSplitOperation(
-      address(spaceToken),
-      address(splitMerge),
-      spaceToken.ownerOf(_spaceTokenId),
+      ggr,
       _spaceTokenId,
-      splitMerge.getPackageContour(_spaceTokenId),
       _clippingContour
     );
     return address(newSplitOperation);

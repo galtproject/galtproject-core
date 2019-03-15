@@ -21,9 +21,11 @@ import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
-import "./SpaceToken.sol";
-import "./SplitMergeLib.sol";
+import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISplitMerge.sol";
+import "./registries/GaltGlobalRegistry.sol";
+import "./SplitMergeLib.sol";
+
 
 contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   using SafeMath for uint256;
@@ -34,9 +36,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
   string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
-  SpaceToken public spaceToken;
-  IGeodesic public geodesic;
-  ISpaceSplitOperationFactory public splitOperationFactory;
+  GaltGlobalRegistry  ggr;
 
   event PackageInit(bytes32 id, address owner);
   event SpaceTokenHeightsChange(bytes32 id, int256[] heights);
@@ -64,26 +64,18 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
   mapping(uint256 => TokenInfo) public tokenInfo;
   
-  function initialize(SpaceToken _spaceToken) public isInitializer {
-    spaceToken = _spaceToken;
-  }
-
-  function setSplitOperationFactory(address _splitOperationFactory) external onlyOwner {
-    splitOperationFactory = ISpaceSplitOperationFactory(_splitOperationFactory);
-  }
-
-  function setGeodesic(address _geodesic) external onlyOwner {
-    geodesic = IGeodesic(_geodesic);
+  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
+    ggr = _ggr;
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId) {
-    address ownerOfToken = spaceToken.ownerOf(_spaceTokenId);
+    address ownerOfToken = spaceToken().ownerOf(_spaceTokenId);
 
     require(
     /* solium-disable-next-line */
       ownerOfToken == msg.sender ||
-      spaceToken.isApprovedForAll(ownerOfToken, msg.sender) ||
-      spaceToken.getApproved(_spaceTokenId) == msg.sender,
+      spaceToken().isApprovedForAll(ownerOfToken, msg.sender) ||
+      spaceToken().getApproved(_spaceTokenId) == msg.sender,
       "This action not permitted");
     _;
   }
@@ -100,7 +92,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     public onlyGeoDataManager()
     returns (uint256)
   {
-    uint256 _packageTokenId = spaceToken.mint(spaceTokenOwner);
+    uint256 _packageTokenId = spaceToken().mint(spaceTokenOwner);
 
     emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
 
@@ -152,14 +144,16 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   {
     require(tokenAreaSource[_spaceTokenId] == AreaSource.CONTRACT, "Split available only for contract calculated token's area");
     
-    address spaceTokenOwner = spaceToken.ownerOf(_spaceTokenId);
+    address spaceTokenOwner = spaceToken().ownerOf(_spaceTokenId);
 
-    address newSplitOperationAddress = splitOperationFactory.build(_spaceTokenId, _clippingContour);
+    address newSplitOperationAddress = ISpaceSplitOperationFactory(
+      ggr.getSpaceSplitOperationFactoryAddress()).build(_spaceTokenId, _clippingContour
+    );
     activeSplitOperations[newSplitOperationAddress] = true;
     tokenIdToSplitOperations[_spaceTokenId].push(newSplitOperationAddress);
     allSplitOperations.push(newSplitOperationAddress);
 
-    spaceToken.transferFrom(spaceTokenOwner, newSplitOperationAddress, _spaceTokenId);
+    spaceToken().transferFrom(spaceTokenOwner, newSplitOperationAddress, _spaceTokenId);
     ISpaceSplitOperation(newSplitOperationAddress).init();
 
     emit SplitOperationStart(_spaceTokenId, newSplitOperationAddress);
@@ -202,10 +196,10 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     packageToHeights[_spaceTokenId] = subjectPackageHeights;
     emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), subjectPackageHeights);
 
-    spaceToken.transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
+    spaceToken().transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
 
     for (uint j = 0; j < resultContoursLength; j++) {
-      uint256 newPackageId = spaceToken.mint(subjectTokenOwner);
+      uint256 newPackageId = spaceToken().mint(subjectTokenOwner);
       
       packageToContour[newPackageId] = splitOperation.getResultContour(j);
       emit SpaceTokenContourChange(bytes32(newPackageId), packageToContour[newPackageId]);
@@ -239,7 +233,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
     ISpaceSplitOperation splitOperation = ISpaceSplitOperation(splitOperationAddress);
     require(splitOperation.subjectTokenOwner() == msg.sender, "This action not permitted");
-    spaceToken.transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
+    spaceToken().transferFrom(splitOperationAddress, splitOperation.subjectTokenOwner(), _spaceTokenId);
     activeSplitOperations[splitOperationAddress] = false;
   }
 
@@ -297,7 +291,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     emit SpaceTokenAreaChange(bytes32(_sourceSpaceTokenId), tokenArea[_sourceSpaceTokenId]);
     tokenAreaSource[_sourceSpaceTokenId] = AreaSource.CONTRACT;
     
-    spaceToken.burn(_sourceSpaceTokenId);
+    spaceToken().burn(_sourceSpaceTokenId);
   }
 
   function checkMergeContours(
@@ -308,6 +302,10 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
     public
   {
     SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
+  }
+
+  function spaceToken() internal view returns (ISpaceToken) {
+    return ISpaceToken(ggr.getSpaceTokenAddress());
   }
 
   function getPackageContour(uint256 _spaceTokenId) public view returns (uint256[] memory) {
@@ -323,7 +321,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   }
   
   function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
-    return geodesic.calculateContourArea(packageToContour[_spaceTokenId]);
+    return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(packageToContour[_spaceTokenId]);
   }
 
   function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
@@ -334,10 +332,6 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
   function getContourArea(uint256 _spaceTokenId) external view returns (uint256) {
     return tokenArea[_spaceTokenId];
-  }
-  
-  function getGeodesic() external view returns (address) {
-    return address(geodesic);
   }
 
   function setTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
