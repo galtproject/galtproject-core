@@ -129,7 +129,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    const deployment = await deploySplitMergeMock(this.spaceToken.address);
+    const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
     this.geodesic = deployment.geodesic;
 
