@@ -1,9 +1,9 @@
-const Geodesic = artifacts.require('./Geodesic.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
+
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');

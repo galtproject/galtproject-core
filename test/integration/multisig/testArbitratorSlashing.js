@@ -124,10 +124,7 @@ contract('Arbitrator Stake Slashing', accounts => {
         from: coreTeam
       });
 
-      this.sra = await MockSRA.new(
-        this.ggr.address,
-        { from: coreTeam }
-      );
+      this.sra = await MockSRA.new(this.ggr.address, { from: coreTeam });
 
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
