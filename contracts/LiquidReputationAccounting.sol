@@ -30,7 +30,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry public ggr;
 
   // Delegate => balance
   mapping(address => uint256) private _balances;
@@ -67,7 +67,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId, ISpaceLocker _spaceLocker) {
     require(address(_spaceLocker) == ggr.getSpaceToken().ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
     require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
-    spaceLockerRegistry().requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
     _;
   }
 
@@ -79,7 +79,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   )
     public
   {
-    spaceLockerRegistry().requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
 
     address owner = _spaceLocker.owner();
     require(msg.sender == owner, "Not owner of the locker");
@@ -99,7 +99,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   )
     public
   {
-    spaceLockerRegistry().requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
 
     address owner = _spaceLocker.owner();
 
@@ -200,8 +200,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _creditAccount(msg.sender, msg.sender, _amount);
   }
 
-  function spaceLockerRegistry() internal returns(ISpaceLockerRegistry) {
-   ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress());
+  function spaceLockerRegistry() public view returns(ISpaceLockerRegistry) {
+    return ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress());
   }
 
   // GETTERS

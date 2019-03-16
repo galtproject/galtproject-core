@@ -86,12 +86,7 @@ contract('Proposals', accounts => {
       this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
 
-      this.sra = await MockSRA.new(
-        this.spaceToken.address,
-        this.multiSigRegistry.address,
-        this.spaceLockerRegistry.address,
-        { from: coreTeam }
-      );
+      this.sra = await MockSRA.new(this.ggr.address, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam

@@ -30,8 +30,6 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  GaltGlobalRegistry _ggr;
-
   // Delegate => (MultiSig => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
   mapping(address => uint256) _totalLocked;

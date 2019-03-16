@@ -4,7 +4,7 @@ const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.s
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
-const Geodesic = artifacts.require('./MockGeodesic.sol');
+const MockGeodesic = artifacts.require('./MockGeodesic.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 
@@ -116,14 +116,13 @@ contract('PlotManager', accounts => {
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
     this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
 
-    this.geodesicMock = await Geodesic.new({ from: coreTeam });
+    this.geodesicMock = await MockGeodesic.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
@@ -139,7 +138,8 @@ contract('PlotManager', accounts => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     // this.splitMerge = await MockSplitMerge.new();
-    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    this.splitMerge = await deploySplitMerge(this.ggr);
+    await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -177,7 +177,6 @@ contract('PlotManager', accounts => {
     await this.plotManager.initialize(this.ggr.address, feeMixer, {
       from: coreTeam
     });
-    await this.splitMerge.initialize(this.spaceToken.address, { from: coreTeam });
 
     // TODO: remove this
     await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {

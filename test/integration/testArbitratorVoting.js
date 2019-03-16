@@ -73,21 +73,15 @@ contract('ArbitratorVoting', accounts => {
   ] = accounts;
 
   before(async function() {
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    const deployment = await deploySplitMergeMock(this.spaceToken.address);
+    const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
 
     this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
-    this.spaceLockerFactory = await SpaceLockerFactory.new(
-      this.spaceLockerRegistry.address,
-      this.galtToken.address,
-      this.spaceToken.address,
-      this.splitMerge.address,
-      { from: coreTeam }
-    );
-    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
 
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -109,17 +103,16 @@ contract('ArbitratorVoting', accounts => {
         from: coreTeam
       }
     );
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(
-      this.spaceToken.address,
-      this.multiSigRegistry.address,
-      this.spaceLockerRegistry.address,
-      { from: coreTeam }
-    );
+    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
+      from: coreTeam
+    });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
       from: coreTeam
     });
@@ -140,12 +133,7 @@ contract('ArbitratorVoting', accounts => {
   });
 
   beforeEach(async function() {
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(
-      this.spaceToken.address,
-      this.multiSigRegistry.address,
-      this.spaceLockerRegistry.address,
-      { from: coreTeam }
-    );
+    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
       from: coreTeam

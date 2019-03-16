@@ -31,6 +31,8 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   constructor (
     GaltGlobalRegistry _ggr
   ) public {
+    ggr = _ggr;
+
     commission = 10 ether;
   }
 

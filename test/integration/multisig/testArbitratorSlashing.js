@@ -125,9 +125,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       });
 
       this.sra = await MockSRA.new(
-        this.spaceToken.address,
-        this.multiSigRegistry.address,
-        this.spaceLockerRegistry.address,
+        this.ggr.address,
         { from: coreTeam }
       );
 

@@ -359,39 +359,42 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySplitMergeMock() {
+  async deploySplitMergeMock(ggr) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
     const splitMergeLib = await Helpers.getSplitMergeLib();
+
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
 
     const splitMerge = await SplitMerge.new();
     const geodesic = await Geodesic.new();
-    await splitMerge.setGeodesic(geodesic.address);
+
+    await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
+    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
 
     return { splitMerge, geodesic };
   },
-  async deploySplitMerge(spaceTokenAddress) {
+  async deploySplitMerge(ggr) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
     const splitMergeLib = await Helpers.getSplitMergeLib();
-
     const polygonUtils = await Helpers.getPolygonUtilsLib();
 
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
-
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
 
     const splitMerge = await SplitMerge.new();
-
-    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceTokenAddress, splitMerge.address);
-    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
-
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(ggr.address);
     const geodesic = await Helpers.deployGeodesic();
-    await splitMerge.setGeodesic(geodesic.address);
+
+    await ggr.setContract(await ggr.SPACE_SPLIT_OPERATION_FACTORY(), splitOperationFactory.address);
+    await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
+    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+
+    await splitMerge.initialize(ggr.address);
 
     return splitMerge;
   },
