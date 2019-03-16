@@ -6,6 +6,8 @@ const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+
 const Web3 = require('web3');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
@@ -23,25 +25,16 @@ contract('SpaceReputationAccounting', accounts => {
   const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager] = accounts;
 
   beforeEach(async function() {
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    this.splitMerge = await deploySplitMerge(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
+
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
-    this.spaceLockerFactory = await SpaceLockerFactory.new(
-      this.spaceLockerRegistry.address,
-      this.galtToken.address,
-      this.spaceToken.address,
-      this.splitMerge.address,
-      { from: coreTeam }
-    );
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(
-      this.spaceToken.address,
-      this.multiSigRegistry.address,
-      this.spaceLockerRegistry.address,
-      { from: coreTeam }
-    );
+    this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
+    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
     await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     await this.spaceLockerRegistry.addRoleTo(
       this.spaceLockerFactory.address,
@@ -62,6 +55,18 @@ contract('SpaceReputationAccounting', accounts => {
       this.spaceReputationAccounting.abi,
       this.spaceReputationAccounting.address
     );
+
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
+      from: coreTeam
+    });
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
+      from: coreTeam
+    });
   });
 
   describe('transfer', () => {
@@ -316,14 +321,7 @@ contract('SpaceReputationAccounting', accounts => {
 
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.galtToken.address,
-        this.oracles,
-        claimManager,
-        this.multiSigRegistry,
-        this.spaceReputationAccounting.address,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
@@ -337,7 +335,8 @@ contract('SpaceReputationAccounting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30],
+        {},
         alice
       );
       const abMultiSigX = this.abX.multiSig;
@@ -351,7 +350,8 @@ contract('SpaceReputationAccounting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30],
+        {},
         bob
       );
       const abMultiSigY = this.abY.multiSig;
@@ -365,7 +365,8 @@ contract('SpaceReputationAccounting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30],
+        {},
         charlie
       );
       const abMultiSigZ = this.abZ.multiSig;
@@ -505,14 +506,7 @@ contract('SpaceReputationAccounting', accounts => {
 
   describe('SpaceLocker burn', () => {
     it('should deny minting reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.galtToken.address,
-        this.oracles,
-        claimManager,
-        this.multiSigRegistry,
-        this.spaceReputationAccounting.address,
-        coreTeam
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
       // await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
 

@@ -18,6 +18,6 @@ import "../../interfaces/ISpaceLocker.sol";
 
 interface ISpaceLockerRegistry {
   function addSpaceLocker(ISpaceLocker _spaceLocker) external;
-  function requireValidLocker(ISpaceLocker _spaceLocker) external view;
+  function requireValidLocker(address _spaceLocker) external view;
   function isValid(address _spaceLocker) external view returns (bool);
 }

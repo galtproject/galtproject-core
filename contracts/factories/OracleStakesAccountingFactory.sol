@@ -24,14 +24,12 @@ import "../multisig/OracleStakesAccounting.sol";
 
 contract OracleStakesAccountingFactory is Ownable {
   function build(
-    Oracles _oracles,
-    IERC20 _galtToken,
     ArbitrationConfig _arbitrationConfig
   )
     external
     returns (OracleStakesAccounting oracleStakes)
   {
-    oracleStakes = new OracleStakesAccounting(_oracles, _galtToken, _arbitrationConfig);
+    oracleStakes = new OracleStakesAccounting(_arbitrationConfig);
 
     oracleStakes.addRoleTo(msg.sender, "role_manager");
     oracleStakes.removeRoleFrom(address(this), "role_manager");

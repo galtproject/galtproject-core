@@ -21,6 +21,7 @@ import "../interfaces/ISplitMerge.sol";
 import "../Oracles.sol";
 import "../registries/SpaceCustodianRegistry.sol";
 import "./AbstractOracleApplication.sol";
+import "../registries/interfaces/ISpaceCustodianRegistry.sol";
 
 
 contract PlotCustodianManager is AbstractOracleApplication, Statusable {
@@ -30,11 +31,15 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   // `PlotCustodianManager` keccak256 hash
   bytes32 public constant APPLICATION_TYPE = 0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6;
 
-  // `PC_CUSTODIAN_ORACLE_TYPE` bytes32 representation hash
-  bytes32 public constant PC_CUSTODIAN_ORACLE_TYPE = 0x50435f435553544f4449414e5f4f5241434c455f545950450000000000000000;
-  // `PC_AUDITOR_ORACLE_TYPE` bytes32 representation
-  bytes32 public constant PC_AUDITOR_ORACLE_TYPE = 0x50435f41554449544f525f4f5241434c455f5459504500000000000000000000;
+  bytes32 public constant PC_CUSTODIAN_ORACLE_TYPE = bytes32("PC_CUSTODIAN_ORACLE_TYPE");
+  bytes32 public constant PC_AUDITOR_ORACLE_TYPE = bytes32("PC_AUDITOR_ORACLE_TYPE");
 
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("PC_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PC_MINIMAL_FEE_GALT");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PC_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_PREFIX = bytes32("PC");
+
+  // TODO: move values to the custodian registry
   uint256 public constant MODIFY_CUSTODIAN_LIMIT = 10;
   uint256 public constant TOTAL_CUSTODIAN_LIMIT = 10;
 
@@ -64,6 +69,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     bytes32 id;
     address applicant;
     address auditor;
+    address escrowAddress;
     uint256 spaceTokenId;
     bool throughEscrow;
     string rejectMessage;
@@ -107,11 +113,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
   mapping(bytes32 => Application) private applications;
 
-  ISpaceToken public spaceToken;
-  ISplitMerge public splitMerge;
-  SpaceCustodianRegistry public spaceCustodianRegistry;
-  address public plotEscrow;
-
   modifier onlyApplicant(bytes32 _aId) {
     Application storage a = applications[_aId];
 
@@ -128,14 +129,14 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.acceptedCustodians.has(msg.sender) ||
       a.lockedCustodians.has(msg.sender),
-      "Only a custodian role is allowed to perform this action");
+      "Only a custodian role allowed");
 
     _;
   }
 
   // TODO: move to abstract class
   modifier oraclesReady() {
-    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracles list not complete");
+//    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracles list not complete");
 
     _;
   }
@@ -143,38 +144,42 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   constructor () public {}
 
   function initialize(
-    ISpaceToken _spaceToken,
-    ISplitMerge _splitMerge,
-    Oracles _oracles,
-    IERC20 _galtToken,
-    address _plotEscrow,
-    SpaceCustodianRegistry _spaceCustodianRegistry,
+    GaltGlobalRegistry _ggr,
     address _galtSpaceRewardsAddress
   )
     external
     isInitializer
   {
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
-    oracles = _oracles;
-    galtToken = _galtToken;
-    plotEscrow = _plotEscrow;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
-    spaceCustodianRegistry = _spaceCustodianRegistry;
+    ggr = _ggr;
+    oracles = Oracles(ggr.getOraclesAddress());
 
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
+    // TODO: figure out where to store these values
+    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
+    galtSpaceGaltShare = 13;
+  }
+
+  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  }
+
+  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
+    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+  }
+
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
   /**
    * @dev Submit a new custodian management application from PlotEscrow contract
    */
   function submitApplicationFromEscrow(
+    address _multiSig,
     uint256 _spaceTokenId,
     Action _action,
     address[] calldata _custodiansToModify,
@@ -185,17 +190,19 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-    require(msg.sender == plotEscrow, "Only trusted PlotEscrow contract allowed overriding applicant address");
+    require(isValidPlotEscrow(msg.sender), "Only trusted PlotEscrow allowed");
     require(_applicant != address(0), "Should specify applicant");
-    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_spaceTokenId) == plotEscrow, "PlotEscrow contract should own the token");
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+    require(isValidPlotEscrow(ggr.getSpaceToken().ownerOf(_spaceTokenId)), "PlotEscrow should own the token");
 
     return submitApplicationHelper(
+      _multiSig,
       _spaceTokenId,
       _action,
       _applicant,
       _custodiansToModify,
       true,
+      msg.sender,
       _applicationFeeInGalt
     );
   }
@@ -208,6 +215,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
    * @param _applicationFeeInGalt if GALT is application currency, 0 for ETH
    */
   function submit(
+    address _multiSig,
     uint256 _spaceTokenId,
     Action _action,
     address[] calldata _custodiansToModify,
@@ -217,25 +225,29 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
 
     return submitApplicationHelper(
+      _multiSig,
       _spaceTokenId,
       _action,
       msg.sender,
       _custodiansToModify,
       false,
+      address(0),
       _applicationFeeInGalt
     );
   }
 
   function submitApplicationHelper(
+    address _multiSig,
     uint256 _spaceTokenId,
     Action _action,
     address _applicant,
     address[] memory _custodiansToModify,
     bool _throughEscrow,
+    address _escrowAddress,
     uint256 _applicationFeeInGalt
   )
     internal
@@ -249,14 +261,14 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     // ETH
     if (msg.value > 0) {
-      require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
+      require(_applicationFeeInGalt == 0, "Can't accept both ETH and GALT");
+      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Incorrect fee passed in");
       fee = msg.value;
     // GALT
     } else {
-      require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(_applicant, address(this), _applicationFeeInGalt);
+      require(msg.value == 0, "Can't accept both ETH and GALT");
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Incorrect fee passed in");
+      ggr.getGaltToken().transferFrom(_applicant, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
     }
@@ -282,6 +294,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     a.currency = currency;
     a.spaceTokenId = _spaceTokenId;
     a.action = _action;
+    a.escrowAddress = _escrowAddress;
 
     calculateAndStoreFee(a, fee);
 
@@ -313,9 +326,9 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
-    require(spaceToken.exists(_spaceTokenId), "SpaceToken with the given ID doesn't exist");
-    require(spaceToken.ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
+    require(a.status == ApplicationStatus.REVERTED, "Expect REVERTED status");
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
 
     a.custodiansToModify.clear();
     _storeCustodians(a, _spaceTokenId, _custodiansToModify, _action);
@@ -337,17 +350,19 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     internal
   {
     uint256 len = _custodiansToModify.length;
+    ISpaceCustodianRegistry registry = spaceCustodianRegistry();
 
-    require((spaceCustodianRegistry.spaceCustodianCount(_spaceTokenId) + len) < TOTAL_CUSTODIAN_LIMIT, "Exceed total custodian limit");
+    require((registry.spaceCustodianCount(_spaceTokenId) + len) < TOTAL_CUSTODIAN_LIMIT, "Exceed total custodian limit");
 
     for (uint256 i = 0; i < len; i++) {
       address custodian = _custodiansToModify[i];
-      oracles.requireOracleActiveWithAssignedActiveOracleType(custodian, PC_CUSTODIAN_ORACLE_TYPE);
+      // TODO: check in multisig
+//      oracles.requireOracleActiveWithAssignedActiveOracleType(custodian, PC_CUSTODIAN_ORACLE_TYPE);
 
       if (_action == Action.ATTACH) {
-        require(!spaceCustodianRegistry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian already locked a slot");
+        require(!registry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian already locked a slot");
       } else {
-        require(spaceCustodianRegistry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian doesn't have slot");
+        require(registry.spaceCustodianAssigned(_spaceTokenId, custodian), "Custodian doesn't have slot");
       }
 
       _a.custodiansToModify.add(custodian);
@@ -364,10 +379,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(
       a.status == ApplicationStatus.SUBMITTED || a.status == ApplicationStatus.ACCEPTED,
-      "Application status should be SUBMITTED or ACCEPTED");
+      "Expect SUBMITTED|ACCEPTED status");
     require(
       a.custodiansToModify.has(msg.sender) ||
-      spaceCustodianRegistry.spaceCustodianAssigned(a.spaceTokenId, msg.sender),
+      spaceCustodianRegistry().spaceCustodianAssigned(a.spaceTokenId, msg.sender),
       "Not valid custodian");
 
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
@@ -383,7 +398,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      "Expect SUBMITTED status");
 
     require(a.custodiansToModify.has(msg.sender), "Not in modifiers list");
     require(!a.acceptedCustodians.has(msg.sender), "Already accepted");
@@ -394,7 +409,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     applicationsByOracle[msg.sender].push(_aId);
 
     if (a.acceptedCustodians.size() == a.custodiansToModify.size()) {
-      if (spaceCustodianRegistry.spaceCustodianCount(a.spaceTokenId) == 0) {
+      if (spaceCustodianRegistry().spaceCustodianCount(a.spaceTokenId) == 0) {
         changeApplicationStatus(a, ApplicationStatus.LOCKED);
       } else {
         changeApplicationStatus(a, ApplicationStatus.ACCEPTED);
@@ -412,8 +427,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(
       a.status == ApplicationStatus.ACCEPTED,
-      "Application status should be ACCEPTED");
-    require(spaceCustodianRegistry.spaceCustodianAssigned(a.spaceTokenId, msg.sender), "Not in assigned list");
+      "Expect ACCEPTED status");
+    require(spaceCustodianRegistry().spaceCustodianAssigned(a.spaceTokenId, msg.sender), "Not in assigned list");
     require(!a.lockedCustodians.has(msg.sender), "Already locked");
 
     a.lockedCustodians.add(msg.sender);
@@ -421,7 +436,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     // TODO: add/replace with event
     applicationsByOracle[msg.sender].push(_aId);
 
-    if (spaceCustodianRegistry.spaceCustodianCount(a.spaceTokenId) == a.lockedCustodians.size()) {
+    if (spaceCustodianRegistry().spaceCustodianCount(a.spaceTokenId) == a.lockedCustodians.size()) {
       changeApplicationStatus(a, ApplicationStatus.LOCKED);
     }
   }
@@ -436,8 +451,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(
       a.status == ApplicationStatus.LOCKED,
-      "Application status should be LOCKED");
-    spaceToken.transferFrom(a.throughEscrow ? plotEscrow : a.applicant, address(this), a.spaceTokenId);
+      "Expect LOCKED status");
+    ggr.getSpaceToken().transferFrom(a.throughEscrow ? a.escrowAddress : a.applicant, address(this), a.spaceTokenId);
     // TODO: assign values;
 
     // voters = unique(acceptedCustodians + lockedCustodians) + 1 auditor + 1 applicant
@@ -481,7 +496,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     Application storage a = applications[_aId];
     oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, PC_CUSTODIAN_ORACLE_TYPE);
 
-    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
 
     address[] memory voters = a.voting.voters.elements();
     for (uint256 i = 0; i < voters.length; i++) {
@@ -503,7 +518,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(
       a.status == ApplicationStatus.REVIEW,
-      "Application status should be REVIEW");
+      "Expect REVIEW status");
     require(a.auditor == address(0), "Not in assigned list");
 
     // TODO: add/replace with event
@@ -522,7 +537,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     Application storage a = applications[_aId];
     Voting storage v = a.voting;
 
-    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
     require(v.voters.has(msg.sender), "Not in voters list");
     require(v.approvals[msg.sender] == false, "Already approved");
 
@@ -533,9 +548,9 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     if (v.approveCount == v.required) {
       if (a.action == Action.DETACH) {
-        spaceCustodianRegistry.detach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
+        spaceCustodianRegistry().detach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
       } else {
-        spaceCustodianRegistry.attach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
+        spaceCustodianRegistry().attach(a.spaceTokenId, a.custodiansToModify.elements(), a.custodianDocuments);
       }
 
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
@@ -555,7 +570,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.REVIEW, "Application status should be REVIEW");
+    require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
     require(
       a.acceptedCustodians.has(msg.sender) || a.lockedCustodians.has(msg.sender) || a.auditor == msg.sender,
       "Only a custodians or auditor are allowed to perform this action");
@@ -573,15 +588,15 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   function withdrawToken(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
-    require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
+    require(a.status == ApplicationStatus.APPROVED, "Expect APPROVED status");
 
     if (a.throughEscrow) {
-      require(msg.sender == plotEscrow, "Only plotEscrow allowed claiming token back");
+      require(isValidPlotEscrow(msg.sender), "Only plotEscrow allowed");
     } else {
       require(msg.sender == a.applicant, "Invalid applicant");
     }
 
-    spaceToken.transferFrom(address(this), msg.sender, a.spaceTokenId);
+    ggr.getSpaceToken().transferFrom(address(this), msg.sender, a.spaceTokenId);
 
     changeApplicationStatus(a, ApplicationStatus.COMPLETED);
   }
@@ -596,10 +611,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.status == ApplicationStatus.REJECTED ||
       a.status == ApplicationStatus.LOCKED,
-      "Application status should be either REJECTED or LOCKED");
+      "Expect REJECTED/LOCKED status");
 
     if (a.status == ApplicationStatus.REJECTED) {
-      spaceToken.transferFrom(address(this), msg.sender, a.spaceTokenId);
+      ggr.getSpaceToken().transferFrom(address(this), msg.sender, a.spaceTokenId);
     }
 
     changeApplicationStatus(a, ApplicationStatus.CLOSED);
@@ -621,7 +636,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(
       a.status == ApplicationStatus.COMPLETED ||
       a.status == ApplicationStatus.CLOSED,
-      "Application status should be either COMPLETED or CLOSED");
+      "Expect COMPLETED/CLOSED status");
 
     uint256 reward;
 
@@ -645,7 +660,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
     } else {
-      galtToken.transfer(msg.sender, reward);
+      ggr.getGaltToken().transfer(msg.sender, reward);
     }
   }
 
@@ -654,14 +669,14 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   )
     external
   {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+    require(msg.sender == galtSpaceRewardsAddress, "Only mixer allowed");
 
     Application storage a = applications[_aId];
 
     require(
       a.status == ApplicationStatus.COMPLETED ||
       a.status == ApplicationStatus.CLOSED,
-      "Application status should be either COMPLETED or CLOSED");
+      "Expect COMPLETED/CLOSED status");
     require(a.rewards.galtSpaceReward > 0, "Reward is 0");
     require(a.rewards.galtSpaceRewardPaidOut == false, "Reward is already paid out");
 
@@ -670,7 +685,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(a.rewards.galtSpaceReward);
     } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.rewards.galtSpaceReward);
+      ggr.getGaltToken().transfer(msg.sender, a.rewards.galtSpaceReward);
     }
   }
 
@@ -684,6 +699,15 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     uint256 rewardSize = a.rewards.totalCustodiansReward.div(len);
 
     a.rewards.custodianReward = rewardSize;
+  }
+
+  function isValidPlotEscrow(address _plotEscrow) internal view returns (bool) {
+    // TODO: add interaction with ApplicationRegistry
+    return true;
+  }
+
+  function spaceCustodianRegistry() internal view returns (ISpaceCustodianRegistry) {
+    return ISpaceCustodianRegistry(ggr.getSpaceCustodianRegistryAddress());
   }
 
   function getApplicationById(

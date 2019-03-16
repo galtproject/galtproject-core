@@ -9,8 +9,8 @@
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#02290d2",
-    "@galtproject/libs": "git+https://github.com/galtspace/galtproject-libs.git#38369d234f47ee1068f26f78d9139266fbce035a",
-    "@galtproject/math": "git+https://github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
+    "@galtproject/libs": "git+ssh://github.com/galtspace/galtproject-libs.git#38369d234f47ee1068f26f78d9139266fbce035a",
+    "@galtproject/math": "git+ssh://github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git#72ed184",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
@@ -39,7 +39,7 @@
     "yaeti": "^1.0.2"
   },
   "engines": {
-    "node": ">=10.15.0"
+    "node": ">=10.15.1"
   },
   "repository": "https://github.com/galtspace/galtproject-contracts",
   "scripts": {

@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../Oracles.sol";
 import "../SpaceReputationAccounting.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
 import "../multisig/proposals/interfaces/IProposalManager.sol";
@@ -33,6 +33,8 @@ import "./arbitration/ArbitrationModifyMofNProposalFactory.sol";
 import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
 import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
 import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
+import "./arbitration/ArbitrationModifyApplicationConfigProposalFactory.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -62,11 +64,18 @@ contract MultiSigFactory is Ownable {
     address revokeArbitratorsProposalManager
   );
 
+  event BuildMultiSigFifthStep(
+    bytes32 groupId,
+    address modifyApplicationConfigProposalManager
+  );
+
   enum Step {
     FIRST,
     SECOND,
     THIRD,
     FOURTH,
+    FIFTH,
+    SIXTH,
     DONE
   }
 
@@ -83,15 +92,11 @@ contract MultiSigFactory is Ownable {
     IProposalManager modifyMofNProposalManager;
     IProposalManager modifyArbitratorStakeProposalManager;
     IProposalManager modifyContractAddressProposalManager;
+    IProposalManager modifyApplicationConfigProposalManager;
     IProposalManager revokeArbitratorsProposalManager;
   }
 
-  MultiSigRegistry multiSigRegistry;
-  ClaimManager claimManager;
-
-  IERC20 galtToken;
-  Oracles oracles;
-  SpaceReputationAccounting spaceReputationAccounting;
+  GaltGlobalRegistry public ggr;
 
   ArbitrationConfigFactory arbitrationConfigFactory;
   ArbitratorsMultiSigFactory arbitratorMultiSigFactory;
@@ -104,17 +109,14 @@ contract MultiSigFactory is Ownable {
   ArbitrationModifyArbitratorStakeProposalFactory arbitrationModifyArbitratorStakeProposalFactory;
   ArbitrationModifyContractAddressProposalFactory arbitrationModifyContractAddressProposalFactory;
   ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
+  ArbitrationModifyApplicationConfigProposalFactory arbitrationModifyApplicationConfigProposalFactory;
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
   uint256 commission;
 
   constructor (
-    MultiSigRegistry _multiSigRegistry,
-    IERC20 _galtToken,
-    Oracles _oracles,
-    ClaimManager _claimManager,
-    SpaceReputationAccounting _spaceReputationAccounting,
+    GaltGlobalRegistry _ggr,
     ArbitratorsMultiSigFactory _arbitratorMultiSigFactory,
     ArbitratorVotingFactory _arbitratorVotingFactory,
     ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
@@ -124,15 +126,12 @@ contract MultiSigFactory is Ownable {
     ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
     ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
     ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
-    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory
+    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory,
+    ArbitrationModifyApplicationConfigProposalFactory _arbitrationModifyApplicationConfigProposalFactory
   ) public {
     commission = 10 ether;
 
-    multiSigRegistry = _multiSigRegistry;
-    galtToken = _galtToken;
-    oracles = _oracles;
-    claimManager = _claimManager;
-    spaceReputationAccounting = _spaceReputationAccounting;
+    ggr = _ggr;
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
     arbitratorVotingFactory = _arbitratorVotingFactory;
@@ -145,6 +144,7 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyArbitratorStakeProposalFactory = _arbitrationModifyArbitratorStakeProposalFactory;
     arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
     arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
+    arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
   }
 
   function buildFirstStep(
@@ -162,15 +162,16 @@ contract MultiSigFactory is Ownable {
     external
     returns (bytes32 groupId)
   {
-    galtToken.transferFrom(msg.sender, address(this), commission);
+    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
 
-    groupId = keccak256(abi.encode(block.timestamp, _initialMultiSigRequired, msg.sender));
+    groupId = keccak256(abi.encode(blockhash(block.number - 1), _initialMultiSigRequired, msg.sender));
 
     MultiSigContractGroup storage g = multiSigContractGroups[groupId];
 
     require(g.nextStep == Step.FIRST, "Requires FIRST step");
 
     ArbitrationConfig arbitrationConfig = arbitrationConfigFactory.build(
+      ggr,
       _m,
       _n,
       _minimalArbitratorStake,
@@ -178,11 +179,12 @@ contract MultiSigFactory is Ownable {
     );
 
     ArbitratorsMultiSig arbitratorMultiSig = arbitratorMultiSigFactory.build(_initialOwners, _initialMultiSigRequired, arbitrationConfig);
-    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(oracles, galtToken, arbitrationConfig);
+    OracleStakesAccounting oracleStakesAccounting = oracleStakesAccountingFactory.build(arbitrationConfig);
 
-    arbitratorMultiSig.addRoleTo(address(claimManager), arbitratorMultiSig.ROLE_PROPOSER());
-    oracleStakesAccounting.addRoleTo(address(claimManager), oracleStakesAccounting.ROLE_SLASH_MANAGER());
-    oracles.addOracleNotifierRoleTo(address(oracleStakesAccounting));
+    address claimManager = ggr.getClaimManagerAddress();
+    arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
+    oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
+    Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     g.creator = msg.sender;
     g.arbitratorMultiSig = arbitratorMultiSig;
@@ -204,16 +206,16 @@ contract MultiSigFactory is Ownable {
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     ArbitratorStakeAccounting arbitratorStakeAccounting = arbitratorStakeAccountingFactory.build(
-      galtToken,
       g.arbitrationConfig,
       _periodLength
     );
     ArbitratorVoting arbitratorVoting = arbitratorVotingFactory.build(g.arbitrationConfig);
 
-    arbitratorStakeAccounting.addRoleTo(address(claimManager), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
+    arbitratorStakeAccounting.addRoleTo(ggr.getClaimManagerAddress(), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(arbitratorVoting), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
     arbitratorVoting.addRoleTo(address(g.oracleStakesAccounting), arbitratorVoting.ORACLE_STAKES_NOTIFIER());
-    arbitratorVoting.addRoleTo(address(spaceReputationAccounting), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
+    // TODO: replace with ggr itself
+    arbitratorVoting.addRoleTo(ggr.getSpaceReputationAccountingAddress(), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
 
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
     g.arbitratorVoting = arbitratorVoting;
@@ -272,12 +274,64 @@ contract MultiSigFactory is Ownable {
     g.modifyContractAddressProposalManager = changeAddressProposals;
     g.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
 
+    g.nextStep = Step.FIFTH;
+
+    emit BuildMultiSigFourthStep(
+      _groupId,
+      address(changeAddressProposals),
+      address(revokeArbitratorsProposals)
+    );
+  }
+
+  function buildFifthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.FIFTH, "FIFTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    IProposalManager modifyApplicationConfigProposals = arbitrationModifyApplicationConfigProposalFactory.build(g.arbitrationConfig);
+
+    g.arbitrationConfig.addRoleTo(address(modifyApplicationConfigProposals), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+
+    g.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
+
+    g.nextStep = Step.SIXTH;
+
+    emit BuildMultiSigFifthStep(
+      _groupId,
+      address(modifyApplicationConfigProposals)
+    );
+  }
+
+  function buildSixthStep(
+    bytes32 _groupId,
+    bytes32[] calldata _keys,
+    bytes32[] calldata _values
+  )
+    external
+  {
+    require(_keys.length == _values.length, "Keys and values arrays should have the same lengths");
+
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.SIXTH, "SIXTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+    for (uint256 i = 0; i < _keys.length; i++) {
+      g.arbitrationConfig.setApplicationConfigValue(_keys[i], _values[i]);
+    }
+    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,
       g.arbitratorVoting,
       g.arbitratorStakeAccounting,
       g.oracleStakesAccounting,
-      spaceReputationAccounting
+      // TODO: replace with ggr itself
+      SpaceReputationAccounting(ggr.getSpaceReputationAccountingAddress())
     );
 
     // TODO: initialize proposal contracts too
@@ -292,18 +346,13 @@ contract MultiSigFactory is Ownable {
     g.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
     g.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
     g.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
-    changeAddressProposals.removeRoleFrom(address(this), "role_manager");
-    revokeArbitratorsProposals.removeRoleFrom(address(this), "role_manager");
+    g.modifyContractAddressProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
-    multiSigRegistry.addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
+    IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
 
     g.nextStep = Step.DONE;
-
-    emit BuildMultiSigFourthStep(
-      _groupId,
-      address(changeAddressProposals),
-      address(revokeArbitratorsProposals)
-    );
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

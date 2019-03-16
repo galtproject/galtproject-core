@@ -21,12 +21,10 @@ import "../SpaceReputationAccounting.sol";
 
 contract MockSRA is SpaceReputationAccounting {
   constructor(
-    IERC721 _spaceToken,
-    MultiSigRegistry _multiSigRegistry,
-    ISpaceLockerRegistry _spaceLockerRegistry
+    GaltGlobalRegistry _ggr
   )
     public
-    SpaceReputationAccounting(_spaceToken, _multiSigRegistry, _spaceLockerRegistry)
+    SpaceReputationAccounting(_ggr)
   {
   }
 

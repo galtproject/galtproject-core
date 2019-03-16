@@ -18,6 +18,7 @@ import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ISplitMerge.sol";
 import "./interfaces/ISRA.sol";
+import "./registries/GaltGlobalRegistry.sol";
 
 
 contract SpaceLocker is ISpaceLocker {
@@ -29,8 +30,7 @@ contract SpaceLocker is ISpaceLocker {
 
   address public owner;
 
-  ISpaceToken public spaceToken;
-  ISplitMerge public splitMerge;
+  GaltGlobalRegistry public ggr;
 
   uint256 public spaceTokenId;
   uint256 public reputation;
@@ -39,11 +39,10 @@ contract SpaceLocker is ISpaceLocker {
 
   ArraySet.AddressSet sras;
 
-  constructor(ISpaceToken _spaceToken, ISplitMerge _splitMerge, address _owner) public {
+  constructor(GaltGlobalRegistry _ggr, address _owner) public {
     owner = _owner;
 
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
+    ggr = _ggr;
   }
 
   modifier onlyOwner() {
@@ -60,10 +59,10 @@ contract SpaceLocker is ISpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = splitMerge.getContourArea(_spaceTokenId);
+    reputation = ISplitMerge(ggr.getSplitMergeAddress()).getContourArea(_spaceTokenId);
     tokenDeposited = true;
 
-    spaceToken.transferFrom(msg.sender, address(this), _spaceTokenId);
+    ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
   }
 
   function withdraw(uint256 _spaceTokenId) external onlyOwner notBurned {
@@ -74,7 +73,7 @@ contract SpaceLocker is ISpaceLocker {
     reputation = 0;
     tokenDeposited = false;
 
-    spaceToken.safeTransferFrom(address(this), msg.sender, _spaceTokenId);
+    ggr.getSpaceToken().safeTransferFrom(address(this), msg.sender, _spaceTokenId);
   }
 
   function approveMint(ISRA _sra) external onlyOwner notBurned {
@@ -98,7 +97,7 @@ contract SpaceLocker is ISpaceLocker {
   function burnToken(bytes32 _spaceTokenIdHash) external onlyOwner notBurned {
     require(keccak256(abi.encode(spaceTokenId)) == _spaceTokenIdHash, "Hash doesn't match");
 
-    spaceToken.burn(spaceTokenId);
+    ISpaceToken(ggr.getSpaceTokenAddress()).burn(spaceTokenId);
     tokenBurned = true;
 
     emit TokenBurned(spaceTokenId);

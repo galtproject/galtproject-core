@@ -14,11 +14,12 @@
 pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../interfaces/ISpaceLocker.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "../interfaces/ISpaceLocker.sol";
+import "./interfaces/ISpaceLockerRegistry.sol";
 
 
-contract SpaceLockerRegistry is Permissionable {
+contract SpaceLockerRegistry is ISpaceLockerRegistry, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   string public constant ROLE_FACTORY = "space_token";
 

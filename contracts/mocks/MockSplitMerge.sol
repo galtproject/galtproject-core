@@ -11,13 +11,19 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity ^0.5.3;
 
 
-contract ISpaceCustodianRegistry {
-  function attach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function detach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool);
-  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory);
-  function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256);
+contract MockSplitMerge {
+  string public constant GEO_DATA_MANAGER = "geo_data_manager";
+
+  mapping(uint256 => uint256) private _tokenAreas;
+
+  function setTokenArea(uint256 _tokenId, uint256 _amount) external {
+    _tokenAreas[_tokenId] = _amount;
+  }
+
+  function getContourArea(uint256 _tokenId) external view returns(uint256) {
+    return _tokenAreas[_tokenId];
+  }
 }
