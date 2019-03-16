@@ -17,14 +17,16 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
 import "./ArbitratorStakeAccounting.sol";
 import "./ArbitrationConfig.sol";
+import "./interfaces/IArbitratorsMultiSig.sol";
 
-contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
+contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permissionable {
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
   event GaltRunningTotalIncrease(
     uint256 periodId,
     uint256 runningTotalBefore,
     uint256 runningTotalAfter,
+    uint256 totalArbitratorStakes,
     uint256 amount
   );
 
@@ -34,7 +36,6 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
 
   ArbitrationConfig public arbitrationConfig;
 
-  address public galtToken;
   bool initialized;
 
   mapping(uint256 => uint256) _periodRunningTotal;
@@ -122,13 +123,8 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     emit RevokeOwners();
   }
 
-  // TODO: GaltToken address should be hardcoded in production version
-  function setGaltToken(address _galtToken) external {
-    galtToken = _galtToken;
-  }
-
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
-    if (destination == galtToken) {
+    if (destination == arbitrationConfig.ggr().getGaltTokenAddress()) {
       checkGaltLimits(data);
     }
 
@@ -161,7 +157,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
       switch code
       // transfer(address,uint256)
       case 0xa9059cbb00000000000000000000000000000000000000000000000000000000 {
-        galtValue := mload(add(data, 0x40))
+        galtValue := mload(add(data, 0x44))
       }
       default {
         // Methods other than transfer are prohibited for GALT contract
@@ -178,7 +174,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
 
     assert(runningTotalAfter > runningTotalBefore);
-    assert(runningTotalAfter <= totalStakes);
+    require(runningTotalAfter <= totalStakes, "Arbitrator expenses running total exceeds their total stakes");
 
     _periodRunningTotal[currentPeriodId] = runningTotalAfter;
 
@@ -186,6 +182,7 @@ contract ArbitratorsMultiSig is MultiSigWallet, Permissionable {
       currentPeriodId,
       runningTotalBefore,
       runningTotalAfter,
+      totalStakes,
       galtValue
     );
   }

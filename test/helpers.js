@@ -37,6 +37,12 @@ const Helpers = {
   weiToEtherRound(wei, precision = 4) {
     return Helpers.roundToPrecision(parseFloat(web3.utils.fromWei(wei.toFixed(), 'ether')), precision);
   },
+  numberToEvmWord(number) {
+    return web3.utils.padLeft(web3.utils.numberToHex(number), 64);
+  },
+  addressToEvmWord(address) {
+    return web3.utils.padLeft(address, 64);
+  },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
   },
@@ -55,6 +61,45 @@ const Helpers = {
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
+    });
+  },
+  async evmMineBlock() {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'evm_mine',
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
+  async evmIncreaseTime(seconds) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'evm_increaseTime',
+          params: [seconds],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
     });
   },
   async assertInvalid(promise) {
@@ -314,27 +359,42 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySplitMerge(spaceTokenAddress) {
+  async deploySplitMergeMock(ggr) {
+    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+    const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
+    const splitMergeLib = await Helpers.getSplitMergeLib();
+
+    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
+
+    const splitMerge = await SplitMerge.new();
+    const geodesic = await Geodesic.new();
+
+    await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
+    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+
+    return { splitMerge, geodesic };
+  },
+  async deploySplitMerge(ggr) {
     const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
     const splitMergeLib = await Helpers.getSplitMergeLib();
-
     const polygonUtils = await Helpers.getPolygonUtilsLib();
 
     SplitMerge.link('SplitMergeLib', splitMergeLib.address);
-
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
 
     const splitMerge = await SplitMerge.new();
-
-    const splitOperationFactory = await SpaceSplitOperationFactory.new(spaceTokenAddress, splitMerge.address);
-    await splitMerge.setSplitOperationFactory(splitOperationFactory.address);
-
+    const splitOperationFactory = await SpaceSplitOperationFactory.new(ggr.address);
     const geodesic = await Helpers.deployGeodesic();
-    await splitMerge.setGeodesic(geodesic.address);
+
+    await ggr.setContract(await ggr.SPACE_SPLIT_OPERATION_FACTORY(), splitOperationFactory.address);
+    await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
+    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+
+    await splitMerge.initialize(ggr.address);
 
     return splitMerge;
   },

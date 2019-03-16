@@ -29,7 +29,17 @@ contract AbstractOracleApplication is AbstractApplication {
 
   constructor() public {}
 
-  function claimOracleReward(bytes32 _aId) external;
+//  function claimOracleReward(bytes32 _aId) external;
+
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
+
+  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
+    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
+
+    assert(val <= 100);
+
+    return val;
+  }
 
   function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {
     return applicationsByOracle[_oracle];

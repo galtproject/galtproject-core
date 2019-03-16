@@ -15,9 +15,10 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/ISpaceCustodianRegistry.sol";
 
 
-contract SpaceCustodianRegistry is Permissionable {
+contract SpaceCustodianRegistry is ISpaceCustodianRegistry, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 

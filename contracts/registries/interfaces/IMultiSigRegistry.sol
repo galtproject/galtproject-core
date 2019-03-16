@@ -13,11 +13,17 @@
 
 pragma solidity 0.5.3;
 
+import "../../multisig/interfaces/IArbitrationConfig.sol";
+import "../../multisig/interfaces/IArbitratorsMultiSig.sol";
 
-contract ISpaceCustodianRegistry {
-  function attach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function detach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool);
-  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory);
-  function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256);
+
+interface IMultiSigRegistry {
+  function addMultiSig(
+    IArbitratorsMultiSig _abMultiSig,
+    IArbitrationConfig _arbitrationConfig
+  ) external;
+  function requireValidMultiSig(address _multiSig) external view;
+  function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig);
+  function getMultiSigList() external returns (address[] memory);
+  function getMultiSigCount() external returns (uint256);
 }

@@ -20,6 +20,7 @@ import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISplitMerge.sol";
+import "./registries/GaltGlobalRegistry.sol";
 
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
@@ -43,9 +44,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   Stage public doneStage;
 
-  ISplitMerge public splitMerge;
-  ISpaceToken public spaceToken;
-  IGeodesic public geodesic;
+  GaltGlobalRegistry ggr;
 
   address public subjectTokenOwner;
   uint256 public subjectTokenId;
@@ -55,14 +54,11 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
-  constructor(address _spaceToken, address _splitMerge, address _subjectTokenOwner, uint256 _subjectTokenId, uint256[] memory _subjectContour, uint256[] memory _clippingContour) public {
-    splitMerge = ISplitMerge(_splitMerge);
-    spaceToken = ISpaceToken(_spaceToken);
-    geodesic = IGeodesic(splitMerge.getGeodesic());
-
-    subjectTokenOwner = _subjectTokenOwner;
+  constructor(GaltGlobalRegistry _ggr, uint256 _subjectTokenId, uint256[] memory _clippingContour) public {
+    ggr = _ggr;
+    subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
     subjectTokenId = _subjectTokenId;
-    subjectContour = _subjectContour;
+    subjectContour = ISplitMerge(_ggr.getSplitMergeAddress()).getPackageContour(_subjectTokenId);
     clippingContour = _clippingContour;
   }
 
@@ -78,7 +74,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
-    spaceToken.approve(address(splitMerge), subjectTokenId);
+    ggr.getSpaceToken().approve(ggr.getSplitMergeAddress(), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
     
     emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);
@@ -114,9 +110,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     int256[2] memory point;
     for (uint i = 0; i < geohashesContour.length; i++) {
-      point = geodesic.getCachedLatLonByGeohash(geohashesContour[i]);
+      point = geodesic().getCachedLatLonByGeohash(geohashesContour[i]);
       if (point[0] == 0 && point[1] == 0) {
-        point = geodesic.cacheGeohashToLatLon(geohashesContour[i]);
+        point = geodesic().cacheGeohashToLatLon(geohashesContour[i]);
       }
       resultPolygon.points.push(point);
     }
@@ -245,9 +241,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     uint256 geohash;
     for (uint i = 0; i < latLonPolygon.points.length; i++) {
-      geohash = geodesic.getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
+      geohash = geodesic().getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
       if (geohash == 0) {
-        geohash = geodesic.cacheLatLonToGeohash(latLonPolygon.points[i], 12);
+        geohash = geodesic().cacheLatLonToGeohash(latLonPolygon.points[i], 12);
       }
 
       geohashContour[i] = geohash;
@@ -279,6 +275,10 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   function finishAllPolygons() external {
     finishSubjectPolygon();
     finishClippingPolygons();
+  }
+
+  function geodesic() internal returns (IGeodesic) {
+    return IGeodesic(ggr.getGeodesicAddress());
   }
 
   function getResultContour(uint256 contourIndex) external view returns (uint256[] memory) {

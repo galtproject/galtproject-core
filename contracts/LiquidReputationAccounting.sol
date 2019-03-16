@@ -22,6 +22,7 @@ import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ISRA.sol";
 import "./registries/interfaces/ISpaceLockerRegistry.sol";
+import "./registries/GaltGlobalRegistry.sol";
 
 
 contract LiquidReputationAccounting is ISRA, Permissionable {
@@ -29,8 +30,7 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
-  IERC721 internal spaceToken;
-  ISpaceLockerRegistry internal spaceLockerRegistry;
+  GaltGlobalRegistry public ggr;
 
   // Delegate => balance
   mapping(address => uint256) private _balances;
@@ -57,19 +57,17 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   uint256 internal totalStakedSpace;
 
   constructor(
-    IERC721 _spaceToken,
-    ISpaceLockerRegistry _spaceLockerRegistry
+    GaltGlobalRegistry _ggr
   )
-  public
+    public
   {
-    spaceToken = _spaceToken;
-    spaceLockerRegistry = _spaceLockerRegistry;
+    ggr = _ggr;
   }
 
   modifier onlySpaceTokenOwner(uint256 _spaceTokenId, ISpaceLocker _spaceLocker) {
-    require(address(_spaceLocker) == spaceToken.ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
+    require(address(_spaceLocker) == ggr.getSpaceToken().ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
     require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
     _;
   }
 
@@ -79,9 +77,9 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function mint(
     ISpaceLocker _spaceLocker
   )
-  public
+    public
   {
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
 
     address owner = _spaceLocker.owner();
     require(msg.sender == owner, "Not owner of the locker");
@@ -99,9 +97,9 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   function approveBurn(
     ISpaceLocker _spaceLocker
   )
-  public
+    public
   {
-    spaceLockerRegistry.requireValidLocker(_spaceLocker);
+    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
 
     address owner = _spaceLocker.owner();
 
@@ -200,6 +198,10 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     }
 
     _creditAccount(msg.sender, msg.sender, _amount);
+  }
+
+  function spaceLockerRegistry() public view returns(ISpaceLockerRegistry) {
+    return ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress());
   }
 
   // GETTERS

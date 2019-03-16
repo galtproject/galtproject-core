@@ -1,4 +1,8 @@
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
+const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const GaltToken = artifacts.require('./GaltToken.sol');
+
 const Web3 = require('web3');
 const { initHelperWeb3 } = require('../helpers');
 
@@ -8,10 +12,20 @@ initHelperWeb3(web3);
 
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('ArbitratorsMultiSig', accounts => {
-  const [coreTeam, alice, bob, charlie, dan, arbitrationConfig] = accounts;
+  const [coreTeam, alice, bob, charlie, dan] = accounts;
 
   beforeEach(async function() {
-    this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, arbitrationConfig, { from: coreTeam });
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.galtToken = await GaltToken.new({ from: coreTeam });
+
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+
+    this.abConfig = await ArbitrationConfig.new(this.ggr.address, 2, 3, 200, [30, 30, 30, 30, 30, 30], {
+      from: coreTeam
+    });
+    this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, this.abConfig.address, {
+      from: coreTeam
+    });
   });
 
   describe('forbidden methods', () => {

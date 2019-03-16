@@ -14,10 +14,12 @@
 pragma solidity 0.5.3;
 
 
-contract ISpaceCustodianRegistry {
-  function attach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function detach(uint256 _spaceTokenId, address[] calldata _custodians, bytes32[] calldata _documents) external;
-  function spaceCustodianAssigned(uint256 _spaceTokenId, address _custodian) external view returns (bool);
-  function spaceCustodians(uint256 _spaceTokenId) external view returns (address[] memory);
-  function spaceCustodianCount(uint256 _spaceTokenId) external view returns (uint256);
+interface IArbitratorStakeAccounting {
+  function slash(address _arbitrator, uint256 _amount) external;
+  function slashMultiple(address[] calldata _arbitrators, uint256[] calldata _amounts) external;
+  function stake(address _arbitrator, uint256 _amount) external;
+  function getCurrentPeriodAndTotalSupply() external view returns (uint256, uint256);
+  function getCurrentPeriod() external view returns (uint256);
+  function balanceOf(address _arbitrator) external view returns (uint256);
+  function getInitialTimestamp() external view returns (uint256);
 }

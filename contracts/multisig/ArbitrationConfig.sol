@@ -17,24 +17,29 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/IArbitrationConfig.sol";
+import "./interfaces/IArbitratorStakeAccounting.sol";
+import "./interfaces/IOracleStakesAccounting.sol";
+import "./interfaces/IArbitratorVoting.sol";
+import "./interfaces/IArbitratorsMultiSig.sol";
 import "./ArbitratorsMultiSig.sol";
-import "./ArbitratorVoting.sol";
-import "./ArbitratorStakeAccounting.sol";
-import "./OracleStakesAccounting.sol";
 import "../SpaceReputationAccounting.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
-contract ArbitrationConfig is Permissionable {
+contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   string public constant THRESHOLD_MANAGER = "threshold_manager";
   string public constant M_N_MANAGER = "m_n_manager";
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
   string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
+  string public constant APPLICATION_CONFIG_MANAGER = "application_config_manager";
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
   bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = bytes32("arbitrator_stake_threshold");
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
   bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
+  bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
@@ -44,16 +49,20 @@ contract ArbitrationConfig is Permissionable {
 
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
+  mapping(bytes32 => bytes32) public applicationConfig;
   uint256 public minimalArbitratorStake;
 
   bool initialized;
 
-  // required
+  // initial voting => multiSig required
   uint256 public m;
-  // total
+  // initial voting => multiSig total
   uint256 public n;
 
+  GaltGlobalRegistry public ggr;
+
   constructor (
+    GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
@@ -64,24 +73,27 @@ contract ArbitrationConfig is Permissionable {
     // 4 - REVOKE_ARBITRATORS_THRESHOLD
     uint256[] memory _thresholds
   ) public {
+    ggr = _ggr;
+
     m = _m;
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 5, "Invalid number of thresholds passed in");
+    require(_thresholds.length == 6, "Invalid number of thresholds passed in");
 
     thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
     thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
     thresholds[CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD] = _thresholds[2];
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
     thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
+    thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
   }
 
   function initialize(
-    ArbitratorsMultiSig _arbitratorMultiSig,
-    ArbitratorVoting _arbitratorVoting,
-    ArbitratorStakeAccounting _arbitratorStakeAccounting,
-    OracleStakesAccounting _oracleStakesAccounting,
+    IArbitratorsMultiSig _arbitratorMultiSig,
+    IArbitratorVoting _arbitratorVoting,
+    IArbitratorStakeAccounting _arbitratorStakeAccounting,
+    IOracleStakesAccounting _oracleStakesAccounting,
     SpaceReputationAccounting _spaceReputationAccounting
   )
     external
@@ -120,21 +132,25 @@ contract ArbitrationConfig is Permissionable {
     contracts[_key] = _address;
   }
 
+  function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyRole(APPLICATION_CONFIG_MANAGER) {
+    applicationConfig[_key] = _value;
+  }
+
   // GETTERS (TODO: replace contract getters with interfaces only)
-  function getMultiSig() external view returns (ArbitratorsMultiSig) {
+  function getMultiSig() external view returns (IArbitratorsMultiSig) {
     address payable ms = address(uint160(contracts[MULTI_SIG_CONTRACT]));
-    return ArbitratorsMultiSig(ms);
+    return IArbitratorsMultiSig(ms);
   }
 
-  function getArbitratorVoting() external view returns (ArbitratorVoting) {
-    return ArbitratorVoting(contracts[ARBITRATOR_VOTING_CONTRACT]);
+  function getArbitratorVoting() external view returns (IArbitratorVoting) {
+    return IArbitratorVoting(contracts[ARBITRATOR_VOTING_CONTRACT]);
   }
 
-  function getArbitratorStakes() external view returns (ArbitratorStakeAccounting) {
-    return ArbitratorStakeAccounting(contracts[ARBITRATOR_STAKES_CONTRACT]);
+  function getArbitratorStakes() external view returns (IArbitratorStakeAccounting) {
+    return IArbitratorStakeAccounting(contracts[ARBITRATOR_STAKES_CONTRACT]);
   }
 
-  function getOracleStakes() external view returns (OracleStakesAccounting) {
-    return OracleStakesAccounting(contracts[ORACLE_STAKES_CONTRACT]);
+  function getOracleStakes() external view returns (IOracleStakesAccounting) {
+    return IOracleStakesAccounting(contracts[ORACLE_STAKES_CONTRACT]);
   }
 }

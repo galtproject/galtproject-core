@@ -19,9 +19,10 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../Oracles.sol";
 import "./ArbitrationConfig.sol";
+import "./interfaces/IOracleStakesAccounting.sol";
 
 
-contract OracleStakesAccounting is Permissionable {
+contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -43,10 +44,7 @@ contract OracleStakesAccounting is Permissionable {
 
   string public constant ROLE_SLASH_MANAGER = "slash_manager";
 
-  address slashManager;
   ArbitrationConfig public arbitrationConfig;
-  IERC20 public galtToken;
-  Oracles public oracles;
   mapping(address => OracleTypes) oracleTypes;
 
   struct OracleTypes {
@@ -61,14 +59,10 @@ contract OracleStakesAccounting is Permissionable {
   }
 
   constructor(
-    Oracles _oracles,
-    IERC20 _galtToken,
     ArbitrationConfig _arbitrationConfig
   )
     public
   {
-    oracles = _oracles;
-    galtToken = _galtToken;
     arbitrationConfig = _arbitrationConfig;
   }
 
@@ -86,7 +80,7 @@ contract OracleStakesAccounting is Permissionable {
   }
 
   function _slash(address _oracle, bytes32 _oracleType, uint256 _amount) internal {
-    require(oracles.isOracleTypeAssigned(_oracle, _oracleType), "Some oracle types doesn't match");
+    require(oracles().isOracleTypeAssigned(_oracle, _oracleType), "Some oracle types doesn't match");
 
     int256 initialOracleTypeStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
     int256 initialOracleTotalStake = oracleTypes[_oracle].totalStakes;
@@ -99,15 +93,15 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    oracles.onOracleStakeChanged(_oracle, _oracleType, finalOracleTypeStake);
+    oracles().onOracleStakeChanged(_oracle, _oracleType, finalOracleTypeStake);
     arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
-    oracles.requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    galtToken.transferFrom(msg.sender, address(arbitrationConfig.getMultiSig()), _amount);
+    oracles().requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
+    galtToken().transferFrom(msg.sender, address(arbitrationConfig.getMultiSig()), _amount);
 
     require(_amount > 0, "Expect positive amount");
 
@@ -122,10 +116,18 @@ contract OracleStakesAccounting is Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    oracles.onOracleStakeChanged(_oracle, _oracleType, finalRoleStake);
+    oracles().onOracleStakeChanged(_oracle, _oracleType, finalRoleStake);
     arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
+  }
+
+  function oracles() internal view returns (Oracles) {
+    return Oracles(arbitrationConfig.ggr().getOraclesAddress());
+  }
+
+  function galtToken() internal view returns (IERC20) {
+    return arbitrationConfig.ggr().getGaltToken();
   }
 
   function balanceOf(address _oracle) external view returns (int256) {
