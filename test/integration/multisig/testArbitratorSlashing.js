@@ -47,14 +47,12 @@ const ClaimApplicationStatus = {
   REVERTED: 4
 };
 
-contract('Arbitrator Stake Slashing', accounts => {
+contract.only('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
-    feeManager,
     applicationTypeManager,
     spaceReputationAccountingAddress,
     oracleManager,
-    galtSpaceOrg,
 
     // initial arbitrators
     a1,
@@ -128,7 +126,7 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
-      await this.claimManager.initialize(this.ggr.address, galtSpaceOrg, {
+      await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam
       });
     })();
@@ -165,12 +163,6 @@ contract('Arbitrator Stake Slashing', accounts => {
 
     // Setup roles and fees
     await (async () => {
-      await this.claimManager.addRoleTo(feeManager, await this.claimManager.ROLE_FEE_MANAGER(), {
-        from: coreTeam
-      });
-      await this.claimManager.addRoleTo(galtSpaceOrg, await this.claimManager.ROLE_GALT_SPACE(), {
-        from: coreTeam
-      });
       await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
         from: coreTeam
       });
