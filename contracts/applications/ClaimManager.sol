@@ -428,7 +428,6 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
-
   function pushMessage(bytes32 _cId, string calldata _text) external {
     Claim storage c = claims[_cId];
 

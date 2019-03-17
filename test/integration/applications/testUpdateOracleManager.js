@@ -65,7 +65,7 @@ contract('UpdateOracleManager', (accounts) => {
   const [
     coreTeam,
     galtSpaceOrg,
-    feeManager,
+    feeMixerAddress,
     applicationTypeManager,
     claimManagerAddress,
     spaceReputationAccounting,
@@ -97,9 +97,8 @@ contract('UpdateOracleManager', (accounts) => {
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    // await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
-    // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, {
       from: coreTeam
@@ -141,11 +140,11 @@ contract('UpdateOracleManager', (accounts) => {
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
 
-    await this.newOracle.initialize(this.ggr.address, galtSpaceOrg, {
+    await this.newOracle.initialize(this.ggr.address, {
       from: coreTeam
     });
 
-    await this.updateOracle.initialize(this.ggr.address, galtSpaceOrg, {
+    await this.updateOracle.initialize(this.ggr.address, {
       from: coreTeam
     });
 
@@ -168,14 +167,14 @@ contract('UpdateOracleManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.newOracle.addRoleTo(feeManager, await this.newOracle.ROLE_FEE_MANAGER(), {
+    await this.newOracle.addRoleTo(feeMixerAddress, await this.newOracle.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
     await this.newOracle.addRoleTo(galtSpaceOrg, await this.newOracle.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
 
-    await this.updateOracle.addRoleTo(feeManager, await this.updateOracle.ROLE_FEE_MANAGER(), {
+    await this.updateOracle.addRoleTo(feeMixerAddress, await this.updateOracle.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
     await this.updateOracle.addRoleTo(galtSpaceOrg, await this.updateOracle.ROLE_GALT_SPACE(), {

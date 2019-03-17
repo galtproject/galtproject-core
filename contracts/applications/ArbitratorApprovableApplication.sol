@@ -62,15 +62,15 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     uint256 totalReward;
 
-    // arbitratorsReward + galtSpaceReward = totalReward
+    // arbitratorsReward + galtProtocolFee = totalReward
     uint256 arbitratorsReward;
-    uint256 galtSpaceReward;
+    uint256 galtProtocolFee;
 
     // a single arbitrator reward
     uint256 arbitratorReward;
 
     mapping(address => bool) arbitratorRewardPaidOut;
-    bool galtSpaceRewardPaidOut;
+    bool galtProtocolFeePaidOut;
   }
 
   mapping(bytes32 => Application) applications;
@@ -162,10 +162,24 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     a.fees.arbitratorRewardPaidOut[msg.sender] = true;
 
+    _assignGaltProtocolFee(a);
+
     if (a.fees.currency == Currency.ETH) {
       msg.sender.transfer(a.fees.arbitratorReward);
     } else if (a.fees.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, a.fees.arbitratorReward);
+    }
+  }
+
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.fees.galtProtocolFeePaidOut == false) {
+      if (_a.fees.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+      } else if (_a.fees.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+      }
+
+      _a.fees.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -246,13 +260,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 arbitratorsReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 arbitratorsReward = _fee.sub(galtProtocolFee);
 
-    assert(arbitratorsReward.add(galtSpaceReward) == _fee);
+    assert(arbitratorsReward.add(galtProtocolFee) == _fee);
 
     _a.fees.arbitratorsReward = arbitratorsReward;
-    _a.fees.galtSpaceReward = galtSpaceReward;
+    _a.fees.galtProtocolFee = galtProtocolFee;
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
@@ -301,8 +315,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     returns (
       Currency currency,
       uint256 arbitratorsReward,
-      uint256 galtSpaceReward,
-      bool galtSpaceRewardPaidOut
+      uint256 galtProtocolFee,
+      bool galtProtocolFeePaidOut
     )
   {
     FeeDetails storage f = applications[_id].fees;
@@ -310,8 +324,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     return (
       f.currency,
       f.arbitratorsReward,
-      f.galtSpaceReward,
-      f.galtSpaceRewardPaidOut
+      f.galtProtocolFee,
+      f.galtProtocolFeePaidOut
     );
   }
 }
