@@ -25,7 +25,7 @@ const ProposalStatus = {
   REJECTED: 3
 };
 
-contract.only('Proposals', accounts => {
+contract('Proposals', accounts => {
   const [
     coreTeam,
     claimManagerAddress,
