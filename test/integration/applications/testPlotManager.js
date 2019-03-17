@@ -83,7 +83,7 @@ Object.freeze(Currency);
 contract('PlotManager', accounts => {
   const [
     coreTeam,
-    feeMixer,
+    feeMixerAddress,
     feeManager,
     multiSigX,
     stakesNotifier,
@@ -125,6 +125,7 @@ contract('PlotManager', accounts => {
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
       from: coreTeam
     });
@@ -174,7 +175,7 @@ contract('PlotManager', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    await this.plotManager.initialize(this.ggr.address, feeMixer, {
+    await this.plotManager.initialize(this.ggr.address, {
       from: coreTeam
     });
 
@@ -205,7 +206,7 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    await this.plotManager.addRoleTo(feeMixer, await this.plotManager.ROLE_GALT_SPACE(), {
+    await this.plotManager.addRoleTo(feeMixerAddress, await this.plotManager.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
 
@@ -231,7 +232,7 @@ contract('PlotManager', accounts => {
 
   beforeEach(async function() {
     this.plotManager = await PlotManager.new({ from: coreTeam });
-    await this.plotManager.initialize(this.ggr.address, feeMixer, {
+    await this.plotManager.initialize(this.ggr.address, {
       from: coreTeam
     });
 
@@ -329,7 +330,7 @@ contract('PlotManager', accounts => {
           const res4 = await this.plotManager.getApplicationFees(this.aId);
           assert.equal(res4.currency, Currency.GALT);
           assert.equal(res4.oraclesReward, '22620000000000000000');
-          assert.equal(res4.galtSpaceReward, '3380000000000000000');
+          assert.equal(res4.galtProtocolFee, '3380000000000000000');
         });
 
         it('should reject fees less than returned from getter', async function() {
@@ -372,7 +373,7 @@ contract('PlotManager', accounts => {
           assert.equal(res.currency, Currency.GALT);
 
           assert.equal(res.oraclesReward, 22620000000000000000);
-          assert.equal(res.galtSpaceReward, 3380000000000000000);
+          assert.equal(res.galtProtocolFee, 3380000000000000000);
 
           res = await this.plotManager.getApplicationById(aId);
           assert.sameMembers(
@@ -595,17 +596,17 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString(10));
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+          await this.plotManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '9048000000000000000');
@@ -626,17 +627,17 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString(10));
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+          await this.plotManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '9048000000000000000');
@@ -656,17 +657,17 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+          await this.plotManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString(10));
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixer)).toString(10));
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString(10));
 
           const res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '9048000000000000000');
@@ -770,7 +771,7 @@ contract('PlotManager', accounts => {
           const res = await this.plotManager.getApplicationFees(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(res.oraclesReward, 1340000000000000000);
-          assert.equal(res.galtSpaceReward, 660000000000000000);
+          assert.equal(res.galtProtocolFee, 660000000000000000);
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
@@ -1298,19 +1299,22 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = await web3.eth.getBalance(bob);
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
           const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+
+          let res = await this.plotManager.protocolFeesEth();
+          assert.equal(res, ether(0.66));
+          await this.plotManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
           const bobsFinalBalance = await web3.eth.getBalance(bob);
           const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
-          let res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
+          res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '696800000000000000');
           res = await this.plotManager.getApplicationOracle(this.aId, PM_LAWYER);
           assert.equal(res.reward.toString(), '629800000000000000');
@@ -1318,7 +1322,7 @@ contract('PlotManager', accounts => {
           assert.equal(res.reward.toString(), '13400000000000000');
 
           res = await this.plotManager.getApplicationFees(this.aId);
-          assert.equal(res.galtSpaceReward.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
 
           assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
           assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6298));
@@ -1334,17 +1338,17 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = await web3.eth.getBalance(bob);
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
           const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+          await this.plotManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
           const bobsFinalBalance = await web3.eth.getBalance(bob);
           const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           let res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '696800000000000000');
@@ -1354,7 +1358,7 @@ contract('PlotManager', accounts => {
           assert.equal(res.reward.toString(), '13400000000000000');
 
           res = await this.plotManager.getApplicationFees(this.aId);
-          assert.equal(res.galtSpaceReward.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
 
           assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
           assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6298));
@@ -1371,17 +1375,17 @@ contract('PlotManager', accounts => {
           const bobsInitialBalance = await web3.eth.getBalance(bob);
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
           const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           await this.plotManager.claimOracleReward(this.aId, { from: bob });
           await this.plotManager.claimOracleReward(this.aId, { from: dan });
           await this.plotManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotManager.claimGaltSpaceReward(this.aId, { from: feeMixer });
+          await this.plotManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
           const bobsFinalBalance = await web3.eth.getBalance(bob);
           const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
           const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixer));
+          const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           let res = await this.plotManager.getApplicationOracle(this.aId, PM_SURVEYOR);
           assert.equal(res.reward.toString(), '696800000000000000');
@@ -1391,7 +1395,7 @@ contract('PlotManager', accounts => {
           assert.equal(res.reward.toString(), '13400000000000000');
 
           res = await this.plotManager.getApplicationFees(this.aId);
-          assert.equal(res.galtSpaceReward.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
 
           assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
           assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6298));

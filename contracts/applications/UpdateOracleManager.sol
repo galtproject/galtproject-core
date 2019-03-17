@@ -47,13 +47,12 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   constructor() public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     public
     isInitializer
   {
-    _initialize(_ggr, _galtSpaceRewardsAddress);
+    _initialize(_ggr);
     oracles = Oracles(ggr.getOraclesAddress());
   }
 

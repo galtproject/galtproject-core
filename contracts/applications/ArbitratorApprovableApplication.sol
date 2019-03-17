@@ -169,38 +169,14 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     }
   }
 
-  function claimGaltSpaceReward(bytes32 _aId) external {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-
-    Application storage a = applications[_aId];
-
-    /* solium-disable-next-line */
-    require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
-      "Application status should be APPROVED or REJECTED");
-
-    require(a.fees.galtSpaceReward > 0, "Reward is 0");
-    require(a.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.fees.galtSpaceRewardPaidOut = true;
-
-    if (a.fees.currency == Currency.ETH) {
-      msg.sender.transfer(a.fees.galtSpaceReward);
-    } else if (a.fees.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, a.fees.galtSpaceReward);
-    }
-  }
-
   // INTERNALS
 
   function _initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     internal
   {
     ggr = _ggr;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
 
     // TODO: figure out where to store these values
     galtSpaceEthShare = 33;

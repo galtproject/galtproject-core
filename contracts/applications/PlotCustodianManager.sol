@@ -144,8 +144,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   constructor () public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     external
     isInitializer
@@ -154,7 +153,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     oracles = Oracles(ggr.getOraclesAddress());
 
     // TODO: figure out where to store these values
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
   }
@@ -661,31 +659,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
       msg.sender.transfer(reward);
     } else {
       ggr.getGaltToken().transfer(msg.sender, reward);
-    }
-  }
-
-  function claimGaltSpaceReward(
-    bytes32 _aId
-  )
-    external
-  {
-    require(msg.sender == galtSpaceRewardsAddress, "Only mixer allowed");
-
-    Application storage a = applications[_aId];
-
-    require(
-      a.status == ApplicationStatus.COMPLETED ||
-      a.status == ApplicationStatus.CLOSED,
-      "Expect COMPLETED/CLOSED status");
-    require(a.rewards.galtSpaceReward > 0, "Reward is 0");
-    require(a.rewards.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.rewards.galtSpaceRewardPaidOut = true;
-
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.rewards.galtSpaceReward);
-    } else if (a.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, a.rewards.galtSpaceReward);
     }
   }
 

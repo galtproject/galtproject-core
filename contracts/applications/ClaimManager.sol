@@ -132,21 +132,17 @@ contract ClaimManager is AbstractApplication {
   constructor () public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     public
     isInitializer
   {
     ggr = _ggr;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     oracles = Oracles(ggr.getOraclesAddress());
 
     // TODO: figure out where to store these values
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
-//    m = 3;
-//    n = 5;
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
@@ -418,32 +414,32 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
-  function claimGaltSpaceReward(bytes32 _cId) external {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-
-    Claim storage c = claims[_cId];
-
-    /* solium-disable-next-line */
-    require(
-      c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
-      "Application status should be APPROVED or REJECTED");
-    if (c.status == ApplicationStatus.APPROVED) {
-      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
-    }
-
-    require(c.fees.galtSpaceReward > 0, "Reward is 0");
-    require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    c.fees.galtSpaceRewardPaidOut = true;
-
-    if (c.fees.currency == Currency.ETH) {
-      msg.sender.transfer(c.fees.galtSpaceReward);
-    } else if (c.fees.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, c.fees.galtSpaceReward);
-    } else {
-      revert("Unknown currency");
-    }
-  }
+//  function claimGaltSpaceReward(bytes32 _cId) external {
+//    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+//
+//    Claim storage c = claims[_cId];
+//
+//    /* solium-disable-next-line */
+//    require(
+//      c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
+//      "Application status should be APPROVED or REJECTED");
+//    if (c.status == ApplicationStatus.APPROVED) {
+//      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
+//    }
+//
+//    require(c.fees.galtSpaceReward > 0, "Reward is 0");
+//    require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
+//
+//    c.fees.galtSpaceRewardPaidOut = true;
+//
+//    if (c.fees.currency == Currency.ETH) {
+//      msg.sender.transfer(c.fees.galtSpaceReward);
+//    } else if (c.fees.currency == Currency.GALT) {
+//      ggr.getGaltToken().transfer(msg.sender, c.fees.galtSpaceReward);
+//    } else {
+//      revert("Unknown currency");
+//    }
+//  }
 
   function pushMessage(bytes32 _cId, string calldata _text) external {
     Claim storage c = claims[_cId];

@@ -88,9 +88,9 @@ contract PlotManager is AbstractOracleApplication {
   struct ApplicationFees {
     uint256 totalPaidFee;
     uint256 oraclesReward;
-    uint256 galtSpaceReward;
+    uint256 galtProtocolFee;
     uint256 latestCommittedFee;
-    bool galtSpaceRewardPaidOut;
+    bool galtProtocolFeePaidOut;
   }
 
   struct ApplicationDetails {
@@ -109,9 +109,7 @@ contract PlotManager is AbstractOracleApplication {
   constructor () public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    // NO OPTION TO CHANGE
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     public
     isInitializer
@@ -120,7 +118,6 @@ contract PlotManager is AbstractOracleApplication {
     oracles = Oracles(ggr.getOraclesAddress());
 
     // TODO: figure out where to store these values
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
   }
@@ -515,40 +512,24 @@ contract PlotManager is AbstractOracleApplication {
 
     a.oracleTypeRewardPaidOut[senderOracleType] = true;
 
+    _assignGaltProtocolFee(a);
+
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
     } else if (a.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, reward);
-    } else {
-      revert("Unknown currency");
     }
   }
 
-  function claimGaltSpaceReward(
-    bytes32 _aId
-  )
-    external
-  {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.fees.galtProtocolFeePaidOut == false) {
+      if (_a.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+      } else if (_a.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+      }
 
-    Application storage a = applications[_aId];
-
-    /* solium-disable-next-line */
-    require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
-      "Application status should be APPROVED, REJECTED or CLOSED");
-
-    require(a.fees.galtSpaceReward > 0, "Reward is 0");
-    require(a.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.fees.galtSpaceRewardPaidOut = true;
-
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.fees.galtSpaceReward);
-    } else if (a.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, a.fees.galtSpaceReward);
-    } else {
-      revert("Unknown currency");
+      _a.fees.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -566,13 +547,13 @@ contract PlotManager is AbstractOracleApplication {
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 oraclesReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 oraclesReward = _fee.sub(galtProtocolFee);
 
-    assert(oraclesReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtProtocolFee) == _fee);
 
     _a.fees.oraclesReward = oraclesReward;
-    _a.fees.galtSpaceReward = galtSpaceReward;
+    _a.fees.galtProtocolFee = galtProtocolFee;
 
     _a.fees.latestCommittedFee = _fee;
   }
@@ -687,9 +668,9 @@ contract PlotManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       uint256 oraclesReward,
-      uint256 galtSpaceReward,
+      uint256 galtProtocolFee,
       uint256 latestCommittedFee,
-      bool galtSpaceRewardPaidOut
+      bool galtProtocolFeePaidOut
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -700,9 +681,9 @@ contract PlotManager is AbstractOracleApplication {
       m.status,
       m.currency,
       m.fees.oraclesReward,
-      m.fees.galtSpaceReward,
+      m.fees.galtProtocolFee,
       m.fees.latestCommittedFee,
-      m.fees.galtSpaceRewardPaidOut
+      m.fees.galtProtocolFeePaidOut
     );
   }
 
