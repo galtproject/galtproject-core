@@ -64,12 +64,12 @@ const PC_ANOTHER_ORACLE_TYPE = bytes32('PC_ANOTHER_ORACLE_TYPE');
 contract('UpdateOracleManager', (accounts) => {
   const [
     coreTeam,
-    galtSpaceOrg,
     feeMixerAddress,
     applicationTypeManager,
     claimManagerAddress,
     spaceReputationAccounting,
     oracleManager,
+    unauthorized,
     alice,
     bob,
     charlie,
@@ -167,20 +167,6 @@ contract('UpdateOracleManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.newOracle.addRoleTo(feeMixerAddress, await this.newOracle.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.newOracle.addRoleTo(galtSpaceOrg, await this.newOracle.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-
-    await this.updateOracle.addRoleTo(feeMixerAddress, await this.updateOracle.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.updateOracle.addRoleTo(galtSpaceOrg, await this.updateOracle.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), {
       from: applicationTypeManager
     });
@@ -227,12 +213,12 @@ contract('UpdateOracleManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
-      it('should deny applying for non-validator', async function() {
+      it('should deny applying for non-oracle', async function() {
         await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
         await assertRevert(
           this.updateOracle.submit(
             this.mX,
-            galtSpaceOrg,
+            unauthorized,
             BOB,
             MN,
             this.description,
@@ -268,11 +254,11 @@ contract('UpdateOracleManager', (accounts) => {
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
-      it('should deny applying for non-validator', async function() {
+      it('should deny applying for non-oracle', async function() {
         await assertRevert(
           this.updateOracle.submit(
             this.mX,
-            galtSpaceOrg,
+            unauthorized,
             BOB,
             MN,
             this.description,

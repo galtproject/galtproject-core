@@ -85,8 +85,6 @@ Object.freeze(Currency);
 contract('PlotClarificationManager', (accounts) => {
   const [
     coreTeam,
-    galtSpaceOrg,
-    feeManager,
     feeMixerAddress,
     stakesNotifier,
     minter,
@@ -247,21 +245,12 @@ contract('PlotClarificationManager', (accounts) => {
     await this.oracles.onOracleStakeChanged(dan, PL_LAWYER, ether(30), { from: stakesNotifier });
     await this.oracles.onOracleStakeChanged(eve, PL_AUDITOR, ether(30), { from: stakesNotifier });
     await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
-    await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
   });
 
   beforeEach(async function() {
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
 
     await this.plotClarificationManager.initialize(this.ggr.address, {
-      from: coreTeam
-    });
-    await this.plotClarificationManager.addRoleTo(feeManager, await this.plotClarificationManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.plotClarificationManager.addRoleTo(galtSpaceOrg, await this.plotClarificationManager.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
 

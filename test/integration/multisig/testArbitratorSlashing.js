@@ -47,7 +47,7 @@ const ClaimApplicationStatus = {
   REVERTED: 4
 };
 
-contract.only('Arbitrator Stake Slashing', accounts => {
+contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
     applicationTypeManager,

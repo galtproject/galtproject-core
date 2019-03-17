@@ -84,7 +84,6 @@ contract('PlotManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
-    feeManager,
     multiSigX,
     stakesNotifier,
     claimManagerAddress,
@@ -179,13 +178,6 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    // TODO: remove this
-    await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-
-    // await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
-
     await this.spaceToken.addRoleTo(this.plotManager.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
@@ -237,9 +229,6 @@ contract('PlotManager', accounts => {
     });
 
     await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
-    await this.plotManager.addRoleTo(feeManager, await this.plotManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
   });
 
   describe('application pipeline for GALT payment method', () => {
