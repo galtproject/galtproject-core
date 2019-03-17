@@ -27,7 +27,6 @@ contract AbstractApplication is Initializable, Permissionable {
 
   uint256 internal galtSpaceEthShare;
   uint256 internal galtSpaceGaltShare;
-//  address internal galtProtocolFeeCollector;
 
   GaltGlobalRegistry public ggr;
 
