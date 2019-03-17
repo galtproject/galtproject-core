@@ -88,8 +88,8 @@ contract ClaimManager is AbstractApplication {
     Currency currency;
     uint256 arbitratorsReward;
     uint256 arbitratorReward;
-    uint256 galtSpaceReward;
-    bool galtSpaceRewardPaidOut;
+    uint256 galtProtocolFee;
+    bool galtProtocolFeePaidOut;
     mapping(address => bool) arbitratorRewardPaidOut;
   }
 
@@ -407,6 +407,8 @@ contract ClaimManager is AbstractApplication {
 
     c.fees.arbitratorRewardPaidOut[msg.sender] = true;
 
+    _assignGaltProtocolFee(c);
+
     if (c.fees.currency == Currency.ETH) {
       msg.sender.transfer(c.fees.arbitratorReward);
     } else if (c.fees.currency == Currency.GALT) {
@@ -414,32 +416,18 @@ contract ClaimManager is AbstractApplication {
     }
   }
 
-//  function claimGaltSpaceReward(bytes32 _cId) external {
-//    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-//
-//    Claim storage c = claims[_cId];
-//
-//    /* solium-disable-next-line */
-//    require(
-//      c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
-//      "Application status should be APPROVED or REJECTED");
-//    if (c.status == ApplicationStatus.APPROVED) {
-//      require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
-//    }
-//
-//    require(c.fees.galtSpaceReward > 0, "Reward is 0");
-//    require(c.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-//
-//    c.fees.galtSpaceRewardPaidOut = true;
-//
-//    if (c.fees.currency == Currency.ETH) {
-//      msg.sender.transfer(c.fees.galtSpaceReward);
-//    } else if (c.fees.currency == Currency.GALT) {
-//      ggr.getGaltToken().transfer(msg.sender, c.fees.galtSpaceReward);
-//    } else {
-//      revert("Unknown currency");
-//    }
-//  }
+  function _assignGaltProtocolFee(Claim storage _a) internal {
+    if (_a.fees.galtProtocolFeePaidOut == false) {
+      if (_a.fees.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+      } else if (_a.fees.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+      }
+
+      _a.fees.galtProtocolFeePaidOut = true;
+    }
+  }
+
 
   function pushMessage(bytes32 _cId, string calldata _text) external {
     Claim storage c = claims[_cId];
@@ -479,13 +467,13 @@ contract ClaimManager is AbstractApplication {
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 arbitratorsReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 arbitratorsReward = _fee.sub(galtProtocolFee);
 
-    assert(arbitratorsReward.add(galtSpaceReward) == _fee);
+    assert(arbitratorsReward.add(galtProtocolFee) == _fee);
 
     _c.fees.arbitratorsReward = arbitratorsReward;
-    _c.fees.galtSpaceReward = galtSpaceReward;
+    _c.fees.galtProtocolFee = galtProtocolFee;
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
@@ -559,7 +547,7 @@ contract ClaimManager is AbstractApplication {
     returns (
       Currency currency,
       uint256 arbitratorsReward,
-      uint256 galtSpaceReward,
+      uint256 galtProtocolFee,
       uint256 arbitratorReward
     )
   {
@@ -568,7 +556,7 @@ contract ClaimManager is AbstractApplication {
     return (
       f.currency,
       f.arbitratorsReward,
-      f.galtSpaceReward,
+      f.galtProtocolFee,
       f.arbitratorReward
     );
   }

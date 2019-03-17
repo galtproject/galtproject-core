@@ -72,8 +72,7 @@ Object.freeze(Currency);
 contract("ClaimManager", (accounts) => {
   const [
     coreTeam,
-    galtSpaceOrg,
-    feeManager,
+    feeMixerAddress,
     applicationTypeManager,
     spaceReputationAccounting,
     oracleManager,
@@ -112,6 +111,7 @@ contract("ClaimManager", (accounts) => {
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     // await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccounting, {
       from: coreTeam
     });
@@ -160,10 +160,10 @@ contract("ClaimManager", (accounts) => {
     const res = await this.arbitratorStakeAccountingX.totalStakes();
     assert.equal(res, ether(2000000));
 
-    await this.claimManager.addRoleTo(feeManager, await this.claimManager.ROLE_FEE_MANAGER(), {
+    await this.claimManager.addRoleTo(feeMixerAddress, await this.claimManager.ROLE_FEE_MANAGER(), {
       from: coreTeam
     });
-    await this.claimManager.addRoleTo(galtSpaceOrg, await this.claimManager.ROLE_GALT_SPACE(), {
+    await this.claimManager.addRoleTo(feeMixerAddress, await this.claimManager.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
@@ -178,7 +178,7 @@ contract("ClaimManager", (accounts) => {
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
       from: coreTeam
     });
-    await this.claimManager.initialize(this.ggr.address, galtSpaceOrg, {
+    await this.claimManager.initialize(this.ggr.address, {
       from: coreTeam
     });
   });
@@ -269,7 +269,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.currency, Currency.GALT);
 
           assert.equal(res.arbitratorsReward, ether('46.11'));
-          assert.equal(res.galtSpaceReward, ether('6.89'));
+          assert.equal(res.galtProtocolFee, ether('6.89'));
         });
       });
     });
@@ -328,7 +328,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, ether('8.71'));
-          assert.equal(res.galtSpaceReward, ether('4.29'));
+          assert.equal(res.galtProtocolFee, ether('4.29'));
         });
       });
     });
@@ -1030,16 +1030,12 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.currency, Currency.GALT);
 
         assert.equal(res.arbitratorsReward, '40890000000000000000');
-        assert.equal(res.galtSpaceReward, '6110000000000000000');
+        assert.equal(res.galtProtocolFee, '6110000000000000000');
       });
 
       describe('on success proposal win (APPROVED status)', () => {
         it('should revert arbitrator claims when status is SUBMITTED', async function() {
           await assertRevert(this.claimManager.claimArbitratorReward(this.cId, { from: bob }));
-        });
-
-        it('should revert galt space claims when status is SUBMITTED', async function() {
-          await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
         });
 
         describe('with 4 active slots', () => {
@@ -1058,8 +1054,12 @@ contract("ClaimManager", (accounts) => {
             assert.equal(res.totalSlots, '5');
           });
 
-          it('should deny galt space withdrawal if transaction not executed', async function() {
-            await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
+          it('should do nothing on withdrawal if transaction has not executed yet', async function() {
+            const galtSpaceBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+            await this.claimManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            const galtSpaceBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+
+            assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(0));
           });
 
           describe('after transaction was executed', () => {
@@ -1072,16 +1072,18 @@ contract("ClaimManager", (accounts) => {
             });
 
             it('should allow galt space withdrawal only once', async function() {
-              const galtSpaceBalanceBefore = await this.galtToken.balanceOf(galtSpaceOrg);
-              await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
-              const galtSpaceBalanceAfter = await this.galtToken.balanceOf(galtSpaceOrg);
+              await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
+              let galtSpaceBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+              await this.claimManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+              let galtSpaceBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
 
               assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
-            });
 
-            it('should deny galt space double claim a reward', async function() {
-              await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
-              await assertRevert(this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg }));
+              galtSpaceBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+              await this.claimManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+              galtSpaceBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+
+              assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(0));
             });
 
             it('should allow oracles claiming their rewards', async function() {
@@ -1234,7 +1236,7 @@ contract("ClaimManager", (accounts) => {
         await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
         await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
 
-        await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
+        // await this.galtToken.approve(this.claimManager.address, ether(47), { from: alice });
 
         let res = await this.claimManager.submit(
           this.mX,
@@ -1284,6 +1286,8 @@ contract("ClaimManager", (accounts) => {
           from: eve
         });
         this.pId3 = res.logs[0].args.proposalId;
+        // cleanup fees
+        await this.claimManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
       });
 
       describe('on approve proposal win (APPROVED status) with 5 active slots', () => {
@@ -1307,7 +1311,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, '6030000000000000000');
-          assert.equal(res.galtSpaceReward, '2970000000000000000');
+          assert.equal(res.galtProtocolFee, '2970000000000000000');
 
           res = await this.claimManager.claim(this.cId);
           assert.equal(res.status, ApplicationStatus.APPROVED);
@@ -1341,12 +1345,20 @@ contract("ClaimManager", (accounts) => {
           assertEthBalanceChanged(frankBalanceBefore, frankBalanceAfter, ether(1.206));
         });
 
-        it('should allow galt space claiming reward', async function() {
-          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
-          await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
-          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
+        it('should allow galt space claiming reward onlce', async function() {
+          await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
+
+          let galtSpaceBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+          await this.claimManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+          let galtSpaceBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
 
           assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
+
+          galtSpaceBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+          await this.claimManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+          galtSpaceBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
+
+          assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(0));
         });
 
         it('should deny oracles claiming their rewards twice', async function() {
@@ -1371,7 +1383,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, '6030000000000000000');
-          assert.equal(res.galtSpaceReward, '2970000000000000000');
+          assert.equal(res.galtProtocolFee, '2970000000000000000');
 
           res = await this.claimManager.claim(this.cId);
           assert.equal(res.status, ApplicationStatus.REJECTED);
@@ -1398,9 +1410,11 @@ contract("ClaimManager", (accounts) => {
         });
 
         it('should allow galt space claiming reward', async function() {
-          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
-          await this.claimManager.claimGaltSpaceReward(this.cId, { from: galtSpaceOrg });
-          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
+          await this.claimManager.claimArbitratorReward(this.cId, { from: bob });
+
+          const galtSpaceBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+          await this.claimManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+          const galtSpaceBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
 
           assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
         });
