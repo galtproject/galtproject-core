@@ -99,29 +99,19 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   }
 
   struct Rewards {
-    uint256 galtSpaceReward;
+    uint256 galtProtocolFee;
     // oraclesReward = custodianReward * N + auditorReward (with some chance of error)
     uint256 oraclesReward;
     uint256 totalCustodiansReward;
     uint256 custodianReward;
     uint256 auditorReward;
 
-    bool galtSpaceRewardPaidOut;
+    bool galtProtocolFeePaidOut;
     bool auditorRewardPaidOut;
     mapping(address => bool) custodianRewardPaidOut;
   }
 
   mapping(bytes32 => Application) private applications;
-
-  modifier onlyApplicant(bytes32 _aId) {
-    Application storage a = applications[_aId];
-
-    require(
-      a.applicant == msg.sender,
-      "Invalid applicant");
-
-    _;
-  }
 
   modifier onlyParticipatingCustodian(bytes32 _aId) {
     Application storage a = applications[_aId];
@@ -134,18 +124,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     _;
   }
 
-  // TODO: move to abstract class
-  modifier oraclesReady() {
-//    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracles list not complete");
-
-    _;
-  }
-
   constructor () public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     external
     isInitializer
@@ -154,7 +136,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     oracles = Oracles(ggr.getOraclesAddress());
 
     // TODO: figure out where to store these values
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
   }
@@ -321,10 +302,12 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     address[] calldata _custodiansToModify
   )
     external
-    onlyApplicant(_aId)
     returns (bytes32)
   {
     Application storage a = applications[_aId];
+    require(
+      a.applicant == msg.sender,
+      "Invalid applicant");
 
     require(a.status == ApplicationStatus.REVERTED, "Expect REVERTED status");
     require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
@@ -445,8 +428,11 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
    * @dev Attach SpaceToken to an application
    * @param _aId application ID
    */
-  function attachToken(bytes32 _aId) external onlyApplicant(_aId) {
+  function attachToken(bytes32 _aId) external {
     Application storage a = applications[_aId];
+    require(
+      a.applicant == msg.sender,
+      "Invalid applicant");
     ArraySet.AddressSet storage voters = a.voting.voters;
 
     require(
@@ -573,7 +559,7 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
     require(
       a.acceptedCustodians.has(msg.sender) || a.lockedCustodians.has(msg.sender) || a.auditor == msg.sender,
-      "Only a custodians or auditor are allowed to perform this action");
+      "Only custodians/auditor allowed");
     require(a.auditor != address(0), "Auditor should be assigned first");
 
     a.rejectMessage = _message;
@@ -605,8 +591,11 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
    * @dev Close the application by the applicant without attaching/detaching a custodian
    * @param _aId application ID
    */
-  function close(bytes32 _aId) external onlyApplicant(_aId) {
+  function close(bytes32 _aId) external {
     Application storage a = applications[_aId];
+    require(
+      a.applicant == msg.sender,
+      "Invalid applicant");
 
     require(
       a.status == ApplicationStatus.REJECTED ||
@@ -657,6 +646,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     require(reward > 0, "Reward is 0");
 
+    _assignGaltProtocolFee(a);
+
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
     } else {
@@ -664,28 +655,15 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     }
   }
 
-  function claimGaltSpaceReward(
-    bytes32 _aId
-  )
-    external
-  {
-    require(msg.sender == galtSpaceRewardsAddress, "Only mixer allowed");
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.rewards.galtProtocolFeePaidOut == false) {
+      if (_a.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.rewards.galtProtocolFee);
+      } else if (_a.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.rewards.galtProtocolFee);
+      }
 
-    Application storage a = applications[_aId];
-
-    require(
-      a.status == ApplicationStatus.COMPLETED ||
-      a.status == ApplicationStatus.CLOSED,
-      "Expect COMPLETED/CLOSED status");
-    require(a.rewards.galtSpaceReward > 0, "Reward is 0");
-    require(a.rewards.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.rewards.galtSpaceRewardPaidOut = true;
-
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.rewards.galtSpaceReward);
-    } else if (a.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, a.rewards.galtSpaceReward);
+      _a.rewards.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -729,8 +707,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
       Action action
     )
   {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
     Application storage m = applications[_id];
 
     return (
@@ -755,27 +731,25 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     view
     returns (
       Currency currency,
-      uint256 galtSpaceReward,
+      uint256 galtProtocolFee,
       uint256 oraclesReward,
       uint256 totalCustodiansReward,
       uint256 custodianReward,
       uint256 auditorReward,
-      bool galtSpaceRewardPaidOut,
+      bool galtProtocolFeePaidOut,
       bool auditorRewardPaidOut
     )
   {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
     Rewards storage r = applications[_id].rewards;
 
     return (
       applications[_id].currency,
-      r.galtSpaceReward,
+      r.galtProtocolFee,
       r.oraclesReward,
       r.totalCustodiansReward,
       r.custodianReward,
       r.auditorReward,
-      r.galtSpaceRewardPaidOut,
+      r.galtProtocolFeePaidOut,
       r.auditorRewardPaidOut
     );
   }
@@ -847,12 +821,12 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 oraclesReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 oraclesReward = _fee.sub(galtProtocolFee);
 
-    assert(oraclesReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtProtocolFee) == _fee);
 
-    _a.rewards.galtSpaceReward = galtSpaceReward;
+    _a.rewards.galtProtocolFee = galtProtocolFee;
     _a.rewards.oraclesReward = oraclesReward;
 
     _a.rewards.totalCustodiansReward = _a

@@ -81,8 +81,7 @@ Object.freeze(Currency);
 contract('PlotCustodianManager', (accounts) => {
   const [
     coreTeam,
-    galtSpaceOrg,
-    feeManager,
+    feeMixerAddress,
     multiSigX,
     stakesNotifier,
     minter,
@@ -134,6 +133,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, {
       from: coreTeam
     });
@@ -290,13 +290,7 @@ contract('PlotCustodianManager', (accounts) => {
   beforeEach(async function() {
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
 
-    await this.plotCustodianManager.initialize(this.ggr.address, galtSpaceOrg, {
-      from: coreTeam
-    });
-    await this.plotCustodianManager.addRoleTo(galtSpaceOrg, await this.plotCustodianManager.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-    await this.plotCustodianManager.addRoleTo(feeManager, await this.plotCustodianManager.ROLE_FEE_MANAGER(), {
+    await this.plotCustodianManager.initialize(this.ggr.address, {
       from: coreTeam
     });
     await this.spaceCustodianRegistry.addRoleTo(
@@ -414,7 +408,7 @@ contract('PlotCustodianManager', (accounts) => {
           // galtspace share - 13%
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceReward, '6110000000000000000');
+          assert.equal(res.galtProtocolFee, '6110000000000000000');
           assert.equal(res.oraclesReward, '40890000000000000000');
           assert.equal(res.totalCustodiansReward, '24534000000000000000');
           assert.equal(res.auditorReward, '16356000000000000000');
@@ -456,13 +450,13 @@ contract('PlotCustodianManager', (accounts) => {
         it('should be allowed', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           let res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.COMPLETED);
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -479,24 +473,24 @@ contract('PlotCustodianManager', (accounts) => {
         it('should send funds to claimers', async function() {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-          assert.equal(res.galtSpaceReward, 6110000000000000000);
+          assert.equal(res.galtProtocolFee, 6110000000000000000);
           assert.equal(res.oraclesReward, 40890000000000000000);
           assert.equal(res.totalCustodiansReward, 24534000000000000000);
           assert.equal(res.custodianReward, 8178000000000000000);
           assert.equal(res.auditorReward, 16356000000000000000);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8178000000000000000')));
@@ -507,20 +501,17 @@ contract('PlotCustodianManager', (accounts) => {
         it('should revert on double claim', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
 
         it('should revert on non-oracle claim', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
         });
 
         it('should revert on applicant claim attempt', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
         });
       });
 
@@ -533,13 +524,13 @@ contract('PlotCustodianManager', (accounts) => {
         it('should be allowed', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           let res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.CLOSED);
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -556,15 +547,15 @@ contract('PlotCustodianManager', (accounts) => {
         it('should send funds to claimers', async function() {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8178000000000000000')));
           assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('16356000000000000000')));
@@ -574,20 +565,17 @@ contract('PlotCustodianManager', (accounts) => {
         it('should revert on double claim', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
 
         it('should revert on non-oracle claim', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
         });
 
         it('should revert on applicant claim attempt', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
         });
       });
     });
@@ -680,7 +668,7 @@ contract('PlotCustodianManager', (accounts) => {
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, '2310000000000000000');
+            assert.equal(res.galtProtocolFee, '2310000000000000000');
             assert.equal(res.oraclesReward, '4690000000000000000');
             assert.equal(res.totalCustodiansReward, '2814000000000000000');
             assert.equal(res.auditorReward, '1876000000000000000');
@@ -1191,13 +1179,13 @@ contract('PlotCustodianManager', (accounts) => {
           it('should be allowed', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             let res = await this.plotCustodianManager.getApplicationById(this.aId);
             assert.equal(res.status, applicationStatus.COMPLETED);
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -1214,24 +1202,24 @@ contract('PlotCustodianManager', (accounts) => {
           it('should send funds to claimers', async function() {
             const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, 2310000000000000000);
+            assert.equal(res.galtProtocolFee, 2310000000000000000);
             assert.equal(res.oraclesReward, 4690000000000000000);
             assert.equal(res.totalCustodiansReward, 2814000000000000000);
             assert.equal(res.custodianReward, 938000000000000000);
             assert.equal(res.auditorReward, 1876000000000000000);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.938));
@@ -1242,20 +1230,17 @@ contract('PlotCustodianManager', (accounts) => {
           it('should revert on double claim', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
           });
 
           it('should revert on non-oracle claim', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
           });
 
           it('should revert on applicant claim attempt', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
           });
         });
 
@@ -1268,13 +1253,13 @@ contract('PlotCustodianManager', (accounts) => {
           it('should be allowed', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             let res = await this.plotCustodianManager.getApplicationById(this.aId);
             assert.equal(res.status, applicationStatus.CLOSED);
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -1291,24 +1276,24 @@ contract('PlotCustodianManager', (accounts) => {
           it('should send funds to claimers', async function() {
             const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, 2310000000000000000);
+            assert.equal(res.galtProtocolFee, 2310000000000000000);
             assert.equal(res.oraclesReward, 4690000000000000000);
             assert.equal(res.totalCustodiansReward, 2814000000000000000);
             assert.equal(res.custodianReward, 938000000000000000);
             assert.equal(res.auditorReward, 1876000000000000000);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.938));
@@ -1319,20 +1304,17 @@ contract('PlotCustodianManager', (accounts) => {
           it('should revert on double claim', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
           });
 
           it('should revert on non-oracle claim', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
           });
 
           it('should revert on applicant claim attempt', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
           });
         });
       });

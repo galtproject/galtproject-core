@@ -27,9 +27,11 @@ contract AbstractApplication is Initializable, Permissionable {
 
   uint256 internal galtSpaceEthShare;
   uint256 internal galtSpaceGaltShare;
-  address internal galtSpaceRewardsAddress;
 
   GaltGlobalRegistry public ggr;
+
+  uint256 public protocolFeesEth;
+  uint256 public protocolFeesGalt;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
@@ -48,8 +50,24 @@ contract AbstractApplication is Initializable, Permissionable {
 
   constructor() public {}
 
-  function claimGaltSpaceReward(bytes32 _aId) external;
+  modifier onlyFeeCollector() {
+    require(msg.sender == ggr.getFeeCollectorAddress(), "Only FeeMixer allowed");
+    _;
+  }
+
   function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
+
+  function claimGaltProtocolFeeEth() external onlyFeeCollector {
+    require(address(this).balance >= protocolFeesEth, "Insufficient balance");
+    msg.sender.transfer(protocolFeesEth);
+    protocolFeesEth = 0;
+  }
+
+  function claimGaltProtocolFeeGalt() external onlyFeeCollector {
+    require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
+    ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
+    protocolFeesGalt = 0;
+  }
 
   function multiSigRegistry() internal view returns(IMultiSigRegistry) {
     return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());

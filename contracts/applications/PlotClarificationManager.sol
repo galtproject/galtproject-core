@@ -67,8 +67,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
     uint256 spaceTokenId;
     
     uint256 oraclesReward;
-    uint256 galtSpaceReward;
-    bool galtSpaceRewardPaidOut;
+    uint256 galtProtocolFee;
+    bool galtProtocolFeePaidOut;
     bool tokenWithdrawn;
 
     // Default is ETH
@@ -111,8 +111,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
   }
 
   function initialize(
-    GaltGlobalRegistry _ggr,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     external
     isInitializer
@@ -121,8 +120,6 @@ contract PlotClarificationManager is AbstractOracleApplication {
     oracles = Oracles(ggr.getOraclesAddress());
 
     // TODO: figure out where to store these values
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
-
     galtSpaceEthShare = 33;
     galtSpaceGaltShare = 13;
   }
@@ -355,35 +352,27 @@ contract PlotClarificationManager is AbstractOracleApplication {
     require(a.tokenWithdrawn == true, "Token should be withdrawn first");
     require(a.oracleTypeRewardPaidOut[oracleType] == false, "Reward is already withdrawn");
 
+    _assignGaltProtocolFee(a);
+
     uint256 reward = a.assignedRewards[oracleType];
     a.oracleTypeRewardPaidOut[oracleType] = true;
 
-    transferFunds(a.currency, msg.sender, reward);
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (a.currency == Currency.GALT) {
+      ggr.getGaltToken().transfer(msg.sender, reward);
+    }
   }
 
-  function claimGaltSpaceReward(bytes32 _aId) external {
-    Application storage a = applications[_aId];
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.galtProtocolFeePaidOut == false) {
+      if (_a.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.galtProtocolFee);
+      } else if (_a.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.galtProtocolFee);
+      }
 
-    require(
-      a.status == ApplicationStatus.REVERTED ||
-      a.status == ApplicationStatus.APPROVED,
-      "ApplicationStatus should one of REVERTED or APPROVED");
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
-
-    require(a.tokenWithdrawn == true, "Token should be withdrawn first");
-    require(a.galtSpaceRewardPaidOut == false, "Reward is already withdrawn");
-
-    a.galtSpaceRewardPaidOut = true;
-    uint256 reward = a.galtSpaceReward;
-
-    transferFunds(a.currency, msg.sender, reward);
-  }
-
-  function transferFunds(Currency _currency, address payable _to, uint256 _amount) internal {
-    if (_currency == Currency.ETH) {
-      _to.transfer(_amount);
-    } else if (_currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(_to, _amount);
+      _a.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -398,10 +387,10 @@ contract PlotClarificationManager is AbstractOracleApplication {
       address applicant,
       uint256 spaceTokenId,
       bool tokenWithdrawn,
-      bool galtSpaceRewardPaidOut,
+      bool galtProtocolFeePaidOut,
       bytes32[] memory assignedOracleTypes,
       uint256 oraclesReward,
-      uint256 galtSpaceReward
+      uint256 galtProtocolFee
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -414,10 +403,10 @@ contract PlotClarificationManager is AbstractOracleApplication {
       m.applicant,
       m.spaceTokenId,
       m.tokenWithdrawn,
-      m.galtSpaceRewardPaidOut,
+      m.galtProtocolFeePaidOut,
       m.assignedOracleTypes,
       m.oraclesReward,
-      m.galtSpaceReward
+      m.galtProtocolFee
     );
   }
 
@@ -504,13 +493,13 @@ contract PlotClarificationManager is AbstractOracleApplication {
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 oraclesReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 oraclesReward = _fee.sub(galtProtocolFee);
 
-    assert(oraclesReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtProtocolFee) == _fee);
 
     _a.oraclesReward = oraclesReward;
-    _a.galtSpaceReward = galtSpaceReward;
+    _a.galtProtocolFee = galtProtocolFee;
   }
 
   function assignRequiredOracleTypesAndRewards(bytes32 _aId) internal {

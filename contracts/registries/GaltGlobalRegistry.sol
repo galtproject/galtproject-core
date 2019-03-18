@@ -27,6 +27,8 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 contract GaltGlobalRegistry is Ownable {
   address private ZERO_ADDRESS = address(0);
 
+  bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
+
   // Tokens
   bytes32 public constant GALT_TOKEN = bytes32("galt_token");
   bytes32 public constant SPACE_TOKEN = bytes32("space_token");
@@ -59,6 +61,11 @@ contract GaltGlobalRegistry is Ownable {
   // GETTERS
   function getContract(bytes32 _key) external view returns (address) {
     return contracts[_key];
+  }
+
+  function getFeeCollectorAddress() external view returns (address) {
+    require(contracts[FEE_COLLECTOR] != ZERO_ADDRESS, "GGR: FEE_COLLECTOR not set");
+    return contracts[FEE_COLLECTOR];
   }
 
   function getMultiSigRegistryAddress() external view returns (address) {
