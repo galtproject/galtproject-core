@@ -34,6 +34,7 @@ contract GaltGlobalRegistry is Ownable {
   bytes32 public constant SPACE_TOKEN = bytes32("space_token");
 
   // Registries
+  bytes32 public constant APPLICATION_REGISTRY = bytes32("application_registry");
   bytes32 public constant MULTI_SIG_REGISTRY = bytes32("multi_sig_registry");
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
@@ -66,6 +67,11 @@ contract GaltGlobalRegistry is Ownable {
   function getFeeCollectorAddress() external view returns (address) {
     require(contracts[FEE_COLLECTOR] != ZERO_ADDRESS, "GGR: FEE_COLLECTOR not set");
     return contracts[FEE_COLLECTOR];
+  }
+
+  function getApplicationRegistry() external view returns (address) {
+    require(contracts[APPLICATION_REGISTRY] != ZERO_ADDRESS, "GGR: APPLICATION_REGISTRY not set");
+    return contracts[APPLICATION_REGISTRY];
   }
 
   function getMultiSigRegistryAddress() external view returns (address) {
