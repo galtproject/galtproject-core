@@ -19,7 +19,7 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./multisig/ArbitratorVoting.sol";
-import "./registries/interfaces/ISpaceLockerRegistry.sol";
+import "./registries/interfaces/ILockerRegistry.sol";
 import "./registries/interfaces/IMultiSigRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./LiquidReputationAccounting.sol";

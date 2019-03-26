@@ -15,7 +15,7 @@ pragma solidity ^0.5.3;
 
 import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "../registries/interfaces/ISpaceLockerRegistry.sol";
+import "../registries/interfaces/ILockerRegistry.sol";
 import "../SpaceReputationAccounting.sol";
 
 

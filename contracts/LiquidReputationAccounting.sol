@@ -21,7 +21,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ISRA.sol";
-import "./registries/interfaces/ISpaceLockerRegistry.sol";
+import "./registries/interfaces/ILockerRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
 
@@ -200,8 +200,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     _creditAccount(msg.sender, msg.sender, _amount);
   }
 
-  function spaceLockerRegistry() public view returns(ISpaceLockerRegistry) {
-    return ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress());
+  function spaceLockerRegistry() public view returns(ILockerRegistry) {
+    return ILockerRegistry(ggr.getSpaceLockerRegistryAddress());
   }
 
   // GETTERS

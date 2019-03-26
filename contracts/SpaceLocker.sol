@@ -16,12 +16,13 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
+import "./interfaces/ILocker.sol";
 import "./interfaces/ISplitMerge.sol";
 import "./interfaces/ISRA.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
 
-contract SpaceLocker is ISpaceLocker {
+contract SpaceLocker is ILocker, ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
   event ReputationMinted(address sra);
