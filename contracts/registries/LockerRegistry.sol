@@ -24,10 +24,10 @@ contract LockerRegistry is ILockerRegistry, Permissionable {
 
   string public constant ROLE_FACTORY = "factory";
 
-  // SpaceLocker address => Details
+  // Locker address => Details
   mapping(address => Details) public lockers;
 
-  // SpaceLocker address => Details
+  // Locker address => Details
   mapping(address => ArraySet.AddressSet) private lockersByOwner;
 
   struct Details {
@@ -37,7 +37,7 @@ contract LockerRegistry is ILockerRegistry, Permissionable {
 
   event LockerAdded(address indexed locker, address indexed owner, address factory);
 
-  function addSpaceLocker(address _locker) external onlyRole(ROLE_FACTORY) {
+  function addLocker(address _locker) external onlyRole(ROLE_FACTORY) {
     Details storage l = lockers[_locker];
 
     l.active = true;
@@ -51,7 +51,7 @@ contract LockerRegistry is ILockerRegistry, Permissionable {
   // REQUIRES
 
   function requireValidLocker(address _locker) external view {
-    require(lockers[_locker].active, "SpaceLocker address is invalid");
+    require(lockers[_locker].active, "Locker address is invalid");
   }
 
   function isValid(address _locker) external view returns (bool) {

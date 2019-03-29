@@ -15,7 +15,6 @@ pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../SpaceReputationAccounting.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./OracleStakesAccounting.sol";
 import "./ArbitrationConfig.sol";

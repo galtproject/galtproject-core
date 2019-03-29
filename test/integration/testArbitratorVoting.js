@@ -3,9 +3,9 @@ const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
+const SpaceRA = artifacts.require('./SpaceRA.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
-const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
@@ -80,7 +80,7 @@ contract('ArbitratorVoting', accounts => {
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
 
-    this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+    this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
 
@@ -103,7 +103,7 @@ contract('ArbitratorVoting', accounts => {
         from: coreTeam
       }
     );
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
+    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
@@ -113,7 +113,7 @@ contract('ArbitratorVoting', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceRA.address, {
       from: coreTeam
     });
 
@@ -133,16 +133,16 @@ contract('ArbitratorVoting', accounts => {
   });
 
   beforeEach(async function() {
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
+    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceRA.address, {
       from: coreTeam
     });
 
     // CREATING WEB3 1.X INSTANCES
     this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
-      this.spaceReputationAccounting.abi,
-      this.spaceReputationAccounting.address
+      this.spaceRA.abi,
+      this.spaceRA.address
     );
   });
 
@@ -373,26 +373,26 @@ contract('ArbitratorVoting', accounts => {
 
       // APPROVE REPUTATION MINT AT ASRA
       p = [
-        locker1.approveMint(this.spaceReputationAccounting.address, { from: alice }),
-        locker2.approveMint(this.spaceReputationAccounting.address, { from: alice }),
-        locker3.approveMint(this.spaceReputationAccounting.address, { from: bob }),
-        locker4.approveMint(this.spaceReputationAccounting.address, { from: bob }),
-        locker5.approveMint(this.spaceReputationAccounting.address, { from: bob }),
-        locker6.approveMint(this.spaceReputationAccounting.address, { from: charlie }),
-        locker7.approveMint(this.spaceReputationAccounting.address, { from: dan })
+        locker1.approveMint(this.spaceRA.address, { from: alice }),
+        locker2.approveMint(this.spaceRA.address, { from: alice }),
+        locker3.approveMint(this.spaceRA.address, { from: bob }),
+        locker4.approveMint(this.spaceRA.address, { from: bob }),
+        locker5.approveMint(this.spaceRA.address, { from: bob }),
+        locker6.approveMint(this.spaceRA.address, { from: charlie }),
+        locker7.approveMint(this.spaceRA.address, { from: dan })
       ];
 
       await Promise.all(p);
 
       // MINT REPUTATION TOKENS AT ASRA
       p = [
-        this.spaceReputationAccounting.mint(lockerAddress1, { from: alice }),
-        this.spaceReputationAccounting.mint(lockerAddress2, { from: alice }),
-        this.spaceReputationAccounting.mint(lockerAddress3, { from: bob }),
-        this.spaceReputationAccounting.mint(lockerAddress4, { from: bob }),
-        this.spaceReputationAccounting.mint(lockerAddress5, { from: bob }),
-        this.spaceReputationAccounting.mint(lockerAddress6, { from: charlie }),
-        this.spaceReputationAccounting.mint(lockerAddress7, { from: dan })
+        this.spaceRA.mint(lockerAddress1, { from: alice }),
+        this.spaceRA.mint(lockerAddress2, { from: alice }),
+        this.spaceRA.mint(lockerAddress3, { from: bob }),
+        this.spaceRA.mint(lockerAddress4, { from: bob }),
+        this.spaceRA.mint(lockerAddress5, { from: bob }),
+        this.spaceRA.mint(lockerAddress6, { from: charlie }),
+        this.spaceRA.mint(lockerAddress7, { from: dan })
       ];
 
       await Promise.all(p);
@@ -410,20 +410,20 @@ contract('ArbitratorVoting', accounts => {
       assert.equal(res, 0);
 
       // PERMISSION CHECKS
-      await assertRevert(this.spaceReputationAccounting.delegate(charlie, alice, '200', { from: bob }));
-      await assertRevert(this.spaceReputationAccounting.delegate(charlie, alice, '1000', { from: alice }));
+      await assertRevert(this.spaceRA.delegate(charlie, alice, '200', { from: bob }));
+      await assertRevert(this.spaceRA.delegate(charlie, alice, '1000', { from: alice }));
 
       // DELEGATE REPUTATION. ITERATION #1
       p = [
-        this.spaceReputationAccounting.delegate(charlie, alice, '250', { from: alice }),
-        this.spaceReputationAccounting.delegate(bob, alice, '50', { from: alice }),
+        this.spaceRA.delegate(charlie, alice, '250', { from: alice }),
+        this.spaceRA.delegate(bob, alice, '50', { from: alice }),
         // alice keeps 500 reputation tokens minted from token x2 at her delegated balance
-        this.spaceReputationAccounting.delegate(alice, bob, '100', { from: bob }),
+        this.spaceRA.delegate(alice, bob, '100', { from: bob }),
         // bob keeps 300 reputation tokens minted from token x3 at his delegated balance
         // bob keeps 700 reputation tokens minted from token x4 at his delegated balance
-        this.spaceReputationAccounting.delegate(charlie, bob, '50', { from: bob }),
+        this.spaceRA.delegate(charlie, bob, '50', { from: bob }),
         // bob keeps 50 reputation tokens minted from token x5 at his delegated balance
-        this.spaceReputationAccounting.delegate(bob, charlie, '1000', { from: charlie })
+        this.spaceRA.delegate(bob, charlie, '1000', { from: charlie })
       ];
 
       await Promise.all(p);
@@ -442,9 +442,9 @@ contract('ArbitratorVoting', accounts => {
 
       // DELEGATE REPUTATION. ITERATION #2
       p = [
-        this.spaceReputationAccounting.delegate(charlie, bob, '100', { from: alice }),
-        this.spaceReputationAccounting.delegate(alice, charlie, '1000', { from: bob }),
-        this.spaceReputationAccounting.delegate(dan, bob, '50', { from: charlie })
+        this.spaceRA.delegate(charlie, bob, '100', { from: alice }),
+        this.spaceRA.delegate(alice, charlie, '1000', { from: bob }),
+        this.spaceRA.delegate(dan, bob, '50', { from: charlie })
       ];
 
       await Promise.all(p);
@@ -462,7 +462,7 @@ contract('ArbitratorVoting', accounts => {
       assert.equal(res, 50);
 
       // DELEGATE REPUTATION. ITERATION #3
-      await this.spaceReputationAccounting.delegate(dan, charlie, '1000', { from: alice });
+      await this.spaceRA.delegate(dan, charlie, '1000', { from: alice });
 
       res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
       assert.equal(res, 500);
@@ -477,16 +477,16 @@ contract('ArbitratorVoting', accounts => {
       assert.equal(res, 1050);
 
       // LOCK REPUTATION AT VOTING
-      await assertRevert(this.spaceReputationAccounting.lockReputation(this.Y, '600', { from: alice }));
-      await assertRevert(this.spaceReputationAccounting.lockReputation(charlie, '500', { from: alice }));
+      await assertRevert(this.spaceRA.lockReputation(this.Y, '600', { from: alice }));
+      await assertRevert(this.spaceRA.lockReputation(charlie, '500', { from: alice }));
       p = [
-        this.spaceReputationAccounting.lockReputation(this.Y, '500', { from: alice }),
-        this.spaceReputationAccounting.lockReputation(this.X, '200', { from: bob }),
-        this.spaceReputationAccounting.lockReputation(this.Y, '500', { from: bob }),
-        this.spaceReputationAccounting.lockReputation(this.Z, '400', { from: bob }),
-        this.spaceReputationAccounting.lockReputation(this.Y, '200', { from: charlie }),
-        this.spaceReputationAccounting.lockReputation(this.Z, '150', { from: charlie }),
-        this.spaceReputationAccounting.lockReputation(this.X, '700', { from: dan })
+        this.spaceRA.lockReputation(this.Y, '500', { from: alice }),
+        this.spaceRA.lockReputation(this.X, '200', { from: bob }),
+        this.spaceRA.lockReputation(this.Y, '500', { from: bob }),
+        this.spaceRA.lockReputation(this.Z, '400', { from: bob }),
+        this.spaceRA.lockReputation(this.Y, '200', { from: charlie }),
+        this.spaceRA.lockReputation(this.Z, '150', { from: charlie }),
+        this.spaceRA.lockReputation(this.X, '700', { from: dan })
       ];
 
       await Promise.all(p);

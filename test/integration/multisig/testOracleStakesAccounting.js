@@ -42,7 +42,6 @@ contract('OracleStakesAccounting', accounts => {
     applicationTypeManager,
     oracleManager,
     multiSig,
-    spaceReputationAccountingAddress,
     zeroAddress,
     alice,
     bob,
@@ -77,8 +76,7 @@ contract('OracleStakesAccounting', accounts => {
       multiSig,
       this.arbitratorVoting.address,
       zeroAddress,
-      this.oracleStakesAccountingX.address,
-      spaceReputationAccountingAddress
+      this.oracleStakesAccountingX.address
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });

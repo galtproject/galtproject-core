@@ -11,34 +11,29 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity ^0.5.3;
+pragma solidity 0.5.3;
 
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "../multisig/ArbitratorVoting.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
-import "../SpaceReputationAccounting.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/GaltGlobalRegistry.sol";
+import "./components/LiquidRA.sol";
+import "./components/LockableRA.sol";
+import "./components/GaltInputRA.sol";
+import "./interfaces/IRA.sol";
 
 
-contract MockSRA is SpaceReputationAccounting {
+contract GaltRA is IRA, LiquidRA, LockableRA, GaltInputRA {
   constructor(
     GaltGlobalRegistry _ggr
   )
     public
-    SpaceReputationAccounting(_ggr)
+    LiquidRA(_ggr)
   {
-  }
-
-  function mintHack(address _beneficiary, uint256 _amount, uint256 spaceToken) external {
-    _mint(_beneficiary, _amount, spaceToken);
-  }
-
-  function delegateHack(address _to, address _from, address _owner, uint256 _amount) external {
-    _transfer(_to, _from, _owner, _amount);
-  }
-  
-  function mintAll(address[] calldata _addresses, uint256[] calldata _spaceTokens, uint256 _amount) external {
-    for (uint256 i = 0; i < _addresses.length; i++) {
-      _mint(_addresses[i], _amount, _spaceTokens[i]);
-    }
   }
 }

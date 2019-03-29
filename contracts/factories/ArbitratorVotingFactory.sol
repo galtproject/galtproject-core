@@ -18,8 +18,6 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 // This contract will be included into the current one
 import "../multisig/ArbitratorVoting.sol";
 import "../multisig/ArbitrationConfig.sol";
-import "../multisig/OracleStakesAccounting.sol";
-import "../SpaceReputationAccounting.sol";
 
 
 contract ArbitratorVotingFactory is Ownable {

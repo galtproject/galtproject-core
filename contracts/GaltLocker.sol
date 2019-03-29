@@ -14,7 +14,7 @@
 pragma solidity 0.5.3;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./interfaces/IRA.sol";
+import "./reputation/interfaces/IRA.sol";
 import "./interfaces/IGaltLocker.sol";
 import "./interfaces/ILocker.sol";
 import "./registries/GaltGlobalRegistry.sol";

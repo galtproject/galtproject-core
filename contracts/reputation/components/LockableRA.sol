@@ -18,32 +18,31 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./multisig/ArbitratorVoting.sol";
-import "./registries/interfaces/ILockerRegistry.sol";
-import "./registries/interfaces/IMultiSigRegistry.sol";
-import "./registries/GaltGlobalRegistry.sol";
-import "./LiquidReputationAccounting.sol";
+import "../../multisig/ArbitratorVoting.sol";
+import "../../registries/interfaces/ILockerRegistry.sol";
+import "../../registries/interfaces/IMultiSigRegistry.sol";
+import "../../registries/GaltGlobalRegistry.sol";
+import "./LiquidRA.sol";
+
+// LiquidRA - base class
+// SpaceInputRA - space input
+// GaltInputRA - galt input
+// LockableRA - lockable output
+// SharableRA - share calculation output
+
+// GaltRA  = LiquidRA + (GaltInputRA  + LockableRA)
+// SpaceRA = LiquidRA + (SpaceInputRA + LockableRA)
+// FundRA  = LiquidRA + (SpaceInputRA + SharableRA)
 
 
-// TODO: rename to ASRA
-contract SpaceReputationAccounting is LiquidReputationAccounting {
+contract LockableRA is LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
   // Delegate => (MultiSig => locked amount)
+  // WARNING: name collision with parent class
   mapping(address => mapping(address => uint256)) private _locks;
   mapping(address => uint256) _totalLocked;
-
-  // L0
-  uint256 private totalStakedSpace;
-
-  constructor(
-    GaltGlobalRegistry _ggr
-  )
-    public
-    LiquidReputationAccounting(_ggr)
-  {
-  }
 
   function revoke(address _from, uint256 _amount) public {
     require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");

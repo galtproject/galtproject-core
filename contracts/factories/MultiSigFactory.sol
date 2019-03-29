@@ -16,7 +16,6 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../Oracles.sol";
-import "../SpaceReputationAccounting.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
@@ -329,9 +328,7 @@ contract MultiSigFactory is Ownable {
       g.arbitratorMultiSig,
       g.arbitratorVoting,
       g.arbitratorStakeAccounting,
-      g.oracleStakesAccounting,
-      // TODO: replace with ggr itself
-      SpaceReputationAccounting(ggr.getSpaceReputationAccountingAddress())
+      g.oracleStakesAccounting
     );
 
     // TODO: initialize proposal contracts too

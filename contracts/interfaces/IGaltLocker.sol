@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.3;
 
-import "./IRA.sol";
+import "../reputation/interfaces/IRA.sol";
 
 
 interface IGaltLocker {

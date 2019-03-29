@@ -28,7 +28,7 @@ contract('ArbitratorStakeAccounting', accounts => {
 
     this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
 
-    this.config.initialize(multiSig, zeroAddress, this.arbitratorStakeAccountingX.address, zeroAddress, zeroAddress);
+    this.config.initialize(multiSig, zeroAddress, this.arbitratorStakeAccountingX.address, zeroAddress);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });

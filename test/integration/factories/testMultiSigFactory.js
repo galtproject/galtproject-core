@@ -28,7 +28,7 @@ contract.skip("MultiSigFactory", (accounts) => {
       this.oracles,
       claimManagerAddress,
       this.multiSigRegistry,
-      spaceReputationAccounting,
+      spaceRA,
       coreTeam
     );
 

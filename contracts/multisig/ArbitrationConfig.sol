@@ -23,7 +23,6 @@ import "./interfaces/IOracleStakesAccounting.sol";
 import "./interfaces/IArbitratorVoting.sol";
 import "./interfaces/IArbitratorsMultiSig.sol";
 import "./ArbitratorsMultiSig.sol";
-import "../SpaceReputationAccounting.sol";
 import "../registries/GaltGlobalRegistry.sol";
 
 
@@ -45,7 +44,6 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
   bytes32 public constant ARBITRATOR_VOTING_CONTRACT = bytes32("arbitrator_voting_contract");
   bytes32 public constant ARBITRATOR_STAKES_CONTRACT = bytes32("arbitrator_stakes_contract");
-  bytes32 public constant SPACE_REPUTATION_EXT_CONTRACT = bytes32("space_reputation_ext_contract");
 
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
@@ -93,8 +91,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     IArbitratorsMultiSig _arbitratorMultiSig,
     IArbitratorVoting _arbitratorVoting,
     IArbitratorStakeAccounting _arbitratorStakeAccounting,
-    IOracleStakesAccounting _oracleStakesAccounting,
-    SpaceReputationAccounting _spaceReputationAccounting
+    IOracleStakesAccounting _oracleStakesAccounting
   )
     external
   {
@@ -105,7 +102,6 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     contracts[ARBITRATOR_VOTING_CONTRACT] = address(_arbitratorVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
     contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakesAccounting);
-    contracts[SPACE_REPUTATION_EXT_CONTRACT] = address(_spaceReputationAccounting);
 
     initialized = true;
   }

@@ -3,8 +3,8 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
-const MockSRA = artifacts.require('./MockSRA.sol');
-const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
+const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -110,7 +110,7 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-      this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+      this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam
@@ -122,7 +122,7 @@ contract('Arbitrator Stake Slashing', accounts => {
         from: coreTeam
       });
 
-      this.sra = await MockSRA.new(this.ggr.address, { from: coreTeam });
+      this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
 
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
