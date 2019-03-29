@@ -72,12 +72,7 @@ contract('OracleStakesAccounting', accounts => {
       }
     );
 
-    this.config.initialize(
-      multiSig,
-      this.arbitratorVoting.address,
-      zeroAddress,
-      this.oracleStakesAccountingX.address
-    );
+    this.config.initialize(multiSig, this.arbitratorVoting.address, zeroAddress, this.oracleStakesAccountingX.address);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 

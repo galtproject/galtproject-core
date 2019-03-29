@@ -140,10 +140,7 @@ contract('ArbitratorVoting', accounts => {
     });
 
     // CREATING WEB3 1.X INSTANCES
-    this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
-      this.spaceRA.abi,
-      this.spaceRA.address
-    );
+    this.spaceReputationAccountingWeb3 = new web3.eth.Contract(this.spaceRA.abi, this.spaceRA.address);
   });
 
   describe('scenarios', () => {

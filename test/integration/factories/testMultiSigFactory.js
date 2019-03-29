@@ -15,7 +15,7 @@ initHelperWeb3(web3);
 
 // eslint-disable-next-line
 contract.skip("MultiSigFactory", (accounts) => {
-  const [coreTeam, claimManagerAddress, spaceReputationAccounting, alice, bob, charlie, dan, eve, frank] = accounts;
+  const [coreTeam, claimManagerAddress, spaceRA, alice, bob, charlie, dan, eve, frank] = accounts;
 
   beforeEach(async function() {
     this.claimManager = await ClaimManager.new({ from: coreTeam });

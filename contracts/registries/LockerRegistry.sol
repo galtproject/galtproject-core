@@ -38,14 +38,14 @@ contract LockerRegistry is ILockerRegistry, Permissionable {
   event LockerAdded(address indexed locker, address indexed owner, address factory);
 
   function addLocker(address _locker) external onlyRole(ROLE_FACTORY) {
-    Details storage l = lockers[_locker];
+    Details storage locker = lockers[_locker];
 
-    l.active = true;
-    l.factory = msg.sender;
+    locker.active = true;
+    locker.factory = msg.sender;
 
     lockersByOwner[ILocker(_locker).owner()].add(_locker);
 
-    emit LockerAdded(_locker, ILocker(_locker).owner(), l.factory);
+    emit LockerAdded(_locker, ILocker(_locker).owner(), locker.factory);
   }
 
   // REQUIRES
