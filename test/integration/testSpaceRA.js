@@ -59,7 +59,7 @@ contract('SpaceRA', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceRA.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
   });

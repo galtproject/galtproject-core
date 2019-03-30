@@ -45,8 +45,6 @@ contract GaltGlobalRegistry is Ownable {
   // TODO: move to the application level
   bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
 
-  // TODO: remove this
-  bytes32 public constant SPACE_REPUTATION_ACCOUNTING = bytes32("space_reputation_accounting");
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
 

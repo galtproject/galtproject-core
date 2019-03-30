@@ -51,7 +51,7 @@ contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
     applicationTypeManager,
-    spaceReputationAccountingAddress,
+    spaceRA,
     oracleManager,
 
     // initial arbitrators
@@ -118,7 +118,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+      await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
         from: coreTeam
       });
 

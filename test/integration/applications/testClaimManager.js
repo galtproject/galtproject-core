@@ -110,7 +110,7 @@ contract("ClaimManager", (accounts) => {
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceRA, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
       from: coreTeam
     });
 

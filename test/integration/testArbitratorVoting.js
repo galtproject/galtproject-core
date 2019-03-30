@@ -113,7 +113,7 @@ contract('ArbitratorVoting', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceRA.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
 
@@ -135,7 +135,7 @@ contract('ArbitratorVoting', accounts => {
   beforeEach(async function() {
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceRA.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
 
@@ -687,7 +687,7 @@ contract('ArbitratorVoting', accounts => {
     let votingWeb3;
 
     before(async function() {
-      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), fakeSRA, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.SPACE_RA(), fakeSRA, { from: coreTeam });
     });
 
     beforeEach(async function() {
