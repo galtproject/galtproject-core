@@ -45,7 +45,10 @@ contract GaltGlobalRegistry is Ownable {
   // TODO: move to the application level
   bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
 
+  // TODO: remove this
   bytes32 public constant SPACE_REPUTATION_ACCOUNTING = bytes32("space_reputation_accounting");
+  bytes32 public constant SPACE_RA = bytes32("space_ra");
+  bytes32 public constant GALT_RA = bytes32("galt_ra");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
@@ -111,9 +114,14 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[CLAIM_MANAGER];
   }
 
-  function getSpaceReputationAccountingAddress() external view returns (address) {
-    require(contracts[SPACE_REPUTATION_ACCOUNTING] != ZERO_ADDRESS, "GGR: SPACE_REPUTATION_ACCOUNTING not set");
-    return contracts[SPACE_REPUTATION_ACCOUNTING];
+  function getSpaceRAAddress() external view returns (address) {
+    require(contracts[SPACE_RA] != ZERO_ADDRESS, "GGR: SPACE_RA not set");
+    return contracts[SPACE_RA];
+  }
+
+  function getGaltRAAddress() external view returns (address) {
+    require(contracts[GALT_RA] != ZERO_ADDRESS, "GGR: GALT_RA not set");
+    return contracts[GALT_RA];
   }
 
   function getSplitMergeAddress() external view returns (address) {

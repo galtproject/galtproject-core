@@ -213,8 +213,7 @@ contract MultiSigFactory is Ownable {
     arbitratorStakeAccounting.addRoleTo(ggr.getClaimManagerAddress(), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(arbitratorVoting), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
     arbitratorVoting.addRoleTo(address(g.oracleStakesAccounting), arbitratorVoting.ORACLE_STAKES_NOTIFIER());
-    // TODO: replace with ggr itself
-    arbitratorVoting.addRoleTo(ggr.getSpaceReputationAccountingAddress(), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
+    arbitratorVoting.addRoleTo(ggr.getSpaceRAAddress(), arbitratorVoting.SPACE_REPUTATION_NOTIFIER());
 
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
     g.arbitratorVoting = arbitratorVoting;

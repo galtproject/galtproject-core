@@ -28,6 +28,9 @@ import "./LiquidRA.sol";
 contract GaltInputRA is LiquidRA {
   ArraySet.AddressSet private _members;
 
+  // locker => isMinted
+  mapping(address => bool) public _reputationMinted;
+
   // @dev Transfer owned reputation
   // PermissionED
   function delegate(address _to, address _owner, uint256 _amount) public {
@@ -46,6 +49,10 @@ contract GaltInputRA is LiquidRA {
 
     address owner = _galtLocker.owner();
     require(msg.sender == owner, "Not owner of the locker");
+    require(_reputationMinted[address(_galtLocker)] == false, "Reputation is already minted");
+
+    _reputationMinted[address(_galtLocker)] = true;
+
     _members.addSilent(owner);
 
     uint256 reputation = ggr.getGaltToken().balanceOf(address(_galtLocker));
@@ -65,6 +72,9 @@ contract GaltInputRA is LiquidRA {
     address owner = _galtLocker.owner();
 
     require(msg.sender == owner, "Not owner of the locker");
+    require(_reputationMinted[address(_galtLocker)] == true, "Reputation not minted yet");
+
+    _reputationMinted[address(_galtLocker)] = false;
 
     uint256 reputation = ggr.getGaltToken().balanceOf(address(_galtLocker));
     if (balanceOf(owner) == 0) {

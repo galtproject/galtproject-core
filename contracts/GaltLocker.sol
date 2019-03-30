@@ -28,15 +28,19 @@ contract GaltLocker is ILocker, IGaltLocker {
   event TokenBurned(uint256 spaceTokenId);
 
   address public owner;
+  uint256 public reputation;
 
-  GaltGlobalRegistry public ggr;
-
-  ArraySet.AddressSet gras;
+  GaltGlobalRegistry private ggr;
+  ArraySet.AddressSet private gras;
 
   constructor(GaltGlobalRegistry _ggr, address _owner) public {
     owner = _owner;
-
     ggr = _ggr;
+  }
+
+  modifier reputationAndBalanceEqual() {
+    require(ggr.getGaltToken().balanceOf(address(this)) == reputation, "Reputation and balance are not equal");
+    _;
   }
 
   modifier onlyOwner() {
@@ -45,26 +49,40 @@ contract GaltLocker is ILocker, IGaltLocker {
   }
 
   // deposit allowed only when there are no any gra in the minted list
-  function deposit(uint256 _amount) external onlyOwner {
+  function deposit(uint256 _amount) external onlyOwner reputationAndBalanceEqual {
     require(gras.size() == 0, "GRAs counter not 0");
 
+    reputation += _amount;
     ggr.getGaltToken().transferFrom(msg.sender, address(this), _amount);
   }
 
-  function withdraw(uint256 _amount) external onlyOwner {
+  function withdraw(uint256 _amount) external onlyOwner reputationAndBalanceEqual {
     require(gras.size() == 0, "GRAs counter not 0");
+    require(reputation >= _amount, "Reputation is less than withdrawal amount");
+
+    reputation -= _amount;
+
+    ggr.getGaltToken().transfer(msg.sender, _amount);
+  }
+
+  // for cases when reputation and balance are not equal
+  function withdrawGaltOnly(uint256 _amount) external onlyOwner {
+    uint256 balance = ggr.getGaltToken().balanceOf(msg.sender);
+    uint256 diff =  balance - reputation;
+
+    require(_amount <= diff, "Not enough funds to withdraw");
 
     ggr.getGaltToken().transferFrom(address(this), msg.sender, _amount);
   }
 
-  function approveMint(IRA _gra) external onlyOwner {
+  function approveMint(IRA _gra) external onlyOwner reputationAndBalanceEqual {
     require(!gras.has(address(_gra)), "Already minted to this GRA");
     require(_gra.ping() == bytes32("pong"), "Handshake failed");
 
     gras.add(address(_gra));
   }
 
-  function burn(IRA _gra) external onlyOwner {
+  function burn(IRA _gra) external onlyOwner reputationAndBalanceEqual {
     require(gras.has(address(_gra)), "Not minted to the SRA");
     require(_gra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
@@ -87,17 +105,5 @@ contract GaltLocker is ILocker, IGaltLocker {
 
   function isOwner() public view returns (bool) {
     return msg.sender == owner;
-  }
-
-  function getTokenInfo()
-    public
-    view
-    returns (
-        address _owner
-    )
-  {
-    return (
-      owner
-    );
   }
 }
