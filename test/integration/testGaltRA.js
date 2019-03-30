@@ -275,7 +275,7 @@ contract('GaltRA', accounts => {
   });
 
   describe('revokeLocked', () => {
-    it.only('should allow revoking locked reputation', async function() {
+    it('should allow revoking locked reputation', async function() {
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
