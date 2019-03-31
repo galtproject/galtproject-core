@@ -13,17 +13,8 @@
 
 pragma solidity 0.5.3;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../multisig/ArbitratorVoting.sol";
-import "../registries/interfaces/ILockerRegistry.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
-import "../registries/GaltGlobalRegistry.sol";
-import "./components/LiquidRA.sol";
 import "./interfaces/IRA.sol";
+import "./components/LiquidRA.sol";
 import "./components/LockableRA.sol";
 import "./components/SpaceInputRA.sol";
 
@@ -43,5 +34,11 @@ contract SpaceRA is IRA, LiquidRA, LockableRA, SpaceInputRA {
     public
     LiquidRA(_ggr)
   {
+  }
+
+  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
+    arbitrationConfig(_multiSig)
+      .getDelegateSpaceVoting()
+      .onDelegateReputationChanged(_delegate, _amount);
   }
 }

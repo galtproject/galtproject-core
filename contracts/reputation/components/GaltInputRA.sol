@@ -14,14 +14,8 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../multisig/ArbitratorVoting.sol";
 import "../../registries/interfaces/ILockerRegistry.sol";
-import "../../registries/interfaces/IMultiSigRegistry.sol";
-import "../../registries/GaltGlobalRegistry.sol";
 import "./LiquidRA.sol";
 
 

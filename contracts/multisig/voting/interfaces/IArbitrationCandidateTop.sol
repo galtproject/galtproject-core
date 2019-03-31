@@ -14,20 +14,11 @@
 pragma solidity 0.5.3;
 
 
-interface IArbitratorVoting {
+interface IArbitrationCandidateTop {
   function recalculate(address _candidate) external;
-  function voteWithOracleStake(address _candidate) external;
-  function grantReputation(address _candidate, uint256 _amount) external;
-  function revokeReputation(address _candidate, uint256 _amount) external;
-  function onDelegateReputationChanged(address _delegate, uint256 _newLocked) external;
-  function onOracleStakeChanged(address _oracle, uint256 _newWeight) external;
   function pushArbitrators() external;
   function ignoreMe(bool _value) external;
   function getCandidatesWithStakes() external view returns (address[] memory);
-  function getOracleShare(address _oracle) external view returns (uint256);
-  function getDelegateShare(address _delegate) external view returns (uint256);
-  function getOracleStakes(address _oracle) external view returns (uint256);
-  function getSpaceReputation(address _delegate) external view returns (uint256);
   function getShare(address[] calldata _addresses) external view returns (uint256);
   function getWeight(address _candidate) external view returns (uint256);
   function isCandidateInList(address _candidate) external view returns (bool);

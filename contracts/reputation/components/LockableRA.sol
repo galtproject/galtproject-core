@@ -14,14 +14,8 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../multisig/ArbitratorVoting.sol";
-import "../../registries/interfaces/ILockerRegistry.sol";
 import "../../registries/interfaces/IMultiSigRegistry.sol";
-import "../../registries/GaltGlobalRegistry.sol";
 import "./LiquidRA.sol";
 
 // LiquidRA - base class
@@ -44,6 +38,8 @@ contract LockableRA is LiquidRA {
   mapping(address => mapping(address => uint256)) private _locks;
   mapping(address => uint256) _totalLocked;
 
+  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal;
+
   function revoke(address _from, uint256 _amount) public {
     require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");
 
@@ -59,8 +55,7 @@ contract LockableRA is LiquidRA {
     _locks[_delegate][_multiSig] -= _amount;
     _revokeDelegated(_delegate, _amount);
 
-    arbitratorVoting(_multiSig)
-      .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
+    onDelegateReputationChanged(_multiSig, _delegate, _locks[_delegate][_multiSig]);
   }
 
   // PermissionED
@@ -70,8 +65,7 @@ contract LockableRA is LiquidRA {
     _totalLocked[msg.sender] += _amount;
     _locks[msg.sender][_multiSig] += _amount;
 
-    arbitratorVoting(_multiSig)
-      .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
+    onDelegateReputationChanged(_multiSig, msg.sender, _locks[msg.sender][_multiSig]);
   }
 
   // PermissionED
@@ -87,14 +81,12 @@ contract LockableRA is LiquidRA {
     _locks[msg.sender][_multiSig] -= _amount;
     _totalLocked[msg.sender] -= _amount;
 
-    arbitratorVoting(_multiSig)
-      .onDelegateReputationChanged(msg.sender, afterUnlock);
+    onDelegateReputationChanged(_multiSig, msg.sender, afterUnlock);
   }
 
-  function arbitratorVoting(address _multiSig) internal returns (IArbitratorVoting) {
+  function arbitrationConfig(address _multiSig) internal returns (IArbitrationConfig) {
     return IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting();
+      .getArbitrationConfig(_multiSig);
   }
 
   // GETTERS

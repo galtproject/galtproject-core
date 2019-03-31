@@ -13,24 +13,12 @@
 
 pragma solidity 0.5.3;
 
-import "./interfaces/IRA.sol";
-import "./components/LiquidRA.sol";
-import "./components/LockableRA.sol";
-import "./components/GaltInputRA.sol";
 
-
-contract GaltRA is IRA, LiquidRA, LockableRA, GaltInputRA {
-  constructor(
-    GaltGlobalRegistry _ggr
-  )
-    public
-    LiquidRA(_ggr)
-  {
-  }
-
-  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
-    arbitrationConfig(_multiSig)
-      .getDelegateGaltVoting()
-      .onDelegateReputationChanged(_delegate, _amount);
-  }
+interface IDelegateReputationVoting {
+  function grantReputation(address _candidate, uint256 _amount) external;
+  function revokeReputation(address _candidate, uint256 _amount) external;
+  function onDelegateReputationChanged(address _delegate, uint256 _newLocked) external;
+  function totalSupply() external view returns(uint256);
+  function balanceOf(address _candidate) external view returns(uint256);
+  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
 }

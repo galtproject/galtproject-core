@@ -13,27 +13,12 @@
 
 pragma solidity 0.5.3;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-// This contract will be included into the current one
-import "../multisig/ArbitratorVoting.sol";
-import "../multisig/ArbitrationConfig.sol";
-
-
-contract ArbitratorVotingFactory is Ownable {
-  function build(
-    ArbitrationConfig arbitrationConfig
-  )
-    external
-    returns (ArbitratorVoting)
-  {
-    ArbitratorVoting voting = new ArbitratorVoting(
-      arbitrationConfig
-    );
-
-    voting.addRoleTo(msg.sender, "role_manager");
-    voting.removeRoleFrom(address(this), "role_manager");
-
-    return voting;
-  }
+contract IOracleStakeVoting {
+  function vote(address _candidate) external;
+  function onOracleStakeChanged(address _oracle, uint256 _newReputation)external;
+  function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation);
+  function totalSupply() external view returns (uint256);
+  function balanceOf(address _candidate) external view returns (uint256);
+  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
 }
