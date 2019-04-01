@@ -17,6 +17,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
 import "../multisig/ArbitrationConfig.sol";
+import "../multisig/ArbitratorsMultiSig.sol";
 
 
 contract ArbitratorsMultiSigFactory is Ownable {
@@ -26,13 +27,11 @@ contract ArbitratorsMultiSigFactory is Ownable {
     ArbitrationConfig _arbitrationConfig
   )
     external
-    returns (ArbitratorsMultiSig)
+    returns (ArbitratorsMultiSig multiSig)
   {
-    ArbitratorsMultiSig multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired, _arbitrationConfig);
+    multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired, _arbitrationConfig);
 
     multiSig.addRoleTo(msg.sender, "role_manager");
     multiSig.removeRoleFrom(address(this), "role_manager");
-
-    return multiSig;
   }
 }

@@ -85,7 +85,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
   function recalculate(address _candidate) external {
     uint256 candidateWeightAfter = 0;
-    uint256 candidateWeightBefore = getWeight(_candidate);
+    uint256 candidateWeightBefore = getCandidateWeight(_candidate);
     bool ignore = (ignoredCandidates[_candidate] == true);
 
     if (!ignore) {
@@ -110,7 +110,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
   function _calculateWeight(address _candidate) internal returns (uint256) {
     uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
@@ -156,7 +156,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
   function getCandidateTotalWeight(address _candidate) public view returns (uint256) {
     uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
@@ -177,7 +177,6 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
     return (spaceReputationRatio + galtReputationRatio + stakeReputationRatio);
   }
-
 
   function getCandidatesWithStakes() public view returns (address[] memory) {
     if (votingList.count == 0) {
@@ -228,17 +227,23 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
     return c;
   }
 
-  function getShare(address[] calldata _addresses) external view returns (uint256) {
+  function getTotalCandidatesWeight(
+    address[] calldata _candidates
+  )
+    external
+    view
+    returns (uint256)
+  {
     uint256 total = 0;
 
-    for (uint256 i = 0; i < _addresses.length; i++) {
-      total += getCandidateTotalWeight(_addresses[i]);
+    for (uint256 i = 0; i < _candidates.length; i++) {
+      total += getCandidateTotalWeight(_candidates[i]);
     }
 
     return total * 100 / DECIMALS;
   }
 
-  function getWeight(address _candidate) public view returns (uint256) {
+  function getCandidateWeight(address _candidate) public view returns (uint256) {
     return votingData.votes[_candidate];
   }
 

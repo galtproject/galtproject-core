@@ -40,6 +40,8 @@ const ModifyMinimalArbitratrorStakeProposalManager = artifacts.require(
 const ModifyContractAddressProposalManager = artifacts.require('./ModifyContractAddressProposalManager.sol');
 const RevokeArbitratorsProposalManager = artifacts.require('./RevokeArbitratorsProposalManager.sol');
 
+ArbitrationCandidateTop.numberFormat = 'String';
+
 const Helpers = {
   async deployMultiSigFactory(ggr, owner) {
     const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });

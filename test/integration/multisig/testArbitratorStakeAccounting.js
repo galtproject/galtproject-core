@@ -11,7 +11,17 @@ const web3 = new Web3(GaltToken.web3.currentProvider);
 initHelperWeb3(web3);
 
 contract('ArbitratorStakeAccounting', accounts => {
-  const [coreTeam, slashManager, multiSig, alice, bob, zeroAddress] = accounts;
+  const [
+    coreTeam,
+    slashManager,
+    multiSig,
+    alice,
+    bob,
+    zeroAddress,
+    delegateSpaceVoting,
+    delegateGaltVoting,
+    oracleStakeVoting
+  ] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -28,7 +38,15 @@ contract('ArbitratorStakeAccounting', accounts => {
 
     this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
 
-    this.config.initialize(multiSig, zeroAddress, this.arbitratorStakeAccountingX.address, zeroAddress);
+    this.config.initialize(
+      multiSig,
+      zeroAddress,
+      this.arbitratorStakeAccountingX.address,
+      zeroAddress,
+      delegateSpaceVoting,
+      delegateGaltVoting,
+      oracleStakeVoting
+    );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });

@@ -90,12 +90,12 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
 
   // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
+  //    onlyRole(ORACLE_STAKES_NOTIFIER)
   function onOracleStakeChanged(
     address _oracle,
     uint256 _newReputation
   )
     external
-//    onlyRole(ORACLE_STAKES_NOTIFIER)
   {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 currentReputation = oracles[_oracle].reputation;
@@ -136,6 +136,11 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   }
 
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = _reputationBalance[_candidate];
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
     return (_reputationBalance[_candidate] * _decimals) / _totalReputation;
   }
 }

@@ -32,12 +32,12 @@ contract AbstractArbitrationProposalManager is AbstractProposalManager {
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
     return arbitrationConfig
       .getArbitrationCandidateTop()
-      .getShare(_proposalVotings[_proposalId].ayes.elements());
+      .getTotalCandidatesWeight(_proposalVotings[_proposalId].ayes.elements());
   }
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
     return arbitrationConfig
       .getArbitrationCandidateTop()
-      .getShare(_proposalVotings[_proposalId].nays.elements());
+      .getTotalCandidatesWeight(_proposalVotings[_proposalId].nays.elements());
   }
 }

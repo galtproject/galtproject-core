@@ -192,6 +192,11 @@ contract DelegateReputationVoting is IDelegateReputationVoting, Permissionable {
   }
   
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = reputationBalance[_candidate];
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
     return (reputationBalance[_candidate] * _decimals) / totalReputation;
   }
 }

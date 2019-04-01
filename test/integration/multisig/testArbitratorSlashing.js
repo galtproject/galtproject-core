@@ -155,8 +155,9 @@ contract('Arbitrator Stake Slashing', accounts => {
       );
       this.abMultiSigX = this.abX.multiSig;
       this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-      this.abVotingX = this.abX.voting;
+      this.candidateTopX = this.abX.candidateTop;
       this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
+      this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
 
       this.mX = this.abMultiSigX.address;
     })();
@@ -190,33 +191,33 @@ contract('Arbitrator Stake Slashing', accounts => {
 
     // Vote for arbitrators
     await (async () => {
-      await this.abVotingX.grantReputation(alice, 500, { from: bob });
-      await this.abVotingX.grantReputation(charlie, 500, { from: alice });
-      await this.abVotingX.grantReputation(alice, 500, { from: charlie });
-      await this.abVotingX.grantReputation(bob, 500, { from: charlie });
-      await this.abVotingX.grantReputation(eve, 500, { from: eve });
+      await this.delegateSpaceVotingX.grantReputation(alice, 500, { from: bob });
+      await this.delegateSpaceVotingX.grantReputation(charlie, 500, { from: alice });
+      await this.delegateSpaceVotingX.grantReputation(alice, 500, { from: charlie });
+      await this.delegateSpaceVotingX.grantReputation(bob, 500, { from: charlie });
+      await this.delegateSpaceVotingX.grantReputation(eve, 500, { from: eve });
 
-      assert.equal(await this.abVotingX.getSpaceReputation(alice), 1000);
+      assert.equal(await this.delegateSpaceVotingX.balanceOf(alice), 1000);
 
-      await this.abVotingX.recalculate(alice, { from: unauthorized });
-      await this.abVotingX.recalculate(bob, { from: unauthorized });
-      await this.abVotingX.recalculate(charlie, { from: unauthorized });
-      await this.abVotingX.recalculate(dan, { from: unauthorized });
-      await this.abVotingX.recalculate(eve, { from: unauthorized });
+      await this.candidateTopX.recalculate(alice, { from: unauthorized });
+      await this.candidateTopX.recalculate(bob, { from: unauthorized });
+      await this.candidateTopX.recalculate(charlie, { from: unauthorized });
+      await this.candidateTopX.recalculate(dan, { from: unauthorized });
+      await this.candidateTopX.recalculate(eve, { from: unauthorized });
 
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
 
-      let res = await this.abVotingX.getSize();
+      let res = await this.candidateTopX.getSize();
       assert.equal(res, 4);
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, []);
     })();
 
     // Push arbitrators
-    await assertRevert(this.abVotingX.pushArbitrators());
+    await assertRevert(this.candidateTopX.pushArbitrators());
 
     // > 4 arbitrators make their stake...
     await (async () => {
@@ -235,12 +236,12 @@ contract('Arbitrator Stake Slashing', accounts => {
       let res = await this.arbitratorStakeAccountingX.balanceOf(alice);
       assert.equal(res, ether(2000));
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
 
-      await this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
@@ -401,12 +402,12 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       // > Re-push the arbitrators list
       // one of the punished arbitrators is kicked of the arbitrators list
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, charlie, eve]);
 
-      await this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, charlie, eve]);
@@ -415,41 +416,41 @@ contract('Arbitrator Stake Slashing', accounts => {
 
   describe('ignoredCandidates', () => {
     it('should recalculate balance of ignored candidate to 0', async function() {
-      await this.abVotingX.ignoreMe(true, { from: alice });
+      await this.candidateTopX.ignoreMe(true, { from: alice });
 
-      assert.equal(await this.abVotingX.isIgnored(alice), true);
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.isIgnored(alice), true);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
 
-      await this.abVotingX.recalculate(alice);
+      await this.candidateTopX.recalculate(alice);
 
-      assert.equal(await this.abVotingX.getWeight(alice), 0);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 0);
 
-      let res = await this.abVotingX.getCandidates();
+      let res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [bob, charlie, eve]);
 
-      await this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [bob, charlie, eve]);
 
       // and turn in on again
-      await this.abVotingX.ignoreMe(false, { from: alice });
+      await this.candidateTopX.ignoreMe(false, { from: alice });
 
-      assert.equal(await this.abVotingX.isIgnored(alice), false);
-      assert.equal(await this.abVotingX.getWeight(alice), 0);
+      assert.equal(await this.candidateTopX.isIgnored(alice), false);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 0);
 
-      await this.abVotingX.recalculate(alice);
+      await this.candidateTopX.recalculate(alice);
 
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
 
-      await this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
