@@ -76,7 +76,7 @@ contract('OracleStakesAccounting', accounts => {
     //   }
     // );
 
-    this.config.initialize(
+    await this.config.initialize(
       multiSig,
       this.candidateTop.address,
       zeroAddress,

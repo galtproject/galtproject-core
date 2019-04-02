@@ -36,9 +36,9 @@ contract('ArbitratorStakeAccounting', accounts => {
       from: coreTeam
     });
 
-    this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
+    await this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
 
-    this.config.initialize(
+    await this.config.initialize(
       multiSig,
       zeroAddress,
       this.arbitratorStakeAccountingX.address,

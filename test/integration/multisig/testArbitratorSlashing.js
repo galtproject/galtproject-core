@@ -420,10 +420,12 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       assert.equal(await this.candidateTopX.isIgnored(alice), true);
       assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 160000);
 
       await this.candidateTopX.recalculate(alice);
 
-      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 0);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 0);
 
       let res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [bob, charlie, eve]);
@@ -439,11 +441,13 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.candidateTopX.ignoreMe(false, { from: alice });
 
       assert.equal(await this.candidateTopX.isIgnored(alice), false);
-      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 0);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 0);
 
       await this.candidateTopX.recalculate(alice);
 
       assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 160000);
 
       res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
