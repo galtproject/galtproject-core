@@ -33,7 +33,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
   uint256 public constant SPACE_REPUTATION_SHARE = 40;
   uint256 public constant GALT_REPUTATION_SHARE = 30;
-  uint256 public constant STAKE_REPUTATION_SHARE = 40;
+  uint256 public constant STAKE_REPUTATION_SHARE = 30;
 
   event Recalculate(
     address candidate,
@@ -154,7 +154,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
 
   // Getters
 
-  function getCandidateTotalWeight(address _candidate) public view returns (uint256) {
+  function getCandidateWeight(address _candidate) public view returns (uint256) {
     uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
@@ -227,7 +227,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
     return c;
   }
 
-  function getTotalCandidatesWeight(
+  function getCandidateWeights(
     address[] calldata _candidates
   )
     external
@@ -237,13 +237,13 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
     uint256 total = 0;
 
     for (uint256 i = 0; i < _candidates.length; i++) {
-      total += getCandidateTotalWeight(_candidates[i]);
+      total += getCandidateWeight(_candidates[i]);
     }
 
     return total * 100 / DECIMALS;
   }
 
-  function getCandidateWeight(address _candidate) public view returns (uint256) {
+  function getTopCandidateWeight(address _candidate) public view returns (uint256) {
     return votingData.votes[_candidate];
   }
 

@@ -32,9 +32,10 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   event OracleStakeChanged(
     address oracle,
     address candidate,
-    uint256 currentOracleReputation,
-    uint256 newOracleReputation,
-    uint256 newCandidateReputation
+    uint256 oracleReputationBefore,
+    uint256 oracleReputationAfter,
+    uint256 candidateReputation,
+    uint256 totalReputation
   );
 
   event ReputationBurnWithRevoke(
@@ -48,7 +49,7 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   // Oracle address => Oracle details
   mapping(address => Oracle) private oracles;
   // Oracle Candidate => totalWeights
-  mapping(address => uint256) private _reputationBalance;
+  mapping(address => uint256) private _candidateReputation;
 
   struct Oracle {
     address candidate;
@@ -79,13 +80,13 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
 
     // If already voted
     if (previousCandidate != address(0)) {
-      _reputationBalance[previousCandidate] -= oracles[msg.sender].reputation;
+      _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
     }
     // TODO: what about total oracle stakes?
 
     oracles[msg.sender].reputation = newReputation;
     oracles[msg.sender].candidate = _candidate;
-    _reputationBalance[_candidate] += newReputation;
+    _candidateReputation[_candidate] += newReputation;
   }
 
   // TODO: fix oracle stake change logic
@@ -93,33 +94,34 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   //    onlyRole(ORACLE_STAKES_NOTIFIER)
   function onOracleStakeChanged(
     address _oracle,
-    uint256 _newReputation
+    uint256 _reputationAfter
   )
     external
   {
     address currentCandidate = oracles[_oracle].candidate;
-    uint256 currentReputation = oracles[_oracle].reputation;
+    uint256 reputationBefore = oracles[_oracle].reputation;
 
-    _totalReputation = _totalReputation + _newReputation - currentReputation;
+    _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
+
+    emit OracleStakeChanged(
+      _oracle,
+      currentCandidate,
+      reputationBefore,
+      _reputationAfter,
+      _candidateReputation[currentCandidate],
+      _totalReputation
+    );
+
+    // Change oracle weight
+    oracles[_oracle].reputation = _reputationAfter;
 
     // The oracle hadn't vote or revoked his vote
     if (currentCandidate == address(0)) {
       return;
     }
 
-    // Change candidate weight
-    _reputationBalance[currentCandidate] = _reputationBalance[currentCandidate] - currentReputation + _newReputation;
-
-    // Change oracle weight
-    oracles[_oracle].reputation = _newReputation;
-
-    emit OracleStakeChanged(
-      _oracle,
-      currentCandidate,
-      currentReputation,
-      _newReputation,
-      _reputationBalance[currentCandidate]
-    );
+    // Change candidate reputation
+    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
   }
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
@@ -132,15 +134,15 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   }
 
   function balanceOf(address _candidate) external view returns (uint256) {
-    return _reputationBalance[_candidate];
+    return _candidateReputation[_candidate];
   }
 
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
-    uint256 reputation = _reputationBalance[_candidate];
+    uint256 reputation = _candidateReputation[_candidate];
 
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (_reputationBalance[_candidate] * _decimals) / _totalReputation;
+    return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
   }
 }
