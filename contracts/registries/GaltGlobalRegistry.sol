@@ -38,13 +38,15 @@ contract GaltGlobalRegistry is Ownable {
   bytes32 public constant MULTI_SIG_REGISTRY = bytes32("multi_sig_registry");
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
+  bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
 
   // TODO: move to the arbitration level
   bytes32 public constant ORACLES = bytes32("oracles");
   // TODO: move to the application level
   bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
 
-  bytes32 public constant SPACE_REPUTATION_ACCOUNTING = bytes32("space_reputation_accounting");
+  bytes32 public constant SPACE_RA = bytes32("space_ra");
+  bytes32 public constant GALT_RA = bytes32("galt_ra");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
@@ -89,6 +91,11 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[SPACE_LOCKER_REGISTRY];
   }
 
+  function getGaltLockerRegistryAddress() external view returns (address) {
+    require(contracts[GALT_LOCKER_REGISTRY] != ZERO_ADDRESS, "GGR: GALT_LOCKER_REGISTRY not set");
+    return contracts[GALT_LOCKER_REGISTRY];
+  }
+
   function getGeodesicAddress() external view returns (address) {
     require(contracts[GEODESIC] != ZERO_ADDRESS, "GGR: GEODESIC not set");
     return contracts[GEODESIC];
@@ -105,9 +112,14 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[CLAIM_MANAGER];
   }
 
-  function getSpaceReputationAccountingAddress() external view returns (address) {
-    require(contracts[SPACE_REPUTATION_ACCOUNTING] != ZERO_ADDRESS, "GGR: SPACE_REPUTATION_ACCOUNTING not set");
-    return contracts[SPACE_REPUTATION_ACCOUNTING];
+  function getSpaceRAAddress() external view returns (address) {
+    require(contracts[SPACE_RA] != ZERO_ADDRESS, "GGR: SPACE_RA not set");
+    return contracts[SPACE_RA];
+  }
+
+  function getGaltRAAddress() external view returns (address) {
+    require(contracts[GALT_RA] != ZERO_ADDRESS, "GGR: GALT_RA not set");
+    return contracts[GALT_RA];
   }
 
   function getSplitMergeAddress() external view returns (address) {

@@ -88,7 +88,7 @@ contract('PlotCustodianManager', (accounts) => {
     claimManagerAddress,
     applicationTypeManager,
     manualCustodianManager,
-    spaceReputationAccountingAddress,
+    spaceRA,
     oracleManager,
     alice,
     bob,
@@ -138,7 +138,7 @@ contract('PlotCustodianManager', (accounts) => {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), spaceReputationAccountingAddress, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });

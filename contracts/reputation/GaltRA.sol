@@ -13,25 +13,24 @@
 
 pragma solidity 0.5.3;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./interfaces/IRA.sol";
+import "./components/LiquidRA.sol";
+import "./components/LockableRA.sol";
+import "./components/GaltInputRA.sol";
 
-// This contract will be included into the current one
-import "../multisig/ArbitrationConfig.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
 
-
-contract ArbitratorsMultiSigFactory is Ownable {
-  function build(
-    address[] calldata _initialOwners,
-    uint256 _multiSigRequired,
-    ArbitrationConfig _arbitrationConfig
+contract GaltRA is IRA, LiquidRA, LockableRA, GaltInputRA {
+  constructor(
+    GaltGlobalRegistry _ggr
   )
-    external
-    returns (ArbitratorsMultiSig multiSig)
+    public
+    LiquidRA(_ggr)
   {
-    multiSig = new ArbitratorsMultiSig(_initialOwners, _multiSigRequired, _arbitrationConfig);
+  }
 
-    multiSig.addRoleTo(msg.sender, "role_manager");
-    multiSig.removeRoleFrom(address(this), "role_manager");
+  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
+    arbitrationConfig(_multiSig)
+      .getDelegateGaltVoting()
+      .onDelegateReputationChanged(_delegate, _amount);
   }
 }

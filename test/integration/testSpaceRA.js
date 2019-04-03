@@ -1,27 +1,27 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
-const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
-const SpaceReputationAccounting = artifacts.require('./SpaceReputationAccounting.sol');
+const SpaceRA = artifacts.require('./SpaceRA.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
+// const chai = require('chai');
+// const chaiAsPromised = require('chai-as-promised');
 const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
 
-const web3 = new Web3(SpaceReputationAccounting.web3.currentProvider);
+const web3 = new Web3(SpaceRA.web3.currentProvider);
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-chai.use(chaiAsPromised);
+// chai.use(chaiAsPromised);
 
-contract('SpaceReputationAccounting', accounts => {
+contract('SpaceRA', accounts => {
   const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager] = accounts;
 
   beforeEach(async function() {
@@ -32,9 +32,9 @@ contract('SpaceReputationAccounting', accounts => {
     this.oracles = await Oracles.new({ from: coreTeam });
 
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-    this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+    this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
-    this.spaceReputationAccounting = await SpaceReputationAccounting.new(this.ggr.address, { from: coreTeam });
+    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
     await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     await this.spaceLockerRegistry.addRoleTo(
       this.spaceLockerFactory.address,
@@ -51,11 +51,6 @@ contract('SpaceReputationAccounting', accounts => {
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
 
-    this.spaceReputationAccountingWeb3 = new web3.eth.Contract(
-      this.spaceReputationAccounting.abi,
-      this.spaceReputationAccounting.address
-    );
-
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -64,7 +59,7 @@ contract('SpaceReputationAccounting', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });
-    await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.spaceReputationAccounting.address, {
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
   });
@@ -131,175 +126,175 @@ contract('SpaceReputationAccounting', accounts => {
       res = await this.spaceLockerRegistry.isValid(aliceLockerAddress);
       assert.equal(res, true);
 
-      res = await this.spaceLockerRegistry.getSpaceLockersListByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockersListByOwner(alice);
       assert.deepEqual(res, [aliceLockerAddress]);
 
-      res = await this.spaceLockerRegistry.getSpaceLockersCountByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockersCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
-      res = await this.spaceReputationAccountingWeb3.methods.isMember(alice).call();
+      res = await this.spaceRA.isMember(alice);
       assert.equal(res, false);
 
-      res = await this.spaceReputationAccountingWeb3.methods.ownerHasSpaceToken(alice, 0).call();
+      res = await this.spaceRA.ownerHasSpaceToken(alice, 0);
       assert.equal(res, false);
 
       // APPROVE REPUTATION MINT
-      await assertRevert(aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: charlie }));
-      await aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: alice });
-      await bobLocker.approveMint(this.spaceReputationAccounting.address, { from: bob });
-      await charlieLocker.approveMint(this.spaceReputationAccounting.address, { from: charlie });
-      await assertRevert(aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: alice }));
-      await assertRevert(this.spaceReputationAccounting.mint(aliceLockerAddress, { from: charlie }));
-      await this.spaceReputationAccounting.mint(aliceLockerAddress, { from: alice });
-      await this.spaceReputationAccounting.mint(bobLockerAddress, { from: bob });
-      await this.spaceReputationAccounting.mint(charlieLockerAddress, { from: charlie });
-      await assertRevert(this.spaceReputationAccounting.mint(aliceLockerAddress, { from: alice }));
+      await assertRevert(aliceLocker.approveMint(this.spaceRA.address, { from: charlie }));
+      await aliceLocker.approveMint(this.spaceRA.address, { from: alice });
+      await bobLocker.approveMint(this.spaceRA.address, { from: bob });
+      await charlieLocker.approveMint(this.spaceRA.address, { from: charlie });
+      await assertRevert(aliceLocker.approveMint(this.spaceRA.address, { from: alice }));
+      await assertRevert(this.spaceRA.mint(aliceLockerAddress, { from: charlie }));
+      await this.spaceRA.mint(aliceLockerAddress, { from: alice });
+      await this.spaceRA.mint(bobLockerAddress, { from: bob });
+      await this.spaceRA.mint(charlieLockerAddress, { from: charlie });
+      await assertRevert(this.spaceRA.mint(aliceLockerAddress, { from: alice }));
 
-      res = await this.spaceReputationAccountingWeb3.methods.balanceOf(alice).call();
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 800);
 
-      res = await this.spaceReputationAccountingWeb3.methods.isMember(alice).call();
+      res = await this.spaceRA.isMember(alice);
       assert.equal(res, true);
 
-      res = await this.spaceReputationAccountingWeb3.methods.ownerHasSpaceToken(alice, 0).call();
+      res = await this.spaceRA.ownerHasSpaceToken(alice, 0);
       assert.equal(res, true);
 
       // TRANSFER #1
-      await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
+      await this.spaceRA.delegate(bob, alice, 350, { from: alice });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 450);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 950);
 
       // TRANSFER #2
-      await this.spaceReputationAccounting.delegate(charlie, alice, 100, { from: bob });
+      await this.spaceRA.delegate(charlie, alice, 100, { from: bob });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 450);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 850);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 500);
 
       // TRANSFER #3
-      await this.spaceReputationAccounting.delegate(alice, alice, 50, { from: charlie });
+      await this.spaceRA.delegate(alice, alice, 50, { from: charlie });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 500);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 850);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 450);
 
       // check owned balance...
-      res = await this.spaceReputationAccounting.ownedBalanceOf(alice);
+      res = await this.spaceRA.ownedBalanceOf(alice);
       assert.equal(res, 800);
 
-      res = await this.spaceReputationAccounting.ownedBalanceOf(bob);
+      res = await this.spaceRA.ownedBalanceOf(bob);
       assert.equal(res, 600);
 
-      res = await this.spaceReputationAccounting.ownedBalanceOf(charlie);
+      res = await this.spaceRA.ownedBalanceOf(charlie);
       assert.equal(res, 400);
 
       // check delegatedBy
-      res = await this.spaceReputationAccounting.delegatedBy(alice);
+      res = await this.spaceRA.delegatedBy(alice);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegatedBy(bob);
+      res = await this.spaceRA.delegatedBy(bob);
       assert.sameMembers(res, [alice]);
 
-      res = await this.spaceReputationAccounting.delegatedBy(charlie);
+      res = await this.spaceRA.delegatedBy(charlie);
       assert.sameMembers(res, [alice]);
 
       // check delegations
-      res = await this.spaceReputationAccounting.delegations(alice);
+      res = await this.spaceRA.delegations(alice);
       assert.sameMembers(res, [bob, charlie]);
 
-      res = await this.spaceReputationAccounting.delegations(bob);
+      res = await this.spaceRA.delegations(bob);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegations(charlie);
+      res = await this.spaceRA.delegations(charlie);
       assert.sameMembers(res, []);
 
       // REVOKE #1
-      await this.spaceReputationAccounting.revoke(bob, 200, { from: alice });
+      await this.spaceRA.revoke(bob, 200, { from: alice });
 
-      await assertRevert(this.spaceReputationAccounting.revoke(bob, 200, { from: charlie }));
-      await assertRevert(this.spaceReputationAccounting.revoke(alice, 200, { from: charlie }));
+      await assertRevert(this.spaceRA.revoke(bob, 200, { from: charlie }));
+      await assertRevert(this.spaceRA.revoke(alice, 200, { from: charlie }));
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 700);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 650);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 450);
 
       // BURN REPUTATION UNSUCCESSFUL ATTEMPTS
-      await assertRevert(this.spaceReputationAccounting.approveBurn(aliceLockerAddress, { from: alice }));
+      await assertRevert(this.spaceRA.approveBurn(aliceLockerAddress, { from: alice }));
 
       // UNSUCCESSFUL WITHDRAW SPACE TOKEN
-      await assertRevert(aliceLocker.burn(this.spaceReputationAccounting.address, { from: alice }));
+      await assertRevert(aliceLocker.burn(this.spaceRA.address, { from: alice }));
       await assertRevert(aliceLocker.withdraw(token1, { from: alice }));
 
       // REVOKE REPUTATION
-      await this.spaceReputationAccounting.revoke(bob, 50, { from: alice });
-      await this.spaceReputationAccounting.revoke(charlie, 50, { from: alice });
+      await this.spaceRA.revoke(bob, 50, { from: alice });
+      await this.spaceRA.revoke(charlie, 50, { from: alice });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 800);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 600);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 400);
 
       // check delegations
-      res = await this.spaceReputationAccounting.delegations(alice);
+      res = await this.spaceRA.delegations(alice);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegations(bob);
+      res = await this.spaceRA.delegations(bob);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegations(charlie);
+      res = await this.spaceRA.delegations(charlie);
       assert.sameMembers(res, []);
 
       // WITHDRAW TOKEN
-      await assertRevert(this.spaceReputationAccounting.approveBurn(aliceLockerAddress, { from: charlie }));
-      await this.spaceReputationAccounting.approveBurn(aliceLockerAddress, { from: alice });
+      await assertRevert(this.spaceRA.approveBurn(aliceLockerAddress, { from: charlie }));
+      await this.spaceRA.approveBurn(aliceLockerAddress, { from: alice });
 
       // check owned balances...
-      res = await this.spaceReputationAccounting.ownedBalanceOf(alice);
+      res = await this.spaceRA.ownedBalanceOf(alice);
       assert.equal(res, 0);
 
-      res = await this.spaceReputationAccounting.ownedBalanceOf(bob);
+      res = await this.spaceRA.ownedBalanceOf(bob);
       assert.equal(res, 600);
 
-      res = await this.spaceReputationAccounting.ownedBalanceOf(charlie);
+      res = await this.spaceRA.ownedBalanceOf(charlie);
       assert.equal(res, 400);
 
       // check delegations
-      res = await this.spaceReputationAccounting.delegations(alice);
+      res = await this.spaceRA.delegations(alice);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegations(bob);
+      res = await this.spaceRA.delegations(bob);
       assert.sameMembers(res, []);
 
-      res = await this.spaceReputationAccounting.delegations(charlie);
+      res = await this.spaceRA.delegations(charlie);
       assert.sameMembers(res, []);
 
-      await aliceLocker.burn(this.spaceReputationAccounting.address, { from: alice });
+      await aliceLocker.burn(this.spaceRA.address, { from: alice });
       await aliceLocker.withdraw(token1, { from: alice });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 0);
 
       res = await aliceLocker.reputation();
@@ -410,94 +405,94 @@ contract('SpaceReputationAccounting', accounts => {
       await charlieLocker.deposit(token3, { from: charlie });
 
       // APPROVE REPUTATION MINT
-      await aliceLocker.approveMint(this.spaceReputationAccounting.address, { from: alice });
-      await bobLocker.approveMint(this.spaceReputationAccounting.address, { from: bob });
-      await charlieLocker.approveMint(this.spaceReputationAccounting.address, { from: charlie });
-      await this.spaceReputationAccounting.mint(aliceLockerAddress, { from: alice });
-      await this.spaceReputationAccounting.mint(bobLockerAddress, { from: bob });
-      await this.spaceReputationAccounting.mint(charlieLockerAddress, { from: charlie });
+      await aliceLocker.approveMint(this.spaceRA.address, { from: alice });
+      await bobLocker.approveMint(this.spaceRA.address, { from: bob });
+      await charlieLocker.approveMint(this.spaceRA.address, { from: charlie });
+      await this.spaceRA.mint(aliceLockerAddress, { from: alice });
+      await this.spaceRA.mint(bobLockerAddress, { from: bob });
+      await this.spaceRA.mint(charlieLockerAddress, { from: charlie });
 
-      await this.spaceReputationAccounting.delegate(bob, alice, 350, { from: alice });
-      await this.spaceReputationAccounting.delegate(charlie, alice, 100, { from: bob });
-      await this.spaceReputationAccounting.delegate(alice, alice, 50, { from: charlie });
+      await this.spaceRA.delegate(bob, alice, 350, { from: alice });
+      await this.spaceRA.delegate(charlie, alice, 100, { from: bob });
+      await this.spaceRA.delegate(alice, alice, 50, { from: charlie });
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 500);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 850);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 450);
 
       // Bob stakes reputation in multiSigA
-      await this.spaceReputationAccounting.lockReputation(abMultiSigX.address, 100, { from: bob });
-      await this.spaceReputationAccounting.lockReputation(abMultiSigY.address, 30, { from: bob });
-      await this.spaceReputationAccounting.lockReputation(abMultiSigZ.address, 70, { from: bob });
+      await this.spaceRA.lockReputation(abMultiSigX.address, 100, { from: bob });
+      await this.spaceRA.lockReputation(abMultiSigY.address, 30, { from: bob });
+      await this.spaceRA.lockReputation(abMultiSigZ.address, 70, { from: bob });
 
       // Alice can revoke only 50 unlocked reputation tokens
-      await assertRevert(this.spaceReputationAccounting.revoke(bob, 51, { from: alice }));
-      await this.spaceReputationAccounting.revoke(bob, 50, { from: alice });
+      await assertRevert(this.spaceRA.revoke(bob, 51, { from: alice }));
+      await this.spaceRA.revoke(bob, 50, { from: alice });
 
       // To revoke locked reputation Alice uses #revokeLocked() and explicitly
       // specifies multiSig to revoke reputation from
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
-      res = await this.spaceReputationAccounting.delegatedBalanceOf(bob, alice);
+      res = await this.spaceRA.delegatedBalanceOf(bob, alice);
       assert.equal(res, 200);
-      res = await this.spaceReputationAccounting.lockedBalanceOf(bob);
+      res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.spaceReputationAccounting.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 100, { from: bob });
+      await this.spaceRA.revokeLocked(bob, abMultiSigX.address, 100, { from: bob });
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
-      res = await this.spaceReputationAccounting.delegatedBalanceOf(bob, alice);
+      res = await this.spaceRA.delegatedBalanceOf(bob, alice);
       assert.equal(res, 200);
-      res = await this.spaceReputationAccounting.lockedBalanceOf(bob);
+      res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceReputationAccounting.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
 
       // The above doesn't affect on Alice ability to revoke delegated to Bob balance
-      await this.spaceReputationAccounting.revoke(bob, 100, { from: alice });
+      await this.spaceRA.revoke(bob, 100, { from: alice });
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 700);
-      res = await this.spaceReputationAccounting.delegatedBalanceOf(bob, alice);
+      res = await this.spaceRA.delegatedBalanceOf(bob, alice);
       assert.equal(res, 100);
-      res = await this.spaceReputationAccounting.lockedBalanceOf(bob);
+      res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceReputationAccounting.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
-      await this.spaceReputationAccounting.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
-      await this.spaceReputationAccounting.revoke(charlie, 50, { from: alice });
+      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
+      await this.spaceRA.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
+      await this.spaceRA.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
+      await this.spaceRA.revoke(charlie, 50, { from: alice });
 
       // ATTEMPT TO BURN
-      await assertRevert(aliceLocker.burn(this.spaceReputationAccounting.address, { from: alice }));
+      await assertRevert(aliceLocker.burn(this.spaceRA.address, { from: alice }));
 
-      res = await this.spaceReputationAccounting.balanceOf(alice);
+      res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 800);
 
-      res = await this.spaceReputationAccounting.balanceOf(bob);
+      res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 600);
 
-      res = await this.spaceReputationAccounting.balanceOf(charlie);
+      res = await this.spaceRA.balanceOf(charlie);
       assert.equal(res, 400);
 
       // APPROVE BURN AND TRY AGAIN
-      await this.spaceReputationAccounting.approveBurn(aliceLockerAddress, { from: alice });
-      await aliceLocker.burn(this.spaceReputationAccounting.address, { from: alice });
+      await this.spaceRA.approveBurn(aliceLockerAddress, { from: alice });
+      await aliceLocker.burn(this.spaceRA.address, { from: alice });
 
       // Withdraw token
       await aliceLocker.withdraw(token1, { from: alice });
@@ -527,14 +522,22 @@ contract('SpaceReputationAccounting', accounts => {
       await this.spaceToken.approve(lockerAddress, token1, { from: alice });
       await locker.deposit(token1, { from: alice });
 
-      await locker.approveMint(this.spaceReputationAccounting.address, { from: alice });
+      await locker.approveMint(this.spaceRA.address, { from: alice });
 
       // SHOULD PREVENT DOUBLE MINT
-      await assertRevert(locker.approveMint(this.spaceReputationAccounting.address, { from: alice }));
+      await assertRevert(locker.approveMint(this.spaceRA.address, { from: alice }));
 
-      await this.spaceReputationAccounting.mint(lockerAddress, { from: alice });
-      await this.spaceReputationAccounting.approveBurn(lockerAddress, { from: alice });
-      await locker.burn(this.spaceReputationAccounting.address, { from: alice });
+      await this.spaceRA.mint(lockerAddress, { from: alice });
+
+      res = await this.spaceRA.balanceOf(alice);
+      assert.equal(res, 800);
+
+      await this.spaceRA.approveBurn(lockerAddress, { from: alice });
+
+      res = await this.spaceRA.balanceOf(alice);
+      assert.equal(res, 0);
+
+      await locker.burn(this.spaceRA.address, { from: alice });
 
       // Pass in a keccak256 of the token ID to prevent accidental calls
       await locker.burnToken(web3.utils.keccak256(web3.eth.abi.encodeParameter('uint256', parseInt(token1, 10))), {
@@ -542,7 +545,7 @@ contract('SpaceReputationAccounting', accounts => {
       });
 
       // APPROVE
-      await assertRevert(locker.approveMint(this.spaceReputationAccounting.address, { from: alice }));
+      await assertRevert(locker.approveMint(this.spaceRA.address, { from: alice }));
     });
   });
 });

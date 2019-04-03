@@ -94,7 +94,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
     oracles().onOracleStakeChanged(_oracle, _oracleType, finalOracleTypeStake);
-    arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
+    arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
@@ -117,7 +117,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
     oracles().onOracleStakeChanged(_oracle, _oracleType, finalRoleStake);
-    arbitrationConfig.getArbitratorVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
+    arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }

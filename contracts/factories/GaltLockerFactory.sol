@@ -16,13 +16,10 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
-import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISplitMerge.sol";
-import "./interfaces/ISpaceLockerFactory.sol";
-import "../SpaceLocker.sol";
+import "../GaltLocker.sol";
 
-contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
-  event SpaceLockerCreated(address owner, address locker);
+contract GaltLockerFactory is Ownable {
+  event GaltLockerCreated(address owner, address locker);
 
   GaltGlobalRegistry ggr;
 
@@ -36,16 +33,16 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
     commission = 10 ether;
   }
 
-  function build() external returns (ISpaceLocker) {
+  function build() external returns (IGaltLocker) {
     ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
 
-    ISpaceLocker locker = new SpaceLocker(ggr, msg.sender);
+    IGaltLocker locker = new GaltLocker(ggr, msg.sender);
 
-    ILockerRegistry(ggr.getSpaceLockerRegistryAddress()).addLocker(address(locker));
+    ILockerRegistry(ggr.getGaltLockerRegistryAddress()).addLocker(address(locker));
 
-    emit SpaceLockerCreated(msg.sender, address(locker));
+    emit GaltLockerCreated(msg.sender, address(locker));
 
-    return ISpaceLocker(locker);
+    return locker;
   }
 
   function setCommission(uint256 _commission) external onlyOwner {

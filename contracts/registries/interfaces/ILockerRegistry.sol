@@ -13,11 +13,9 @@
 
 pragma solidity 0.5.3;
 
-import "../../interfaces/ISpaceLocker.sol";
 
-
-interface ISpaceLockerRegistry {
-  function addSpaceLocker(ISpaceLocker _spaceLocker) external;
-  function requireValidLocker(address _spaceLocker) external view;
-  function isValid(address _spaceLocker) external view returns (bool);
+interface ILockerRegistry {
+  function addLocker(address _locker) external;
+  function requireValidLocker(address _locker) external view;
+  function isValid(address _locker) external view returns (bool);
 }

@@ -16,12 +16,13 @@ pragma solidity 0.5.3;
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
+import "./interfaces/ILocker.sol";
 import "./interfaces/ISplitMerge.sol";
-import "./interfaces/ISRA.sol";
+import "./reputation/interfaces/IRA.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
 
-contract SpaceLocker is ISpaceLocker {
+contract SpaceLocker is ILocker, ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
   event ReputationMinted(address sra);
@@ -67,7 +68,7 @@ contract SpaceLocker is ISpaceLocker {
 
   function withdraw(uint256 _spaceTokenId) external onlyOwner notBurned {
     require(tokenDeposited, "Token not deposited");
-    require(sras.size() == 0, "SRAs counter not 0");
+    require(sras.size() == 0, "RAs counter not 0");
 
     spaceTokenId = 0;
     reputation = 0;
@@ -76,15 +77,15 @@ contract SpaceLocker is ISpaceLocker {
     ggr.getSpaceToken().safeTransferFrom(address(this), msg.sender, _spaceTokenId);
   }
 
-  function approveMint(ISRA _sra) external onlyOwner notBurned {
-    require(!sras.has(address(_sra)), "Already minted to this SRA");
+  function approveMint(IRA _sra) external onlyOwner notBurned {
+    require(!sras.has(address(_sra)), "Already minted to this RA");
     require(_sra.ping() == bytes32("pong"), "Handshake failed");
 
     sras.add(address(_sra));
   }
 
-  function burn(ISRA _sra) external onlyOwner {
-    require(sras.has(address(_sra)), "Not minted to the SRA");
+  function burn(IRA _sra) external onlyOwner {
+    require(sras.has(address(_sra)), "Not minted to the RA");
     require(_sra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
     sras.remove(address(_sra));

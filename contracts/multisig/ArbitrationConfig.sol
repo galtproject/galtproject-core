@@ -20,11 +20,12 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IArbitrationConfig.sol";
 import "./interfaces/IArbitratorStakeAccounting.sol";
 import "./interfaces/IOracleStakesAccounting.sol";
-import "./interfaces/IArbitratorVoting.sol";
 import "./interfaces/IArbitratorsMultiSig.sol";
 import "./ArbitratorsMultiSig.sol";
-import "../SpaceReputationAccounting.sol";
 import "../registries/GaltGlobalRegistry.sol";
+import "./voting/interfaces/IDelegateReputationVoting.sol";
+import "./voting/interfaces/IOracleStakeVoting.sol";
+import "./voting/interfaces/IArbitrationCandidateTop.sol";
 
 
 contract ArbitrationConfig is IArbitrationConfig, Permissionable {
@@ -43,9 +44,11 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
-  bytes32 public constant ARBITRATOR_VOTING_CONTRACT = bytes32("arbitrator_voting_contract");
   bytes32 public constant ARBITRATOR_STAKES_CONTRACT = bytes32("arbitrator_stakes_contract");
-  bytes32 public constant SPACE_REPUTATION_EXT_CONTRACT = bytes32("space_reputation_ext_contract");
+  bytes32 public constant ARBITRATION_CANDIDATE_TOP_CONTRACT = bytes32("candidate_top_contract");
+  bytes32 public constant DELEGATE_SPACE_VOTING_CONTRACT = bytes32("delegate_space_voting_contract");
+  bytes32 public constant DELEGATE_GALT_VOTING_CONTRACT = bytes32("delegate_galt_voting_contract");
+  bytes32 public constant ORACLE_STAKE_VOTING_CONTRACT = bytes32("oracle_stake_voting_contract");
 
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
@@ -91,10 +94,12 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function initialize(
     IArbitratorsMultiSig _arbitratorMultiSig,
-    IArbitratorVoting _arbitratorVoting,
+    IArbitrationCandidateTop _arbitratorVoting,
     IArbitratorStakeAccounting _arbitratorStakeAccounting,
     IOracleStakesAccounting _oracleStakesAccounting,
-    SpaceReputationAccounting _spaceReputationAccounting
+    IDelegateReputationVoting _delegateSpaceVoting,
+    IDelegateReputationVoting _delegateGaltVoting,
+    IOracleStakeVoting _oracleStakeVoting
   )
     external
   {
@@ -102,10 +107,12 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     assert(hasRole(msg.sender, "role_manager"));
 
     contracts[MULTI_SIG_CONTRACT] = address(_arbitratorMultiSig);
-    contracts[ARBITRATOR_VOTING_CONTRACT] = address(_arbitratorVoting);
+    contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT] = address(_arbitratorVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
     contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakesAccounting);
-    contracts[SPACE_REPUTATION_EXT_CONTRACT] = address(_spaceReputationAccounting);
+    contracts[DELEGATE_SPACE_VOTING_CONTRACT] = address(_delegateSpaceVoting);
+    contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);
+    contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);
 
     initialized = true;
   }
@@ -142,8 +149,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     return IArbitratorsMultiSig(ms);
   }
 
-  function getArbitratorVoting() external view returns (IArbitratorVoting) {
-    return IArbitratorVoting(contracts[ARBITRATOR_VOTING_CONTRACT]);
+  function getArbitrationCandidateTop() external view returns (IArbitrationCandidateTop) {
+    return IArbitrationCandidateTop(contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT]);
   }
 
   function getArbitratorStakes() external view returns (IArbitratorStakeAccounting) {
@@ -152,5 +159,17 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function getOracleStakes() external view returns (IOracleStakesAccounting) {
     return IOracleStakesAccounting(contracts[ORACLE_STAKES_CONTRACT]);
+  }
+
+  function getDelegateSpaceVoting() external view returns (IDelegateReputationVoting) {
+    return IDelegateReputationVoting(contracts[DELEGATE_SPACE_VOTING_CONTRACT]);
+  }
+
+  function getDelegateGaltVoting() external view returns (IDelegateReputationVoting) {
+    return IDelegateReputationVoting(contracts[DELEGATE_GALT_VOTING_CONTRACT]);
+  }
+
+  function getOracleStakeVoting() external view returns (IOracleStakeVoting) {
+    return IOracleStakeVoting(contracts[ORACLE_STAKE_VOTING_CONTRACT]);
   }
 }

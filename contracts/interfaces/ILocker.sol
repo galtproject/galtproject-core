@@ -13,20 +13,7 @@
 
 pragma solidity 0.5.3;
 
-import "../reputation/interfaces/IRA.sol";
 
-
-interface ISpaceLocker {
-  function deposit(uint256 _spaceTokenId) external;
-  function withdraw(uint256 _spaceTokenId) external;
-  function approveMint(IRA _sra) external;
-  function burn(IRA _sra) external;
-  function burnToken(bytes32 _spaceTokenIdHash) external;
-  function isMinted(address _sra) external returns (bool);
-  function getSras() external returns (address[] memory);
-  function getSrasCount() external returns (uint256);
-  function isOwner() external view returns (bool);
+interface ILocker {
   function owner() external view returns(address);
-  function spaceTokenId() external view returns(uint256);
-  function reputation() external view returns(uint256);
 }

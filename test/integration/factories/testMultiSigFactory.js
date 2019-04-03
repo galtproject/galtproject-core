@@ -1,12 +1,12 @@
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+// const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 
 const Web3 = require('web3');
-const { initHelperWeb3, ether, assertRevert } = require('../../helpers');
+const { initHelperWeb3, ether } = require('../../helpers');
 const { deployMultiSigFactory } = require('../../deploymentHelpers');
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
@@ -15,7 +15,7 @@ initHelperWeb3(web3);
 
 // eslint-disable-next-line
 contract.skip("MultiSigFactory", (accounts) => {
-  const [coreTeam, claimManagerAddress, spaceReputationAccounting, alice, bob, charlie, dan, eve, frank] = accounts;
+  const [coreTeam, claimManagerAddress, spaceRA, alice, bob, charlie, dan, eve, frank] = accounts;
 
   beforeEach(async function() {
     this.claimManager = await ClaimManager.new({ from: coreTeam });
@@ -28,7 +28,7 @@ contract.skip("MultiSigFactory", (accounts) => {
       this.oracles,
       claimManagerAddress,
       this.multiSigRegistry,
-      spaceReputationAccounting,
+      spaceRA,
       coreTeam
     );
 
@@ -42,10 +42,10 @@ contract.skip("MultiSigFactory", (accounts) => {
 
     const res = await this.multiSigFactory.build(members, 3, { from: alice });
     const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    const abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+    // const abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
 
     assert.sameMembers(await abMultiSigX.getArbitrators(), members);
-    await assertRevert(abVotingX.pushArbitrators());
+    // await assertRevert(abVotingX.pushArbitrators());
   });
 
   it('should build contracts without commission', async function() {

@@ -3,8 +3,8 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
-const MockSRA = artifacts.require('./MockSRA.sol');
-const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
+const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -83,9 +83,9 @@ contract('Proposals', accounts => {
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
       this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-      this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+      this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
 
-      this.sra = await MockSRA.new(this.ggr.address, { from: coreTeam });
+      this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam
@@ -93,7 +93,7 @@ contract('Proposals', accounts => {
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.SPACE_REPUTATION_ACCOUNTING(), this.sra.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.SPACE_RA(), this.sra.address, { from: coreTeam });
 
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
@@ -114,7 +114,7 @@ contract('Proposals', accounts => {
         10,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [24, 24, 24, 24, 24, 24],
         {},
         alice
       );
@@ -132,6 +132,11 @@ contract('Proposals', accounts => {
       await this.sra.lockReputation(this.mX, 1000, { from: charlie });
       await this.sra.lockReputation(this.mX, 500, { from: eve });
     })();
+    // alice - 500 (8%)
+    // bob - 500 (8%)
+    // charlie - 1000 (16%)
+    // eve - 500 (8%)
+    // total - 2500 (40%)
   });
 
   describe('ModifyThreshold Proposals', () => {
@@ -143,7 +148,7 @@ contract('Proposals', accounts => {
       await this.ab.modifyThresholdProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.modifyThresholdProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.modifyThresholdProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -151,9 +156,9 @@ contract('Proposals', accounts => {
       await this.ab.modifyThresholdProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.modifyThresholdProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.modifyThresholdProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       await assertRevert(this.ab.modifyThresholdProposalManager.triggerReject(proposalId));
       await this.ab.modifyThresholdProposalManager.triggerApprove(proposalId);
@@ -188,7 +193,7 @@ contract('Proposals', accounts => {
       await this.ab.modifyMofNProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.modifyMofNProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.modifyMofNProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -196,9 +201,9 @@ contract('Proposals', accounts => {
       await this.ab.modifyMofNProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.modifyMofNProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.modifyMofNProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       await assertRevert(this.ab.modifyMofNProposalManager.triggerReject(proposalId));
       await this.ab.modifyMofNProposalManager.triggerApprove(proposalId);
@@ -235,7 +240,7 @@ contract('Proposals', accounts => {
       await this.ab.modifyArbitratorStakeProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.modifyArbitratorStakeProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.modifyArbitratorStakeProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -243,9 +248,9 @@ contract('Proposals', accounts => {
       await this.ab.modifyArbitratorStakeProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.modifyArbitratorStakeProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.modifyArbitratorStakeProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       await assertRevert(this.ab.modifyArbitratorStakeProposalManager.triggerReject(proposalId));
       await this.ab.modifyArbitratorStakeProposalManager.triggerApprove(proposalId);
@@ -284,7 +289,7 @@ contract('Proposals', accounts => {
       await this.ab.modifyContractAddressProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.modifyContractAddressProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.modifyContractAddressProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -292,9 +297,9 @@ contract('Proposals', accounts => {
       await this.ab.modifyContractAddressProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.modifyContractAddressProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.modifyContractAddressProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       await assertRevert(this.ab.modifyContractAddressProposalManager.triggerReject(proposalId));
       await this.ab.modifyContractAddressProposalManager.triggerApprove(proposalId);
@@ -329,7 +334,7 @@ contract('Proposals', accounts => {
       await this.ab.revokeArbitratorsProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.revokeArbitratorsProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.revokeArbitratorsProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -337,9 +342,9 @@ contract('Proposals', accounts => {
       await this.ab.revokeArbitratorsProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.revokeArbitratorsProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.revokeArbitratorsProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       res = await this.ab.multiSig.getOwners();
       assert.sameMembers(res, [a1, a2, a3]);
@@ -371,7 +376,7 @@ contract('Proposals', accounts => {
       await this.ab.modifyApplicationConfigProposalManager.aye(proposalId, { from: alice });
 
       res = await this.ab.modifyApplicationConfigProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
       res = await this.ab.modifyApplicationConfigProposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -379,9 +384,9 @@ contract('Proposals', accounts => {
       await this.ab.modifyApplicationConfigProposalManager.aye(proposalId, { from: charlie });
 
       res = await this.ab.modifyApplicationConfigProposalManager.getAyeShare(proposalId);
-      assert.equal(res, 30);
+      assert.equal(res, 24);
       res = await this.ab.modifyApplicationConfigProposalManager.getNayShare(proposalId);
-      assert.equal(res, 10);
+      assert.equal(res, 8);
 
       await assertRevert(this.ab.modifyApplicationConfigProposalManager.triggerReject(proposalId));
       await this.ab.modifyApplicationConfigProposalManager.triggerApprove(proposalId);

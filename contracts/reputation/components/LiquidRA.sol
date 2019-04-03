@@ -18,17 +18,20 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./interfaces/ISpaceToken.sol";
-import "./interfaces/ISpaceLocker.sol";
-import "./interfaces/ISRA.sol";
-import "./registries/interfaces/ISpaceLockerRegistry.sol";
-import "./registries/GaltGlobalRegistry.sol";
+import "../../interfaces/ISpaceToken.sol";
+import "../../interfaces/ISpaceLocker.sol";
+import "../../registries/interfaces/ILockerRegistry.sol";
+import "../../registries/GaltGlobalRegistry.sol";
 
 
-contract LiquidReputationAccounting is ISRA, Permissionable {
+contract LiquidRA is Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
+
+  event Burn(address owner, uint256 amount);
+  event Mint(address owner, uint256 amount);
+  event Transfer(address from, address to, uint256 amount);
 
   GaltGlobalRegistry public ggr;
 
@@ -41,17 +44,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   // Reputation Owner => (Delegate => balance))
   mapping(address => mapping(address => uint256)) private _delegatedBalances;
 
-  // Delegate => locked amount
-  mapping(address => uint256) private _locks;
-
   mapping(address => ArraySet.AddressSet) private _delegations;
   mapping(address => ArraySet.AddressSet) private _delegatedBy;
-
-  ArraySet.AddressSet private _spaceTokenOwners;
-
-  mapping(address => ArraySet.Uint256Set) private _spaceTokensByOwner;
-
-  mapping(uint256 => bool) public reputationMinted;
 
   // L0
   uint256 internal totalStakedSpace;
@@ -64,78 +58,6 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     ggr = _ggr;
   }
 
-  modifier onlySpaceTokenOwner(uint256 _spaceTokenId, ISpaceLocker _spaceLocker) {
-    require(address(_spaceLocker) == ggr.getSpaceToken().ownerOf(_spaceTokenId), "Invalid sender. Token owner expected.");
-    require(msg.sender == _spaceLocker.owner(), "Not SpaceLocker owner");
-    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
-    _;
-  }
-
-  // MODIFIERS
-
-  // @dev Mints reputation for given token to the owner account
-  function mint(
-    ISpaceLocker _spaceLocker
-  )
-    public
-  {
-    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
-
-    address owner = _spaceLocker.owner();
-    require(msg.sender == owner, "Not owner of the locker");
-
-    uint256 spaceTokenId = _spaceLocker.spaceTokenId();
-    require(reputationMinted[spaceTokenId] == false, "Reputation already minted");
-
-    uint256 reputation = _spaceLocker.reputation();
-
-    _mint(owner, reputation, spaceTokenId);
-  }
-
-  // Burn space token total reputation
-  // Owner should revoke all delegated reputation back to his account before performing this action
-  function approveBurn(
-    ISpaceLocker _spaceLocker
-  )
-    public
-  {
-    spaceLockerRegistry().requireValidLocker(address(_spaceLocker));
-
-    address owner = _spaceLocker.owner();
-
-    require(msg.sender == owner, "Not owner of the locker");
-
-    uint256 reputation = _spaceLocker.reputation();
-
-    uint256 spaceTokenId = _spaceLocker.spaceTokenId();
-
-    require(reputationMinted[spaceTokenId] == true, "Reputation doesn't minted");
-    require(_balances[owner] >= reputation, "Not enough funds to burn");
-    require(_delegatedBalances[owner][owner] >= reputation, "Not enough funds to burn");
-    require(_ownedBalances[owner] >= reputation, "Not enough funds to burn");
-
-    totalStakedSpace -= reputation;
-
-    _debitAccount(owner, owner, reputation);
-
-    _ownedBalances[owner] -= reputation;
-
-    _spaceTokensByOwner[owner].remove(spaceTokenId);
-    if (_spaceTokensByOwner[owner].size() == 0) {
-      _spaceTokenOwners.remove(owner);
-    }
-
-    reputationMinted[spaceTokenId] = false;
-  }
-
-  // @dev Transfer owned reputation
-  // PermissionED
-  function delegate(address _to, address _owner, uint256 _amount) public {
-    require(_spaceTokenOwners.has(_to), "Beneficiary isn't a space token owner");
-
-    _transfer(msg.sender, _to, _owner, _amount);
-  }
-
   // PermissionED
   function revoke(address _from, uint256 _amount) public {
     _debitAccount(_from, msg.sender, _amount);
@@ -144,21 +66,35 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
   // INTERNAL
 
-  function _mint(address _beneficiary, uint256 _amount, uint256 _spaceTokenId) internal {
+  function _mint(address _beneficiary, uint256 _amount) internal {
     totalStakedSpace += _amount;
 
     _creditAccount(_beneficiary, _beneficiary, _amount);
 
     _ownedBalances[_beneficiary] += _amount;
-    _spaceTokensByOwner[_beneficiary].add(_spaceTokenId);
-    _spaceTokenOwners.addSilent(_beneficiary);
 
-    reputationMinted[_spaceTokenId] = true;
+    emit Mint(_beneficiary, _amount);
+  }
+
+  function _burn(address _benefactor, uint256 _amount) internal {
+    require(_balances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
+    require(_delegatedBalances[_benefactor][_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
+    require(_ownedBalances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
+
+    totalStakedSpace -= _amount;
+
+    _debitAccount(_benefactor, _benefactor, _amount);
+
+    _ownedBalances[_benefactor] -= _amount;
+
+    emit Burn(_benefactor, _amount);
   }
 
   function _transfer(address _from, address _to, address _owner, uint256 _amount) internal {
     _debitAccount(_from, _owner, _amount);
     _creditAccount(_to, _owner, _amount);
+
+    emit Transfer(_from, _to, _amount);
   }
 
   function _creditAccount(address _account, address _owner, uint256 _amount) internal {
@@ -172,8 +108,8 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
   }
 
   function _debitAccount(address _account, address _owner, uint256 _amount) internal {
-    require(_balances[_account] >= _amount, "Not enough funds");
-    require(_delegatedBalances[_owner][_account] >= _amount, "Not enough funds");
+    require(_balances[_account] >= _amount, "LiquidRA: Not enough funds");
+    require(_delegatedBalances[_owner][_account] >= _amount, "LiquidRA: Not enough funds");
 
     _balances[_account] -= _amount;
     _delegatedBalances[_owner][_account] -= _amount;
@@ -198,10 +134,6 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
     }
 
     _creditAccount(msg.sender, msg.sender, _amount);
-  }
-
-  function spaceLockerRegistry() public view returns(ISpaceLockerRegistry) {
-    return ISpaceLockerRegistry(ggr.getSpaceLockerRegistryAddress());
   }
 
   // GETTERS
@@ -233,30 +165,6 @@ contract LiquidReputationAccounting is ISRA, Permissionable {
 
   function delegatedByCount(address _account) public view returns (uint256) {
     return _delegatedBy[_account].size();
-  }
-
-  function spaceTokenOwners() public view returns (address[] memory) {
-    return _spaceTokenOwners.elements();
-  }
-
-  function spaceTokenOwnersCount() public view returns (uint256) {
-    return _spaceTokenOwners.size();
-  }
-
-  function isMember(address _owner) public view returns (bool) {
-    return _spaceTokenOwners.has(_owner);
-  }
-
-  function ownerHasSpaceToken(address _owner, uint256 _spaceTokenId) public view returns (bool) {
-    return _spaceTokensByOwner[_owner].has(_spaceTokenId);
-  }
-
-  function spaceTokensByOwner(address _owner) public view returns (uint256[] memory) {
-    return _spaceTokensByOwner[_owner].elements();
-  }
-
-  function spaceTokensByOwnerCount(address _owner) public view returns (uint256) {
-    return _spaceTokensByOwner[_owner].size();
   }
 
   // ERC20 compatible

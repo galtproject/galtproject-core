@@ -14,13 +14,11 @@
 pragma solidity 0.5.3;
 
 
-interface ISRA {
-  // ERC20 compatible
-  function balanceOf(address owner) external view returns (uint256);
-
-  // ERC20 compatible
+contract IOracleStakeVoting {
+  function vote(address _candidate) external;
+  function onOracleStakeChanged(address _oracle, uint256 _newReputation)external;
+  function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation);
   function totalSupply() external view returns (uint256);
-
-  // Ping-Pong Handshake
-  function ping() external pure returns (bytes32);
+  function balanceOf(address _candidate) external view returns (uint256);
+  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
 }

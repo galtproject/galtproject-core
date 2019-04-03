@@ -15,21 +15,21 @@ pragma solidity ^0.5.3;
 
 import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "../registries/interfaces/ISpaceLockerRegistry.sol";
-import "../SpaceReputationAccounting.sol";
+import "../registries/interfaces/ILockerRegistry.sol";
+import "../reputation/SpaceRA.sol";
 
 
-contract MockSRA is SpaceReputationAccounting {
+contract MockSpaceRA is SpaceRA {
   constructor(
     GaltGlobalRegistry _ggr
   )
     public
-    SpaceReputationAccounting(_ggr)
+    SpaceRA(_ggr)
   {
   }
 
   function mintHack(address _beneficiary, uint256 _amount, uint256 spaceToken) external {
-    _mint(_beneficiary, _amount, spaceToken);
+    _mint(_beneficiary, _amount);
   }
 
   function delegateHack(address _to, address _from, address _owner, uint256 _amount) external {
@@ -38,7 +38,8 @@ contract MockSRA is SpaceReputationAccounting {
   
   function mintAll(address[] calldata _addresses, uint256[] calldata _spaceTokens, uint256 _amount) external {
     for (uint256 i = 0; i < _addresses.length; i++) {
-      _mint(_addresses[i], _amount, _spaceTokens[i]);
+      _mint(_addresses[i], _amount);
+      _cacheSpaceTokenOwner(_addresses[i], _spaceTokens[i]);
     }
   }
 }
