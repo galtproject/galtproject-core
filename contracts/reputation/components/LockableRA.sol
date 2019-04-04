@@ -14,40 +14,31 @@
 pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./multisig/ArbitratorVoting.sol";
-import "./registries/MultiSigRegistry.sol";
-import "./registries/interfaces/ISpaceLockerRegistry.sol";
-import "./LiquidReputationAccounting.sol";
+import "../../registries/interfaces/IMultiSigRegistry.sol";
+import "./LiquidRA.sol";
+
+// LiquidRA - base class
+// SpaceInputRA - space input
+// GaltInputRA - galt input
+// LockableRA - lockable output
+// SharableRA - share calculation output
+
+// GaltRA  = LiquidRA + (GaltInputRA  + LockableRA)
+// SpaceRA = LiquidRA + (SpaceInputRA + LockableRA)
+// FundRA  = LiquidRA + (SpaceInputRA + SharableRA)
 
 
-// TODO: rename to ASRA
-contract SpaceReputationAccounting is LiquidReputationAccounting {
+contract LockableRA is LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  MultiSigRegistry multiSigRegistry;
-
   // Delegate => (MultiSig => locked amount)
+  // WARNING: name collision with parent class
   mapping(address => mapping(address => uint256)) private _locks;
   mapping(address => uint256) _totalLocked;
 
-  // L0
-  uint256 private totalStakedSpace;
-
-  constructor(
-    IERC721 _spaceToken,
-    MultiSigRegistry _multiSigRegistry,
-    ISpaceLockerRegistry _spaceLockerRegistry
-  )
-    public
-    LiquidReputationAccounting(_spaceToken, _spaceLockerRegistry)
-  {
-    multiSigRegistry = _multiSigRegistry;
-  }
+  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal;
 
   function revoke(address _from, uint256 _amount) public {
     require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");
@@ -64,10 +55,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _locks[_delegate][_multiSig] -= _amount;
     _revokeDelegated(_delegate, _amount);
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
-      .onDelegateReputationChanged(_delegate, _locks[_delegate][_multiSig]);
+    onDelegateReputationChanged(_multiSig, _delegate, _locks[_delegate][_multiSig]);
   }
 
   // PermissionED
@@ -77,10 +65,7 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _totalLocked[msg.sender] += _amount;
     _locks[msg.sender][_multiSig] += _amount;
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
-      .onDelegateReputationChanged(msg.sender, _locks[msg.sender][_multiSig]);
+    onDelegateReputationChanged(_multiSig, msg.sender, _locks[msg.sender][_multiSig]);
   }
 
   // PermissionED
@@ -96,10 +81,12 @@ contract SpaceReputationAccounting is LiquidReputationAccounting {
     _locks[msg.sender][_multiSig] -= _amount;
     _totalLocked[msg.sender] -= _amount;
 
-    multiSigRegistry
-      .getArbitrationConfig(_multiSig)
-      .getArbitratorVoting()
-      .onDelegateReputationChanged(msg.sender, afterUnlock);
+    onDelegateReputationChanged(_multiSig, msg.sender, afterUnlock);
+  }
+
+  function arbitrationConfig(address _multiSig) internal returns (IArbitrationConfig) {
+    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
+      .getArbitrationConfig(_multiSig);
   }
 
   // GETTERS

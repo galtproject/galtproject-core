@@ -23,12 +23,22 @@ import "../Oracles.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./PlotManagerLib.sol";
+import "../registries/GaltGlobalRegistry.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
 
 
 contract PlotManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+
+  bytes32 public constant PM_AUDITOR_ORACLE_TYPE = bytes32("PM_AUDITOR_ORACLE_TYPE");
+  bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
+  bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
+
+  bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
+  bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
+  bytes32 public constant CONFIG_PREFIX = bytes32("PM");
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -51,9 +61,11 @@ contract PlotManager is AbstractOracleApplication {
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
   event LogNewApplication(bytes32 id, address applicant);
+  event TokenMinted(bytes32 applicationId, uint256 tokenId, address beneficiary);
 
   struct Application {
     bytes32 id;
+    address multiSig;
     address applicant;
     address operator;
     uint256 spaceTokenId;
@@ -76,9 +88,9 @@ contract PlotManager is AbstractOracleApplication {
   struct ApplicationFees {
     uint256 totalPaidFee;
     uint256 oraclesReward;
-    uint256 galtSpaceReward;
+    uint256 galtProtocolFee;
     uint256 latestCommittedFee;
-    bool galtSpaceRewardPaidOut;
+    bool galtProtocolFeePaidOut;
   }
 
   struct ApplicationDetails {
@@ -92,53 +104,22 @@ contract PlotManager is AbstractOracleApplication {
     int256[] heights;
   }
 
-  // rate per one 12-symbol geohash in GALT
-  uint256 public submissionFeeRateGalt;
-  // rate per one 12-symbol geohash in ETH
-  uint256 public submissionFeeRateEth;
-
   mapping(bytes32 => Application) private applications;
-
-  ISpaceToken public spaceToken;
-  ISplitMerge public splitMerge;
-  Oracles public oracles;
-  IERC20 public galtToken;
-  IGeodesic public geodesic;
-  IPlotManagerFeeCalculator public feeCalculator;
 
   constructor () public {}
 
   function initialize(
-    ISpaceToken _spaceToken,
-    ISplitMerge _splitMerge,
-    Oracles _oracles,
-    IERC20 _galtToken,
-    IGeodesic _geodesic,
-    IPlotManagerFeeCalculator _feeCalculator,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     public
     isInitializer
   {
-    spaceToken = _spaceToken;
-    splitMerge = _splitMerge;
-    oracles = _oracles;
-    galtToken = _galtToken;
-    geodesic = _geodesic;
-    feeCalculator = _feeCalculator;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+    ggr = _ggr;
+    oracles = Oracles(ggr.getOraclesAddress());
 
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
+    // TODO: figure out where to store these values
     galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
-    // 1_000 gwei
-    submissionFeeRateEth = 1 szabo;
-    // 10_000 gwei
-    submissionFeeRateGalt = 10 szabo;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
+    galtSpaceGaltShare = 13;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -154,7 +135,8 @@ contract PlotManager is AbstractOracleApplication {
   modifier onlyOracleOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-    require(a.addressOracleTypes[msg.sender] != 0x0 && oracles.isOracleActive(msg.sender), "Not valid oracle");
+//    require(a.addressOracleTypes[msg.sender] != 0x0 && oracles.isOracleActive(msg.sender), "Not valid oracle");
+    require(a.addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
 
     _;
   }
@@ -165,8 +147,16 @@ contract PlotManager is AbstractOracleApplication {
     _;
   }
 
-  function setFeeCalculator(IPlotManagerFeeCalculator _feeCalculator) external onlyFeeManager {
-    feeCalculator = _feeCalculator;
+  function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
+    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
+  }
+
+  function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
+  }
+
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -182,6 +172,7 @@ contract PlotManager is AbstractOracleApplication {
   }
 
   function submitApplication(
+    address _multiSig,
     uint256[] calldata _packageContour,
     int256[] calldata _heights,
     int256 _level,
@@ -193,7 +184,6 @@ contract PlotManager is AbstractOracleApplication {
   )
     external
     payable
-    ready
     returns (bytes32)
   {
     require(
@@ -201,8 +191,11 @@ contract PlotManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
+    multiSigRegistry().requireValidMultiSig(_multiSig);
+
     bytes32 _id = keccak256(
       abi.encodePacked(
+        _multiSig,
         _packageContour,
         _credentialsHash,
         msg.sender,
@@ -211,13 +204,12 @@ contract PlotManager is AbstractOracleApplication {
     );
 
     Application storage a = applications[_id];
-//    ApplicationDetails storage details = a.details;
 
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
       a.details.areaSource = ISplitMerge.AreaSource.CONTRACT;
-      a.details.area = geodesic.calculateContourArea(_packageContour);
+      a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_packageContour);
     } else {
       a.details.area = _customArea;
       // Default a.areaSource is AreaSource.USER_INPUT
@@ -226,9 +218,10 @@ contract PlotManager is AbstractOracleApplication {
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(Currency.GALT, a.details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(_multiSig, Currency.GALT, a.details.area), "Incorrect fee passed in");
 
-      galtToken.transferFrom(msg.sender, address(this), _submissionFeeInGalt);
+      require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
 
       a.fees.totalPaidFee = _submissionFeeInGalt;
       a.currency = Currency.GALT;
@@ -238,12 +231,13 @@ contract PlotManager is AbstractOracleApplication {
       // Default a.currency is Currency.ETH
 
       require(
-        msg.value >= getSubmissionFeeByArea(Currency.ETH, a.details.area),
+        msg.value >= getSubmissionFeeByArea(_multiSig, Currency.ETH, a.details.area),
         "Incorrect msg.value passed in");
     }
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
+    a.multiSig = _multiSig;
     a.applicant = msg.sender;
 
     calculateAndStoreFee(a, a.fees.totalPaidFee);
@@ -338,8 +332,8 @@ contract PlotManager is AbstractOracleApplication {
       fee = msg.value;
     }
 
-    uint256 area = geodesic.calculateContourArea(_newPackageContour);
-    uint256 newMinimalFee = getSubmissionFeeByArea(a.currency, area);
+    uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newPackageContour);
+    uint256 newMinimalFee = getSubmissionFeeByArea(a.multiSig, a.currency, area);
     uint256 alreadyPaid = a.fees.latestCommittedFee;
 
     if (newMinimalFee > alreadyPaid) {
@@ -353,7 +347,7 @@ contract PlotManager is AbstractOracleApplication {
   // Application can be locked by an oracle type only once.
   function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
-    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
+//    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
 
     require(
       a.status == ApplicationStatus.SUBMITTED,
@@ -425,10 +419,12 @@ contract PlotManager is AbstractOracleApplication {
       a.status == ApplicationStatus.APPROVED,
       "Application status should be APPROVED");
 
-    spaceToken.transferFrom(address(this), a.applicant, a.spaceTokenId);
+    ggr.getSpaceToken().transferFrom(address(this), a.applicant, a.spaceTokenId);
   }
 
   function mintToken(Application storage a) internal {
+    ISplitMerge splitMerge = ISplitMerge(ggr.getSplitMergeAddress());
+
     uint256 tokenId = splitMerge.initPackage(address(this));
 
     a.spaceTokenId = tokenId;
@@ -438,6 +434,8 @@ contract PlotManager is AbstractOracleApplication {
     splitMerge.setPackageLevel(tokenId, a.details.level);
     splitMerge.setTokenArea(tokenId, a.details.area, a.details.areaSource);
     splitMerge.setTokenInfo(tokenId, a.details.ledgerIdentifier, a.details.description);
+
+    emit TokenMinted(a.id, tokenId, a.applicant);
   }
 
   function rejectApplication(
@@ -448,6 +446,7 @@ contract PlotManager is AbstractOracleApplication {
     onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
+    // TODO: merge into the contract
     PlotManagerLib.rejectApplicationHelper(a, _message);
 
     changeValidationStatus(a, a.addressOracleTypes[msg.sender], ValidationStatus.REJECTED);
@@ -513,40 +512,24 @@ contract PlotManager is AbstractOracleApplication {
 
     a.oracleTypeRewardPaidOut[senderOracleType] = true;
 
+    _assignGaltProtocolFee(a);
+
     if (a.currency == Currency.ETH) {
       msg.sender.transfer(reward);
     } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, reward);
-    } else {
-      revert("Unknown currency");
+      ggr.getGaltToken().transfer(msg.sender, reward);
     }
   }
 
-  function claimGaltSpaceReward(
-    bytes32 _aId
-  )
-    external
-  {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.fees.galtProtocolFeePaidOut == false) {
+      if (_a.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+      } else if (_a.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+      }
 
-    Application storage a = applications[_aId];
-
-    /* solium-disable-next-line */
-    require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
-      "Application status should be APPROVED, REJECTED or CLOSED");
-
-    require(a.fees.galtSpaceReward > 0, "Reward is 0");
-    require(a.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.fees.galtSpaceRewardPaidOut = true;
-
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(a.fees.galtSpaceReward);
-    } else if (a.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.fees.galtSpaceReward);
-    } else {
-      revert("Unknown currency");
+      _a.fees.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -564,13 +547,13 @@ contract PlotManager is AbstractOracleApplication {
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 oraclesReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 oraclesReward = _fee.sub(galtProtocolFee);
 
-    assert(oraclesReward.add(galtSpaceReward) == _fee);
+    assert(oraclesReward.add(galtProtocolFee) == _fee);
 
     _a.fees.oraclesReward = oraclesReward;
-    _a.fees.galtSpaceReward = galtSpaceReward;
+    _a.fees.galtProtocolFee = galtProtocolFee;
 
     _a.fees.latestCommittedFee = _fee;
   }
@@ -580,14 +563,16 @@ contract PlotManager is AbstractOracleApplication {
 
     uint256 totalReward = 0;
 
-    a.assignedOracleTypes = oracles.getApplicationTypeOracleTypes(APPLICATION_TYPE);
+    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE, PM_AUDITOR_ORACLE_TYPE];
+    // TODO: fetch information about role shares from multiSig config
+
     uint256 len = a.assignedOracleTypes.length;
     for (uint8 i = 0; i < len; i++) {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
       .fees
       .oraclesReward
-      .mul(oracles.getOracleTypeRewardShare(oracleType))
+      .mul(oracleTypeShare(a.multiSig, oracleType))
       .div(100);
 
       a.assignedRewards[oracleType] = rewardShare;
@@ -683,9 +668,9 @@ contract PlotManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       uint256 oraclesReward,
-      uint256 galtSpaceReward,
+      uint256 galtProtocolFee,
       uint256 latestCommittedFee,
-      bool galtSpaceRewardPaidOut
+      bool galtProtocolFeePaidOut
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -696,9 +681,9 @@ contract PlotManager is AbstractOracleApplication {
       m.status,
       m.currency,
       m.fees.oraclesReward,
-      m.fees.galtSpaceReward,
+      m.fees.galtProtocolFee,
       m.fees.latestCommittedFee,
-      m.fees.galtSpaceRewardPaidOut
+      m.fees.galtProtocolFeePaidOut
     );
   }
 
@@ -743,11 +728,11 @@ contract PlotManager is AbstractOracleApplication {
   /**
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
    */
-  function getSubmissionFeeByArea(Currency _currency, uint256 _area) public view returns (uint256) {
+  function getSubmissionFeeByArea(address _multiSig, Currency _currency, uint256 _area) public view returns (uint256) {
     if (_currency == Currency.GALT) {
-      return feeCalculator.calculateGaltFee(_area);
+      return feeCalculator(_multiSig).calculateGaltFee(_area);
     } else {
-      return feeCalculator.calculateEthFee(_area);
+      return feeCalculator(_multiSig).calculateEthFee(_area);
     }
   }
 
@@ -756,7 +741,7 @@ contract PlotManager is AbstractOracleApplication {
    */
   function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
     Application storage a = applications[_aId];
-    uint256 newTotalFee = getSubmissionFeeByArea(a.currency, _area);
+    uint256 newTotalFee = getSubmissionFeeByArea(a.multiSig, a.currency, _area);
     uint256 latest = a.fees.latestCommittedFee;
 
     if (newTotalFee <= latest) {

@@ -3,6 +3,9 @@ const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
@@ -10,27 +13,27 @@ const {
   initHelperArtifacts,
   assertEthBalanceChanged,
   ether,
+  numberToEvmWord,
   assertEqualBN,
   assertRevert,
-  zeroAddress,
-  deploySplitMerge,
+  deploySplitMergeMock,
   clearLibCache,
   applicationStatus
 } = require('../../helpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(PlotCustodianManager.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
-const VALUATION_APPLICATION = '0x619647f9036acf2e8ad4ea6c06ae7256e68496af59818a2b63e51b27a46624e9';
 const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
+const FAKE_APPLICATION = '0x6421c172ed119558ac0b0fb3c16787d36451c23d21b46c87fc94aee231f08823';
 
 const PV_APPRAISER_ORACLE_TYPE = bytes32('PV_APPRAISER_ORACLE_TYPE');
 const PV_APPRAISER2_ORACLE_TYPE = bytes32('PV_APPRAISER2_ORACLE_TYPE');
 const PV_AUDITOR_ORACLE_TYPE = bytes32('PV_AUDITOR_ORACLE_TYPE');
-const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
-const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
+const PC_CUSTODIAN = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
+const PC_AUDITOR = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
 const FOO = bytes32('foo');
 const BAR = bytes32('bar');
@@ -76,16 +79,16 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract('PlotCustodianManager', (accounts) => {
-  before(clearLibCache);
   const [
     coreTeam,
-    galtSpaceOrg,
-    feeManager,
+    feeMixerAddress,
     multiSigX,
     stakesNotifier,
     minter,
+    claimManagerAddress,
     applicationTypeManager,
     manualCustodianManager,
+    spaceRA,
     oracleManager,
     alice,
     bob,
@@ -96,7 +99,9 @@ contract('PlotCustodianManager', (accounts) => {
     george
   ] = accounts;
 
-  beforeEach(async function() {
+  before(async function() {
+    clearLibCache();
+
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
     this.attachedDocuments = [
@@ -111,35 +116,66 @@ contract('PlotCustodianManager', (accounts) => {
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
     this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    const deployment = await deploySplitMergeMock(this.ggr);
+    this.splitMerge = deployment.splitMerge;
+    this.geodesic = deployment.geodesic;
 
-    this.splitMerge = await deploySplitMerge(this.spaceToken.address);
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, {
+      from: coreTeam
+    });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
+      from: coreTeam
+    });
+    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
-    await this.plotCustodianManager.initialize(
-      this.spaceToken.address,
-      this.splitMerge.address,
-      this.oracles.address,
-      this.galtToken.address,
-      // PlotEscrow integration doesn't required here
-      zeroAddress,
-      this.spaceCustodianRegistry.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+
+    const applicationConfig = {};
+    applicationConfig[bytes32('PC_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
+    applicationConfig[bytes32('PC_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
+    applicationConfig[bytes32('PC_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
+    // [52, 47, 1],
+    applicationConfig[await this.plotCustodianManager.getOracleTypeShareKey(PC_CUSTODIAN)] = numberToEvmWord(60);
+    applicationConfig[await this.plotCustodianManager.getOracleTypeShareKey(PC_AUDITOR)] = numberToEvmWord(40);
+
+    this.abX = await buildArbitration(
+      this.multiSigFactory,
+      [bob, charlie, dan, eve, frank],
+      3,
+      7,
+      10,
+      60,
+      ether(1000),
+      [30, 30, 30, 30, 30, 30],
+      applicationConfig,
+      alice
     );
-    await this.splitMerge.initialize(this.spaceToken.address, {
-      from: coreTeam
-    });
-    await this.plotCustodianManager.addRoleTo(galtSpaceOrg, await this.plotCustodianManager.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-    await this.plotCustodianManager.addRoleTo(feeManager, await this.plotCustodianManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
+
+    this.mX = this.abX.multiSig.address;
+    this.abMultiSigX = this.abX.multiSig;
+    this.abConfig = this.abX.config;
+    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.abVotingX = this.abX.voting;
+
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });
@@ -158,26 +194,21 @@ contract('PlotCustodianManager', (accounts) => {
     await this.splitMerge.addRoleTo(minter, await this.splitMerge.GEO_DATA_MANAGER(), {
       from: coreTeam
     });
-    await this.spaceCustodianRegistry.addRoleTo(
-      this.plotCustodianManager.address,
-      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
-      {
-        from: coreTeam
-      }
-    );
 
-    await this.spaceCustodianRegistry.addRoleTo(
-      manualCustodianManager,
-      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
-      {
-        from: coreTeam
-      }
+    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
+      FAKE_APPLICATION,
+      [FOO, BAR, BUZZ],
+      [50, 25, 25],
+      [ES, ES, ES],
+      { from: applicationTypeManager }
     );
-
-    await this.plotCustodianManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.plotCustodianManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.plotCustodianManager.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.plotCustodianManager.setGaltSpaceGaltShare(13, { from: feeManager });
+    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
+      CUSTODIAN_APPLICATION,
+      [PC_CUSTODIAN, PC_AUDITOR],
+      [60, 40],
+      [ES, ES],
+      { from: applicationTypeManager }
+    );
 
     await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
@@ -190,181 +221,93 @@ contract('PlotCustodianManager', (accounts) => {
       from: applicationTypeManager
     });
     await this.oracles.setOracleTypeMinimalDeposit(PV_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
+    await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN, ether(30), {
       from: applicationTypeManager
     });
-    await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
+    await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR, ether(30), { from: applicationTypeManager });
 
-    await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+    await this.spaceCustodianRegistry.addRoleTo(
+      manualCustodianManager,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
+
+    await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [PC_CUSTODIAN, FOO], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [PC_CUSTODIAN, PC_AUDITOR, BAR], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [BUZZ], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PC_AUDITOR], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [PC_CUSTODIAN], {
+      from: oracleManager
+    });
+    await this.oracles.addOracle(multiSigX, george, GEORGE, MN, '', [], [PC_CUSTODIAN], {
+      from: oracleManager
+    });
+
+    // bob
+    await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN, ether(30), {
+      from: stakesNotifier
+    });
+    await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
+
+    // charlie
+    await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN, ether(30), {
+      from: stakesNotifier
+    });
+    await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR, ether(30), {
+      from: stakesNotifier
+    });
+    await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
+
+    // dan
+    await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
+
+    // eve
+    await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR, ether(30), {
+      from: stakesNotifier
+    });
+
+    // frank
+    await this.oracles.onOracleStakeChanged(frank, PC_CUSTODIAN, ether(30), {
+      from: stakesNotifier
+    });
+
+    // george
+    await this.oracles.onOracleStakeChanged(george, PC_CUSTODIAN, ether(30), {
+      from: stakesNotifier
+    });
+  });
+
+  beforeEach(async function() {
+    this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
+
+    await this.plotCustodianManager.initialize(this.ggr.address, {
+      from: coreTeam
+    });
+    await this.spaceCustodianRegistry.addRoleTo(
+      this.plotCustodianManager.address,
+      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
+      {
+        from: coreTeam
+      }
+    );
   });
 
   it('should be initialized successfully', async function() {
-    assert.equal(await this.plotCustodianManager.minimalApplicationFeeInEth(), ether(6));
-  });
-
-  describe('contract config modifiers', () => {
-    describe('#setGaltSpaceRewardsAddress()', () => {
-      it('should allow galt space set rewards address', async function() {
-        await this.plotCustodianManager.setGaltSpaceRewardsAddress(bob, { from: galtSpaceOrg });
-      });
-
-      it('should deny non-owner set rewards address', async function() {
-        await assertRevert(this.plotCustodianManager.setGaltSpaceRewardsAddress(bob, { from: alice }));
-      });
-    });
-
-    describe('#setPaymentMethod()', () => {
-      it('should allow an owner set a payment method', async function() {
-        await this.plotCustodianManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
-        const res = await this.plotCustodianManager.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_ONLY);
-      });
-
-      it('should deny non-owner set a payment method', async function() {
-        await assertRevert(this.plotCustodianManager.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
-        const res = await this.plotCustodianManager.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_AND_GALT);
-      });
-    });
-
-    describe('#setApplicationFeeInEth()', () => {
-      it('should allow an owner set a new minimum fee in ETH', async function() {
-        await this.plotCustodianManager.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
-        const res = await this.plotCustodianManager.minimalApplicationFeeInEth();
-        assert.equal(res, ether(0.05));
-      });
-
-      it('should deny any other than owner person set fee in ETH', async function() {
-        await assertRevert(this.plotCustodianManager.setMinimalApplicationFeeInEth(ether(0.05), { from: alice }));
-      });
-    });
-
-    describe('#setApplicationFeeInGalt()', () => {
-      it('should allow an owner set a new minimum fee in GALT', async function() {
-        await this.plotCustodianManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
-        const res = await this.plotCustodianManager.minimalApplicationFeeInGalt();
-        assert.equal(res, ether(0.15));
-      });
-
-      it('should deny any other than owner person set fee in GALT', async function() {
-        await assertRevert(this.plotCustodianManager.setMinimalApplicationFeeInGalt(ether(0.15), { from: alice }));
-      });
-    });
-
-    describe('#setGaltSpaceEthShare()', () => {
-      it('should allow an owner set galtSpace ETH share in percents', async function() {
-        await this.plotCustodianManager.setGaltSpaceEthShare('42', { from: feeManager });
-        const res = await this.plotCustodianManager.galtSpaceEthShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
-        await assertRevert(this.plotCustodianManager.setGaltSpaceEthShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotCustodianManager.setGaltSpaceEthShare('20', { from: alice }));
-      });
-    });
-
-    describe('#setGaltSpaceGaltShare()', () => {
-      it('should allow an owner set galtSpace Galt share in percents', async function() {
-        await this.plotCustodianManager.setGaltSpaceGaltShare('42', { from: feeManager });
-        const res = await this.plotCustodianManager.galtSpaceGaltShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
-        await assertRevert(this.plotCustodianManager.setGaltSpaceGaltShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.plotCustodianManager.setGaltSpaceGaltShare('20', { from: alice }));
-      });
-    });
+    assert.equal(await this.plotCustodianManager.ggr(), this.ggr.address);
   });
 
   describe('application pipeline for GALT', () => {
     beforeEach(async function() {
-      this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        NEW_APPLICATION,
-        [FOO, BAR, BUZZ],
-        [50, 25, 25],
-        [ES, ES, ES],
-        { from: applicationTypeManager }
-      );
-
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        VALUATION_APPLICATION,
-        [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
-        [50, 25, 25],
-        [ES, ES, ES],
-        { from: applicationTypeManager }
-      );
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        [60, 40],
-        [ES, ES],
-        { from: applicationTypeManager }
-      );
-
-      await this.oracles.addOracle(
-        multiSigX,
-        bob,
-        BOB,
-        MN,
-        '',
-        [],
-        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(
-        multiSigX,
-        charlie,
-        CHARLIE,
-        MN,
-        '',
-        [],
-        [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-
-      await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-
       let res = await this.spaceToken.mint(alice, { from: minter });
       this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
@@ -374,9 +317,16 @@ contract('PlotCustodianManager', (accounts) => {
     describe('#submit()', () => {
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
-        let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], ether(45), {
-          from: alice
-        });
+        let res = await this.plotCustodianManager.submit(
+          this.abMultiSigX.address,
+          this.spaceTokenId,
+          Action.ATTACH,
+          [bob],
+          ether(45),
+          {
+            from: alice
+          }
+        );
         this.aId = res.logs[0].args.id;
         res = await this.plotCustodianManager.getApplicationById(this.aId);
         assert.equal(res.status, applicationStatus.SUBMITTED);
@@ -385,18 +335,32 @@ contract('PlotCustodianManager', (accounts) => {
       it('should deny attaching non-unique custodians', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
         await assertRevert(
-          this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, bob], ether(45), {
-            from: alice
-          })
+          this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, bob],
+            ether(45),
+            {
+              from: alice
+            }
+          )
         );
       });
 
       it('should deny detaching non-attached custodian', async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
         await assertRevert(
-          this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [bob], ether(45), {
-            from: alice
-          })
+          this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.DETACH,
+            [bob],
+            ether(45),
+            {
+              from: alice
+            }
+          )
         );
       });
 
@@ -404,7 +368,7 @@ contract('PlotCustodianManager', (accounts) => {
         it('should reject applications without payment', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
+            this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
               from: alice
             })
           );
@@ -413,24 +377,38 @@ contract('PlotCustodianManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(45), { from: alice });
           await assertRevert(
-            this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [bob], ether(43), {
-              from: alice
-            })
+            this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.DETACH,
+              [bob],
+              ether(43),
+              {
+                from: alice
+              }
+            )
           );
         });
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
-          let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], ether(47), {
-            from: alice
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob],
+            ether(47),
+            {
+              from: alice
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           // oracle share - 87%
           // galtspace share - 13%
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceReward, '6110000000000000000');
+          assert.equal(res.galtProtocolFee, '6110000000000000000');
           assert.equal(res.oraclesReward, '40890000000000000000');
           assert.equal(res.totalCustodiansReward, '24534000000000000000');
           assert.equal(res.auditorReward, '16356000000000000000');
@@ -442,6 +420,7 @@ contract('PlotCustodianManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.plotCustodianManager.address, ether(47), { from: alice });
         const res = await this.plotCustodianManager.submit(
+          this.abMultiSigX.address,
           this.spaceTokenId,
           Action.ATTACH,
           [bob, charlie],
@@ -471,13 +450,13 @@ contract('PlotCustodianManager', (accounts) => {
         it('should be allowed', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           let res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.COMPLETED);
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -494,24 +473,24 @@ contract('PlotCustodianManager', (accounts) => {
         it('should send funds to claimers', async function() {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-          assert.equal(res.galtSpaceReward, 6110000000000000000);
+          assert.equal(res.galtProtocolFee, 6110000000000000000);
           assert.equal(res.oraclesReward, 40890000000000000000);
           assert.equal(res.totalCustodiansReward, 24534000000000000000);
           assert.equal(res.custodianReward, 8178000000000000000);
           assert.equal(res.auditorReward, 16356000000000000000);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8178000000000000000')));
@@ -522,20 +501,17 @@ contract('PlotCustodianManager', (accounts) => {
         it('should revert on double claim', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
 
         it('should revert on non-oracle claim', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
         });
 
         it('should revert on applicant claim attempt', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
         });
       });
 
@@ -548,13 +524,13 @@ contract('PlotCustodianManager', (accounts) => {
         it('should be allowed', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           let res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.CLOSED);
 
           res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtSpaceRewardPaidOut, true);
+          assert.equal(res.galtProtocolFeePaidOut, true);
           assert.equal(res.auditorRewardPaidOut, true);
 
           res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -571,15 +547,15 @@ contract('PlotCustodianManager', (accounts) => {
         it('should send funds to claimers', async function() {
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
           const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
           const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
-          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(galtSpaceOrg)).toString());
+          const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
           assertEqualBN(bobsFinalBalance, bobsInitialBalance.add(new BN('8178000000000000000')));
           assertEqualBN(evesFinalBalance, evesInitialBalance.add(new BN('16356000000000000000')));
@@ -589,20 +565,17 @@ contract('PlotCustodianManager', (accounts) => {
         it('should revert on double claim', async function() {
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
           await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-          await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+          await this.plotCustodianManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
 
         it('should revert on non-oracle claim', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
         });
 
         it('should revert on applicant claim attempt', async function() {
           await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-          await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
         });
       });
     });
@@ -610,97 +583,6 @@ contract('PlotCustodianManager', (accounts) => {
 
   describe('application pipeline for ETH', () => {
     beforeEach(async function() {
-      this.resNewAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        NEW_APPLICATION,
-        [FOO, BAR, BUZZ],
-        [50, 25, 25],
-        [ES, ES, ES],
-        { from: applicationTypeManager }
-      );
-
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        VALUATION_APPLICATION,
-        [PV_APPRAISER_ORACLE_TYPE, PV_APPRAISER2_ORACLE_TYPE, PV_AUDITOR_ORACLE_TYPE],
-        [50, 25, 25],
-        [ES, ES, ES],
-        { from: applicationTypeManager }
-      );
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        [60, 40],
-        [ES, ES],
-        { from: applicationTypeManager }
-      );
-
-      await this.oracles.addOracle(
-        multiSigX,
-        bob,
-        BOB,
-        MN,
-        '',
-        [],
-        [PV_APPRAISER_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE, FOO],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(
-        multiSigX,
-        charlie,
-        CHARLIE,
-        MN,
-        '',
-        [],
-        [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [PV_APPRAISER2_ORACLE_TYPE, BUZZ], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PV_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(multiSigX, george, GEORGE, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE], {
-        from: oracleManager
-      });
-
-      await this.oracles.onOracleStakeChanged(bob, PV_APPRAISER_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(dan, PV_APPRAISER2_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
-      await this.oracles.onOracleStakeChanged(eve, PV_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(frank, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-      await this.oracles.onOracleStakeChanged(george, PC_CUSTODIAN_ORACLE_TYPE, ether(30), {
-        from: stakesNotifier
-      });
-
       let res = await this.spaceToken.mint(alice, { from: minter });
       this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
 
@@ -711,10 +593,17 @@ contract('PlotCustodianManager', (accounts) => {
     describe('without current custodians exist', () => {
       describe('#submit() by an applicant', () => {
         it('should allow an applicant pay commission in ETH', async function() {
-          let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           res = await this.plotCustodianManager.getApplicationById(this.aId);
           assert.equal(res.status, applicationStatus.SUBMITTED);
@@ -722,7 +611,7 @@ contract('PlotCustodianManager', (accounts) => {
 
         it('should reject applications if chosen custodian is invalid', async function() {
           await assertRevert(
-            this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [dan], 0, {
+            this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.DETACH, [dan], 0, {
               from: alice,
               value: ether(20)
             })
@@ -732,7 +621,7 @@ contract('PlotCustodianManager', (accounts) => {
         describe('payable', () => {
           it('should reject applications without payment', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
+              this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
                 from: alice
               })
             );
@@ -740,7 +629,7 @@ contract('PlotCustodianManager', (accounts) => {
 
           it('should reject applications with payment which less than required', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
+              this.plotCustodianManager.submit(this.abMultiSigX.address, this.spaceTokenId, Action.ATTACH, [bob], 0, {
                 from: alice,
                 value: 10
               })
@@ -748,24 +637,38 @@ contract('PlotCustodianManager', (accounts) => {
           });
 
           it('should allow applications with payment greater than required', async function() {
-            await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
-              from: alice,
-              value: ether(23)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob],
+              0,
+              {
+                from: alice,
+                value: ether(23)
+              }
+            );
           });
 
           it('should calculate corresponding oracle and galtspace rewards', async function() {
-            let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            let res = await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
             this.aId = res.logs[0].args.id;
             // oracle share - 67%
             // galtspace share - 33%
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, '2310000000000000000');
+            assert.equal(res.galtProtocolFee, '2310000000000000000');
             assert.equal(res.oraclesReward, '4690000000000000000');
             assert.equal(res.totalCustodiansReward, '2814000000000000000');
             assert.equal(res.auditorReward, '1876000000000000000');
@@ -775,10 +678,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#accept() by a modifying custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
         });
 
@@ -812,10 +722,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#revert() by a new custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
         });
 
@@ -842,10 +759,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#resubmit() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.revert(this.aId, { from: bob });
         });
@@ -887,10 +811,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#attachToken() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -916,10 +847,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#attachDocuments() by a custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -950,10 +888,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#audotirLock() by an auditor', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -997,10 +942,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#approve() by 4 of 4 (applicant, custodian and auditors)', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -1047,10 +999,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#reject() by custodian', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -1078,10 +1037,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#withdrawToken() by an applicant', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -1118,10 +1084,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('#close() by an applicant', () => {
         beforeEach(async function() {
-          let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           await this.plotCustodianManager.accept(this.aId, { from: bob });
@@ -1174,10 +1147,17 @@ contract('PlotCustodianManager', (accounts) => {
 
       describe('claim reward', () => {
         beforeEach(async function() {
-          const res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, charlie], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          const res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, charlie],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: charlie });
@@ -1199,13 +1179,13 @@ contract('PlotCustodianManager', (accounts) => {
           it('should be allowed', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             let res = await this.plotCustodianManager.getApplicationById(this.aId);
             assert.equal(res.status, applicationStatus.COMPLETED);
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -1222,24 +1202,24 @@ contract('PlotCustodianManager', (accounts) => {
           it('should send funds to claimers', async function() {
             const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, 2310000000000000000);
+            assert.equal(res.galtProtocolFee, 2310000000000000000);
             assert.equal(res.oraclesReward, 4690000000000000000);
             assert.equal(res.totalCustodiansReward, 2814000000000000000);
             assert.equal(res.custodianReward, 938000000000000000);
             assert.equal(res.auditorReward, 1876000000000000000);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.938));
@@ -1250,20 +1230,17 @@ contract('PlotCustodianManager', (accounts) => {
           it('should revert on double claim', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
           });
 
           it('should revert on non-oracle claim', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
           });
 
           it('should revert on applicant claim attempt', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
           });
         });
 
@@ -1276,13 +1253,13 @@ contract('PlotCustodianManager', (accounts) => {
           it('should be allowed', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             let res = await this.plotCustodianManager.getApplicationById(this.aId);
             assert.equal(res.status, applicationStatus.CLOSED);
 
             res = await this.plotCustodianManager.getApplicationRewards(this.aId);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             res = await this.plotCustodianManager.getApplicationCustodian(this.aId, bob);
@@ -1299,24 +1276,24 @@ contract('PlotCustodianManager', (accounts) => {
           it('should send funds to claimers', async function() {
             const bobsInitialBalance = new BN(await web3.eth.getBalance(bob));
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsInitialBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
-            const orgsFinalBalance = new BN(await web3.eth.getBalance(galtSpaceOrg));
+            const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
             const res = await this.plotCustodianManager.getApplicationRewards(this.aId);
 
-            assert.equal(res.galtSpaceReward, 2310000000000000000);
+            assert.equal(res.galtProtocolFee, 2310000000000000000);
             assert.equal(res.oraclesReward, 4690000000000000000);
             assert.equal(res.totalCustodiansReward, 2814000000000000000);
             assert.equal(res.custodianReward, 938000000000000000);
             assert.equal(res.auditorReward, 1876000000000000000);
-            assert.equal(res.galtSpaceRewardPaidOut, true);
+            assert.equal(res.galtProtocolFeePaidOut, true);
             assert.equal(res.auditorRewardPaidOut, true);
 
             assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.938));
@@ -1327,20 +1304,17 @@ contract('PlotCustodianManager', (accounts) => {
           it('should revert on double claim', async function() {
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: bob });
             await this.plotCustodianManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
+            await this.plotCustodianManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: bob }));
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: eve }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
           });
 
           it('should revert on non-oracle claim', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: bob }));
           });
 
           it('should revert on applicant claim attempt', async function() {
             await assertRevert(this.plotCustodianManager.claimOracleReward(this.aId, { from: alice }));
-            await assertRevert(this.plotCustodianManager.claimGaltSpaceReward(this.aId, { from: alice }));
           });
         });
       });
@@ -1359,26 +1333,47 @@ contract('PlotCustodianManager', (accounts) => {
         describe('#submit()', () => {
           it('should deny attaching existing custodians', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, frank], 0, {
-                from: alice,
-                value: ether(7)
-              })
+              this.plotCustodianManager.submit(
+                this.abMultiSigX.address,
+                this.spaceTokenId,
+                Action.ATTACH,
+                [bob, frank],
+                0,
+                {
+                  from: alice,
+                  value: ether(7)
+                }
+              )
             );
           });
 
           it('should allow submitting non existing custodians', async function() {
-            await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.ATTACH,
+              [bob, george],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
           });
         });
 
         it('should allow simple pipeline', async function() {
-          let res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.ATTACH, [bob, george], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          let res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.ATTACH,
+            [bob, george],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
           await this.plotCustodianManager.accept(this.aId, { from: bob });
           await this.plotCustodianManager.accept(this.aId, { from: george });
@@ -1411,20 +1406,34 @@ contract('PlotCustodianManager', (accounts) => {
         describe('#submit()', () => {
           it('should deny detaching non-existing custodians', async function() {
             await assertRevert(
-              this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [bob, frank], 0, {
-                from: alice,
-                value: ether(7)
-              })
+              this.plotCustodianManager.submit(
+                this.abMultiSigX.address,
+                this.spaceTokenId,
+                Action.DETACH,
+                [bob, frank],
+                0,
+                {
+                  from: alice,
+                  value: ether(7)
+                }
+              )
             );
           });
 
           it('should allow detaching existing custodians', async function() {
             const res = await this.spaceCustodianRegistry.spaceCustodians(this.spaceTokenId);
             assert.sameMembers(res, [charlie, frank]);
-            await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, frank], 0, {
-              from: alice,
-              value: ether(7)
-            });
+            await this.plotCustodianManager.submit(
+              this.abMultiSigX.address,
+              this.spaceTokenId,
+              Action.DETACH,
+              [charlie, frank],
+              0,
+              {
+                from: alice,
+                value: ether(7)
+              }
+            );
           });
         });
 
@@ -1439,10 +1448,17 @@ contract('PlotCustodianManager', (accounts) => {
           assert.sameMembers(res, this.attachedDocuments);
 
           // Now there are 4 custodians: [charlie, frank, bob, george]
-          res = await this.plotCustodianManager.submit(this.spaceTokenId, Action.DETACH, [charlie, george], 0, {
-            from: alice,
-            value: ether(7)
-          });
+          res = await this.plotCustodianManager.submit(
+            this.abMultiSigX.address,
+            this.spaceTokenId,
+            Action.DETACH,
+            [charlie, george],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          );
           this.aId = res.logs[0].args.id;
 
           await this.plotCustodianManager.accept(this.aId, { from: charlie });

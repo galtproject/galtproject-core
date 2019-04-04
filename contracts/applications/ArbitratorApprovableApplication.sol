@@ -62,19 +62,16 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     uint256 totalReward;
 
-    // arbitratorsReward + galtSpaceReward = totalReward
+    // arbitratorsReward + galtProtocolFee = totalReward
     uint256 arbitratorsReward;
-    uint256 galtSpaceReward;
+    uint256 galtProtocolFee;
 
     // a single arbitrator reward
     uint256 arbitratorReward;
 
     mapping(address => bool) arbitratorRewardPaidOut;
-    bool galtSpaceRewardPaidOut;
+    bool galtProtocolFeePaidOut;
   }
-
-  uint256 m;
-  uint256 n;
 
   mapping(bytes32 => Application) applications;
 
@@ -83,14 +80,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   constructor() public {}
 
   function _execute(bytes32) internal;
-
-  function setMofN(uint256 _m, uint256 _n) external onlyRole(ROLE_GALT_SPACE) {
-    require(2 <= _m, "Should satisfy `2 <= n`");
-    require(_m <= _n, "Should satisfy `n <= m`");
-
-    m = _m;
-    n = _n;
-  }
+  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256);
+  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256);
+  function m(address _multiSig) public view returns (uint256);
+  function n(address _multiSig) public view returns (uint256);
 
   /**
    * @dev Any arbitrator locks an application if an empty slots available
@@ -99,16 +92,16 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   function lock(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
-    multiSigRegistry.requireValidMultiSig(a.multiSig);
+    multiSigRegistry().requireValidMultiSig(a.multiSig);
     require(ArbitratorsMultiSig(a.multiSig).isOwner(msg.sender), "Not active arbitrator");
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(a.arbitrators.size() < n, "All arbitrator slots are locked");
+    require(a.arbitrators.size() < n(a.multiSig), "All arbitrator slots are locked");
 
     a.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n);
+    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n(a.multiSig));
   }
 
   function aye(bytes32 _aId) external {
@@ -169,58 +162,39 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     a.fees.arbitratorRewardPaidOut[msg.sender] = true;
 
+    _assignGaltProtocolFee(a);
+
     if (a.fees.currency == Currency.ETH) {
       msg.sender.transfer(a.fees.arbitratorReward);
     } else if (a.fees.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.fees.arbitratorReward);
+      ggr.getGaltToken().transfer(msg.sender, a.fees.arbitratorReward);
     }
   }
 
-  function claimGaltSpaceReward(bytes32 _aId) external {
-    require(msg.sender == galtSpaceRewardsAddress, "The method call allowed only for galtSpace address");
+  function _assignGaltProtocolFee(Application storage _a) internal {
+    if (_a.fees.galtProtocolFeePaidOut == false) {
+      if (_a.fees.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+      } else if (_a.fees.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+      }
 
-    Application storage a = applications[_aId];
-
-    /* solium-disable-next-line */
-    require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
-      "Application status should be APPROVED or REJECTED");
-
-    require(a.fees.galtSpaceReward > 0, "Reward is 0");
-    require(a.fees.galtSpaceRewardPaidOut == false, "Reward is already paid out");
-
-    a.fees.galtSpaceRewardPaidOut = true;
-
-    if (a.fees.currency == Currency.ETH) {
-      msg.sender.transfer(a.fees.galtSpaceReward);
-    } else if (a.fees.currency == Currency.GALT) {
-      galtToken.transfer(msg.sender, a.fees.galtSpaceReward);
+      _a.fees.galtProtocolFeePaidOut = true;
     }
   }
 
   // INTERNALS
 
   function _initialize(
-    MultiSigRegistry _multiSigRegistry,
-    IERC20 _galtToken,
-    address _galtSpaceRewardsAddress
+    GaltGlobalRegistry _ggr
   )
     internal
   {
-    multiSigRegistry = _multiSigRegistry;
-    galtToken = _galtToken;
-    galtSpaceRewardsAddress = _galtSpaceRewardsAddress;
+    ggr = _ggr;
 
-    m = 3;
-    n = 5;
-
-    // Default values for revenue shares and application fees
-    // Override them using one of the corresponding setters
-    minimalApplicationFeeInEth = 1;
-    minimalApplicationFeeInGalt = 10;
+    // TODO: figure out where to store these values
     galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 33;
-    paymentMethod = PaymentMethod.ETH_AND_GALT;
+    galtSpaceGaltShare = 13;
   }
 
   function _submit(
@@ -231,7 +205,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     internal
     returns (bytes32)
   {
-    multiSigRegistry.requireValidMultiSig(_multiSig);
+    multiSigRegistry().requireValidMultiSig(_multiSig);
 
     // Default is ETH
     Currency currency;
@@ -240,13 +214,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     // ETH
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeInEth, "Incorrect fee passed in");
+      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Incorrect fee passed in");
       fee = msg.value;
       // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeInGalt, "Incorrect fee passed in");
-      galtToken.transferFrom(msg.sender, address(this), _applicationFeeInGalt);
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Incorrect fee passed in");
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
     }
@@ -256,8 +230,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     a.status = ApplicationStatus.SUBMITTED;
     a.multiSig = _multiSig;
     a.applicant = msg.sender;
-    a.m = m;
-    a.n = n;
+    a.m = m(_multiSig);
+    a.n = n(_multiSig);
 
     a.fees.currency = currency;
 
@@ -286,13 +260,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       share = galtSpaceGaltShare;
     }
 
-    uint256 galtSpaceReward = share.mul(_fee).div(100);
-    uint256 arbitratorsReward = _fee.sub(galtSpaceReward);
+    uint256 galtProtocolFee = share.mul(_fee).div(100);
+    uint256 arbitratorsReward = _fee.sub(galtProtocolFee);
 
-    assert(arbitratorsReward.add(galtSpaceReward) == _fee);
+    assert(arbitratorsReward.add(galtProtocolFee) == _fee);
 
     _a.fees.arbitratorsReward = arbitratorsReward;
-    _a.fees.galtSpaceReward = galtSpaceReward;
+    _a.fees.galtProtocolFee = galtProtocolFee;
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
@@ -341,8 +315,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     returns (
       Currency currency,
       uint256 arbitratorsReward,
-      uint256 galtSpaceReward,
-      bool galtSpaceRewardPaidOut
+      uint256 galtProtocolFee,
+      bool galtProtocolFeePaidOut
     )
   {
     FeeDetails storage f = applications[_id].fees;
@@ -350,8 +324,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     return (
       f.currency,
       f.arbitratorsReward,
-      f.galtSpaceReward,
-      f.galtSpaceRewardPaidOut
+      f.galtProtocolFee,
+      f.galtProtocolFeePaidOut
     );
   }
 }

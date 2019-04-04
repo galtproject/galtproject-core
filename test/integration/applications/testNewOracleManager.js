@@ -2,16 +2,21 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
   ether,
+  numberToEvmWord,
   assertEthBalanceChanged,
   assertGaltBalanceChanged,
   assertRevert
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
+
+GaltToken.numberFormat = 'String';
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
@@ -65,11 +70,10 @@ const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 contract('NewOracleManager', (accounts) => {
   const [
     coreTeam,
-    galtSpaceOrg,
-    feeManager,
-    claimManager,
+    feeMixerAddress,
+    claimManagerAddress,
     applicationTypeManager,
-    spaceReputationAccounting,
+    spaceRA,
     oracleManager,
     alice,
     bob,
@@ -81,7 +85,7 @@ contract('NewOracleManager', (accounts) => {
     henrey
   ] = accounts;
 
-  beforeEach(async function() {
+  before(async function() {
     this.attachedDocuments = [
       'QmYNQJoKGNHTpPxCBPh9KkDpaExgd2duMa3aF6ytMpHdao',
       'QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E',
@@ -91,20 +95,33 @@ contract('NewOracleManager', (accounts) => {
     this.description = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
 
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.galtToken.address,
-      this.oracles,
-      claimManager,
-      this.multiSigRegistry,
-      spaceReputationAccounting,
-      coreTeam
-    );
+
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
+      from: coreTeam
+    });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
+
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    const applicationConfig = {};
+    applicationConfig[bytes32('NO_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
+    applicationConfig[bytes32('NO_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
+    applicationConfig[bytes32('NO_M')] = numberToEvmWord(3);
+    applicationConfig[bytes32('NO_N')] = numberToEvmWord(5);
+    applicationConfig[bytes32('NO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -114,7 +131,8 @@ contract('NewOracleManager', (accounts) => {
       10,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30],
+      applicationConfig,
       alice
     );
 
@@ -122,16 +140,6 @@ contract('NewOracleManager', (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.abVotingX = this.abX.voting;
-
-    await this.newOracle.initialize(
-      this.oracles.address,
-      this.galtToken.address,
-      this.multiSigRegistry.address,
-      galtSpaceOrg,
-      {
-        from: coreTeam
-      }
-    );
 
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -146,13 +154,6 @@ contract('NewOracleManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.newOracle.addRoleTo(feeManager, await this.newOracle.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.newOracle.addRoleTo(galtSpaceOrg, await this.newOracle.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(30), {
       from: applicationTypeManager
     });
@@ -160,115 +161,30 @@ contract('NewOracleManager', (accounts) => {
       from: applicationTypeManager
     });
 
-    await this.newOracle.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-    await this.newOracle.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-    await this.newOracle.setGaltSpaceEthShare(33, { from: feeManager });
-    await this.newOracle.setGaltSpaceGaltShare(13, { from: feeManager });
+    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
+      CUSTODIAN_APPLICATION,
+      [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      [60, 40],
+      [_ES, _ES],
+      { from: applicationTypeManager }
+    );
+  });
 
-    this.newOracleWeb3 = new web3.eth.Contract(this.newOracle.abi, this.newOracle.address);
-    this.oraclesWeb3 = new web3.eth.Contract(this.oracles.abi, this.oracles.address);
-    this.galtTokenWeb3 = new web3.eth.Contract(this.galtToken.abi, this.galtToken.address);
+  beforeEach(async function() {
+    this.newOracle = await NewOracleManager.new({ from: coreTeam });
+    await this.newOracle.initialize(this.ggr.address, {
+      from: coreTeam
+    });
+    await this.oracles.addRoleTo(this.newOracle.address, await this.oracles.ROLE_ORACLE_MANAGER(), {
+      from: coreTeam
+    });
   });
 
   it('should be initialized successfully', async function() {
-    assert.equal(await this.newOracleWeb3.methods.minimalApplicationFeeInEth().call(), ether(6));
-  });
-
-  describe('contract config modifiers', () => {
-    describe('#setGaltSpaceRewardsAddress()', () => {
-      it('should allow an owner set rewards address', async function() {
-        await this.newOracle.setGaltSpaceRewardsAddress(bob, { from: galtSpaceOrg });
-      });
-
-      it('should deny non-owner set rewards address', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceRewardsAddress(bob, { from: alice }));
-      });
-    });
-
-    describe('#setPaymentMethod()', () => {
-      it('should allow an owner set a payment method', async function() {
-        await this.newOracle.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: feeManager });
-        const res = await this.newOracle.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_ONLY);
-      });
-
-      it('should deny non-owner set a payment method', async function() {
-        await assertRevert(this.newOracle.setPaymentMethod(PaymentMethods.ETH_ONLY, { from: alice }));
-        const res = await this.newOracle.paymentMethod();
-        assert.equal(res, PaymentMethods.ETH_AND_GALT);
-      });
-    });
-
-    describe('#setApplicationFeeInEth()', () => {
-      it('should allow an owner set a new minimum fee in ETH', async function() {
-        await this.newOracle.setMinimalApplicationFeeInEth(ether(0.05), { from: feeManager });
-        const res = await this.newOracle.minimalApplicationFeeInEth();
-        assert.equal(res, ether(0.05));
-      });
-
-      it('should deny any other than owner person set fee in ETH', async function() {
-        await assertRevert(this.newOracle.setMinimalApplicationFeeInEth(ether(0.05), { from: alice }));
-      });
-    });
-
-    describe('#setApplicationFeeInGalt()', () => {
-      it('should allow an owner set a new minimum fee in GALT', async function() {
-        await this.newOracle.setMinimalApplicationFeeInGalt(ether(0.15), { from: feeManager });
-        const res = await this.newOracle.minimalApplicationFeeInGalt();
-        assert.equal(res, ether(0.15));
-      });
-
-      it('should deny any other than owner person set fee in GALT', async function() {
-        await assertRevert(this.newOracle.setMinimalApplicationFeeInGalt(ether(0.15), { from: alice }));
-      });
-    });
-
-    describe('#setGaltSpaceEthShare()', () => {
-      it('should allow an owner set galtSpace ETH share in percents', async function() {
-        await this.newOracle.setGaltSpaceEthShare('42', { from: feeManager });
-        const res = await this.newOracle.galtSpaceEthShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space EHT share grater than 100 percents', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceEthShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceEthShare('20', { from: alice }));
-      });
-    });
-
-    describe('#setGaltSpaceGaltShare()', () => {
-      it('should allow an owner set galtSpace Galt share in percents', async function() {
-        await this.newOracle.setGaltSpaceGaltShare('42', { from: feeManager });
-        const res = await this.newOracle.galtSpaceGaltShare();
-        assert.equal(res.toString(10), '42');
-      });
-
-      it('should deny owner set Galt Space Galt share grater than 100 percents', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceGaltShare('101', { from: feeManager }));
-      });
-
-      it('should deny any other than owner set Galt Space EHT share in percents', async function() {
-        await assertRevert(this.newOracle.setGaltSpaceGaltShare('20', { from: alice }));
-      });
-    });
+    assert.equal(await this.newOracle.ggr(), this.ggr.address);
   });
 
   describe('#submit()', () => {
-    beforeEach(async function() {
-      await this.newOracle.setMofN(3, 5, { from: galtSpaceOrg });
-
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        [60, 40],
-        [_ES, _ES],
-        { from: applicationTypeManager }
-      );
-    });
-
     describe('with GALT payment', () => {
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.newOracle.address, ether(45), { from: alice });
@@ -286,7 +202,7 @@ contract('NewOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -349,11 +265,11 @@ contract('NewOracleManager', (accounts) => {
           // oracle share - 87%
           // galtspace share - 13%
 
-          res = await this.newOracleWeb3.methods.getApplicationFees(this.aId).call();
+          res = await this.newOracle.getApplicationFees(this.aId);
           assert.equal(res.arbitratorsReward, ether('46.11'));
-          assert.equal(res.galtSpaceReward, ether('6.89'));
+          assert.equal(res.galtProtocolFee, ether('6.89'));
           assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.galtSpaceRewardPaidOut, false);
+          assert.equal(res.galtProtocolFeePaidOut, false);
         });
       });
 
@@ -387,33 +303,29 @@ contract('NewOracleManager', (accounts) => {
         });
 
         it('should allow galt space withdrawal only once', async function() {
-          const galtSpaceBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
-          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-          const galtSpaceBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(galtSpaceOrg).call();
+          await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
+          const galtSpaceBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+          await this.newOracle.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+          const galtSpaceBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
 
           assertGaltBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(6.11));
         });
 
-        it('should deny galt space double claim a reward', async function() {
-          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-          await assertRevert(this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
-        });
-
         it('should allow oracles claiming their rewards', async function() {
-          const bobBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-          const danBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-          const charlieBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-          const frankBalanceBefore = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+          const bobBalanceBefore = await this.galtToken.balanceOf(bob);
+          const danBalanceBefore = await this.galtToken.balanceOf(dan);
+          const charlieBalanceBefore = await this.galtToken.balanceOf(charlie);
+          const frankBalanceBefore = await this.galtToken.balanceOf(frank);
 
           await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
           await this.newOracle.claimArbitratorReward(this.aId, { from: dan });
           await this.newOracle.claimArbitratorReward(this.aId, { from: charlie });
           await this.newOracle.claimArbitratorReward(this.aId, { from: frank });
 
-          const bobBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(bob).call();
-          const danBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(dan).call();
-          const charlieBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(charlie).call();
-          const frankBalanceAfter = await this.galtTokenWeb3.methods.balanceOf(frank).call();
+          const bobBalanceAfter = await this.galtToken.balanceOf(bob);
+          const danBalanceAfter = await this.galtToken.balanceOf(dan);
+          const charlieBalanceAfter = await this.galtToken.balanceOf(charlie);
+          const frankBalanceAfter = await this.galtToken.balanceOf(frank);
 
           assertGaltBalanceChanged(bobBalanceBefore, bobBalanceAfter, ether(10.2225));
           assertGaltBalanceChanged(danBalanceBefore, danBalanceAfter, ether(10.2225));
@@ -453,7 +365,7 @@ contract('NewOracleManager', (accounts) => {
         );
         this.aId = res.logs[0].args.applicationId;
 
-        res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.applicant, alice);
         assert.sameMembers(res.arbitrators, []);
@@ -462,7 +374,7 @@ contract('NewOracleManager', (accounts) => {
         assert.equal(res.ayeCount, 0);
         assert.equal(res.nayCount, 0);
 
-        res = await this.newOracleWeb3.methods.getApplicationOracle(this.aId).call();
+        res = await this.newOracle.getApplicationOracle(this.aId);
         assert.equal(res.addr, bob);
         assert.equal(hexToUtf8(res.name), 'Bob');
         assert.sameMembers(res.descriptionHashes.map(galt.bytes32ToIpfsHash), this.attachedDocuments);
@@ -530,11 +442,11 @@ contract('NewOracleManager', (accounts) => {
           // oracle share - 87%
           // galtspace share - 13%
 
-          res = await this.newOracleWeb3.methods.getApplicationFees(this.aId).call();
+          res = await this.newOracle.getApplicationFees(this.aId);
           assert.equal(res.arbitratorsReward, ether('8.71'));
-          assert.equal(res.galtSpaceReward, ether('4.29'));
+          assert.equal(res.galtProtocolFee, ether('4.29'));
           assert.equal(res.currency, Currency.ETH);
-          assert.equal(res.galtSpaceRewardPaidOut, false);
+          assert.equal(res.galtProtocolFeePaidOut, false);
         });
       });
 
@@ -570,16 +482,12 @@ contract('NewOracleManager', (accounts) => {
         });
 
         it('should allow galt space withdrawal only once', async function() {
-          const galtSpaceBalanceBefore = await web3.eth.getBalance(galtSpaceOrg);
-          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-          const galtSpaceBalanceAfter = await web3.eth.getBalance(galtSpaceOrg);
+          await this.newOracle.claimArbitratorReward(this.aId, { from: bob });
+          const galtSpaceBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+          await this.newOracle.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+          const galtSpaceBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
 
           assertEthBalanceChanged(galtSpaceBalanceBefore, galtSpaceBalanceAfter, ether(2.97));
-        });
-
-        it('should deny galt space double claim a reward', async function() {
-          await this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg });
-          await assertRevert(this.newOracle.claimGaltSpaceReward(this.aId, { from: galtSpaceOrg }));
         });
 
         it('should allow oracles claiming their rewards', async function() {
@@ -625,16 +533,6 @@ contract('NewOracleManager', (accounts) => {
 
   describe('pipeline', () => {
     beforeEach(async function() {
-      await this.newOracle.setMofN(3, 5, { from: galtSpaceOrg });
-
-      this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-        CUSTODIAN_APPLICATION,
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        [60, 40],
-        [_ES, _ES],
-        { from: applicationTypeManager }
-      );
-
       const res = await this.newOracle.submit(
         this.mX,
         eve,
@@ -657,7 +555,7 @@ contract('NewOracleManager', (accounts) => {
       it('should allow a valid arbitrator locking an application', async function() {
         await this.newOracle.lock(this.aId, { from: bob });
 
-        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.newOracle.getApplicationById(this.aId);
         assert.sameMembers(res.arbitrators, [bob]);
       });
 
@@ -669,7 +567,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: george });
         await assertRevert(this.newOracle.lock(this.aId, { from: henrey }));
 
-        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.newOracle.getApplicationById(this.aId);
         assert.sameMembers(res.arbitrators, [bob, charlie, dan, frank, george]);
       });
 
@@ -683,7 +581,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: bob });
         await this.newOracle.aye(this.aId, { from: bob });
 
-        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.ayeCount, 1);
         assert.equal(res.nayCount, 0);
       });
@@ -708,7 +606,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.aye(this.aId, { from: dan });
         await this.newOracle.aye(this.aId, { from: frank });
 
-        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.ayeCount, 3);
         assert.equal(res.nayCount, 1);
@@ -730,7 +628,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.aye(this.aId, { from: frank });
         await this.newOracle.nay(this.aId, { from: george });
 
-        const res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        const res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
         assert.equal(res.ayeCount, 2);
         assert.equal(res.nayCount, 3);
@@ -749,14 +647,14 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.nay(this.aId, { from: charlie });
         await this.newOracle.aye(this.aId, { from: dan });
 
-        let res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        let res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.ayeCount, 2);
         assert.equal(res.nayCount, 1);
 
         await this.newOracle.nay(this.aId, { from: dan });
 
-        res = await this.newOracleWeb3.methods.getApplicationById(this.aId).call();
+        res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.ayeCount, 1);
         assert.equal(res.nayCount, 2);
@@ -776,7 +674,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.aye(this.aId, { from: dan });
         await this.newOracle.aye(this.aId, { from: frank });
 
-        const res = await this.oraclesWeb3.methods.getOracle(eve).call();
+        const res = await this.oracles.getOracle(eve);
         assert.equal(hexToUtf8(res.name), 'Eve');
         assert.equal(hexToUtf8(res.position), 'MN');
         assert.equal(res.active, true);

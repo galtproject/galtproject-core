@@ -17,10 +17,12 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
 import "../multisig/ArbitrationConfig.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract ArbitrationConfigFactory is Ownable {
   function build(
+    GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
@@ -34,6 +36,7 @@ contract ArbitrationConfigFactory is Ownable {
     returns (ArbitrationConfig config)
   {
     config = new ArbitrationConfig(
+      _ggr,
       _m,
       _n,
       _minimalArbitratorStake,

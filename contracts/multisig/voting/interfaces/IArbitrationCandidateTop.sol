@@ -13,11 +13,15 @@
 
 pragma solidity 0.5.3;
 
-import "../../interfaces/ISpaceLocker.sol";
 
-
-interface ISpaceLockerRegistry {
-  function addSpaceLocker(ISpaceLocker _spaceLocker) external;
-  function requireValidLocker(ISpaceLocker _spaceLocker) external view;
-  function isValid(address _spaceLocker) external view returns (bool);
+interface IArbitrationCandidateTop {
+  function recalculate(address _candidate) external;
+  function pushArbitrators() external;
+  function ignoreMe(bool _value) external;
+  function getCandidatesWithStakes() external view returns (address[] memory);
+  function getCandidateWeights(address[] calldata _candidates) external view returns (uint256);
+  function getCandidateWeight(address _candidate) external view returns (uint256);
+  function isCandidateInList(address _candidate) external view returns (bool);
+  function isIgnored(address _candidate) external view returns (bool);
+  function getSize() external view returns (uint256 size);
 }

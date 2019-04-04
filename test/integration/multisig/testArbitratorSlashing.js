@@ -3,13 +3,14 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
-const MockSRA = artifacts.require('./MockSRA.sol');
-const SpaceLockerRegistry = artifacts.require('./SpaceLockerRegistry.sol');
+const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
+const LockerRegistry = artifacts.require('./LockerRegistry.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
-const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
+const { assertRevert, ether, initHelperWeb3, numberToEvmWord } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -31,6 +32,13 @@ const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
 const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
 
+const PaymentMethods = {
+  NONE: 0,
+  ETH_ONLY: 1,
+  GALT_ONLY: 2,
+  ETH_AND_GALT: 3
+};
+
 const ClaimApplicationStatus = {
   NOT_EXISTS: 0,
   SUBMITTED: 1,
@@ -42,10 +50,9 @@ const ClaimApplicationStatus = {
 contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
-    feeManager,
     applicationTypeManager,
+    spaceRA,
     oracleManager,
-    galtSpaceOrg,
 
     // initial arbitrators
     a1,
@@ -102,37 +109,37 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.claimManager = await ClaimManager.new({ from: coreTeam });
 
       this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-      this.spaceLockerRegistry = await SpaceLockerRegistry.new({ from: coreTeam });
+      this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+      this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
 
-      this.sra = await MockSRA.new(
-        this.spaceToken.address,
-        this.multiSigRegistry.address,
-        this.spaceLockerRegistry.address,
-        { from: coreTeam }
-      );
+      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+        from: coreTeam
+      });
+      await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
+        from: coreTeam
+      });
 
-      this.multiSigFactory = await deployMultiSigFactory(
-        this.galtToken.address,
-        this.oracles,
-        this.claimManager.address,
-        this.multiSigRegistry,
-        this.sra.address,
-        coreTeam
-      );
+      this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
 
-      await this.claimManager.initialize(
-        this.oracles.address,
-        this.galtToken.address,
-        this.multiSigRegistry.address,
-        galtSpaceOrg,
-        {
-          from: coreTeam
-        }
-      );
+      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+      await this.claimManager.initialize(this.ggr.address, {
+        from: coreTeam
+      });
     })();
 
     // Setup multiSig
     await (async () => {
+      const applicationConfig = {};
+      applicationConfig[bytes32('CM_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
+      applicationConfig[bytes32('CM_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
+      applicationConfig[bytes32('CM_M')] = numberToEvmWord(2);
+      applicationConfig[bytes32('CM_N')] = numberToEvmWord(3);
+      applicationConfig[bytes32('CM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
       await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
       this.abX = await buildArbitration(
         this.multiSigFactory,
@@ -142,25 +149,21 @@ contract('Arbitrator Stake Slashing', accounts => {
         10,
         60,
         ether(1000),
-        [80, 80, 70, 90, 90],
+        [80, 80, 70, 90, 90, 30],
+        applicationConfig,
         alice
       );
       this.abMultiSigX = this.abX.multiSig;
       this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-      this.abVotingX = this.abX.voting;
+      this.candidateTopX = this.abX.candidateTop;
       this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
+      this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
 
       this.mX = this.abMultiSigX.address;
     })();
 
     // Setup roles and fees
     await (async () => {
-      await this.claimManager.addRoleTo(feeManager, await this.claimManager.ROLE_FEE_MANAGER(), {
-        from: coreTeam
-      });
-      await this.claimManager.addRoleTo(galtSpaceOrg, await this.claimManager.ROLE_GALT_SPACE(), {
-        from: coreTeam
-      });
       await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
         from: coreTeam
       });
@@ -173,12 +176,6 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
         from: coreTeam
       });
-
-      await this.claimManager.setMinimalApplicationFeeInEth(ether(6), { from: feeManager });
-      await this.claimManager.setMinimalApplicationFeeInGalt(ether(45), { from: feeManager });
-      await this.claimManager.setGaltSpaceEthShare(33, { from: feeManager });
-      await this.claimManager.setGaltSpaceGaltShare(13, { from: feeManager });
-      await this.claimManager.setMofN(2, 3, { from: galtSpaceOrg });
     })();
 
     // Mint and distribute SRA reputation using mock
@@ -194,33 +191,33 @@ contract('Arbitrator Stake Slashing', accounts => {
 
     // Vote for arbitrators
     await (async () => {
-      await this.abVotingX.grantReputation(alice, 500, { from: bob });
-      await this.abVotingX.grantReputation(charlie, 500, { from: alice });
-      await this.abVotingX.grantReputation(alice, 500, { from: charlie });
-      await this.abVotingX.grantReputation(bob, 500, { from: charlie });
-      await this.abVotingX.grantReputation(eve, 500, { from: eve });
+      await this.delegateSpaceVotingX.grantReputation(alice, 500, { from: bob });
+      await this.delegateSpaceVotingX.grantReputation(charlie, 500, { from: alice });
+      await this.delegateSpaceVotingX.grantReputation(alice, 500, { from: charlie });
+      await this.delegateSpaceVotingX.grantReputation(bob, 500, { from: charlie });
+      await this.delegateSpaceVotingX.grantReputation(eve, 500, { from: eve });
 
-      assert.equal(await this.abVotingX.getSpaceReputation(alice), 1000);
+      assert.equal(await this.delegateSpaceVotingX.balanceOf(alice), 1000);
 
-      await this.abVotingX.recalculate(alice, { from: unauthorized });
-      await this.abVotingX.recalculate(bob, { from: unauthorized });
-      await this.abVotingX.recalculate(charlie, { from: unauthorized });
-      await this.abVotingX.recalculate(dan, { from: unauthorized });
-      await this.abVotingX.recalculate(eve, { from: unauthorized });
+      await this.candidateTopX.recalculate(alice, { from: unauthorized });
+      await this.candidateTopX.recalculate(bob, { from: unauthorized });
+      await this.candidateTopX.recalculate(charlie, { from: unauthorized });
+      await this.candidateTopX.recalculate(dan, { from: unauthorized });
+      await this.candidateTopX.recalculate(eve, { from: unauthorized });
 
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
 
-      let res = await this.abVotingX.getSize();
+      let res = await this.candidateTopX.getSize();
       assert.equal(res, 4);
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, []);
     })();
 
     // Push arbitrators
-    await assertRevert(this.abVotingX.pushArbitrators());
+    await assertRevert(this.candidateTopX.pushArbitrators());
 
     // > 4 arbitrators make their stake...
     await (async () => {
@@ -239,12 +236,12 @@ contract('Arbitrator Stake Slashing', accounts => {
       let res = await this.arbitratorStakeAccountingX.balanceOf(alice);
       assert.equal(res, ether(2000));
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
 
-      this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
@@ -405,12 +402,12 @@ contract('Arbitrator Stake Slashing', accounts => {
 
       // > Re-push the arbitrators list
       // one of the punished arbitrators is kicked of the arbitrators list
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, charlie, eve]);
 
-      this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, charlie, eve]);
@@ -419,41 +416,45 @@ contract('Arbitrator Stake Slashing', accounts => {
 
   describe('ignoredCandidates', () => {
     it('should recalculate balance of ignored candidate to 0', async function() {
-      await this.abVotingX.ignoreMe(true, { from: alice });
+      await this.candidateTopX.ignoreMe(true, { from: alice });
 
-      assert.equal(await this.abVotingX.isIgnored(alice), true);
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.isIgnored(alice), true);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 160000);
 
-      await this.abVotingX.recalculate(alice);
+      await this.candidateTopX.recalculate(alice);
 
-      assert.equal(await this.abVotingX.getWeight(alice), 0);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 0);
 
-      let res = await this.abVotingX.getCandidates();
+      let res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [bob, charlie, eve]);
 
-      this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [bob, charlie, eve]);
 
       // and turn in on again
-      await this.abVotingX.ignoreMe(false, { from: alice });
+      await this.candidateTopX.ignoreMe(false, { from: alice });
 
-      assert.equal(await this.abVotingX.isIgnored(alice), false);
-      assert.equal(await this.abVotingX.getWeight(alice), 0);
+      assert.equal(await this.candidateTopX.isIgnored(alice), false);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 0);
 
-      await this.abVotingX.recalculate(alice);
+      await this.candidateTopX.recalculate(alice);
 
-      assert.equal(await this.abVotingX.getWeight(alice), 100000);
+      assert.equal(await this.candidateTopX.getCandidateWeight(alice), 160000);
+      assert.equal(await this.candidateTopX.getTopCandidateWeight(alice), 160000);
 
-      res = await this.abVotingX.getCandidates();
+      res = await this.candidateTopX.getCandidates();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
-      res = await this.abVotingX.getCandidatesWithStakes();
+      res = await this.candidateTopX.getCandidatesWithStakes();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
 
-      this.abVotingX.pushArbitrators();
+      await this.candidateTopX.pushArbitrators();
 
       res = await this.abMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);

@@ -17,20 +17,21 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../Oracles.sol";
+import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/GaltGlobalRegistry.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
   string public constant ROLE_FEE_MANAGER = "fee_manager";
   string public constant ROLE_GALT_SPACE = "galt_space";
 
-  PaymentMethod public paymentMethod;
-  uint256 public minimalApplicationFeeInEth;
-  uint256 public minimalApplicationFeeInGalt;
-  uint256 public galtSpaceEthShare;
-  uint256 public galtSpaceGaltShare;
-  address internal galtSpaceRewardsAddress;
+  uint256 internal galtSpaceEthShare;
+  uint256 internal galtSpaceGaltShare;
 
-  IERC20 public galtToken;
+  GaltGlobalRegistry public ggr;
+
+  uint256 public protocolFeesEth;
+  uint256 public protocolFeesGalt;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
@@ -47,41 +48,33 @@ contract AbstractApplication is Initializable, Permissionable {
     ETH_AND_GALT
   }
 
-  modifier onlyFeeManager() {
-    requireRole(msg.sender, ROLE_FEE_MANAGER);
+  constructor() public {}
+
+  modifier onlyFeeCollector() {
+    require(msg.sender == ggr.getFeeCollectorAddress(), "Only FeeMixer allowed");
     _;
   }
 
-  constructor() public {}
+  function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
 
-  function claimGaltSpaceReward(bytes32 _aId) external;
-
-  function setGaltSpaceRewardsAddress(address _newAddress) external onlyRole(ROLE_GALT_SPACE) {
-    galtSpaceRewardsAddress = _newAddress;
+  function claimGaltProtocolFeeEth() external onlyFeeCollector {
+    require(address(this).balance >= protocolFeesEth, "Insufficient balance");
+    msg.sender.transfer(protocolFeesEth);
+    protocolFeesEth = 0;
   }
 
-  function setPaymentMethod(PaymentMethod _newMethod) external onlyFeeManager {
-    paymentMethod = _newMethod;
+  function claimGaltProtocolFeeGalt() external onlyFeeCollector {
+    require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
+    ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
+    protocolFeesGalt = 0;
   }
 
-  function setMinimalApplicationFeeInEth(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInEth = _newFee;
+  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
+    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
   }
 
-  function setMinimalApplicationFeeInGalt(uint256 _newFee) external onlyFeeManager {
-    minimalApplicationFeeInGalt = _newFee;
-  }
-
-  function setGaltSpaceEthShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-
-    galtSpaceEthShare = _newShare;
-  }
-
-  function setGaltSpaceGaltShare(uint256 _newShare) external onlyFeeManager {
-    require(_newShare >= 1 && _newShare <= 100, "Percent value should be between 1 and 100");
-
-    galtSpaceGaltShare = _newShare;
+  function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
+    return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
   }
 
   function getAllApplications() external view returns (bytes32[] memory) {

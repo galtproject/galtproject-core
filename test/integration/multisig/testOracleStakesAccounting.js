@@ -1,8 +1,11 @@
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const OracleStakeVoting = artifacts.require('./OracleStakeVoting.sol');
+const ArbitrationCandidateTop = artifacts.require('./ArbitrationCandidateTop.sol');
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+
 const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
@@ -40,8 +43,9 @@ contract('OracleStakesAccounting', accounts => {
     applicationTypeManager,
     oracleManager,
     multiSig,
-    spaceReputationAccountingAddress,
     zeroAddress,
+    delegateSpaceVoting,
+    delegateGaltVoting,
     alice,
     bob,
     charlie,
@@ -50,32 +54,36 @@ contract('OracleStakesAccounting', accounts => {
   ] = accounts;
 
   beforeEach(async function() {
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
-    this.config = await ArbitrationConfig.new(2, 3, ether(1000), [30, 30, 30, 30, 30], { from: coreTeam });
-    this.arbitratorVoting = await ArbitratorVoting.new(this.config.address, { from: coreTeam });
-    this.oracleStakesAccountingX = await OracleStakesAccounting.new(
-      this.oracles.address,
-      this.galtToken.address,
-      this.config.address,
-      { from: coreTeam }
-    );
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
 
-    await this.arbitratorVoting.addRoleTo(
-      this.oracleStakesAccountingX.address,
-      await this.arbitratorVoting.ORACLE_STAKES_NOTIFIER(),
-      {
-        from: coreTeam
-      }
-    );
+    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
+      from: coreTeam
+    });
+    this.candidateTop = await ArbitrationCandidateTop.new(this.config.address, { from: coreTeam });
+    this.oracleStakesAccountingX = await OracleStakesAccounting.new(this.config.address, { from: coreTeam });
+    this.oracleStakeVoting = await OracleStakeVoting.new(this.config.address, { from: coreTeam });
 
-    this.config.initialize(
+    // await this.oracleStakeVoting.addRoleTo(
+    //   this.oracleStakesAccountingX.address,
+    //   await this.candidateTop.ORACLE_STAKES_NOTIFIER(),
+    //   {
+    //     from: coreTeam
+    //   }
+    // );
+
+    await this.config.initialize(
       multiSig,
-      this.arbitratorVoting.address,
+      this.candidateTop.address,
       zeroAddress,
       this.oracleStakesAccountingX.address,
-      spaceReputationAccountingAddress
+      delegateSpaceVoting,
+      delegateGaltVoting,
+      this.oracleStakeVoting.address
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
