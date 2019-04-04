@@ -1,3 +1,14 @@
+## Galt Project Contracts [v0.8.0](https://github.com/galtspace/galtproject-contracts/tree/v0.8.0) (2019-04-04)
+
+* Rafactor and extract some part of logic into separate modules like @libs, @math, @geodesic, @fund-basic, etc.
+* Introduce GaltGlobalRegistry
+* Reputation accounting refactoring. Intorduce SpaceRA/GaltRA/FundRA
+* Move all application configs into multisig key=>value storage
+* Intorduce ApplicationRegistry
+* Add Galt reputation infrastructure to Arbitration voting
+* Refactor Arbitration voting into 3 input sources: DelegateSpace/DelegateGalt/OracleStake
+* ProtocolFee now accumulates on an application contract and can be withdrawn within a single call
+
 ## Galt Project Contracts [v0.6.0](https://github.com/galtspace/galtproject-contracts/tree/v0.6.0) (2019-01-18)
 
 The full list of included changes:
