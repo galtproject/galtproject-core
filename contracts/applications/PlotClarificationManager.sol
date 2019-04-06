@@ -136,7 +136,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 

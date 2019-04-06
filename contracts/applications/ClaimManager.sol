@@ -163,7 +163,7 @@ contract ClaimManager is AbstractApplication {
     return uint256(applicationConfig(_multiSig, CONFIG_N));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
