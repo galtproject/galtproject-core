@@ -631,6 +631,7 @@ contract PlotManager is AbstractOracleApplication {
     view
     returns (
       address applicant,
+      address multiSig,
       uint256 spaceTokenId,
       bytes32 credentialsHash,
       ApplicationStatus status,
@@ -646,6 +647,7 @@ contract PlotManager is AbstractOracleApplication {
 
     return (
       m.applicant,
+      m.multiSig,
       m.spaceTokenId,
       m.details.credentialsHash,
       m.status,
