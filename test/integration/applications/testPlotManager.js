@@ -200,13 +200,9 @@ contract('PlotManager', accounts => {
     });
 
     // TODO: remove after oracle active status check be implemented in multiSig-level
-    await this.oracles.setApplicationTypeOracleTypes(
-      NEW_APPLICATION,
-      [PM_SURVEYOR, PM_LAWYER],
-      [52, 48],
-      [_ES, _ES],
-      { from: coreTeam }
-    );
+    await this.oracles.setApplicationTypeOracleTypes(NEW_APPLICATION, [PM_SURVEYOR, PM_LAWYER], [52, 48], [_ES, _ES], {
+      from: coreTeam
+    });
 
     await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [PM_SURVEYOR], { from: coreTeam });
     await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [PM_SURVEYOR], { from: coreTeam });
