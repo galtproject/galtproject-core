@@ -155,7 +155,7 @@ contract PlotManager is AbstractOracleApplication {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
@@ -631,6 +631,7 @@ contract PlotManager is AbstractOracleApplication {
     view
     returns (
       address applicant,
+      address multiSig,
       uint256 spaceTokenId,
       bytes32 credentialsHash,
       ApplicationStatus status,
@@ -646,6 +647,7 @@ contract PlotManager is AbstractOracleApplication {
 
     return (
       m.applicant,
+      m.multiSig,
       m.spaceTokenId,
       m.details.credentialsHash,
       m.status,

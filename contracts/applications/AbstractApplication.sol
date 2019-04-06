@@ -55,7 +55,7 @@ contract AbstractApplication is Initializable, Permissionable {
     _;
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod);
 
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
