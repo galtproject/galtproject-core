@@ -171,10 +171,12 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-    require(isValidPlotEscrow(msg.sender), "Only trusted PlotEscrow allowed");
-    require(_applicant != address(0), "Should specify applicant");
-    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
-    require(isValidPlotEscrow(ggr.getSpaceToken().ownerOf(_spaceTokenId)), "PlotEscrow should own the token");
+//    require(isValidPlotEscrow(msg.sender), "Only trusted PlotEscrow allowed");
+//    require(_applicant != address(0), "Should specify applicant");
+//    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+//    require(isValidPlotEscrow(ggr.getSpaceToken().ownerOf(_spaceTokenId)), "PlotEscrow should own the token");
+    //TODO: find the way to optimize gas
+    require(isValidPlotEscrow(msg.sender) && _applicant != address(0) && ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) && isValidPlotEscrow(ggr.getSpaceToken().ownerOf(_spaceTokenId)));
 
     return submitApplicationHelper(
       _multiSig,
