@@ -66,13 +66,14 @@ contract GaltLocker is ILocker, IGaltLocker {
   }
 
   // for cases when reputation and balance are not equal
-  function withdrawGaltOnly(uint256 _amount) external onlyOwner {
+  function transferExtraGalt(address _to) external onlyOwner {
     uint256 balance = ggr.getGaltToken().balanceOf(msg.sender);
     uint256 diff = balance - reputation;
 
-    require(_amount <= diff, "Not enough funds to withdraw");
+    assert(balance >= reputation);
+    require(diff > 0, "Diff is 0");
 
-    ggr.getGaltToken().transferFrom(address(this), msg.sender, _amount);
+    ggr.getGaltToken().transfer(_to, diff);
   }
 
   function approveMint(IRA _gra) external onlyOwner reputationAndBalanceEqual {
