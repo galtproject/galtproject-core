@@ -34,9 +34,9 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
   uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
-  string public constant GEO_DATA_MANAGER = "geo_data_manager";
+  bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
 
-  GaltGlobalRegistry  ggr;
+  GaltGlobalRegistry internal ggr;
 
   event PackageInit(bytes32 id, address owner);
   event SpaceTokenHeightsChange(bytes32 id, int256[] heights);
@@ -82,9 +82,10 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
 
   modifier onlyGeoDataManager() {
     require(
-    /* solium-disable-next-line */
-      hasRole(msg.sender, GEO_DATA_MANAGER),
-      "This action not permitted");
+      ggr.getACL().hasRole(msg.sender, ROLE_GEO_DATA_MANAGER),
+      "Only GEO_DATA_MANAGER role allowed"
+    );
+
     _;
   }
 

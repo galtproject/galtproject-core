@@ -202,7 +202,6 @@ contract MultiSigFactory is Ownable {
 
     address claimManager = ggr.getClaimManagerAddress();
     arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
-    oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
     Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     g.creator = msg.sender;
@@ -230,9 +229,7 @@ contract MultiSigFactory is Ownable {
     );
     ArbitrationCandidateTop arbitrationCandidateTop = arbitrationCandidateTopFactory.build(g.arbitrationConfig);
 
-    arbitratorStakeAccounting.addRoleTo(ggr.getClaimManagerAddress(), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(arbitrationCandidateTop), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
-//    arbitrationCandidateTop.addRoleTo(ggr.getSpaceRAAddress(), arbitrationCandidateTop.SPACE_REPUTATION_NOTIFIER());
 
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
     g.arbitrationCandidateTop = arbitrationCandidateTop;
@@ -366,8 +363,14 @@ contract MultiSigFactory is Ownable {
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     IOracleStakeVoting oracleStakeVoting = oracleStakeVotingFactory.build(g.arbitrationConfig);
-    IDelegateReputationVoting delegateSpaceVoting = delegateReputationVotingFactory.build(g.arbitrationConfig);
-    IDelegateReputationVoting delegateGaltVoting = delegateReputationVotingFactory.build(g.arbitrationConfig);
+    IDelegateReputationVoting delegateSpaceVoting = delegateReputationVotingFactory.build(
+      g.arbitrationConfig,
+      "SPACE_REPUTATION_NOTIFIER"
+    );
+    IDelegateReputationVoting delegateGaltVoting = delegateReputationVotingFactory.build(
+      g.arbitrationConfig,
+      "GALT_REPUTATION_NOTIFIER"
+    );
 
     g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
     g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
@@ -386,7 +389,6 @@ contract MultiSigFactory is Ownable {
 
     // Revoke role management permissions from this factory address
     g.arbitrationCandidateTop.removeRoleFrom(address(this), "role_manager");
-    g.arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");

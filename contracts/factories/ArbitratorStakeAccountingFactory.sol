@@ -32,8 +32,5 @@ contract ArbitratorStakeAccountingFactory is Ownable {
     returns (ArbitratorStakeAccounting arbitratorStakeAccounting)
   {
     arbitratorStakeAccounting = new ArbitratorStakeAccounting(_arbitrationConfig, _periodLength);
-
-    arbitratorStakeAccounting.addRoleTo(msg.sender, "role_manager");
-    arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
   }
 }

@@ -13,17 +13,16 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IMultiSigRegistry.sol";
 import "../multisig/interfaces/IArbitrationConfig.sol";
 import "../multisig/interfaces/IArbitratorsMultiSig.sol";
 
 
-contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
+contract MultiSigRegistry is IMultiSigRegistry {
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant ROLE_FACTORY = "space_token";
+  bytes32 public constant ROLE_MULTI_SIG_REGISTRAR = bytes32("MULTI_SIG_REGISTRAR");
 
   // MultiSig address => Details
   // TODO: need to be a private?
@@ -36,12 +35,27 @@ contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
     address factoryAddress;
   }
 
+  GaltGlobalRegistry private ggr;
+
+  constructor (GaltGlobalRegistry _ggr) public {
+    ggr = _ggr;
+  }
+
+  modifier onlyMultiSigRegistrar() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_MULTI_SIG_REGISTRAR),
+      "Only MULTI_SIG_REGISTRAR role allowed"
+    );
+
+    _;
+  }
+
   function addMultiSig(
     IArbitratorsMultiSig _abMultiSig,
     IArbitrationConfig _arbitrationConfig
   )
     external
-    onlyRole(ROLE_FACTORY)
+    onlyMultiSigRegistrar
   {
     MultiSig storage ms = multiSigs[address(_abMultiSig)];
 
@@ -56,7 +70,7 @@ contract MultiSigRegistry is IMultiSigRegistry, Permissionable {
 
   function requireValidMultiSig(address _multiSig) external view {
     require(multiSigs[_multiSig].active, "MultiSig address is invalid");
-  }
+}
 
   // GETTERS
 

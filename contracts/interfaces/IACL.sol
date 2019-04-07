@@ -13,26 +13,8 @@
 
 pragma solidity 0.5.3;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-// This contract will be included into the current one
-import "../../multisig/voting/DelegateReputationVoting.sol";
-import "../../multisig/interfaces/IArbitrationConfig.sol";
-
-
-contract DelegateReputationVotingFactory is Ownable {
-  function build(
-    IArbitrationConfig _arbitrationConfig,
-    bytes32 _roleReputationNotifier
-  )
-    external
-    returns (DelegateReputationVoting)
-  {
-    DelegateReputationVoting voting = new DelegateReputationVoting(
-      _arbitrationConfig,
-      _roleReputationNotifier
-    );
-
-    return voting;
-  }
+interface IACL {
+  function setRole(bytes32 _role, address _candidate, bool _allow) external;
+  function hasRole(address _candidate, bytes32 _role) external view returns (bool);
 }

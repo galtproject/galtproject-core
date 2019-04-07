@@ -13,14 +13,13 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IArbitrationCandidateTop.sol";
 import "../interfaces/IArbitrationConfig.sol";
 import "./interfaces/IDelegateReputationVoting.sol";
 
-contract DelegateReputationVoting is IDelegateReputationVoting, Permissionable {
+contract DelegateReputationVoting is IDelegateReputationVoting {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -38,8 +37,6 @@ contract DelegateReputationVoting is IDelegateReputationVoting, Permissionable {
   uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
   uint256 private constant DECIMALS = 10**6;
 
-//  string public constant SPACE_REPUTATION_NOTIFIER = "space_reputation_notifier";
-
   // Delegate => Delegate details
   mapping(address => Delegate) private delegatedReputation;
   // Candidate/Delegate => locked
@@ -52,16 +49,28 @@ contract DelegateReputationVoting is IDelegateReputationVoting, Permissionable {
     ArraySet.AddressSet candidates;
   }
 
+  bytes32 public roleReputationNotifier;
   uint256 public totalReputation;
 
   IArbitrationConfig arbitrationConfig;
 
   constructor(
-    IArbitrationConfig _arbitrationConfig
+    IArbitrationConfig _arbitrationConfig,
+    bytes32 _roleSpaceReputationNotifier
   )
     public
   {
     arbitrationConfig = _arbitrationConfig;
+    roleReputationNotifier = _roleSpaceReputationNotifier;
+  }
+
+  modifier onlySpaceReputationNotifier() {
+    require(
+      arbitrationConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
+      "Invalid notifier"
+    );
+
+    _;
   }
 
   function grantReputation(address _candidate, uint256 _amount) external {
@@ -103,6 +112,7 @@ contract DelegateReputationVoting is IDelegateReputationVoting, Permissionable {
     uint256 _newLocked
   )
     external
+    onlySpaceReputationNotifier
   {
     // need more details
     uint256 currentLocked = lockedReputation[_delegate];

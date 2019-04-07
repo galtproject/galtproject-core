@@ -13,16 +13,14 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../interfaces/ILocker.sol";
 import "./interfaces/ILockerRegistry.sol";
+import "./GaltGlobalRegistry.sol";
 
 
-contract LockerRegistry is ILockerRegistry, Permissionable {
+contract LockerRegistry is ILockerRegistry {
   using ArraySet for ArraySet.AddressSet;
-
-  string public constant ROLE_FACTORY = "factory";
 
   // Locker address => Details
   mapping(address => Details) public lockers;
@@ -37,7 +35,24 @@ contract LockerRegistry is ILockerRegistry, Permissionable {
 
   event LockerAdded(address indexed locker, address indexed owner, address factory);
 
-  function addLocker(address _locker) external onlyRole(ROLE_FACTORY) {
+  GaltGlobalRegistry private ggr;
+  bytes32 public roleFactory;
+
+  constructor (GaltGlobalRegistry _ggr, bytes32 _roleFactory) public {
+    ggr = _ggr;
+    roleFactory = _roleFactory;
+  }
+
+  modifier onlyFactory() {
+    require(
+      ggr.getACL().hasRole(msg.sender, roleFactory),
+      "Invalid notifier"
+    );
+
+    _;
+  }
+
+  function addLocker(address _locker) external onlyFactory {
     Details storage locker = lockers[_locker];
 
     locker.active = true;

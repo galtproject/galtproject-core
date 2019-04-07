@@ -16,6 +16,7 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "../interfaces/IACL.sol";
 
 
 /**
@@ -28,6 +29,8 @@ contract GaltGlobalRegistry is Ownable {
   address private ZERO_ADDRESS = address(0);
 
   bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
+
+  bytes32 public constant ACL = bytes32("ACL");
 
   // Tokens
   bytes32 public constant GALT_TOKEN = bytes32("galt_token");
@@ -140,6 +143,11 @@ contract GaltGlobalRegistry is Ownable {
   function getSpaceTokenAddress() external view returns (address) {
     require(contracts[SPACE_TOKEN] != ZERO_ADDRESS, "GGR: SPACE_TOKEN not set");
     return contracts[SPACE_TOKEN];
+  }
+
+  function getACL() external view returns (IACL) {
+    require(contracts[ACL] != ZERO_ADDRESS, "GGR: ACL not set");
+    return IACL(contracts[ACL]);
   }
 
   function getGaltToken() external view returns (IERC20) {
