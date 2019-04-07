@@ -140,11 +140,11 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     galtSpaceGaltShare = 13;
   }
 
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
+  function minimalApplicationFeeEth(address _multiSig) public view returns (uint256) {
     return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
+  function minimalApplicationFeeGalt(address _multiSig) public view returns (uint256) {
     return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
@@ -208,8 +208,10 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
-    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
+//    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+//    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
+    //TODO: find the way to optimize gas
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) && ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender);
 
     return submitApplicationHelper(
       _multiSig,
