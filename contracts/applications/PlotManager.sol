@@ -32,7 +32,6 @@ contract PlotManager is AbstractOracleApplication {
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-  bytes32 public constant PM_AUDITOR_ORACLE_TYPE = bytes32("PM_AUDITOR_ORACLE_TYPE");
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
@@ -563,7 +562,7 @@ contract PlotManager is AbstractOracleApplication {
 
     uint256 totalReward = 0;
 
-    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE, PM_AUDITOR_ORACLE_TYPE];
+    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
     // TODO: fetch information about role shares from multiSig config
 
     uint256 len = a.assignedOracleTypes.length;
