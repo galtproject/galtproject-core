@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
+const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
@@ -108,6 +109,7 @@ contract('PlotManager', accounts => {
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
     this.description = 'test description';
 
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
@@ -115,9 +117,10 @@ contract('PlotManager', accounts => {
 
     this.geodesicMock = await MockGeodesic.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
@@ -130,12 +133,13 @@ contract('PlotManager', accounts => {
     await this.galtToken.mint(alice, ether(10000000000), { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    // this.splitMerge = await MockSplitMerge.new();
+
     this.splitMerge = await deploySplitMerge(this.ggr);
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
 
@@ -166,7 +170,6 @@ contract('PlotManager', accounts => {
     this.abMultiSigX = this.abX.multiSig;
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.abVotingX = this.abX.voting;
 
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
@@ -195,10 +198,6 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    await this.plotManager.addRoleTo(feeMixerAddress, await this.plotManager.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
-
     // TODO: remove after oracle active status check be implemented in multiSig-level
     await this.oracles.setApplicationTypeOracleTypes(NEW_APPLICATION, [PM_SURVEYOR, PM_LAWYER], [52, 48], [_ES, _ES], {
       from: coreTeam
@@ -219,7 +218,7 @@ contract('PlotManager', accounts => {
       from: coreTeam
     });
 
-    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotManager.address, true, { from: coreTeam });
   });
 
   describe('application pipeline for GALT payment method', () => {

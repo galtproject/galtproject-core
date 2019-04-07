@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
@@ -108,10 +109,14 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.oracles = await Oracles.new({ from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
 
-      this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-      this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
+      this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+      this.acl = await ACL.new({ from: coreTeam });
+      this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
+        from: coreTeam
+      });
 
+      await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam
       });
@@ -121,10 +126,13 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
         from: coreTeam
       });
-
       this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
-
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+      await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
 
       await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam

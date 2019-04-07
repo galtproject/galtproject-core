@@ -1,5 +1,5 @@
 /* eslint-disable prefer-arrow-callback */
-// const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
+const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -7,7 +7,7 @@ const SpaceRA = artifacts.require('./SpaceRA.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
-// const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
+const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -42,7 +42,6 @@ contract('ArbitrationCandidateTop', accounts => {
     coreTeam,
     oracleManager,
     claimManager,
-    geoDateManagement,
     fakeSRA,
     alice,
     bob,
@@ -62,6 +61,7 @@ contract('ArbitrationCandidateTop', accounts => {
   ] = accounts;
 
   before(async function() {
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
@@ -69,12 +69,16 @@ contract('ArbitrationCandidateTop', accounts => {
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
 
-    this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
-    this.galtLockerRegistry = await LockerRegistry.new({ from: coreTeam });
-    this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
-    this.galtLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
+    this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
+      from: coreTeam
+    });
+    this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
+      from: coreTeam
+    });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
+    this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
 
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -85,25 +89,10 @@ contract('ArbitrationCandidateTop', accounts => {
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
-    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
-      from: coreTeam
-    });
-    await this.spaceLockerRegistry.addRoleTo(
-      this.spaceLockerFactory.address,
-      await this.spaceLockerRegistry.ROLE_FACTORY(),
-      {
-        from: coreTeam
-      }
-    );
-    await this.galtLockerRegistry.addRoleTo(
-      this.galtLockerFactory.address,
-      await this.galtLockerRegistry.ROLE_FACTORY(),
-      {
-        from: coreTeam
-      }
-    );
+
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -131,15 +120,22 @@ contract('ArbitrationCandidateTop', accounts => {
       [_ES, _ES, _ES],
       { from: oracleManager }
     );
+
     this.multiSigFactoryF = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactoryF.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
+    await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, false, { from: coreTeam });
+
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
+    await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
   });
 
   // TODO: fix values
@@ -2481,6 +2477,10 @@ contract('ArbitrationCandidateTop', accounts => {
   describe('#pushArbitrators()', () => {
     beforeEach(async function() {
       this.multiSigFactoryF = await deployMultiSigFactory(this.ggr, coreTeam);
+      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactoryF.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, false, { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), fakeSRA, true, { from: coreTeam });
+
       await this.galtToken.approve(this.multiSigFactoryF.address, ether(10), { from: bob });
       this.abF = await buildArbitration(
         this.multiSigFactoryF,
@@ -2495,13 +2495,9 @@ contract('ArbitrationCandidateTop', accounts => {
         bob
       );
       this.abMultiSigF = this.abF.multiSig;
-      this.abVotingF = this.abF.voting;
       this.arbitratorStakeAccountingX = this.abF.arbitratorStakeAccounting;
       this.delegateSpaceVotingF = this.abF.delegateSpaceVoting;
       this.candidateTopF = this.abF.candidateTop;
-
-      // voting = this.abVotingF;
-      // multiSig = this.abMultiSigF;
 
       await this.delegateSpaceVotingF.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
       await this.delegateSpaceVotingF.onDelegateReputationChanged(candidateB, 1200, { from: fakeSRA });

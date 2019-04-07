@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const ACL = artifacts.require('./ACL.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
@@ -95,13 +96,14 @@ contract('NewOracleManager', (accounts) => {
     this.description = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
 
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
@@ -114,6 +116,7 @@ contract('NewOracleManager', (accounts) => {
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     const applicationConfig = {};
     applicationConfig[bytes32('NO_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));

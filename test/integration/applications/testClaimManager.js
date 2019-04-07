@@ -1,4 +1,5 @@
 const ClaimManager = artifacts.require('./ClaimManager.sol');
+const ACL = artifacts.require('./ACL.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
@@ -102,9 +103,11 @@ contract("ClaimManager", (accounts) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
@@ -118,6 +121,10 @@ contract("ClaimManager", (accounts) => {
     await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -156,12 +163,6 @@ contract("ClaimManager", (accounts) => {
     const res = await this.arbitratorStakeAccountingX.totalStakes();
     assert.equal(res, ether(2000000));
 
-    await this.claimManager.addRoleTo(feeMixerAddress, await this.claimManager.ROLE_FEE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.claimManager.addRoleTo(feeMixerAddress, await this.claimManager.ROLE_GALT_SPACE(), {
-      from: coreTeam
-    });
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
     });

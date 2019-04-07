@@ -13,22 +13,36 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceCustodianRegistry.sol";
+import "./GaltGlobalRegistry.sol";
 
 
-contract SpaceCustodianRegistry is ISpaceCustodianRegistry, Permissionable {
+contract SpaceCustodianRegistry is ISpaceCustodianRegistry {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
-  string public constant ROLE_APPLICATION = "application";
+  bytes32 public constant ROLE_SPACE_CUSTODIAN_REGISTRAR = bytes32("SPACE_CUSTODIAN_REGISTRAR");
 
   // SpaceLocker address => Details
   mapping(uint256 => ArraySet.AddressSet) private assignedCustodians;
   mapping(address => ArraySet.Uint256Set) private spaceTokensOfCustodian;
   mapping(uint256 => bytes32[]) private assignedDocuments;
 
+  GaltGlobalRegistry private ggr;
+
+  constructor (GaltGlobalRegistry _ggr) public {
+    ggr = _ggr;
+  }
+
+  modifier onlySpaceCustodianRegistrar() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_SPACE_CUSTODIAN_REGISTRAR),
+      "Only SPACE_CUSTODIAN_REGISTRAR role allowed"
+    );
+
+    _;
+  }
 
   function attach(
     uint256 _spaceTokenId,
@@ -36,7 +50,7 @@ contract SpaceCustodianRegistry is ISpaceCustodianRegistry, Permissionable {
     bytes32[] calldata _documents
   )
     external
-    onlyRole(ROLE_APPLICATION)
+    onlySpaceCustodianRegistrar
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].add(_custodians[i]);
@@ -51,7 +65,7 @@ contract SpaceCustodianRegistry is ISpaceCustodianRegistry, Permissionable {
     bytes32[] calldata _documents
   )
     external
-    onlyRole(ROLE_APPLICATION)
+    onlySpaceCustodianRegistrar
   {
     for (uint256 i = 0; i < _custodians.length; i++) {
       assignedCustodians[_spaceTokenId].remove(_custodians[i]);
