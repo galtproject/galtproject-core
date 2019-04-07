@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const ACL = artifacts.require('./ACL.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
@@ -13,37 +14,34 @@ const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelper
 
 const web3 = new Web3(GaltLockerFactory.web3.currentProvider);
 
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
 contract('GaltRA', accounts => {
-  const [coreTeam, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager, spaceRA] = accounts;
+  const [coreTeam, alice, bob, charlie, a1, a2, a3, claimManager, spaceRA] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-    this.galtLockerRegistry = await LockerRegistry.new({ from: coreTeam });
-    this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
-    this.galtRA = await GaltRA.new(this.ggr.address, { from: coreTeam });
-    await this.galtLockerRegistry.addRoleTo(
-      this.galtLockerFactory.address,
-      await this.galtLockerRegistry.ROLE_FACTORY(),
-      {
-        from: coreTeam
-      }
-    );
-    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
       from: coreTeam
     });
+    this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
+    this.galtRA = await GaltRA.new(this.ggr.address, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
@@ -55,6 +53,9 @@ contract('GaltRA', accounts => {
     await this.ggr.setContract(await this.ggr.GALT_RA(), this.galtRA.address, {
       from: coreTeam
     });
+
+    await this.acl.setRole(bytes32('GALT_REPUTATION_NOTIFIER'), this.galtRA.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('GALT_LOCKER_REGISTRAR'), this.galtLockerFactory.address, true, { from: coreTeam });
   });
 
   describe('transfer', () => {
@@ -277,6 +278,8 @@ contract('GaltRA', accounts => {
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });

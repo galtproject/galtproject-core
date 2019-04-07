@@ -70,7 +70,7 @@ contract MultiSigRegistry is IMultiSigRegistry {
 
   function requireValidMultiSig(address _multiSig) external view {
     require(multiSigs[_multiSig].active, "MultiSig address is invalid");
-}
+  }
 
   // GETTERS
 

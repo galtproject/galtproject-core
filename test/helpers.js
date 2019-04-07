@@ -372,6 +372,8 @@ const Helpers = {
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
     await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
 
+    await splitMerge.initialize(ggr.address);
+
     return { splitMerge, geodesic };
   },
   async deploySplitMerge(ggr) {

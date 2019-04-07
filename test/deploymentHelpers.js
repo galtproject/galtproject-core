@@ -1,5 +1,4 @@
 const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
 const ArbitrationCandidateTopFactory = artifacts.require('./ArbitrationCandidateTopFactory.sol');
@@ -91,12 +90,8 @@ const Helpers = {
       { from: owner }
     );
 
-    const multiSigRegistryContract = await MultiSigRegistry.at(await ggr.getMultiSigRegistryAddress());
     const oraclesContract = await Oracles.at(await ggr.getOraclesAddress());
 
-    await multiSigRegistryContract.addRoleTo(multiSigFactory.address, await multiSigRegistryContract.ROLE_FACTORY(), {
-      from: owner
-    });
     await oraclesContract.addRoleTo(
       multiSigFactory.address,
       await oraclesContract.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(),

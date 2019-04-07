@@ -46,7 +46,7 @@ contract LockerRegistry is ILockerRegistry {
   modifier onlyFactory() {
     require(
       ggr.getACL().hasRole(msg.sender, roleFactory),
-      "Invalid notifier"
+      "Invalid registrar"
     );
 
     _;

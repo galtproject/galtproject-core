@@ -1,4 +1,5 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const ACL = artifacts.require('./ACL.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
 const chai = require('chai');
@@ -11,7 +12,9 @@ const pIteration = require('p-iteration');
 
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
-const { BN } = Web3.utils;
+const { utf8ToHex, BN } = Web3.utils;
+const bytes32 = utf8ToHex;
+
 const { assertRevert, deploySplitMerge, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
@@ -30,10 +33,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.subjectContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
 
     this.splitMerge = await deploySplitMerge(this.ggr);
@@ -43,7 +48,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
 
-    await this.splitMerge.addRoleTo(coreTeam, await this.splitMerge.GEO_DATA_MANAGER());
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), coreTeam, true, { from: coreTeam });
 
     this.processMartinezRueda = async splitOperation => {
       const doneStage = await splitOperation.doneStage();

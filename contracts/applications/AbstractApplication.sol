@@ -22,9 +22,6 @@ import "../registries/GaltGlobalRegistry.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
-  string public constant ROLE_FEE_MANAGER = "fee_manager";
-  string public constant ROLE_GALT_SPACE = "galt_space";
-
   uint256 internal galtSpaceEthShare;
   uint256 internal galtSpaceGaltShare;
 

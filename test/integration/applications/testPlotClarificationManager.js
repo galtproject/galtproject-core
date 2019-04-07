@@ -1,6 +1,7 @@
 const PlotManager = artifacts.require('./PlotManager.sol');
 const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
+const ACL = artifacts.require('./ACL.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -114,6 +115,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
     this.description = 'test description';
 
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
     this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
@@ -121,7 +123,7 @@ contract('PlotClarificationManager', (accounts) => {
 
     this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
@@ -131,6 +133,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.splitMerge = deployment.splitMerge;
     this.geodesic = deployment.geodesic;
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
@@ -144,6 +147,7 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -176,7 +180,6 @@ contract('PlotClarificationManager', (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.abVotingX = this.abX.voting;
 
     await this.plotManager.initialize(this.ggr.address, {
       from: coreTeam
@@ -199,10 +202,6 @@ contract('PlotClarificationManager', (accounts) => {
       from: coreTeam
     });
     await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
-    });
-
-    await this.plotManager.addRoleTo(feeMixerAddress, await this.plotManager.ROLE_GALT_SPACE(), {
       from: coreTeam
     });
 
@@ -244,7 +243,7 @@ contract('PlotClarificationManager', (accounts) => {
     await this.oracles.onOracleStakeChanged(charlie, PL_LAWYER, ether(30), { from: stakesNotifier });
     await this.oracles.onOracleStakeChanged(dan, PL_LAWYER, ether(30), { from: stakesNotifier });
     await this.oracles.onOracleStakeChanged(eve, PL_AUDITOR, ether(30), { from: stakesNotifier });
-    await this.splitMerge.addRoleTo(this.plotManager.address, await this.splitMerge.GEO_DATA_MANAGER());
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotManager.address, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
@@ -254,7 +253,9 @@ contract('PlotClarificationManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.splitMerge.addRoleTo(this.plotClarificationManager.address, await this.splitMerge.GEO_DATA_MANAGER());
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotClarificationManager.address, true, {
+      from: coreTeam
+    });
   });
 
   it('should be initialized successfully', async function() {

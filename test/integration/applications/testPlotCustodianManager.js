@@ -5,6 +5,7 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const ACL = artifacts.require('./ACL.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -119,16 +120,18 @@ contract('PlotCustodianManager', (accounts) => {
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
+    this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
-    this.spaceCustodianRegistry = await SpaceCustodianRegistry.new({ from: coreTeam });
+    this.spaceCustodianRegistry = await SpaceCustodianRegistry.new(this.ggr.address, { from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
     this.geodesic = deployment.geodesic;
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
@@ -145,6 +148,7 @@ contract('PlotCustodianManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -174,7 +178,6 @@ contract('PlotCustodianManager', (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.abVotingX = this.abX.voting;
 
     await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -189,9 +192,6 @@ contract('PlotCustodianManager', (accounts) => {
       from: coreTeam
     });
     await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
-    });
-    await this.splitMerge.addRoleTo(minter, await this.splitMerge.GEO_DATA_MANAGER(), {
       from: coreTeam
     });
 
@@ -225,14 +225,6 @@ contract('PlotCustodianManager', (accounts) => {
       from: applicationTypeManager
     });
     await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR, ether(30), { from: applicationTypeManager });
-
-    await this.spaceCustodianRegistry.addRoleTo(
-      manualCustodianManager,
-      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
-      {
-        from: coreTeam
-      }
-    );
 
     await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [PC_CUSTODIAN, FOO], {
       from: oracleManager
@@ -285,6 +277,8 @@ contract('PlotCustodianManager', (accounts) => {
     await this.oracles.onOracleStakeChanged(george, PC_CUSTODIAN, ether(30), {
       from: stakesNotifier
     });
+
+    await this.acl.setRole(bytes32('SPACE_CUSTODIAN_REGISTRAR'), manualCustodianManager, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
@@ -293,13 +287,10 @@ contract('PlotCustodianManager', (accounts) => {
     await this.plotCustodianManager.initialize(this.ggr.address, {
       from: coreTeam
     });
-    await this.spaceCustodianRegistry.addRoleTo(
-      this.plotCustodianManager.address,
-      await this.spaceCustodianRegistry.ROLE_APPLICATION(),
-      {
-        from: coreTeam
-      }
-    );
+
+    await this.acl.setRole(bytes32('SPACE_CUSTODIAN_REGISTRAR'), this.plotCustodianManager.address, true, {
+      from: coreTeam
+    });
   });
 
   it('should be initialized successfully', async function() {

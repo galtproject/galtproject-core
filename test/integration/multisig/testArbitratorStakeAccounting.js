@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const ACL = artifacts.require('./ACL.sol');
 const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
@@ -7,6 +8,8 @@ const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 
 initHelperWeb3(web3);
 
@@ -25,9 +28,13 @@ contract('ArbitratorStakeAccounting', accounts => {
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
 
     this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
       from: coreTeam
@@ -35,8 +42,6 @@ contract('ArbitratorStakeAccounting', accounts => {
     this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.config.address, 60, {
       from: coreTeam
     });
-
-    await this.arbitratorStakeAccountingX.addRoleTo(slashManager, 'slash_manager');
 
     await this.config.initialize(
       multiSig,
