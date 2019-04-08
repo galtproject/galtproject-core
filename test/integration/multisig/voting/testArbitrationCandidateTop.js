@@ -3,6 +3,7 @@ const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
@@ -17,6 +18,7 @@ const {
   initHelperWeb3,
   initHelperArtifacts,
   deploySplitMergeMock,
+  paymentMethods,
   evmMineBlock
 } = require('../../../helpers');
 
@@ -65,6 +67,7 @@ contract('ArbitrationCandidateTop', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -93,6 +96,7 @@ contract('ArbitrationCandidateTop', accounts => {
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -122,6 +126,16 @@ contract('ArbitrationCandidateTop', accounts => {
     );
 
     this.multiSigFactoryF = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.feeRegistry.setGaltFee(await this.multiSigFactoryF.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.multiSigFactoryF.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.multiSigFactoryF.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
+    await this.feeRegistry.setGaltFee(await this.spaceLockerFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.spaceLockerFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.spaceLockerFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
 
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactoryF.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
@@ -178,7 +192,6 @@ contract('ArbitrationCandidateTop', accounts => {
 
       describe('in list', () => {
         beforeEach(async function() {
-          // await this.candidateTopF.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA });
           const p = [
             this.delegateSpaceVotingF.onDelegateReputationChanged(candidateA, 800, { from: fakeSRA }),
             this.delegateSpaceVotingF.onDelegateReputationChanged(candidateB, 1200, { from: fakeSRA }),

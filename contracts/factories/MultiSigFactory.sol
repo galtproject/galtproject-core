@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../Oracles.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
 import "../multisig/proposals/interfaces/IProposalManager.sol";
@@ -92,6 +93,8 @@ contract MultiSigFactory is Ownable {
     DONE
   }
 
+  bytes32 public constant FEE_KEY = bytes32("MULTI_SIG_FACTORY");
+
   struct MultiSigContractGroup {
     address creator;
     Step nextStep;
@@ -128,8 +131,6 @@ contract MultiSigFactory is Ownable {
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
-  uint256 commission;
-
   constructor (
     GaltGlobalRegistry _ggr,
     ArbitratorsMultiSigFactory _arbitratorMultiSigFactory,
@@ -146,8 +147,6 @@ contract MultiSigFactory is Ownable {
     DelegateReputationVotingFactory _delegateReputationVotingFactory,
     OracleStakeVotingFactory _oracleStakeVotingFactory
   ) public {
-    commission = 10 ether;
-
     ggr = _ggr;
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
@@ -166,6 +165,16 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
   }
 
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
+  }
+
   function buildFirstStep(
     address[] calldata _initialOwners,
     uint256 _initialMultiSigRequired,
@@ -179,9 +188,10 @@ contract MultiSigFactory is Ownable {
     uint256[] calldata _thresholds
   )
     external
+    payable
     returns (bytes32 groupId)
   {
-    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
+    _acceptPayment();
 
     groupId = keccak256(abi.encode(blockhash(block.number - 1), _initialMultiSigRequired, msg.sender));
 
@@ -410,10 +420,6 @@ contract MultiSigFactory is Ownable {
       address(delegateGaltVoting),
       address(oracleStakeVoting)
     );
-  }
-
-  function setCommission(uint256 _commission) external onlyOwner {
-    commission = _commission;
   }
 
   function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {

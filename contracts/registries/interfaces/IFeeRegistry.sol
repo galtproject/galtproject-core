@@ -13,8 +13,21 @@
 
 pragma solidity 0.5.3;
 
-import "../../interfaces/ISpaceLocker.sol";
 
-interface ISpaceLockerFactory {
-  function build() external payable returns (ISpaceLocker);
+interface IFeeRegistry {
+
+  enum PaymentMethod {
+    NONE,
+    ETH_ONLY,
+    GALT_ONLY,
+    ETH_AND_GALT
+  }
+
+  function setEthFee(bytes32 _key, uint256 _amount) external;
+  function setGaltFee(bytes32 _key, uint256 _amount) external;
+  function setPaymentMethod(bytes32 _key, PaymentMethod _paymentMethod) external;
+  function getEthFeeOrRevert(bytes32 _key) external view returns (uint256);
+  function getGaltFeeOrRevert(bytes32 _key) external view returns (uint256);
+  function getEthFee(bytes32 _key) external view returns (uint256);
+  function getGaltFee(bytes32 _key) external view returns (uint256);
 }
