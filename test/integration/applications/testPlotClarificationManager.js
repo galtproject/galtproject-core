@@ -8,6 +8,7 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -19,6 +20,7 @@ const {
   assertEqualBN,
   assertRevert,
   numberToEvmWord,
+  paymentMethods,
   zeroAddress,
   deploySplitMergeMock,
   clearLibCache
@@ -128,12 +130,14 @@ contract('PlotClarificationManager', (accounts) => {
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
     this.geodesic = deployment.geodesic;
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
@@ -147,6 +151,12 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
