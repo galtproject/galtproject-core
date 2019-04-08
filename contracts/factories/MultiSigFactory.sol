@@ -165,6 +165,11 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
   }
 
+  modifier onlyFeeCollector() {
+    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    _;
+  }
+
   function _acceptPayment() internal {
     if (msg.value == 0) {
       uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
@@ -420,6 +425,15 @@ contract MultiSigFactory is Ownable {
       address(delegateGaltVoting),
       address(oracleStakeVoting)
     );
+  }
+
+  function withdrawEthFees() external onlyFeeCollector {
+    msg.sender.transfer(address(this).balance);
+  }
+
+  function withdrawGaltFees() external onlyFeeCollector {
+    IERC20 galtToken = ggr.getGaltToken();
+    galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
 
   function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {

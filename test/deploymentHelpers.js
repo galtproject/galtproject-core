@@ -112,10 +112,12 @@ const Helpers = {
     minimalArbitratorStake,
     thresholds,
     applicationConfigs,
-    owner
+    owner,
+    ethValue = 0
   ) {
     let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, thresholds, {
-      from: owner
+      from: owner,
+      value: ethValue
     });
     const multiSig = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
     const config = await ArbitrationConfig.at(res.logs[0].args.arbitrationConfig);

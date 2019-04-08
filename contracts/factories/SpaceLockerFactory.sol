@@ -35,6 +35,11 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
     ggr = _ggr;
   }
 
+  modifier onlyFeeCollector() {
+    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    _;
+  }
+
   function _acceptPayment() internal {
     if (msg.value == 0) {
       uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
@@ -55,5 +60,14 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
     emit SpaceLockerCreated(msg.sender, address(locker));
 
     return ISpaceLocker(locker);
+  }
+
+  function withdrawEthFees() external onlyFeeCollector {
+    msg.sender.transfer(address(this).balance);
+  }
+
+  function withdrawGaltFees() external onlyFeeCollector {
+    IERC20 galtToken = ggr.getGaltToken();
+    galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
 }
