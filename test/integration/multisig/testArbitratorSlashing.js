@@ -137,6 +137,9 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
 
+      await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
+      await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
+
       await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
       await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
       await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
