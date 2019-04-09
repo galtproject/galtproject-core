@@ -19,6 +19,10 @@ import "./interfaces/IFeeRegistry.sol";
 
 contract FeeRegistry is IFeeRegistry, Ownable {
 
+  uint256 private protocolApplicationEthShare;
+  uint256 private protocolApplicationGaltShare;
+
+  mapping(bytes32 => uint256) private protocolEthShare;
   mapping(bytes32 => uint256) private ethFees;
   mapping(bytes32 => uint256) private galtFees;
   mapping(bytes32 => PaymentMethod) private paymentMethods;
@@ -33,6 +37,20 @@ contract FeeRegistry is IFeeRegistry, Ownable {
 
   function setPaymentMethod(bytes32 _key, PaymentMethod _paymentMethod) external onlyOwner {
     paymentMethods[_key] = _paymentMethod;
+  }
+
+  function setProtocolEthShare(uint256 _ethShare) external onlyOwner {
+    require(_ethShare > 0, "Expect share to be > 0");
+    require(_ethShare <= 100, "Expect share to be <= 100");
+
+    protocolApplicationEthShare = _ethShare;
+  }
+
+  function setProtocolGaltShare(uint256 _ethShare) external onlyOwner {
+    require(_ethShare > 0, "Expect share to be > 0");
+    require(_ethShare <= 100, "Expect share to be <= 100");
+
+    protocolApplicationGaltShare = _ethShare;
   }
 
   // GETTERS
@@ -65,5 +83,17 @@ contract FeeRegistry is IFeeRegistry, Ownable {
 
   function getGaltFee(bytes32 _key) external view returns (uint256) {
     return galtFees[_key];
+  }
+
+  function getProtocolApplicationEthShare() external view returns (uint256) {
+    return protocolApplicationEthShare;
+  }
+
+  function getProtocolApplicationGaltShare() external view returns (uint256) {
+    return protocolApplicationGaltShare;
+  }
+
+  function getProtocolApplicationShares() external view returns (uint256 ethShare, uint256 galtShare) {
+    return (protocolApplicationEthShare, protocolApplicationGaltShare);
   }
 }

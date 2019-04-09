@@ -119,6 +119,9 @@ contract('NewOracleManager', (accounts) => {
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
+    await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
+    await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
+
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });

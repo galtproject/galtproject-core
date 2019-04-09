@@ -30,4 +30,5 @@ interface IFeeRegistry {
   function getGaltFeeOrRevert(bytes32 _key) external view returns (uint256);
   function getEthFee(bytes32 _key) external view returns (uint256);
   function getGaltFee(bytes32 _key) external view returns (uint256);
+  function getProtocolApplicationShares() external view returns (uint256 ethFee, uint256 galtFee);
 }

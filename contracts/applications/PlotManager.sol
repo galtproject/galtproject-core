@@ -115,10 +115,6 @@ contract PlotManager is AbstractOracleApplication {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -540,11 +536,16 @@ contract PlotManager is AbstractOracleApplication {
   {
     uint256 share;
 
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_a.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 oraclesReward = _fee.sub(galtProtocolFee);

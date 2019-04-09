@@ -124,6 +124,9 @@ contract("ClaimManager", (accounts) => {
     await this.galtToken.mint(alice, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
 
+    await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
+    await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
+
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
     await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });

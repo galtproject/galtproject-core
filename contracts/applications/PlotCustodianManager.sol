@@ -134,10 +134,6 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   function minimalApplicationFeeEth(address _multiSig) public view returns (uint256) {
@@ -527,9 +523,11 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     Application storage a = applications[_aId];
     Voting storage v = a.voting;
 
-    require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
-    require(v.voters.has(msg.sender), "Not in voters list");
-    require(v.approvals[msg.sender] == false, "Already approved");
+//    require(a.status == ApplicationStatus.REVIEW, "Expect REVIEW status");
+//    require(v.voters.has(msg.sender), "Not in voters list");
+//    require(v.approvals[msg.sender] == false, "Already approved");
+    // TODO: return the above requires back instead of the follow one
+    require(a.status == ApplicationStatus.REVIEW && v.voters.has(msg.sender) && v.approvals[msg.sender] == false);
 
     v.approveCount += 1;
     v.approvals[msg.sender] = true;
@@ -819,11 +817,16 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
   {
     uint256 share;
 
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_a.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 oraclesReward = _fee.sub(galtProtocolFee);

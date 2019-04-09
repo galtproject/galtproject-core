@@ -118,10 +118,6 @@ contract PlotClarificationManager is AbstractOracleApplication {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
@@ -486,14 +482,20 @@ contract PlotClarificationManager is AbstractOracleApplication {
   )
     internal
   {
-    uint256 share;
     assert(_fee > 0);
 
+    uint256 share;
+
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_a.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 oraclesReward = _fee.sub(galtProtocolFee);
