@@ -1,6 +1,7 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
@@ -11,7 +12,7 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
-const { assertRevert, ether, initHelperWeb3, numberToEvmWord } = require('../../helpers');
+const { assertRevert, ether, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -110,6 +111,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.claimManager = await ClaimManager.new({ from: coreTeam });
 
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+      this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
       this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
@@ -117,6 +119,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       });
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam
       });
@@ -133,6 +136,15 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
+
+      await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
+      await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
+
+      await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
+      await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
+      await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+        from: coreTeam
+      });
 
       await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam

@@ -16,6 +16,5 @@ pragma solidity 0.5.3;
 import "../../interfaces/ISpaceLocker.sol";
 
 interface ISpaceLockerFactory {
-  function build() external returns (ISpaceLocker);
-  function setCommission(uint256 _commission) external;
+  function build() external payable returns (ISpaceLocker);
 }

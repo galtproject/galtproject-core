@@ -1,5 +1,6 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
@@ -9,7 +10,14 @@ const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
-const { ether, deploySplitMerge, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../helpers');
+const {
+  ether,
+  deploySplitMerge,
+  assertRevert,
+  initHelperWeb3,
+  initHelperArtifacts,
+  paymentMethods
+} = require('../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
 
 const web3 = new Web3(GaltLockerFactory.web3.currentProvider);
@@ -30,6 +38,7 @@ contract('GaltRA', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
       from: coreTeam
@@ -42,6 +51,7 @@ contract('GaltRA', accounts => {
     await this.galtToken.mint(charlie, ether(10000000), { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
@@ -51,6 +61,12 @@ contract('GaltRA', accounts => {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.GALT_RA(), this.galtRA.address, {
+      from: coreTeam
+    });
+
+    await this.feeRegistry.setGaltFee(await this.galtLockerFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.galtLockerFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.galtLockerFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
       from: coreTeam
     });
 
@@ -64,8 +80,7 @@ contract('GaltRA', accounts => {
       let res = await this.galtLockerFactory.build({ from: alice });
       const aliceLockerAddress = res.logs[0].args.locker;
 
-      await this.galtToken.approve(this.galtLockerFactory.address, ether(10), { from: bob });
-      res = await this.galtLockerFactory.build({ from: bob });
+      res = await this.galtLockerFactory.build({ from: bob, value: ether(5) });
       const bobLockerAddress = res.logs[0].args.locker;
 
       await this.galtToken.approve(this.galtLockerFactory.address, ether(10), { from: charlie });
@@ -279,6 +294,11 @@ contract('GaltRA', accounts => {
     it('should allow revoking locked reputation', async function() {
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+      await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
+      await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
+      await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+        from: coreTeam
+      });
 
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });

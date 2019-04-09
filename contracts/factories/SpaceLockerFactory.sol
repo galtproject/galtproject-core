@@ -16,6 +16,7 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
+import "../registries/interfaces/IFeeRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "./interfaces/ISpaceLockerFactory.sol";
@@ -24,20 +25,33 @@ import "../SpaceLocker.sol";
 contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   event SpaceLockerCreated(address owner, address locker);
 
-  GaltGlobalRegistry ggr;
+  bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
 
-  uint256 public commission;
+  GaltGlobalRegistry ggr;
 
   constructor (
     GaltGlobalRegistry _ggr
   ) public {
     ggr = _ggr;
-
-    commission = 10 ether;
   }
 
-  function build() external returns (ISpaceLocker) {
-    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
+  modifier onlyFeeCollector() {
+    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    _;
+  }
+
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
+  }
+
+  function build() external payable returns (ISpaceLocker) {
+    _acceptPayment();
 
     ISpaceLocker locker = new SpaceLocker(ggr, msg.sender);
 
@@ -48,7 +62,12 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
     return ISpaceLocker(locker);
   }
 
-  function setCommission(uint256 _commission) external onlyOwner {
-    commission = _commission;
+  function withdrawEthFees() external onlyFeeCollector {
+    msg.sender.transfer(address(this).balance);
+  }
+
+  function withdrawGaltFees() external onlyFeeCollector {
+    IERC20 galtToken = ggr.getGaltToken();
+    galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
 }
