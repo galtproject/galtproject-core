@@ -32,7 +32,6 @@ contract PlotManager is AbstractOracleApplication {
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
 
-  bytes32 public constant PM_AUDITOR_ORACLE_TYPE = bytes32("PM_AUDITOR_ORACLE_TYPE");
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
@@ -116,10 +115,6 @@ contract PlotManager is AbstractOracleApplication {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -155,7 +150,7 @@ contract PlotManager is AbstractOracleApplication {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
@@ -541,11 +536,16 @@ contract PlotManager is AbstractOracleApplication {
   {
     uint256 share;
 
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_a.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 oraclesReward = _fee.sub(galtProtocolFee);
@@ -563,7 +563,7 @@ contract PlotManager is AbstractOracleApplication {
 
     uint256 totalReward = 0;
 
-    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE, PM_AUDITOR_ORACLE_TYPE];
+    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
     // TODO: fetch information about role shares from multiSig config
 
     uint256 len = a.assignedOracleTypes.length;
@@ -631,6 +631,7 @@ contract PlotManager is AbstractOracleApplication {
     view
     returns (
       address applicant,
+      address multiSig,
       uint256 spaceTokenId,
       bytes32 credentialsHash,
       ApplicationStatus status,
@@ -646,6 +647,7 @@ contract PlotManager is AbstractOracleApplication {
 
     return (
       m.applicant,
+      m.multiSig,
       m.spaceTokenId,
       m.details.credentialsHash,
       m.status,

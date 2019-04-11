@@ -15,14 +15,13 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitratorsMultiSig.sol";
 import "./ArbitrationConfig.sol";
 import "./interfaces/IArbitratorStakeAccounting.sol";
 
 
-contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable {
+contract ArbitratorStakeAccounting is IArbitratorStakeAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -40,17 +39,20 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting, Permissionable
     uint256 arbitratorStakeAfter
   );
 
-  string public constant ROLE_SLASH_MANAGER = "slash_manager";
+  bytes32 public constant ROLE_ARBITRATION_STAKE_SLASHER = bytes32("ARBITRATION_STAKE_SLASHER");
 
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
-  ArbitrationConfig public arbitrationConfig;
+  ArbitrationConfig internal arbitrationConfig;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
 
   modifier onlySlashManager {
-    requireRole(msg.sender, ROLE_SLASH_MANAGER);
+    require(
+      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ARBITRATION_STAKE_SLASHER),
+      "Only ARBITRATION_STAKE_SLASHER role allowed"
+    );
 
     _;
   }

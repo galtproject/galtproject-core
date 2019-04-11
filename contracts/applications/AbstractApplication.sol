@@ -18,16 +18,11 @@ import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../Oracles.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IFeeRegistry.sol";
 import "../registries/GaltGlobalRegistry.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
-  string public constant ROLE_FEE_MANAGER = "fee_manager";
-  string public constant ROLE_GALT_SPACE = "galt_space";
-
-  uint256 internal galtSpaceEthShare;
-  uint256 internal galtSpaceGaltShare;
-
   GaltGlobalRegistry public ggr;
 
   uint256 public protocolFeesEth;
@@ -55,7 +50,7 @@ contract AbstractApplication is Initializable, Permissionable {
     _;
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod);
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod);
 
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
@@ -67,6 +62,10 @@ contract AbstractApplication is Initializable, Permissionable {
     require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
     ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
     protocolFeesGalt = 0;
+  }
+
+  function getProtocolShares() internal view returns(uint256 ethFee, uint256 galtFee) {
+    return IFeeRegistry(ggr.getFeeRegistryAddress()).getProtocolApplicationShares();
   }
 
   function multiSigRegistry() internal view returns(IMultiSigRegistry) {

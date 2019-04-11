@@ -1,61 +1,105 @@
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-// const ArbitratorVoting = artifacts.require('./ArbitratorVoting.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const ACL = artifacts.require('./ACL.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
-const { initHelperWeb3, ether } = require('../../helpers');
-const { deployMultiSigFactory } = require('../../deploymentHelpers');
+const { initHelperWeb3, paymentMethods, assertRevert, ether } = require('../../helpers');
+const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
 const web3 = new Web3(ClaimManager.web3.currentProvider);
+
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 
 initHelperWeb3(web3);
 
 // eslint-disable-next-line
-contract.skip("MultiSigFactory", (accounts) => {
-  const [coreTeam, claimManagerAddress, spaceRA, alice, bob, charlie, dan, eve, frank] = accounts;
+contract("MultiSigFactory", (accounts) => {
+  const [coreTeam, alice, feeCollector, claimManagerAddress, a1, a2, a3] = accounts;
 
   beforeEach(async function() {
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
-    this.multiSigFactory = await deployMultiSigFactory(
-      this.galtToken.address,
-      this.oracles,
-      claimManagerAddress,
-      this.multiSigRegistry,
-      spaceRA,
-      coreTeam
-    );
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
 
-    await this.galtToken.mint(alice, ether(1000), { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeCollector, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+      from: coreTeam
+    });
+
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
+    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
+
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+
+    await this.galtToken.mint(alice, ether(100000), { from: coreTeam });
   });
 
-  it('should build contracts with commission paid in galts', async function() {
-    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+  describe('protocol fee', () => {
+    async function build(factory, value = 0) {
+      await buildArbitration(
+        factory,
+        [a1, a2, a3],
+        2,
+        7,
+        10,
+        60,
+        ether(1000),
+        [24, 24, 24, 24, 24, 24],
+        {},
+        alice,
+        value
+      );
+    }
 
-    const members = [bob, charlie, dan, eve, frank];
+    describe('payments', async function() {
+      it('should accept GALT payments with a registered value', async function() {
+        await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
+        await build(this.multiSigFactory, 0);
+      });
 
-    const res = await this.multiSigFactory.build(members, 3, { from: alice });
-    const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    // const abVotingX = await ArbitratorVoting.at(res.logs[0].args.arbitratorVoting);
+      it('should accept ETH payments with a registered value', async function() {
+        await build(this.multiSigFactory, ether(5));
+      });
 
-    assert.sameMembers(await abMultiSigX.getArbitrators(), members);
-    // await assertRevert(abVotingX.pushArbitrators());
-  });
+      it('should accept GALT payments with an approved value higher than a registered', async function() {
+        await this.galtToken.approve(this.multiSigFactory.address, ether(11), { from: alice });
+        await build(this.multiSigFactory, 0);
+        const res = await this.galtToken.balanceOf(this.multiSigFactory.address);
+        assert.equal(res, ether(10));
+      });
 
-  it('should build contracts without commission', async function() {
-    await this.multiSigFactory.setCommission(0, { from: coreTeam });
+      it('should reject GALT payments with an approved value lower than a registered', async function() {
+        await this.galtToken.approve(this.multiSigFactory.address, ether(9), { from: alice });
+        await assertRevert(build(this.multiSigFactory, 0));
+      });
 
-    const members = [bob, charlie, dan, eve, frank];
+      it('should accept ETH payments with a value higher than a registered one', async function() {
+        await assertRevert(build(this.multiSigFactory, ether(6)));
+      });
 
-    const res = await this.multiSigFactory.build(members, 3, { from: alice });
-    const abMultiSigX = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-
-    assert.sameMembers(await abMultiSigX.getArbitrators(), members);
+      it('should accept ETH payments with a value lower than a registered one', async function() {
+        await assertRevert(build(this.multiSigFactory, ether(4)));
+      });
+    });
   });
 });

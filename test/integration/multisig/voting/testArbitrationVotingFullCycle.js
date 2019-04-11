@@ -1,7 +1,9 @@
 /* eslint-disable prefer-arrow-callback */
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Oracles = artifacts.require('./Oracles.sol');
+const ACL = artifacts.require('./ACL.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
+const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const GaltRA = artifacts.require('./GaltRA.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
@@ -13,7 +15,13 @@ const GaltLocker = artifacts.require('./GaltLocker.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
-const { ether, initHelperWeb3, initHelperArtifacts, deploySplitMergeMock } = require('../../../helpers');
+const {
+  ether,
+  initHelperWeb3,
+  initHelperArtifacts,
+  deploySplitMergeMock,
+  paymentMethods
+} = require('../../../helpers');
 
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 const { utf8ToHex } = Web3.utils;
@@ -55,18 +63,24 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
 
   before(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
 
-    this.spaceLockerRegistry = await LockerRegistry.new({ from: coreTeam });
-    this.galtLockerRegistry = await LockerRegistry.new({ from: coreTeam });
+    this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
+      from: coreTeam
+    });
+    this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
+      from: coreTeam
+    });
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
     await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
       from: coreTeam
@@ -77,26 +91,11 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
-    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
-      from: coreTeam
-    });
-    await this.spaceLockerRegistry.addRoleTo(
-      this.spaceLockerFactory.address,
-      await this.spaceLockerRegistry.ROLE_FACTORY(),
-      {
-        from: coreTeam
-      }
-    );
-    await this.galtLockerRegistry.addRoleTo(
-      this.galtLockerFactory.address,
-      await this.galtLockerRegistry.ROLE_FACTORY(),
-      {
-        from: coreTeam
-      }
-    );
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
     this.galtRA = await GaltRA.new(this.ggr.address, { from: coreTeam });
 
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -124,16 +123,40 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
       [_ES, _ES, _ES],
       { from: oracleManager }
     );
+
+    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
+    await this.feeRegistry.setGaltFee(await this.spaceLockerFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.spaceLockerFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.spaceLockerFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
+    await this.feeRegistry.setGaltFee(await this.galtLockerFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.galtLockerFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.galtLockerFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      from: coreTeam
+    });
+
+    await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('GALT_REPUTATION_NOTIFIER'), this.galtRA.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_LOCKER_REGISTRAR'), this.spaceLockerFactory.address, true, {
+      from: coreTeam
+    });
+    await this.acl.setRole(bytes32('GALT_LOCKER_REGISTRAR'), this.galtLockerFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), geoDateManagement, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
-    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
-
     await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
       from: coreTeam
     });
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
 
@@ -161,6 +184,10 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
 
     // CONFIGURING
     this.X = this.abMultiSigX.address;
+  });
+
+  afterEach(async function() {
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, false, { from: coreTeam });
   });
 
   it('Mixed Scenario. 3 space owners / 3 galt owners / 3 oracles', async function() {

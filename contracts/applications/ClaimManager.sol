@@ -139,10 +139,6 @@ contract ClaimManager is AbstractApplication {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
@@ -163,7 +159,7 @@ contract ClaimManager is AbstractApplication {
     return uint256(applicationConfig(_multiSig, CONFIG_N));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
@@ -460,11 +456,16 @@ contract ClaimManager is AbstractApplication {
   {
     uint256 share;
 
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_c.fees.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 arbitratorsReward = _fee.sub(galtProtocolFee);

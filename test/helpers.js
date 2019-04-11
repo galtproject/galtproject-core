@@ -58,6 +58,12 @@ const Helpers = {
     COMPLETED: 8,
     CLOSED: 9
   },
+  paymentMethods: {
+    NONE: 0,
+    ETH_ONLY: 1,
+    GALT_ONLY: 2,
+    ETH_AND_GALT: 3
+  },
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
@@ -371,6 +377,8 @@ const Helpers = {
 
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
     await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+
+    await splitMerge.initialize(ggr.address);
 
     return { splitMerge, geodesic };
   },

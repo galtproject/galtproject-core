@@ -1,3 +1,4 @@
+const ACL = artifacts.require('./ACL.sol');
 const Oracles = artifacts.require('./Oracles.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
@@ -55,11 +56,16 @@ contract('OracleStakesAccounting', accounts => {
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.oracles = await Oracles.new({ from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+
+    await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
+    assert.equal(await this.acl.hasRole(slashManager, bytes32('ORACLE_STAKE_SLASHER')), true);
 
     this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
       from: coreTeam
@@ -67,14 +73,6 @@ contract('OracleStakesAccounting', accounts => {
     this.candidateTop = await ArbitrationCandidateTop.new(this.config.address, { from: coreTeam });
     this.oracleStakesAccountingX = await OracleStakesAccounting.new(this.config.address, { from: coreTeam });
     this.oracleStakeVoting = await OracleStakeVoting.new(this.config.address, { from: coreTeam });
-
-    // await this.oracleStakeVoting.addRoleTo(
-    //   this.oracleStakesAccountingX.address,
-    //   await this.candidateTop.ORACLE_STAKES_NOTIFIER(),
-    //   {
-    //     from: coreTeam
-    //   }
-    // );
 
     await this.config.initialize(
       multiSig,
@@ -105,13 +103,6 @@ contract('OracleStakesAccounting', accounts => {
     await this.oracles.addRoleTo(
       this.oracleStakesAccountingX.address,
       await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(),
-      {
-        from: coreTeam
-      }
-    );
-    await this.oracleStakesAccountingX.addRoleTo(
-      slashManager,
-      await this.oracleStakesAccountingX.ROLE_SLASH_MANAGER(),
       {
         from: coreTeam
       }

@@ -42,9 +42,9 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     int256 finalOracleTotalStake
   );
 
-  string public constant ROLE_SLASH_MANAGER = "slash_manager";
+  bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
 
-  ArbitrationConfig public arbitrationConfig;
+  ArbitrationConfig arbitrationConfig;
   mapping(address => OracleTypes) oracleTypes;
 
   struct OracleTypes {
@@ -53,7 +53,10 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
   }
 
   modifier onlySlashManager {
-    requireRole(msg.sender, ROLE_SLASH_MANAGER);
+    require(
+      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_STAKE_SLASHER),
+      "Only ORACLE_STAKE_SLASHER role allowed"
+    );
 
     _;
   }

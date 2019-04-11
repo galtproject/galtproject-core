@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../Oracles.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";
 import "../multisig/proposals/interfaces/IProposalManager.sol";
@@ -92,6 +93,8 @@ contract MultiSigFactory is Ownable {
     DONE
   }
 
+  bytes32 public constant FEE_KEY = bytes32("MULTI_SIG_FACTORY");
+
   struct MultiSigContractGroup {
     address creator;
     Step nextStep;
@@ -128,8 +131,6 @@ contract MultiSigFactory is Ownable {
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
-  uint256 commission;
-
   constructor (
     GaltGlobalRegistry _ggr,
     ArbitratorsMultiSigFactory _arbitratorMultiSigFactory,
@@ -146,8 +147,6 @@ contract MultiSigFactory is Ownable {
     DelegateReputationVotingFactory _delegateReputationVotingFactory,
     OracleStakeVotingFactory _oracleStakeVotingFactory
   ) public {
-    commission = 10 ether;
-
     ggr = _ggr;
 
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
@@ -166,6 +165,21 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
   }
 
+  modifier onlyFeeCollector() {
+    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    _;
+  }
+
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
+  }
+
   function buildFirstStep(
     address[] calldata _initialOwners,
     uint256 _initialMultiSigRequired,
@@ -179,9 +193,10 @@ contract MultiSigFactory is Ownable {
     uint256[] calldata _thresholds
   )
     external
+    payable
     returns (bytes32 groupId)
   {
-    ggr.getGaltToken().transferFrom(msg.sender, address(this), commission);
+    _acceptPayment();
 
     groupId = keccak256(abi.encode(blockhash(block.number - 1), _initialMultiSigRequired, msg.sender));
 
@@ -202,7 +217,6 @@ contract MultiSigFactory is Ownable {
 
     address claimManager = ggr.getClaimManagerAddress();
     arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
-    oracleStakesAccounting.addRoleTo(claimManager, oracleStakesAccounting.ROLE_SLASH_MANAGER());
     Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     g.creator = msg.sender;
@@ -230,9 +244,7 @@ contract MultiSigFactory is Ownable {
     );
     ArbitrationCandidateTop arbitrationCandidateTop = arbitrationCandidateTopFactory.build(g.arbitrationConfig);
 
-    arbitratorStakeAccounting.addRoleTo(ggr.getClaimManagerAddress(), arbitratorStakeAccounting.ROLE_SLASH_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(arbitrationCandidateTop), g.arbitratorMultiSig.ROLE_ARBITRATOR_MANAGER());
-//    arbitrationCandidateTop.addRoleTo(ggr.getSpaceRAAddress(), arbitrationCandidateTop.SPACE_REPUTATION_NOTIFIER());
 
     g.arbitratorStakeAccounting = arbitratorStakeAccounting;
     g.arbitrationCandidateTop = arbitrationCandidateTop;
@@ -366,8 +378,14 @@ contract MultiSigFactory is Ownable {
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     IOracleStakeVoting oracleStakeVoting = oracleStakeVotingFactory.build(g.arbitrationConfig);
-    IDelegateReputationVoting delegateSpaceVoting = delegateReputationVotingFactory.build(g.arbitrationConfig);
-    IDelegateReputationVoting delegateGaltVoting = delegateReputationVotingFactory.build(g.arbitrationConfig);
+    IDelegateReputationVoting delegateSpaceVoting = delegateReputationVotingFactory.build(
+      g.arbitrationConfig,
+      "SPACE_REPUTATION_NOTIFIER"
+    );
+    IDelegateReputationVoting delegateGaltVoting = delegateReputationVotingFactory.build(
+      g.arbitrationConfig,
+      "GALT_REPUTATION_NOTIFIER"
+    );
 
     g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
     g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
@@ -386,7 +404,6 @@ contract MultiSigFactory is Ownable {
 
     // Revoke role management permissions from this factory address
     g.arbitrationCandidateTop.removeRoleFrom(address(this), "role_manager");
-    g.arbitratorStakeAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");
@@ -410,8 +427,13 @@ contract MultiSigFactory is Ownable {
     );
   }
 
-  function setCommission(uint256 _commission) external onlyOwner {
-    commission = _commission;
+  function withdrawEthFees() external onlyFeeCollector {
+    msg.sender.transfer(address(this).balance);
+  }
+
+  function withdrawGaltFees() external onlyFeeCollector {
+    IERC20 galtToken = ggr.getGaltToken();
+    galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
 
   function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {

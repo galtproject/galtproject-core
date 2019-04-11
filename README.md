@@ -1,7 +1,7 @@
 # Galt Project Core Contracts (@galtproject/core)
 
 [![Build Status](https://travis-ci.org/galtspace/galtproject-core.svg?branch=develop)](https://travis-ci.org/galtspace/galtproject-core)
-[![Contracts Version](https://img.shields.io/badge/version-0.8.0-orange.svg)](https://github.com/galtspace/galtproject-core)
+[![Contracts Version](https://img.shields.io/badge/version-0.9.0-orange.svg)](https://github.com/galtspace/galtproject-core)
 [![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
 
@@ -37,9 +37,9 @@ Currently we have all our contracts deployed at our private network named `testn
 
 ### Roadmap
 
-* `v0.8.0` - Current version
-* `v0.9.0` - Introduce ACL and MultiSig governance
-* `v0.10.0` - Introduce upgradeability strategy
+* `v0.9.0` - Current version
+* `v0.10.0` - Introduce MultiSig governance and MultiSig-level Oracles
+* `v0.11.0` - Introduce upgradeability strategy
 
 
 ### About Copyright and Software licenses

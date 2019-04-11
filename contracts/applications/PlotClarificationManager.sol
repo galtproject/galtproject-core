@@ -118,10 +118,6 @@ contract PlotClarificationManager is AbstractOracleApplication {
   {
     ggr = _ggr;
     oracles = Oracles(ggr.getOraclesAddress());
-
-    // TODO: figure out where to store these values
-    galtSpaceEthShare = 33;
-    galtSpaceGaltShare = 13;
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
@@ -136,7 +132,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) internal view returns (PaymentMethod) {
+  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
@@ -385,6 +381,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       address applicant,
+      address multiSig,
       uint256 spaceTokenId,
       bool tokenWithdrawn,
       bool galtProtocolFeePaidOut,
@@ -401,6 +398,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
       m.status,
       m.currency,
       m.applicant,
+      m.multiSig,
       m.spaceTokenId,
       m.tokenWithdrawn,
       m.galtProtocolFeePaidOut,
@@ -484,14 +482,20 @@ contract PlotClarificationManager is AbstractOracleApplication {
   )
     internal
   {
-    uint256 share;
     assert(_fee > 0);
 
+    uint256 share;
+
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
+
     if (_a.currency == Currency.ETH) {
-      share = galtSpaceEthShare;
+      share = ethFee;
     } else {
-      share = galtSpaceGaltShare;
+      share = galtFee;
     }
+
+    assert(share > 0);
+    assert(share <= 100);
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 oraclesReward = _fee.sub(galtProtocolFee);
