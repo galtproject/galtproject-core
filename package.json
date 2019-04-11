@@ -23,7 +23,6 @@
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-prettier": "^3.0.0",
-    "eth-gas-reporter": "^0.1.12",
     "ethlint": "1.2.4",
     "ganache-core": "2.5.4",
     "lodash": "^4.17.11",
@@ -32,7 +31,6 @@
     "p-iteration": "^1.1.8",
     "prettier": "1.16.4",
     "solidity-coverage": "^0.5.11",
-    "surge": "^0.20.3",
     "truffle": "5.0.11",
     "typedarray-to-buffer": "^3.1.5",
     "web3": "1.0.0-beta.37",
@@ -46,7 +44,6 @@
     "test": "./node_modules/truffle/build/cli.bundled.js test --network test",
     "compile": "./node_modules/truffle/build/cli.bundled.js compile",
     "test-cov": "./node_modules/.bin/solidity-coverage",
-    "test-gas": "USE_GAS_REPORTER=yes ./node_modules/truffle/build/cli.bundled.js test --network development",
     "eslint": "eslint .",
     "ethlint": "solium --dir ."
   },
