@@ -1,6 +1,6 @@
 {
   "name": "@galtproject/core",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Open-source software for land tokenization (accounting on blockchain) and self-governance",
   "directories": {
     "test": "test"
@@ -9,8 +9,8 @@
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
     "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#02290d2",
-    "@galtproject/libs": "git+ssh://github.com/galtspace/galtproject-libs.git#38369d234f47ee1068f26f78d9139266fbce035a",
-    "@galtproject/math": "git+ssh://github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
+    "@galtproject/libs": "git+ssh://git@github.com/galtspace/galtproject-libs.git#38369d234f47ee1068f26f78d9139266fbce035a",
+    "@galtproject/math": "git+ssh://git@github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git#72ed184",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
@@ -23,16 +23,14 @@
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-prettier": "^3.0.0",
-    "eth-gas-reporter": "^0.1.12",
-    "ethlint": "1.2.3",
+    "ethlint": "1.2.4",
     "ganache-core": "2.5.4",
     "lodash": "^4.17.11",
-    "mocha": "^6.0.2",
+    "mocha": "^6.1.2",
     "openzeppelin-solidity": "2.1.2",
     "p-iteration": "^1.1.8",
     "prettier": "1.16.4",
     "solidity-coverage": "^0.5.11",
-    "surge": "^0.20.3",
     "truffle": "5.0.11",
     "typedarray-to-buffer": "^3.1.5",
     "web3": "1.0.0-beta.37",
@@ -46,7 +44,6 @@
     "test": "./node_modules/truffle/build/cli.bundled.js test --network test",
     "compile": "./node_modules/truffle/build/cli.bundled.js compile",
     "test-cov": "./node_modules/.bin/solidity-coverage",
-    "test-gas": "USE_GAS_REPORTER=yes ./node_modules/truffle/build/cli.bundled.js test --network development",
     "eslint": "eslint .",
     "ethlint": "solium --dir ."
   },
