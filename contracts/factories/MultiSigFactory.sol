@@ -16,7 +16,6 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../Oracles.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/ClaimManager.sol";
@@ -25,12 +24,15 @@ import "../multisig/proposals/interfaces/IProposalManager.sol";
 import "../multisig/voting/interfaces/IOracleStakeVoting.sol";
 import "../multisig/voting/interfaces/IDelegateReputationVoting.sol";
 import "../multisig/voting/interfaces/IArbitrationCandidateTop.sol";
+import "../multisig/voting/ArbitrationCandidateTop.sol";
+import "../multisig/interfaces/IArbitrationOracles.sol";
 // Arbitration Factories
 import "./ArbitratorsMultiSigFactory.sol";
 import "./ArbitratorStakeAccountingFactory.sol";
 import "./OracleStakesAccountingFactory.sol";
 import "./ArbitrationConfigFactory.sol";
 import "./arbitration/ArbitrationCandidateTopFactory.sol";
+import "./arbitration/ArbitrationOracleFactory.sol";
 // Arbitration Proposal Factories
 import "./arbitration/ArbitrationModifyThresholdProposalFactory.sol";
 import "./arbitration/ArbitrationModifyMofNProposalFactory.sol";
@@ -40,7 +42,6 @@ import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
 import "./arbitration/ArbitrationModifyApplicationConfigProposalFactory.sol";
 import "./arbitration/DelegateReputationVotingFactory.sol";
 import "./arbitration/OracleStakeVotingFactory.sol";
-import "../multisig/voting/ArbitrationCandidateTop.sol";
 
 
 contract MultiSigFactory is Ownable {
@@ -82,6 +83,11 @@ contract MultiSigFactory is Ownable {
     address oracleStakeVoting
   );
 
+  event BuildMultiSigEighthStep(
+    bytes32 groupId,
+    address oracles
+  );
+
   enum Step {
     FIRST,
     SECOND,
@@ -90,6 +96,7 @@ contract MultiSigFactory is Ownable {
     FIFTH,
     SIXTH,
     SEVENTH,
+    EIGHTH,
     DONE
   }
 
@@ -103,6 +110,9 @@ contract MultiSigFactory is Ownable {
     ArbitrationConfig arbitrationConfig;
     ArbitratorStakeAccounting arbitratorStakeAccounting;
     OracleStakesAccounting oracleStakesAccounting;
+    IOracleStakeVoting oracleStakeVoting;
+    IDelegateReputationVoting delegateSpaceVoting;
+    IDelegateReputationVoting delegateGaltVoting;
 
     IProposalManager modifyThresholdProposalManager;
     IProposalManager modifyMofNProposalManager;
@@ -118,6 +128,7 @@ contract MultiSigFactory is Ownable {
   ArbitratorsMultiSigFactory arbitratorMultiSigFactory;
   ArbitrationCandidateTopFactory arbitrationCandidateTopFactory;
   ArbitratorStakeAccountingFactory arbitratorStakeAccountingFactory;
+  ArbitrationOracleFactory arbitrationOracleFactory;
   OracleStakesAccountingFactory oracleStakesAccountingFactory;
   DelegateReputationVotingFactory delegateReputationVotingFactory;
   OracleStakeVotingFactory oracleStakeVotingFactory;
@@ -138,6 +149,7 @@ contract MultiSigFactory is Ownable {
     ArbitratorStakeAccountingFactory _arbitratorStakeAccountingFactory,
     OracleStakesAccountingFactory _oracleStakesAccountingFactory,
     ArbitrationConfigFactory _arbitrationConfigFactory,
+    ArbitrationOracleFactory _arbitrationOracleFactory,
     ArbitrationModifyThresholdProposalFactory _arbitrationModifyThresholdProposalFactory,
     ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
     ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
@@ -156,6 +168,7 @@ contract MultiSigFactory is Ownable {
     arbitrationConfigFactory = _arbitrationConfigFactory;
     delegateReputationVotingFactory = _delegateReputationVotingFactory;
     oracleStakeVotingFactory = _oracleStakeVotingFactory;
+    arbitrationOracleFactory = _arbitrationOracleFactory;
 
     arbitrationModifyThresholdProposalFactory = _arbitrationModifyThresholdProposalFactory;
     arbitrationModifyMofNProposalFactory = _arbitrationModifyMofNProposalFactory;
@@ -217,7 +230,6 @@ contract MultiSigFactory is Ownable {
 
     address claimManager = ggr.getClaimManagerAddress();
     arbitratorMultiSig.addRoleTo(claimManager, arbitratorMultiSig.ROLE_PROPOSER());
-    Oracles(ggr.getOraclesAddress()).addOracleNotifierRoleTo(address(oracleStakesAccounting));
 
     g.creator = msg.sender;
     g.arbitratorMultiSig = arbitratorMultiSig;
@@ -390,14 +402,38 @@ contract MultiSigFactory is Ownable {
     g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
     g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
 
+    g.nextStep = Step.EIGHTH;
+    g.delegateSpaceVoting = delegateGaltVoting;
+    g.delegateGaltVoting = delegateGaltVoting;
+    g.oracleStakeVoting = oracleStakeVoting;
+
+    emit BuildMultiSigSeventhStep(
+      _groupId,
+      address(delegateSpaceVoting),
+      address(delegateGaltVoting),
+      address(oracleStakeVoting)
+    );
+  }
+
+  function buildEighthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.EIGHTH, "EIGHTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    ArbitrationOracles oracles = arbitrationOracleFactory.build(g.arbitrationConfig);
+
     g.arbitrationConfig.initialize(
       g.arbitratorMultiSig,
       g.arbitrationCandidateTop,
       g.arbitratorStakeAccounting,
       g.oracleStakesAccounting,
-      delegateSpaceVoting,
-      delegateGaltVoting,
-      oracleStakeVoting
+      g.delegateSpaceVoting,
+      g.delegateGaltVoting,
+      g.oracleStakeVoting
     );
 
     // TODO: initialize proposal contracts too
@@ -407,6 +443,7 @@ contract MultiSigFactory is Ownable {
     g.arbitratorMultiSig.removeRoleFrom(address(this), "role_manager");
     g.oracleStakesAccounting.removeRoleFrom(address(this), "role_manager");
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");
+    oracles.removeRoleFrom(address(this), "role_manager");
 
     g.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
     g.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
@@ -419,11 +456,9 @@ contract MultiSigFactory is Ownable {
 
     g.nextStep = Step.DONE;
 
-    emit BuildMultiSigSeventhStep(
+    emit BuildMultiSigEighthStep(
       _groupId,
-      address(delegateSpaceVoting),
-      address(delegateGaltVoting),
-      address(oracleStakeVoting)
+      address(oracles)
     );
   }
 

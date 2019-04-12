@@ -19,7 +19,6 @@ import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
 import "./interfaces/IPlotManagerFeeCalculator.sol";
-import "../Oracles.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./PlotManagerLib.sol";
@@ -114,7 +113,6 @@ contract PlotManager is AbstractOracleApplication {
     isInitializer
   {
     ggr = _ggr;
-    oracles = Oracles(ggr.getOraclesAddress());
   }
 
   modifier onlyApplicant(bytes32 _aId) {
@@ -130,20 +128,13 @@ contract PlotManager is AbstractOracleApplication {
   modifier onlyOracleOfApplication(bytes32 _aId) {
     Application storage a = applications[_aId];
 
-//    require(a.addressOracleTypes[msg.sender] != 0x0 && oracles.isOracleActive(msg.sender), "Not valid oracle");
     require(a.addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
 
     _;
   }
 
-  modifier ready() {
-    require(oracles.isApplicationTypeReady(APPLICATION_TYPE), "Oracle type list not complete");
-
-    _;
-  }
-
   function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
-    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfig(_multiSig, CONFIG_FEE_CALCULATOR)))));
+    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -151,7 +142,7 @@ contract PlotManager is AbstractOracleApplication {
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -342,11 +333,10 @@ contract PlotManager is AbstractOracleApplication {
   // Application can be locked by an oracle type only once.
   function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
-//    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
 
-    require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, _oracleType);
+
+    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
     require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock an oracle type not in PENDING status");
 
@@ -361,9 +351,7 @@ contract PlotManager is AbstractOracleApplication {
     // TODO: move permissions to an applicant
     assert(false);
     Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
     require(a.validationStatus[_oracleType] != ValidationStatus.PENDING, "Validation status not set");
     require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
@@ -382,14 +370,13 @@ contract PlotManager is AbstractOracleApplication {
     Application storage a = applications[_aId];
 
     require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
-    require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
     require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
 
     changeValidationStatus(a, oracleType, ValidationStatus.APPROVED);
 
@@ -441,6 +428,11 @@ contract PlotManager is AbstractOracleApplication {
     onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
+
+    bytes32 oracleType = a.addressOracleTypes[msg.sender];
+
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
+
     // TODO: merge into the contract
     PlotManagerLib.rejectApplicationHelper(a, _message);
 
@@ -456,13 +448,11 @@ contract PlotManager is AbstractOracleApplication {
     onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
-    require(
-      a.status == ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
-
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
     uint256 len = a.assignedOracleTypes.length;
 
+    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
     require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
 
     for (uint8 i = 0; i < len; i++) {
@@ -501,6 +491,7 @@ contract PlotManager is AbstractOracleApplication {
     require(
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
       "Application status should be APPROVED, REJECTED or CLOSED");
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
 
     require(reward > 0, "Reward is 0");
     require(a.oracleTypeRewardPaidOut[senderOracleType] == false, "Reward is already paid");
@@ -564,15 +555,19 @@ contract PlotManager is AbstractOracleApplication {
     uint256 totalReward = 0;
 
     a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
-    // TODO: fetch information about role shares from multiSig config
+    uint256 surveyorShare = oracleTypeShare(a.multiSig, PM_SURVEYOR_ORACLE_TYPE);
+    uint256 lawyerShare = oracleTypeShare(a.multiSig, PM_LAWYER_ORACLE_TYPE);
+    uint256[2] memory shares = [surveyorShare, lawyerShare];
+
+    require(surveyorShare + lawyerShare == 100);
 
     uint256 len = a.assignedOracleTypes.length;
-    for (uint8 i = 0; i < len; i++) {
+    for (uint256 i = 0; i < len; i++) {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
       .fees
       .oraclesReward
-      .mul(oracleTypeShare(a.multiSig, oracleType))
+      .mul(shares[i])
       .div(100);
 
       a.assignedRewards[oracleType] = rewardShare;

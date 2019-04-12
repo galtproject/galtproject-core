@@ -22,7 +22,7 @@ const CAT = bytes32('cat');
 const HUMAN = bytes32('human');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Oracles', accounts => {
+contract('ArbitrationOracles.sol', accounts => {
   const [
     coreTeam,
     oracleManager,

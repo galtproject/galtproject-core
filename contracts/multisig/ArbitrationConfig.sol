@@ -43,6 +43,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
+  bytes32 public constant ORACLES_CONTRACT = bytes32("oracles_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
   bytes32 public constant ARBITRATOR_STAKES_CONTRACT = bytes32("arbitrator_stakes_contract");
   bytes32 public constant ARBITRATION_CANDIDATE_TOP_CONTRACT = bytes32("candidate_top_contract");
@@ -155,6 +156,10 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function getArbitratorStakes() external view returns (IArbitratorStakeAccounting) {
     return IArbitratorStakeAccounting(contracts[ARBITRATOR_STAKES_CONTRACT]);
+  }
+
+  function getOracles() external view returns (IArbitrationOracles) {
+    return IArbitrationOracles(contracts[ORACLES_CONTRACT]);
   }
 
   function getOracleStakes() external view returns (IOracleStakesAccounting) {

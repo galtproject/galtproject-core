@@ -17,28 +17,35 @@ import "./AbstractApplication.sol";
 
 
 contract AbstractOracleApplication is AbstractApplication {
-  Oracles oracles;
 
   mapping(address => bytes32[]) public applicationsByOracle;
 
-  modifier anyOracle() {
-    // TODO: dangerous check
-    require(oracles.isOracleActive(msg.sender), "Not active oracle");
+  modifier _anyOracle() {
     _;
   }
 
   constructor() public {}
 
-//  function claimOracleReward(bytes32 _aId) external;
+  function claimOracleReward(bytes32 _aId) external;
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
 
   function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
-    uint256 val = uint256(applicationConfig(_multiSig, getOracleTypeShareKey(_oracleType)));
+    uint256 val = uint256(applicationConfigValue(_multiSig, getOracleTypeShareKey(_oracleType)));
 
     assert(val <= 100);
 
     return val;
+  }
+
+  function requireOracleActiveWithAssignedActiveOracleType(
+    address _multiSig,
+    address _oracle,
+    bytes32 _role
+  ) internal {
+    arbitrationConfig(_multiSig)
+      .getOracles()
+      .requireOracleActiveWithAssignedActiveOracleType(msg.sender, _role);
   }
 
   function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {

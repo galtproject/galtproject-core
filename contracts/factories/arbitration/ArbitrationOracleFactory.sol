@@ -13,23 +13,27 @@
 
 pragma solidity 0.5.3;
 
-
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 // This contract will be included into the current one
-import "../multisig/ArbitratorStakeAccounting.sol";
-import "../multisig/ArbitrationConfig.sol";
+import "../../multisig/interfaces/IArbitrationConfig.sol";
+import "../../multisig/ArbitrationOracles.sol";
 
 
-contract ArbitratorStakeAccountingFactory is Ownable {
+contract ArbitrationOracleFactory is Ownable {
   function build(
-    ArbitrationConfig _arbitrationConfig,
-    uint256 _periodLength
+    IArbitrationConfig arbitrationConfig
   )
     external
-    returns (ArbitratorStakeAccounting arbitratorStakeAccounting)
+    returns (ArbitrationOracles)
   {
-    arbitratorStakeAccounting = new ArbitratorStakeAccounting(_arbitrationConfig, _periodLength);
+    ArbitrationOracles voting = new ArbitrationOracles(
+      arbitrationConfig
+    );
+
+    voting.addRoleTo(msg.sender, "role_manager");
+    voting.removeRoleFrom(address(this), "role_manager");
+
+    return voting;
   }
 }

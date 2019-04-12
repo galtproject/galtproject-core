@@ -21,7 +21,7 @@ import "./AbstractApplication.sol";
 
 
 contract UpdateOracleManager is ArbitratorApprovableApplication {
-  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
+//  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("UO_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("UO_MINIMAL_FEE_GALT");
@@ -33,16 +33,13 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   struct OracleDetails {
     address multiSig;
     address addr;
-    bytes32 name;
+    string name;
     bytes32 position;
-    string description;
     bytes32[] descriptionHashes;
     bytes32[] oracleTypes;
   }
 
   mapping(bytes32 => OracleDetails) oracleDetails;
-
-  Oracles oracles;
 
   constructor() public {}
 
@@ -53,37 +50,35 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     isInitializer
   {
     _initialize(_ggr);
-    oracles = Oracles(ggr.getOraclesAddress());
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
   function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_M));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
   function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_N));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
     address payable _multiSig,
     address _oracleAddress,
-    bytes32 _name,
+    string calldata _name,
     bytes32 _position,
-    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
@@ -92,16 +87,16 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     payable
     returns (bytes32)
   {
-    oracles.requireOracleActive(_oracleAddress);
+    arbitrationConfig(_multiSig).getOracles().requireOracleActive(_oracleAddress);
     require(_descriptionHashes.length > 0, "Description hashes required");
-    require(_descriptionHashes.length > 0, "Oracle Types required");
+    require(_oracleTypes.length > 0, "Oracle Types required");
 
     bytes32 id = keccak256(
       abi.encodePacked(
         msg.sender,
         _name,
         _descriptionHashes,
-        applicationsArray.length
+        block.number
       )
     );
 
@@ -109,7 +104,6 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
     o.name = _name;
     o.position = _position;
-    o.description = _description;
     o.multiSig = _multiSig;
     o.descriptionHashes = _descriptionHashes;
     o.oracleTypes = _oracleTypes;
@@ -122,7 +116,10 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
-    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
+
+    arbitrationConfig(a.multiSig)
+      .getOracles()
+      .addOracle(d.addr, d.position, d.name, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -135,8 +132,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     returns (
       address multiSig,
       address addr,
-      bytes32 name,
       bytes32 position,
+      string memory name,
       bytes32[] memory descriptionHashes,
       bytes32[] memory oracleTypes
     )
@@ -147,8 +144,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     return (
       a.multiSig,
       o.addr,
-      o.name,
       o.position,
+      o.name,
       o.descriptionHashes,
       o.oracleTypes
     );

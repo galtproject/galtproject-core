@@ -15,6 +15,7 @@ pragma solidity 0.5.3;
 
 import "./IArbitratorsMultiSig.sol";
 import "./IArbitratorStakeAccounting.sol";
+import "./IArbitrationOracles.sol";
 import "./IOracleStakesAccounting.sol";
 import "../voting/interfaces/IArbitrationCandidateTop.sol";
 import "../voting/interfaces/IDelegateReputationVoting.sol";
@@ -32,6 +33,7 @@ interface IArbitrationConfig {
   function getMultiSig() external view returns (IArbitratorsMultiSig);
   function getArbitratorStakes() external view returns (IArbitratorStakeAccounting);
   function getOracleStakes() external view returns (IOracleStakesAccounting);
+  function getOracles() external view returns (IArbitrationOracles);
   function getArbitrationCandidateTop() external view returns (IArbitrationCandidateTop);
   function getDelegateSpaceVoting() external view returns (IDelegateReputationVoting);
   function getDelegateGaltVoting() external view returns (IDelegateReputationVoting);
