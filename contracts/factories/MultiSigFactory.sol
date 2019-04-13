@@ -114,6 +114,10 @@ contract MultiSigFactory is Ownable {
     IDelegateReputationVoting delegateSpaceVoting;
     IDelegateReputationVoting delegateGaltVoting;
 
+    MultiSigProposalContracts proposalContracts;
+  }
+
+  struct MultiSigProposalContracts {
     IProposalManager modifyThresholdProposalManager;
     IProposalManager modifyMofNProposalManager;
     IProposalManager modifyArbitratorStakeProposalManager;
@@ -140,7 +144,7 @@ contract MultiSigFactory is Ownable {
   ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
   ArbitrationModifyApplicationConfigProposalFactory arbitrationModifyApplicationConfigProposalFactory;
 
-  mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
+  mapping(bytes32 => MultiSigContractGroup) private multiSigContractGroups;
 
   constructor (
     GaltGlobalRegistry _ggr,
@@ -159,8 +163,6 @@ contract MultiSigFactory is Ownable {
     DelegateReputationVotingFactory _delegateReputationVotingFactory,
     OracleStakeVotingFactory _oracleStakeVotingFactory
   ) public {
-    ggr = _ggr;
-
     arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
     arbitrationCandidateTopFactory = _arbitrationCandidateTopFactory;
     arbitratorStakeAccountingFactory = _arbitratorStakeAccountingFactory;
@@ -176,6 +178,8 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
     arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
     arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
+
+    ggr = _ggr;
   }
 
   modifier onlyFeeCollector() {
@@ -283,9 +287,9 @@ contract MultiSigFactory is Ownable {
     g.arbitrationConfig.addRoleTo(address(mOfNProposals), g.arbitrationConfig.M_N_MANAGER());
     g.arbitrationConfig.addRoleTo(address(arbitratorStakeProposals), g.arbitrationConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
 
-    g.modifyThresholdProposalManager = thresholdProposals;
-    g.modifyMofNProposalManager = mOfNProposals;
-    g.modifyArbitratorStakeProposalManager = arbitratorStakeProposals;
+    g.proposalContracts.modifyThresholdProposalManager = thresholdProposals;
+    g.proposalContracts.modifyMofNProposalManager = mOfNProposals;
+    g.proposalContracts.modifyArbitratorStakeProposalManager = arbitratorStakeProposals;
 
     g.nextStep = Step.FOURTH;
 
@@ -312,8 +316,8 @@ contract MultiSigFactory is Ownable {
     g.arbitrationConfig.addRoleTo(address(changeAddressProposals), g.arbitrationConfig.CONTRACT_ADDRESS_MANAGER());
     g.arbitratorMultiSig.addRoleTo(address(revokeArbitratorsProposals), g.arbitratorMultiSig.ROLE_REVOKE_MANAGER());
 
-    g.modifyContractAddressProposalManager = changeAddressProposals;
-    g.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
+    g.proposalContracts.modifyContractAddressProposalManager = changeAddressProposals;
+    g.proposalContracts.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
 
     g.nextStep = Step.FIFTH;
 
@@ -337,7 +341,7 @@ contract MultiSigFactory is Ownable {
 
     g.arbitrationConfig.addRoleTo(address(modifyApplicationConfigProposals), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
 
-    g.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
+    g.proposalContracts.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
 
     g.nextStep = Step.SIXTH;
 
@@ -445,12 +449,12 @@ contract MultiSigFactory is Ownable {
     g.arbitrationConfig.removeRoleFrom(address(this), "role_manager");
     oracles.removeRoleFrom(address(this), "role_manager");
 
-    g.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.modifyContractAddressProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.modifyContractAddressProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
+    g.proposalContracts.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
     IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).addMultiSig(g.arbitratorMultiSig, g.arbitrationConfig);
 
