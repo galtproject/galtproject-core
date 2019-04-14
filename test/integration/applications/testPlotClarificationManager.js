@@ -248,10 +248,6 @@ contract('PlotClarificationManager', (accounts) => {
     });
   });
 
-  it('should be initialized successfully', async function() {
-    assert.equal(await this.plotClarificationManager.ggr(), this.ggr.address);
-  });
-
   describe('application pipeline for GALT', () => {
     beforeEach(async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
