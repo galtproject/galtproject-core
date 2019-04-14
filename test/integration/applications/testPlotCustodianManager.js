@@ -222,8 +222,7 @@ contract('PlotCustodianManager', (accounts) => {
       from: oracleModifier
     });
 
-    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(50000), { from: alice })
-
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(50000), { from: alice });
 
     // bob
     await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN, ether(2000), { from: alice });

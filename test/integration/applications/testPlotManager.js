@@ -205,7 +205,7 @@ contract('PlotManager', accounts => {
     await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER], { from: oracleModifier });
     await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER], { from: oracleModifier });
 
-    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice })
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice });
 
     await this.oracleStakesAccountingX.stake(bob, PM_SURVEYOR, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(charlie, PM_LAWYER, ether(2000), { from: alice });

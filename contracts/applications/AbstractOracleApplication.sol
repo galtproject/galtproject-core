@@ -42,7 +42,9 @@ contract AbstractOracleApplication is AbstractApplication {
     address _multiSig,
     address _oracle,
     bytes32 _role
-  ) internal {
+  )
+    internal
+  {
     arbitrationConfig(_multiSig)
       .getOracles()
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
