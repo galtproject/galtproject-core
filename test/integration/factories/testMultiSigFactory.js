@@ -1,7 +1,6 @@
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
@@ -26,7 +25,6 @@ contract("MultiSigFactory", (accounts) => {
     this.acl = await ACL.new({ from: coreTeam });
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
@@ -34,7 +32,6 @@ contract("MultiSigFactory", (accounts) => {
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeCollector, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {

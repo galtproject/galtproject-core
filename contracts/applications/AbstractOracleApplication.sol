@@ -45,7 +45,7 @@ contract AbstractOracleApplication is AbstractApplication {
   ) internal {
     arbitrationConfig(_multiSig)
       .getOracles()
-      .requireOracleActiveWithAssignedActiveOracleType(msg.sender, _role);
+      .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }
 
   function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {

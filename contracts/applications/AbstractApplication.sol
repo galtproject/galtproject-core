@@ -22,7 +22,7 @@ import "../registries/GaltGlobalRegistry.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
-  GaltGlobalRegistry public ggr;
+  GaltGlobalRegistry internal ggr;
 
   uint256 public protocolFeesEth;
   uint256 public protocolFeesGalt;

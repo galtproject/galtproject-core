@@ -132,9 +132,22 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
 
   // GETTERS
 
+  function oracleTypeMinimalStakeKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode("ORACLE_TYPE_MINIMAL_STAKE", _oracleType));
+  }
+
+  function oracleTypeMinimalStake(bytes32 _oracleType) public view returns (uint256) {
+    return uint256(arbitrationConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
+  }
+
   function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool) {
-    bytes32 key = keccak256(abi.encode("ROLE_MINIMAL_STAKE", _oracleType));
-    int256 required = int256(uint256(arbitrationConfig.applicationConfig(key)));
+    int256 required = int256(oracleTypeMinimalStake(_oracleType));
+
+    // The role has not properly set up yet
+    if (required == 0) {
+      return false;
+    }
+
     int256 current = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
 
     return current >= required;

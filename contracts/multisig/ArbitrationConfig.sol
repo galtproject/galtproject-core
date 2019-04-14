@@ -98,6 +98,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     IArbitrationCandidateTop _arbitratorVoting,
     IArbitratorStakeAccounting _arbitratorStakeAccounting,
     IOracleStakesAccounting _oracleStakesAccounting,
+    IArbitrationOracles _arbitrationOracles,
     IDelegateReputationVoting _delegateSpaceVoting,
     IDelegateReputationVoting _delegateGaltVoting,
     IOracleStakeVoting _oracleStakeVoting
@@ -111,6 +112,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT] = address(_arbitratorVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
     contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakesAccounting);
+    contracts[ORACLES_CONTRACT] = address(_arbitrationOracles);
     contracts[DELEGATE_SPACE_VOTING_CONTRACT] = address(_delegateSpaceVoting);
     contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);
     contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);

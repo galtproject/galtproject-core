@@ -192,10 +192,8 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
     payable
     returns (bytes32)
   {
-//    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
-//    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
-    //TODO: find the way to optimize gas
-    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) && ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender);
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId), "SpaceToken doesn't exist");
+    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the token");
 
     return submitApplicationHelper(
       _multiSig,
@@ -254,11 +252,12 @@ contract PlotCustodianManager is AbstractOracleApplication, Statusable {
 
     Application storage a = applications[_id];
 
+    a.multiSig = _multiSig;
+
     _storeCustodians(a, _spaceTokenId, _custodiansToModify, _action);
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
-    a.multiSig = _multiSig;
     a.throughEscrow = _throughEscrow;
     a.applicant = _applicant;
     a.currency = currency;

@@ -4,11 +4,11 @@ const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.s
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const MockGeodesic = artifacts.require('./MockGeodesic.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -32,9 +32,7 @@ const web3 = new Web3(PlotManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-const NEW_APPLICATION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
 // eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
 const MN = bytes32('MN');
 const BOB = bytes32('Bob');
 const CHARLIE = bytes32('Charlie');
@@ -81,12 +79,11 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-contract.only('PlotManager', accounts => {
+contract('PlotManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
-    multiSigX,
-    stakesNotifier,
+    oracleModifier,
     claimManagerAddress,
     spaceReputationAccountingAddress,
     alice,
@@ -121,12 +118,12 @@ contract.only('PlotManager', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceReputationAccountingAddress, {
@@ -146,6 +143,7 @@ contract.only('PlotManager', accounts => {
       from: coreTeam
     });
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
     PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
 
@@ -164,8 +162,15 @@ contract.only('PlotManager', accounts => {
     // [52, 48],
     applicationConfig[await this.plotManager.getOracleTypeShareKey(PM_SURVEYOR)] = numberToEvmWord(52);
     applicationConfig[await this.plotManager.getOracleTypeShareKey(PM_LAWYER)] = numberToEvmWord(48);
-    console.log('hey-1-start');
 
+    // Oracle minimal stake values setup
+    const surveyorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PM_SURVEYOR);
+    const lawyerKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PM_LAWYER);
+
+    applicationConfig[surveyorKey] = numberToEvmWord(ether(1500));
+    applicationConfig[lawyerKey] = numberToEvmWord(ether(1500));
+
+    // MultiSig setup
     this.abX = await buildArbitration(
       this.multiSigFactory,
       [bob, charlie, dan, eve, frank],
@@ -181,8 +186,9 @@ contract.only('PlotManager', accounts => {
 
     this.mX = this.abX.multiSig.address;
     this.abMultiSigX = this.abX.multiSig;
-    this.abConfig = this.abX.config;
+    this.abConfigX = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.oraclesX = this.abX.oracles;
 
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
@@ -195,59 +201,36 @@ contract.only('PlotManager', accounts => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    console.log('hey-1-2');
-    // await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-    //   from: coreTeam
-    // });
-    // await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
-    //   from: coreTeam
-    // });
-    // await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_MANAGER(), {
-    //   from: coreTeam
-    // });
-    // await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_GALT_SHARE_MANAGER(), {
-    //   from: coreTeam
-    // });
-    // await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-    //   from: coreTeam
-    // });
+    await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR], { from: oracleModifier });
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER], { from: oracleModifier });
 
-    console.log('hey-1-3');
-    await this.oracles.addOracle(multiSigX, bob, BOB, MN, [], [PM_SURVEYOR], { from: coreTeam });
-    await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, [], [PM_SURVEYOR], { from: coreTeam });
-    await this.oracles.addOracle(multiSigX, dan, DAN, MN, [], [PM_LAWYER], { from: coreTeam });
-    console.log('hey-1-4');
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice })
 
-    await this.oracles.onOracleStakeChanged(bob, PM_SURVEYOR, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(charlie, PM_LAWYER, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(dan, PM_LAWYER, ether(30), { from: stakesNotifier });
-    console.log('hey-1-end');
+    await this.oracleStakesAccountingX.stake(bob, PM_SURVEYOR, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(charlie, PM_LAWYER, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(dan, PM_LAWYER, ether(2000), { from: alice });
   });
 
   beforeEach(async function() {
-    console.log('hey-2-start');
     this.plotManager = await PlotManager.new({ from: coreTeam });
     await this.plotManager.initialize(this.ggr.address, {
       from: coreTeam
     });
 
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotManager.address, true, { from: coreTeam });
-    console.log('hey-2-end');
   });
 
   describe('application pipeline for GALT payment method', () => {
     before(async function() {
-      console.log('hey-3-start');
       await this.geodesicMock.calculateContourArea(this.contour);
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       this.fee = await this.plotManager.getSubmissionFeeByArea(this.abMultiSigX.address, Currency.GALT, area);
       assert.equal(this.fee, ether(15));
-      console.log('hey-4-end');
     });
 
     beforeEach(async function() {
-      console.log('hey-5-start');
       await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
       const res = await this.plotManager.submitApplication(
         this.abMultiSigX.address,
@@ -266,11 +249,10 @@ contract.only('PlotManager', accounts => {
 
       this.aId = res.logs[0].args.id;
       assert.notEqual(this.aId, undefined);
-      console.log('hey-5-end');
     });
 
     describe('#submitApplication() Galt', () => {
-      it.only('should provide methods to create and read an application', async function() {
+      it('should provide methods to create and read an application', async function() {
         const res2 = await this.plotManager.getApplicationById(this.aId);
         const res3 = await this.splitMerge.getPackageContour(
           '0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -539,12 +521,14 @@ contract.only('PlotManager', accounts => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        let res = await this.oracles.getOracleTypeRewardShare(PM_SURVEYOR);
+        const surveyorKey = await this.plotManager.getOracleTypeShareKey(PM_SURVEYOR);
+        const lawyerKey = await this.plotManager.getOracleTypeShareKey(PM_LAWYER);
+
+        let res = await this.abConfigX.applicationConfig(surveyorKey);
         assert.equal(res, 52);
-        res = await this.oracles.getOracleTypeRewardShare(PM_LAWYER);
+        res = await this.abConfigX.applicationConfig(lawyerKey);
         assert.equal(res, 48);
 
-        // const expectedFee = await this.plotManager.getSubmissionFee(Currency.GALT, this.contour);
         this.fee = ether(20);
         await this.galtToken.approve(this.plotManager.address, this.fee, { from: alice });
         res = await this.plotManager.submitApplication(

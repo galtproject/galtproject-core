@@ -48,6 +48,7 @@ contract('ArbitratorStakeAccounting', accounts => {
       zeroAddress,
       this.arbitratorStakeAccountingX.address,
       zeroAddress,
+      zeroAddress,
       delegateSpaceVoting,
       delegateGaltVoting,
       oracleStakeVoting

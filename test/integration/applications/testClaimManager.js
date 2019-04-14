@@ -1,10 +1,10 @@
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const ACL = artifacts.require('./ACL.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -26,8 +26,6 @@ GaltToken.numberFormat = 'String';
 const web3 = new Web3(ClaimManager.web3.currentProvider);
 const { utf8ToHex, hexToString } = Web3.utils;
 const bytes32 = utf8ToHex;
-
-const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
 
 const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
@@ -73,20 +71,7 @@ Object.freeze(Currency);
 
 // eslint-disable-next-line
 contract("ClaimManager", (accounts) => {
-  const [
-    coreTeam,
-    feeMixerAddress,
-    applicationTypeManager,
-    spaceRA,
-    oracleManager,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve,
-    frank,
-    george
-  ] = accounts;
+  const [coreTeam, feeMixerAddress, spaceRA, oracleModifier, alice, bob, charlie, dan, eve, frank, george] = accounts;
 
   before(async function() {
     this.initContour = ['qwerqwerqwer', 'ssdfssdfssdf', 'zxcvzxcvzxcv'];
@@ -103,18 +88,17 @@ contract("ClaimManager", (accounts) => {
 
     this.claimManager = await ClaimManager.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
+    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
@@ -123,6 +107,8 @@ contract("ClaimManager", (accounts) => {
 
     await this.galtToken.mint(alice, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
+
+    await this.claimManager.initialize(this.ggr.address, { from: coreTeam });
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
@@ -138,6 +124,7 @@ contract("ClaimManager", (accounts) => {
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -147,6 +134,12 @@ contract("ClaimManager", (accounts) => {
     applicationConfig[bytes32('CM_M')] = numberToEvmWord(3);
     applicationConfig[bytes32('CM_N')] = numberToEvmWord(5);
     applicationConfig[bytes32('CM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
+
+    const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
+    const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
+
+    applicationConfig[pcCustodianKey] = numberToEvmWord(ether(200));
+    applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
 
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -165,36 +158,30 @@ contract("ClaimManager", (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
-    this.abVotingX = this.abX.voting;
     this.mX = this.abMultiSigX.address;
+    this.oraclesX = this.abX.oracles;
 
     await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: alice });
     await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: bob });
     await this.arbitratorStakeAccountingX.stake(alice, ether(1000000), { from: alice });
     await this.arbitratorStakeAccountingX.stake(bob, ether(1000000), { from: bob });
 
+    await this.oraclesX.addOracle(bob, BOB, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(eve, EVE, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+
+    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      from: oracleModifier
+    });
+    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+      from: oracleModifier
+    });
+    await this.oraclesX.addOracle(dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+      from: oracleModifier
+    });
+
     const res = await this.arbitratorStakeAccountingX.totalStakes();
     assert.equal(res, ether(2000000));
-
-    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
-      from: coreTeam
-    });
-    await this.claimManager.initialize(this.ggr.address, {
-      from: coreTeam
-    });
-  });
-
-  it('should be initialized successfully', async function() {
-    assert.equal(await this.claimManager.ggr(), this.ggr.address);
   });
 
   describe('#claim()', () => {
@@ -345,39 +332,6 @@ contract("ClaimManager", (accounts) => {
   });
 
   describe('pipeline', () => {
-    before(async function() {
-      await this.oracles.setApplicationTypeOracleTypes(
-        MY_APPLICATION,
-        [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
-        [50, 50],
-        [_ES, _ES],
-        {
-          from: applicationTypeManager
-        }
-      );
-
-      await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(200), {
-        from: applicationTypeManager
-      });
-      await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(200), {
-        from: applicationTypeManager
-      });
-
-      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-      await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleManager });
-
-      await this.oracles.addOracle(this.mX, bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(this.mX, eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-      await this.oracles.addOracle(this.mX, dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
-        from: oracleManager
-      });
-    });
-
     beforeEach(async function() {
       await evmMineBlock();
       const res = await this.claimManager.submit(
@@ -858,18 +812,18 @@ contract("ClaimManager", (accounts) => {
         res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(200));
 
-        res = await this.oracles.isOracleActive(bob);
+        res = await this.oraclesX.isOracleActive(bob);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, true);
 
-        res = await this.oracles.isOracleActive(eve);
+        res = await this.oraclesX.isOracleActive(eve);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
 
         res = await this.claimManager.getProposalVotes(this.cId, this.pId2);
@@ -883,18 +837,18 @@ contract("ClaimManager", (accounts) => {
         res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(180));
 
-        res = await this.oracles.isOracleActive(bob);
+        res = await this.oraclesX.isOracleActive(bob);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, false);
 
-        res = await this.oracles.isOracleActive(eve);
+        res = await this.oraclesX.isOracleActive(eve);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, false);
 
         res = await this.claimManager.getProposalVotes(this.cId, this.pId2);
@@ -908,18 +862,18 @@ contract("ClaimManager", (accounts) => {
         await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(10), { from: alice });
         await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(20), { from: alice });
 
-        res = await this.oracles.isOracleActive(bob);
+        res = await this.oraclesX.isOracleActive(bob);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, true);
 
-        res = await this.oracles.isOracleActive(eve);
+        res = await this.oraclesX.isOracleActive(eve);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oraclesX.isOracleTypeAssigned(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
-        res = await this.oracles.isOracleTypeActive(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.isOracleStakeActive(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, true);
       });
 

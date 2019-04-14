@@ -30,7 +30,7 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
   event LogOracleTypeEnabled(bytes32 oracleType);
   event LogOracleTypeDisabled(bytes32 oracleType);
 
-  string public constant ROLE_ORACLE_MANAGER = "oracle_manager";
+  bytes32 public constant ROLE_ORACLE_MODIFIER = bytes32("ORACLE_MODIFIER");
 
   // Oracle list
   ArraySet.AddressSet private oracles;
@@ -72,21 +72,19 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
   // MODIFIERS
 
   modifier onlyOracleModifier() {
-    // global role ORACLE_MODIFIER
-    require(hasRole(msg.sender, ROLE_ORACLE_MANAGER), "No permissions for oracle management");
-    _;
-  }
+    require(
+      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
+      "Only ORACLE_MODIFIER role allowed"
+    );
 
-  modifier onlyOracleStakeChangedNotifier() {
-    require(msg.sender == address(arbitrationConfig.getOracleStakes()), "Not a stake changed notifier");
     _;
   }
 
   // >>> Oracles management
   function addOracle(
     address _oracle,
-    bytes32 _position,
     string calldata _name,
+    bytes32 _position,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes
   )

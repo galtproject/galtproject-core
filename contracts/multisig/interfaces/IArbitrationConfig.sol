@@ -24,7 +24,7 @@ import "../../registries/GaltGlobalRegistry.sol";
 
 
 interface IArbitrationConfig {
-  function ggr() external returns(GaltGlobalRegistry);
+  function ggr() external view returns(GaltGlobalRegistry);
   function setThreshold(bytes32 _key, uint256 _value) external;
   function setMofN(uint256 _m, uint256 _n) external;
   function setMinimalArbitratorStake(uint256 _value) external;

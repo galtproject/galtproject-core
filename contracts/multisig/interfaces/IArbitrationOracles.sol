@@ -16,8 +16,8 @@ pragma solidity 0.5.3;
 interface IArbitrationOracles {
   function addOracle(
     address _oracle,
-    bytes32 _position,
     string calldata _name,
+    bytes32 _position,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes
   )

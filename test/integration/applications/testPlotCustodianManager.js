@@ -2,11 +2,11 @@ const SpaceCustodianRegistry = artifacts.require('./SpaceCustodianRegistry.sol')
 const PlotCustodianManager = artifacts.require('./PlotCustodianManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -29,9 +29,6 @@ const web3 = new Web3(PlotCustodianManager.web3.currentProvider);
 const { BN, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-const CUSTODIAN_APPLICATION = '0xe2ce825e66d1e2b4efe1252bf2f9dc4f1d7274c343ac8a9f28b6776eb58188a6';
-const FAKE_APPLICATION = '0x6421c172ed119558ac0b0fb3c16787d36451c23d21b46c87fc94aee231f08823';
-
 const PV_APPRAISER_ORACLE_TYPE = bytes32('PV_APPRAISER_ORACLE_TYPE');
 const PV_APPRAISER2_ORACLE_TYPE = bytes32('PV_APPRAISER2_ORACLE_TYPE');
 const PV_AUDITOR_ORACLE_TYPE = bytes32('PV_AUDITOR_ORACLE_TYPE');
@@ -41,7 +38,6 @@ const PC_AUDITOR = bytes32('PC_AUDITOR_ORACLE_TYPE');
 const FOO = bytes32('foo');
 const BAR = bytes32('bar');
 const BUZZ = bytes32('buzz');
-const ES = bytes32('');
 const MN = bytes32('MN');
 const BOB = bytes32('bob');
 const CHARLIE = bytes32('charlie');
@@ -85,14 +81,11 @@ contract('PlotCustodianManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
-    multiSigX,
-    stakesNotifier,
     minter,
     claimManagerAddress,
-    applicationTypeManager,
     manualCustodianManager,
     spaceRA,
-    oracleManager,
+    oracleModifier,
     alice,
     bob,
     charlie,
@@ -126,9 +119,9 @@ contract('PlotCustodianManager', (accounts) => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
     this.plotCustodianManager = await PlotCustodianManager.new({ from: coreTeam });
     this.spaceCustodianRegistry = await SpaceCustodianRegistry.new(this.ggr.address, { from: coreTeam });
+    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -139,7 +132,6 @@ contract('PlotCustodianManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_CUSTODIAN_REGISTRY(), this.spaceCustodianRegistry.address, {
       from: coreTeam
@@ -162,6 +154,7 @@ contract('PlotCustodianManager', (accounts) => {
       from: coreTeam
     });
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
 
@@ -173,6 +166,19 @@ contract('PlotCustodianManager', (accounts) => {
     // [52, 47, 1],
     applicationConfig[await this.plotCustodianManager.getOracleTypeShareKey(PC_CUSTODIAN)] = numberToEvmWord(60);
     applicationConfig[await this.plotCustodianManager.getOracleTypeShareKey(PC_AUDITOR)] = numberToEvmWord(40);
+
+    // Oracle minimal stake values setup
+    const pvAppraiserKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PV_APPRAISER_ORACLE_TYPE);
+    const pvAppraiser2Key = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PV_APPRAISER2_ORACLE_TYPE);
+    const pvAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PV_AUDITOR_ORACLE_TYPE);
+    const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN);
+    const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR);
+
+    applicationConfig[pvAppraiserKey] = numberToEvmWord(ether(1500));
+    applicationConfig[pvAppraiser2Key] = numberToEvmWord(ether(1500));
+    applicationConfig[pvAuditorKey] = numberToEvmWord(ether(1500));
+    applicationConfig[pcCustodianKey] = numberToEvmWord(ether(1500));
+    applicationConfig[pcAuditorKey] = numberToEvmWord(ether(1500));
 
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -191,105 +197,54 @@ contract('PlotCustodianManager', (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-
-    await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
-    });
-
-    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-      FAKE_APPLICATION,
-      [FOO, BAR, BUZZ],
-      [50, 25, 25],
-      [ES, ES, ES],
-      { from: applicationTypeManager }
-    );
-    this.resClarificationAddRoles = await this.oracles.setApplicationTypeOracleTypes(
-      CUSTODIAN_APPLICATION,
-      [PC_CUSTODIAN, PC_AUDITOR],
-      [60, 40],
-      [ES, ES],
-      { from: applicationTypeManager }
-    );
+    this.oraclesX = this.abX.oracles;
 
     await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.oracles.setOracleTypeMinimalDeposit(PV_APPRAISER_ORACLE_TYPE, ether(30), {
-      from: applicationTypeManager
+    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN, FOO], {
+      from: oracleModifier
     });
-    await this.oracles.setOracleTypeMinimalDeposit(PV_APPRAISER2_ORACLE_TYPE, ether(30), {
-      from: applicationTypeManager
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PC_CUSTODIAN, PC_AUDITOR, BAR], {
+      from: oracleModifier
     });
-    await this.oracles.setOracleTypeMinimalDeposit(PV_AUDITOR_ORACLE_TYPE, ether(30), { from: applicationTypeManager });
-    await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN, ether(30), {
-      from: applicationTypeManager
+    await this.oraclesX.addOracle(dan, DAN, MN, [], [BUZZ], {
+      from: oracleModifier
     });
-    await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR, ether(30), { from: applicationTypeManager });
+    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR], {
+      from: oracleModifier
+    });
+    await this.oraclesX.addOracle(frank, FRANK, MN, [], [PC_CUSTODIAN], {
+      from: oracleModifier
+    });
+    await this.oraclesX.addOracle(george, GEORGE, MN, [], [PC_CUSTODIAN], {
+      from: oracleModifier
+    });
 
-    await this.oracles.addOracle(multiSigX, bob, BOB, MN, '', [], [PC_CUSTODIAN, FOO], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(multiSigX, charlie, CHARLIE, MN, '', [], [PC_CUSTODIAN, PC_AUDITOR, BAR], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(multiSigX, dan, DAN, MN, '', [], [BUZZ], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(multiSigX, eve, EVE, MN, '', [], [PC_AUDITOR], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(multiSigX, frank, FRANK, MN, '', [], [PC_CUSTODIAN], {
-      from: oracleManager
-    });
-    await this.oracles.addOracle(multiSigX, george, GEORGE, MN, '', [], [PC_CUSTODIAN], {
-      from: oracleManager
-    });
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(50000), { from: alice })
+
 
     // bob
-    await this.oracles.onOracleStakeChanged(bob, PC_CUSTODIAN, ether(30), {
-      from: stakesNotifier
-    });
-    await this.oracles.onOracleStakeChanged(bob, FOO, ether(30), { from: stakesNotifier });
+    await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(bob, FOO, ether(2000), { from: alice });
 
     // charlie
-    await this.oracles.onOracleStakeChanged(charlie, PC_CUSTODIAN, ether(30), {
-      from: stakesNotifier
-    });
-    await this.oracles.onOracleStakeChanged(charlie, PC_AUDITOR, ether(30), {
-      from: stakesNotifier
-    });
-    await this.oracles.onOracleStakeChanged(charlie, BAR, ether(30), { from: stakesNotifier });
+    await this.oracleStakesAccountingX.stake(charlie, PC_CUSTODIAN, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(charlie, PC_AUDITOR, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(charlie, BAR, ether(2000), { from: alice });
 
     // dan
-    await this.oracles.onOracleStakeChanged(dan, BUZZ, ether(30), { from: stakesNotifier });
+    await this.oracleStakesAccountingX.stake(dan, BUZZ, ether(2000), { from: alice });
 
     // eve
-    await this.oracles.onOracleStakeChanged(eve, PC_AUDITOR, ether(30), {
-      from: stakesNotifier
-    });
+    await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR, ether(2000), { from: alice });
 
     // frank
-    await this.oracles.onOracleStakeChanged(frank, PC_CUSTODIAN, ether(30), {
-      from: stakesNotifier
-    });
+    await this.oracleStakesAccountingX.stake(frank, PC_CUSTODIAN, ether(2000), { from: alice });
 
     // george
-    await this.oracles.onOracleStakeChanged(george, PC_CUSTODIAN, ether(30), {
-      from: stakesNotifier
-    });
+    await this.oracleStakesAccountingX.stake(george, PC_CUSTODIAN, ether(2000), { from: alice });
 
     await this.acl.setRole(bytes32('SPACE_CUSTODIAN_REGISTRAR'), manualCustodianManager, true, { from: coreTeam });
   });

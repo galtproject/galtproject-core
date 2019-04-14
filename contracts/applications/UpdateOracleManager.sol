@@ -119,7 +119,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
     arbitrationConfig(a.multiSig)
       .getOracles()
-      .addOracle(d.addr, d.position, d.name, d.descriptionHashes, d.oracleTypes);
+      .addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS

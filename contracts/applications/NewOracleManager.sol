@@ -22,8 +22,6 @@ import "./AbstractApplication.sol";
 import "./ArbitratorApprovableApplication.sol";
 
 contract NewOracleManager is ArbitratorApprovableApplication {
-//  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
-
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("NO_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("NO_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("NO_PAYMENT_METHOD");
@@ -119,7 +117,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
 
     arbitrationConfig(a.multiSig)
       .getOracles()
-      .addOracle(d.addr, d.position, d.name, d.descriptionHashes, d.oracleTypes);
+      .addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS

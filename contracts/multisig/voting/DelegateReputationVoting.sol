@@ -52,7 +52,7 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
   bytes32 public roleReputationNotifier;
   uint256 public totalReputation;
 
-  IArbitrationConfig arbitrationConfig;
+  IArbitrationConfig internal arbitrationConfig;
 
   constructor(
     IArbitrationConfig _arbitrationConfig,
@@ -103,10 +103,6 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
   }
 
   // @dev SpaceOwner balance changed
-  // Handles SRA stakeReputation and revokeReputation calls
-  // TODO: fix this using ggr
-  // onlySpaceReputationNotifier
-  // onlyRole(SPACE_REPUTATION_NOTIFIER)
   function onDelegateReputationChanged(
     address _delegate,
     uint256 _newLocked
@@ -114,6 +110,7 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
     external
     onlySpaceReputationNotifier
   {
+
     // need more details
     uint256 currentLocked = lockedReputation[_delegate];
     uint256 selfDelegated = delegatedReputation[_delegate].distributedReputation[_delegate];

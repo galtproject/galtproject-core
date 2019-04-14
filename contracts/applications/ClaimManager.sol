@@ -27,9 +27,6 @@ contract ClaimManager is AbstractApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  // `ClaimManager` keccak256 hash
-//  bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
-
   // `bytes4(keccak256('transfer(address,uint256)'))`
   bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
 
@@ -471,8 +468,7 @@ contract ClaimManager is AbstractApplication {
       share = galtFee;
     }
 
-    assert(share > 0);
-    assert(share <= 100);
+    require(share > 0 && share <= 100, "Fee not properly set up");
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 arbitratorsReward = _fee.sub(galtProtocolFee);

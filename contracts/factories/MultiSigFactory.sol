@@ -407,7 +407,7 @@ contract MultiSigFactory is Ownable {
     g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
 
     g.nextStep = Step.EIGHTH;
-    g.delegateSpaceVoting = delegateGaltVoting;
+    g.delegateSpaceVoting = delegateSpaceVoting;
     g.delegateGaltVoting = delegateGaltVoting;
     g.oracleStakeVoting = oracleStakeVoting;
 
@@ -435,6 +435,7 @@ contract MultiSigFactory is Ownable {
       g.arbitrationCandidateTop,
       g.arbitratorStakeAccounting,
       g.oracleStakesAccounting,
+      oracles,
       g.delegateSpaceVoting,
       g.delegateGaltVoting,
       g.oracleStakeVoting
