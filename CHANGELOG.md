@@ -1,3 +1,9 @@
+## Galt Project Contracts [v0.9.0](https://github.com/galtspace/galtproject-contracts/tree/v0.9.0) (2019-04-11)
+
+* Introduce Global FeeRegistry
+* Introduce ACL
+* Implement withdrawal methods for factories
+
 ## Galt Project Contracts [v0.8.0](https://github.com/galtspace/galtproject-contracts/tree/v0.8.0) (2019-04-04)
 
 * Rafactor and extract some part of logic into separate modules like @libs, @math, @geodesic, @fund-basic, etc.

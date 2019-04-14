@@ -1,5 +1,4 @@
 const Ganache = require('ganache-core');
-const _ = require('lodash');
 
 const config = {
   networks: {
@@ -54,17 +53,5 @@ const config = {
     }
   }
 };
-
-if (process.env.USE_GAS_REPORTER === 'yes') {
-  _.merge(config, {
-    mocha: {
-      reporter: 'eth-gas-reporter',
-      reporterOptions: {
-        currency: 'USD',
-        gasPrice: 21
-      }
-    }
-  });
-}
 
 module.exports = config;

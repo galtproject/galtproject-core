@@ -126,10 +126,10 @@ contract('ArbitrationCandidateTop', accounts => {
     await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
   });
 
-  // TODO: fix values
-  describe.skip('recalculation & sorting', () => {
+  describe('recalculation & sorting', () => {
     before(async function() {
       await this.ggr.setContract(await this.ggr.SPACE_RA(), fakeSRA, { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), fakeSRA, true, { from: coreTeam });
     });
 
     beforeEach(async function() {
@@ -229,7 +229,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -237,7 +237,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // ACTION
@@ -256,7 +256,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -264,7 +264,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             await this.candidateTopF.recalculate(candidateB);
@@ -282,7 +282,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -290,7 +290,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 0);
           });
 
@@ -308,7 +308,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -316,7 +316,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // ACTION
@@ -335,7 +335,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -343,7 +343,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             await this.candidateTopF.recalculate(candidateA);
@@ -361,7 +361,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 0);
 
             // CHECK B
@@ -369,7 +369,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
           });
         });
@@ -400,7 +400,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -408,7 +408,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -416,7 +416,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // ACTION
@@ -435,7 +435,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -443,7 +443,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -451,7 +451,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             await this.candidateTopF.recalculate(candidateC);
@@ -469,7 +469,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -477,7 +477,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -485,7 +485,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 0);
           });
 
@@ -506,7 +506,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -514,7 +514,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -522,7 +522,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // ACTION
@@ -541,7 +541,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -549,7 +549,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -557,7 +557,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             await this.candidateTopF.recalculate(candidateB);
@@ -575,7 +575,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -583,7 +583,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 0);
 
             // CHECK C
@@ -591,7 +591,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
           });
 
@@ -609,7 +609,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 800);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -617,7 +617,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -625,7 +625,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // ACTION
@@ -644,7 +644,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -652,7 +652,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 137142);
 
             // CHECK C
@@ -660,7 +660,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // UNEXPECTED ACTION
@@ -679,7 +679,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 91428);
 
             // CHECK B
@@ -687,7 +687,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 177777);
 
             // CHECK C
@@ -695,7 +695,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // ACTION
@@ -714,7 +714,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 0);
 
             // CHECK B
@@ -722,7 +722,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 177777);
 
             // CHECK C
@@ -730,7 +730,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 171428);
 
             // ACTION
@@ -749,7 +749,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, false);
             res = await this.delegateSpaceVotingF.balanceOf(candidateA);
             assert.equal(res, 0);
-            res = await this.candidateTopF.getCandidateWeight(candidateA);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateA);
             assert.equal(res, 0);
 
             // CHECK B
@@ -757,7 +757,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateB);
             assert.equal(res, 1200);
-            res = await this.candidateTopF.getCandidateWeight(candidateB);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateB);
             assert.equal(res, 177777);
 
             // CHECK C
@@ -765,7 +765,7 @@ contract('ArbitrationCandidateTop', accounts => {
             assert.equal(res, true);
             res = await this.delegateSpaceVotingF.balanceOf(candidateC);
             assert.equal(res, 1500);
-            res = await this.candidateTopF.getCandidateWeight(candidateC);
+            res = await this.candidateTopF.getTopCandidateWeight(candidateC);
             assert.equal(res, 222222);
           });
         });
@@ -829,7 +829,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // CHECK C
@@ -837,7 +837,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 0);
 
                 // RECALCULATE B
@@ -855,7 +855,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -863,7 +863,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 0);
 
                 // RECALCULATE C
@@ -881,7 +881,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -889,7 +889,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
               });
 
@@ -908,7 +908,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -916,7 +916,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // RECALCULATE B
@@ -934,7 +934,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -942,7 +942,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 240000);
 
                 // RECALCULATE A
@@ -960,7 +960,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 160000);
 
                 // CHECK B
@@ -968,7 +968,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 240000);
               });
             });
@@ -989,7 +989,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // CHECK C
@@ -997,7 +997,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 0);
 
                 // RECALCULATE C
@@ -1015,7 +1015,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // CHECK C
@@ -1023,7 +1023,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE B
@@ -1041,7 +1041,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1049,7 +1049,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
               });
 
@@ -1068,7 +1068,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -1076,7 +1076,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // RECALCULATE A
@@ -1094,7 +1094,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 160000);
 
                 // CHECK B
@@ -1102,7 +1102,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 400000);
 
                 // RECALCULATE B
@@ -1120,7 +1120,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 160000);
 
                 // CHECK B
@@ -1128,7 +1128,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 240000);
               });
             });
@@ -1161,7 +1161,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1169,7 +1169,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE C
@@ -1187,7 +1187,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1195,7 +1195,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 250000);
 
                 // RECALCULATE B
@@ -1213,7 +1213,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 150000);
 
                 // CHECK C
@@ -1221,7 +1221,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 250000);
               });
 
@@ -1240,7 +1240,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1248,7 +1248,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE B
@@ -1266,7 +1266,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 150000);
 
                 // CHECK C
@@ -1274,7 +1274,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE C
@@ -1292,7 +1292,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 150000);
 
                 // CHECK C
@@ -1300,7 +1300,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 250000);
               });
             });
@@ -1395,7 +1395,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1403,7 +1403,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1199);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 199916);
 
                 // RECALCULATE B
@@ -1421,7 +1421,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 200083);
 
                 // CHECK C
@@ -1429,7 +1429,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1199);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 199916);
               });
 
@@ -1458,7 +1458,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 200083);
 
                 // CHECK C
@@ -1466,7 +1466,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1199);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE C
@@ -1484,7 +1484,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 200083);
 
                 // CHECK C
@@ -1492,7 +1492,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1199);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 199916);
               });
             });
@@ -1661,7 +1661,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -1669,7 +1669,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1677,7 +1677,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE A
@@ -1695,7 +1695,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -1703,7 +1703,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1711,7 +1711,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE B
@@ -1729,7 +1729,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -1737,7 +1737,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 114258);
 
                 // CHECK C
@@ -1745,7 +1745,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE C
@@ -1763,7 +1763,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -1771,7 +1771,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 114258);
 
                 // CHECK C
@@ -1779,7 +1779,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 142822);
               });
 
@@ -1836,7 +1836,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -1844,7 +1844,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1852,7 +1852,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 222222);
 
                 // RECALCULATE C
@@ -1870,7 +1870,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, false);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 0);
 
                 // CHECK B
@@ -1878,7 +1878,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1886,7 +1886,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 142822);
 
                 // RECALCULATE A
@@ -1904,7 +1904,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -1912,7 +1912,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 177777);
 
                 // CHECK C
@@ -1920,7 +1920,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 142822);
 
                 // RECALCULATE B
@@ -1938,7 +1938,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -1946,7 +1946,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 114258);
 
                 // CHECK C
@@ -1954,7 +1954,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 142822);
               });
 
@@ -2025,7 +2025,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 1501);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 142918);
 
                 // CHECK B
@@ -2033,7 +2033,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 114258);
 
                 // CHECK C
@@ -2041,7 +2041,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 1500);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 142822);
               });
 
@@ -2126,7 +2126,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 80000);
 
                 // CHECK B
@@ -2134,7 +2134,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 1200);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 120000);
 
                 // CHECK C
@@ -2142,7 +2142,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 2000);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 200000);
               });
 
@@ -2224,7 +2224,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 91428);
 
                 // CHECK B
@@ -2232,7 +2232,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 801);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 137142);
 
                 // CHECK C
@@ -2240,7 +2240,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 802);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 133499);
 
                 // RECALCULATE A
@@ -2258,7 +2258,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 133166);
 
                 // CHECK B
@@ -2266,7 +2266,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 801);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 137142);
 
                 // CHECK C
@@ -2274,7 +2274,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 802);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 133499);
 
                 // RECALCULATE B
@@ -2292,7 +2292,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateA);
                 assert.equal(res, 800);
-                res = await this.candidateTopF.getCandidateWeight(candidateA);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateA);
                 assert.equal(res, 133166);
 
                 // CHECK B
@@ -2300,7 +2300,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateB);
                 assert.equal(res, 801);
-                res = await this.candidateTopF.getCandidateWeight(candidateB);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateB);
                 assert.equal(res, 133333);
 
                 // CHECK C
@@ -2308,7 +2308,7 @@ contract('ArbitrationCandidateTop', accounts => {
                 assert.equal(res, true);
                 res = await this.delegateSpaceVotingF.balanceOf(candidateC);
                 assert.equal(res, 802);
-                res = await this.candidateTopF.getCandidateWeight(candidateC);
+                res = await this.candidateTopF.getTopCandidateWeight(candidateC);
                 assert.equal(res, 133499);
               });
             });
