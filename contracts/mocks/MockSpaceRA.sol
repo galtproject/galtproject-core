@@ -28,8 +28,9 @@ contract MockSpaceRA is SpaceRA {
   {
   }
 
-  function mintHack(address _beneficiary, uint256 _amount, uint256 spaceToken) external {
+  function mintHack(address _beneficiary, uint256 _amount, uint256 _spaceTokenId) external {
     _mint(_beneficiary, _amount);
+    _cacheSpaceTokenOwner(_beneficiary, _spaceTokenId);
   }
 
   function delegateHack(address _to, address _from, address _owner, uint256 _amount) external {

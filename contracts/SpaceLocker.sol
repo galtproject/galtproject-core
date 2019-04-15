@@ -38,7 +38,7 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   bool public tokenDeposited;
   bool public tokenBurned;
 
-  ArraySet.AddressSet sras;
+  ArraySet.AddressSet internal sras;
 
   constructor(GaltGlobalRegistry _ggr, address _owner) public {
     owner = _owner;
