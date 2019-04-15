@@ -20,16 +20,12 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/OracleStakesAccounting.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
 import "../registries/MultiSigRegistry.sol";
-import "../Oracles.sol";
 import "./AbstractApplication.sol";
 
 
 contract ClaimManager is AbstractApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
-
-  // `ClaimManager` keccak256 hash
-  bytes32 public constant APPLICATION_TYPE = 0x6cdf6ab5991983536f64f626597a53b1a46773aa1473467b6d9d9a305b0a03ef;
 
   // `bytes4(keccak256('transfer(address,uint256)'))`
   bytes4 public constant ERC20_TRANSFER_SIGNATURE = 0xa9059cbb;
@@ -124,8 +120,6 @@ contract ClaimManager is AbstractApplication {
     uint256 amount;
   }
 
-  Oracles oracles;
-
   mapping(bytes32 => Claim) claims;
   mapping(address => bytes32[]) applicationsByArbitrator;
 
@@ -138,29 +132,28 @@ contract ClaimManager is AbstractApplication {
     isInitializer
   {
     ggr = _ggr;
-    oracles = Oracles(ggr.getOraclesAddress());
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
   function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_M));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
   function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_N));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   /**
@@ -280,8 +273,7 @@ contract ClaimManager is AbstractApplication {
     require(_arbitrators.length == _arbitratorFines.length, "Arbitrator list/fines arrays should be equal");
     require(_oracles.length > 0 || _arbitratorFines.length > 0, "Either oracles or arbitrators should be fined");
 
-    require(oracles.oraclesHasTypesAssigned(_oracles, _oracleTypes), "Some roles are invalid");
-
+    verifyOraclesAreValid(_cId, _oracles, _oracleTypes);
     Proposal storage p = createProposal(_cId);
 
     p.from = msg.sender;
@@ -293,6 +285,18 @@ contract ClaimManager is AbstractApplication {
     p.fines = _oracleFines;
     p.oracleTypes = _oracleTypes;
     p.oracles = _oracles;
+  }
+
+  function verifyOraclesAreValid(bytes32 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
+    Claim storage c = claims[_cId];
+
+    require(
+      multiSigRegistry()
+        .getArbitrationConfig(c.multiSig)
+        .getOracles()
+        .oraclesHasTypesAssigned(_oracles, _oracleTypes),
+      "Some oracle types are invalid"
+    );
   }
 
   function createProposal(bytes32 _cId) internal returns (Proposal storage p) {
@@ -464,8 +468,7 @@ contract ClaimManager is AbstractApplication {
       share = galtFee;
     }
 
-    assert(share > 0);
-    assert(share <= 100);
+    require(share > 0 && share <= 100, "Fee not properly set up");
 
     uint256 galtProtocolFee = share.mul(_fee).div(100);
     uint256 arbitratorsReward = _fee.sub(galtProtocolFee);

@@ -75,8 +75,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   mapping(bytes32 => Application) applications;
 
-  Oracles oracles;
-
   constructor() public {}
 
   function _execute(bytes32) internal;

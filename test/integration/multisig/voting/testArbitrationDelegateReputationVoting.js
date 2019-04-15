@@ -1,7 +1,6 @@
 /* eslint-disable prefer-arrow-callback */
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const ACL = artifacts.require('./ACL.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
@@ -18,6 +17,7 @@ const {
   initHelperWeb3,
   initHelperArtifacts,
   deploySplitMergeMock,
+  numberToEvmWord,
   paymentMethods
 } = require('../../../helpers');
 
@@ -29,13 +29,9 @@ const { deployMultiSigFactory, buildArbitration } = require('../../../deployment
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
-
 const TYPE_A = bytes32('TYPE_A');
 const TYPE_B = bytes32('TYPE_B');
 const TYPE_C = bytes32('TYPE_C');
-// eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
 const MN = bytes32('MN');
 const BOB = bytes32('Bob');
 const CHARLIE = bytes32('Charlie');
@@ -46,7 +42,7 @@ const EVE = bytes32('Eve');
 contract('ArbitrationDelegateReputationVoting', accounts => {
   const [
     coreTeam,
-    oracleManager,
+    oracleModifier,
     claimManager,
     fakeSRA,
     geoDateManagement,
@@ -69,7 +65,6 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -86,12 +81,6 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_MANAGER(), {
-      from: coreTeam
-    });
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
@@ -101,7 +90,6 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
@@ -114,14 +102,6 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(charlie, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(dan, ether(1000000000), { from: coreTeam });
-
-    await this.oracles.setApplicationTypeOracleTypes(
-      MY_APPLICATION,
-      [TYPE_A, TYPE_B, TYPE_C],
-      [50, 25, 25],
-      [_ES, _ES, _ES],
-      { from: oracleManager }
-    );
 
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
@@ -141,6 +121,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       from: coreTeam
     });
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), geoDateManagement, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
   });
 
   describe('Scenarios', () => {
@@ -156,7 +137,11 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
       await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
 
-      const applicationConfigX = {};
+      const applicationConfig = {};
+      applicationConfig[TYPE_A] = numberToEvmWord(ether(200));
+      applicationConfig[TYPE_B] = numberToEvmWord(ether(200));
+      applicationConfig[TYPE_C] = numberToEvmWord(ether(200));
+
       // MultiSigX
       this.abX = await buildArbitration(
         this.multiSigFactory,
@@ -167,7 +152,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         60,
         ether(1000),
         [30, 30, 30, 30, 30, 30],
-        applicationConfigX,
+        applicationConfig,
         alice
       );
       this.abMultiSigX = this.abX.multiSig;
@@ -175,8 +160,8 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
       this.delegateGaltVotingX = this.abX.delegateGaltVoting;
       this.oracleStakeVotingX = this.abX.oracleStakeVoting;
+      this.oraclesX = this.abX.oracles;
 
-      const applicationConfigY = {};
       // MultiSigY
       this.abY = await buildArbitration(
         this.multiSigFactory,
@@ -187,15 +172,15 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         60,
         ether(1000),
         [30, 30, 30, 30, 30, 30],
-        applicationConfigY,
+        applicationConfig,
         bob
       );
       this.abMultiSigY = this.abY.multiSig;
       this.candidateTopY = this.abY.candidateTop;
       this.delegateSpaceVotingY = this.abY.delegateSpaceVoting;
-      this.oracleStakeVotingY = this.abY.oracleStakeVoting;
+      // this.oracleStakeVotingY = this.abY.oracleStakeVoting;
+      this.oraclesY = this.abY.oracles;
 
-      const applicationConfigZ = {};
       // MultiSigZ
       this.abZ = await buildArbitration(
         this.multiSigFactory,
@@ -206,31 +191,28 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         60,
         ether(1000),
         [30, 30, 30, 30, 30, 30],
-        applicationConfigZ,
+        applicationConfig,
         charlie
       );
       this.abMultiSigZ = this.abZ.multiSig;
-      this.abVotingZ = this.abZ.voting;
+      // this.abVotingZ = this.abZ.voting;
       this.delegateSpaceVotingZ = this.abZ.delegateSpaceVoting;
-      this.delegateGaltVotingZ = this.abZ.delegateGaltVoting;
-      this.oracleStakeVotingZ = this.abZ.oracleStakeVoting;
+      // this.delegateGaltVotingZ = this.abZ.delegateGaltVoting;
+      // this.oracleStakeVotingZ = this.abZ.oracleStakeVoting;
+      // this.oraclesZ = this.abZ.oracles;
 
       // CONFIGURING
-      await this.oracles.setOracleTypeMinimalDeposit(TYPE_A, 200, { from: oracleManager });
-      await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, 200, { from: oracleManager });
-      await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, 200, { from: oracleManager });
-
-      await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, '', [], [TYPE_A], {
-        from: oracleManager
+      await this.oraclesX.addOracle(bob, BOB, MN, [], [TYPE_A], {
+        from: oracleModifier
       });
-      await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, '', [], [TYPE_B, TYPE_C], {
-        from: oracleManager
+      await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+        from: oracleModifier
       });
-      await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
-        from: oracleManager
+      await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+        from: oracleModifier
       });
-      await this.oracles.addOracle(this.abMultiSigY.address, eve, EVE, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
-        from: oracleManager
+      await this.oraclesY.addOracle(eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+        from: oracleModifier
       });
 
       this.X = this.abMultiSigX.address;

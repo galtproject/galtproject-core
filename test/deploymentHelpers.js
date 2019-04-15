@@ -1,10 +1,10 @@
 const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
 const ArbitrationCandidateTopFactory = artifacts.require('./ArbitrationCandidateTopFactory.sol');
 const ArbitratorStakeAccountingFactory = artifacts.require('./ArbitratorStakeAccountingFactory.sol');
 const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountingFactory.sol');
 const ArbitrationConfigFactory = artifacts.require('./ArbitrationConfigFactory.sol');
+const ArbitrationOracleFactory = artifacts.require('./ArbitrationOracleFactory.sol');
 const DelegateReputationVotingFactory = artifacts.require('./DelegateReputationVotingFactory.sol');
 const OracleStakeVotingFactory = artifacts.require('./OracleStakeVotingFactory.sol');
 
@@ -28,6 +28,7 @@ const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol')
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitrationCandidateTop = artifacts.require('./ArbitrationCandidateTop.sol');
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
+const ArbitrationOracles = artifacts.require('./ArbitrationOracles.sol');
 const DelegateReputationVoting = artifacts.require('./DelegateReputationVoting.sol');
 const OracleStakeVoting = artifacts.require('./OracleStakeVoting.sol');
 const ModifyThresholdProposalManager = artifacts.require('./ModifyThresholdProposalManager.sol');
@@ -49,6 +50,7 @@ const Helpers = {
     const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
     const arbitratorStakes = await ArbitratorStakeAccountingFactory.new({ from: owner });
     const arbitrationConfig = await ArbitrationConfigFactory.new({ from: owner });
+    const arbitrationOracleFactory = await ArbitrationOracleFactory.new({ from: owner });
     const delegateReputationVotingFactory = await DelegateReputationVotingFactory.new({ from: owner });
     const oracleStakeVotingFactory = await OracleStakeVotingFactory.new({ from: owner });
 
@@ -72,13 +74,14 @@ const Helpers = {
       }
     );
 
-    const multiSigFactory = await MultiSigFactory.new(
+    return MultiSigFactory.new(
       ggr.address,
       multiSig.address,
       candidateTop.address,
       arbitratorStakes.address,
       oracleStakes.address,
       arbitrationConfig.address,
+      arbitrationOracleFactory.address,
       arbitrationModifyThresholdProposalFactory.address,
       arbitrationModifyMofNProposalFactory.address,
       arbitrationModifyArbitratorStakeProposalFactory.address,
@@ -89,18 +92,6 @@ const Helpers = {
       oracleStakeVotingFactory.address,
       { from: owner }
     );
-
-    const oraclesContract = await Oracles.at(await ggr.getOraclesAddress());
-
-    await oraclesContract.addRoleTo(
-      multiSigFactory.address,
-      await oraclesContract.ROLE_ORACLE_STAKES_NOTIFIER_MANAGER(),
-      {
-        from: owner
-      }
-    );
-
-    return multiSigFactory;
   },
   async buildArbitration(
     factory,
@@ -165,6 +156,9 @@ const Helpers = {
     const delegateGaltVoting = await DelegateReputationVoting.at(res.logs[0].args.delegateGaltVoting);
     const oracleStakeVoting = await OracleStakeVoting.at(res.logs[0].args.oracleStakeVoting);
 
+    res = await factory.buildEighthStep(groupId, { from: owner });
+    const oracles = await ArbitrationOracles.at(res.logs[0].args.oracles);
+
     return {
       groupId,
       multiSig,
@@ -180,7 +174,8 @@ const Helpers = {
       revokeArbitratorsProposalManager,
       delegateSpaceVoting,
       delegateGaltVoting,
-      oracleStakeVoting
+      oracleStakeVoting,
+      oracles
     };
   }
 };

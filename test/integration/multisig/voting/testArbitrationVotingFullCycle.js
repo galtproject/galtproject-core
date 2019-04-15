@@ -1,6 +1,5 @@
 /* eslint-disable prefer-arrow-callback */
 const SpaceToken = artifacts.require('./SpaceToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const ACL = artifacts.require('./ACL.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
@@ -20,6 +19,7 @@ const {
   initHelperWeb3,
   initHelperArtifacts,
   deploySplitMergeMock,
+  numberToEvmWord,
   paymentMethods
 } = require('../../../helpers');
 
@@ -31,13 +31,9 @@ const { deployMultiSigFactory, buildArbitration } = require('../../../deployment
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-const MY_APPLICATION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
-
 const TYPE_A = bytes32('TYPE_A');
 const TYPE_B = bytes32('TYPE_B');
 const TYPE_C = bytes32('TYPE_C');
-// eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
 const MN = bytes32('MN');
 const DAN = bytes32('Dan');
 const GEORGE = bytes32('George');
@@ -65,7 +61,6 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -82,12 +77,6 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_MANAGER(), {
-      from: coreTeam
-    });
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
@@ -99,7 +88,6 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
@@ -116,15 +104,8 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     await this.galtToken.mint(charlie, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(dan, ether(1000000000), { from: coreTeam });
 
-    await this.oracles.setApplicationTypeOracleTypes(
-      MY_APPLICATION,
-      [TYPE_A, TYPE_B, TYPE_C],
-      [50, 25, 25],
-      [_ES, _ES, _ES],
-      { from: oracleManager }
-    );
-
     this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+
     await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
     await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
     await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
@@ -148,6 +129,7 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     });
     await this.acl.setRole(bytes32('GALT_LOCKER_REGISTRAR'), this.galtLockerFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), geoDateManagement, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleManager, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
@@ -161,6 +143,10 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
 
     const applicationConfigX = {};
+    applicationConfigX[TYPE_A] = numberToEvmWord(ether(1000));
+    applicationConfigX[TYPE_B] = numberToEvmWord(ether(1000));
+    applicationConfigX[TYPE_C] = numberToEvmWord(ether(2000));
+
     // MultiSigX
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -181,6 +167,7 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
     this.delegateGaltVotingX = this.abX.delegateGaltVoting;
     this.oracleStakeVotingX = this.abX.oracleStakeVoting;
+    this.oraclesX = this.abX.oracles;
 
     // CONFIGURING
     this.X = this.abMultiSigX.address;
@@ -344,17 +331,13 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     // *********************************
     // Step #1-3 >>> STAKE ORACLE DEPOSITS
     // *********************************
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_A, ether(1000), { from: oracleManager });
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_B, ether(1000), { from: oracleManager });
-    await this.oracles.setOracleTypeMinimalDeposit(TYPE_C, ether(2000), { from: oracleManager });
-
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [TYPE_A], {
+    await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, george, GEORGE, MN, '', [], [TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(george, GEORGE, MN, [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oracles.addOracle(this.abMultiSigX.address, frank, FRANK, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(frank, FRANK, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
 

@@ -5,10 +5,10 @@ const ACL = artifacts.require('./ACL.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -30,12 +30,9 @@ const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHel
 const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
-const NEW_APPLIPL_LAWYERION = '0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6';
-const CLARIFIPL_LAWYERION_APPLIPL_LAWYERION = '0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7';
 // const PUSHER_ROLE = 'clarification pusher';
 
 // eslint-disable-next-line no-underscore-dangle
-const _ES = bytes32('');
 const MN = bytes32('MN');
 const BOB = bytes32('Bob');
 const CHARLIE = bytes32('Charlie');
@@ -89,8 +86,8 @@ contract('PlotClarificationManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
-    stakesNotifier,
     minter,
+    oracleModifier,
     claimManagerAddress,
     spaceReputationAccountingAddress,
     alice,
@@ -126,11 +123,11 @@ contract('PlotClarificationManager', (accounts) => {
     this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
     this.plotManager = await PlotManager.new({ from: coreTeam });
     this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
+    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
 
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -141,7 +138,6 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceReputationAccountingAddress, {
       from: coreTeam
@@ -161,6 +157,7 @@ contract('PlotClarificationManager', (accounts) => {
       from: coreTeam
     });
     await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -175,6 +172,15 @@ contract('PlotClarificationManager', (accounts) => {
     applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_SURVEYOR)] = numberToEvmWord(50);
     applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_LAWYER)] = numberToEvmWord(25);
     applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_AUDITOR)] = numberToEvmWord(25);
+
+    // Oracle minimal stake values setup
+    const surveyorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_SURVEYOR);
+    const lawyerKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_LAWYER);
+    const auditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_AUDITOR);
+
+    applicationConfig[surveyorKey] = numberToEvmWord(ether(1500));
+    applicationConfig[lawyerKey] = numberToEvmWord(ether(1500));
+    applicationConfig[auditorKey] = numberToEvmWord(ether(1500));
 
     this.abX = await buildArbitration(
       this.multiSigFactory,
@@ -193,6 +199,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.abMultiSigX = this.abX.multiSig;
     this.abConfig = this.abX.config;
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
+    this.oraclesX = this.abX.oracles;
 
     await this.plotManager.initialize(this.ggr.address, {
       from: coreTeam
@@ -202,60 +209,30 @@ contract('PlotClarificationManager', (accounts) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-      from: coreTeam
+    await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR, PL_SURVEYOR], {
+      from: oracleModifier
     });
-    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
-      from: coreTeam
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER, PL_LAWYER], {
+      from: oracleModifier
     });
-    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_ORACLE_MANAGER(), {
-      from: coreTeam
+    await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER, PL_LAWYER], {
+      from: oracleModifier
     });
-    await this.oracles.addRoleTo(coreTeam, await this.oracles.ROLE_GALT_SHARE_MANAGER(), {
-      from: coreTeam
-    });
-    await this.oracles.addRoleTo(stakesNotifier, await this.oracles.ROLE_ORACLE_STAKES_NOTIFIER(), {
-      from: coreTeam
+    await this.oraclesX.addOracle(eve, EVE, MN, [], [PM_AUDITOR, PL_AUDITOR], {
+      from: oracleModifier
     });
 
-    // TODO: remove after oracle active status check be implemented in multiSig-level
-    await this.oracles.setApplicationTypeOracleTypes(
-      NEW_APPLIPL_LAWYERION,
-      [PM_SURVEYOR, PM_LAWYER, PM_AUDITOR],
-      [50, 25, 25],
-      [_ES, _ES, _ES],
-      { from: coreTeam }
-    );
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(30000), { from: alice });
 
-    await this.oracles.setApplicationTypeOracleTypes(
-      CLARIFIPL_LAWYERION_APPLIPL_LAWYERION,
-      [PL_SURVEYOR, PL_LAWYER, PL_AUDITOR],
-      [50, 25, 25],
-      [_ES, _ES, _ES],
-      { from: coreTeam }
-    );
+    await this.oracleStakesAccountingX.stake(bob, PM_SURVEYOR, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(charlie, PM_LAWYER, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(dan, PM_LAWYER, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(eve, PM_AUDITOR, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(bob, PL_SURVEYOR, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(charlie, PL_LAWYER, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(dan, PL_LAWYER, ether(2000), { from: alice });
+    await this.oracleStakesAccountingX.stake(eve, PL_AUDITOR, ether(2000), { from: alice });
 
-    await this.oracles.addOracle(this.abMultiSigX.address, bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], {
-      from: coreTeam
-    });
-    await this.oracles.addOracle(this.abMultiSigX.address, charlie, CHARLIE, MN, '', [], [PM_LAWYER, PL_LAWYER], {
-      from: coreTeam
-    });
-    await this.oracles.addOracle(this.abMultiSigX.address, dan, DAN, MN, '', [], [PM_LAWYER, PL_LAWYER], {
-      from: coreTeam
-    });
-    await this.oracles.addOracle(this.abMultiSigX.address, eve, EVE, MN, '', [], [PM_AUDITOR, PL_AUDITOR], {
-      from: coreTeam
-    });
-
-    await this.oracles.onOracleStakeChanged(bob, PM_SURVEYOR, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(charlie, PM_LAWYER, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(dan, PM_LAWYER, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(eve, PM_AUDITOR, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(bob, PL_SURVEYOR, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(charlie, PL_LAWYER, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(dan, PL_LAWYER, ether(30), { from: stakesNotifier });
-    await this.oracles.onOracleStakeChanged(eve, PL_AUDITOR, ether(30), { from: stakesNotifier });
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotManager.address, true, { from: coreTeam });
   });
 
@@ -269,10 +246,6 @@ contract('PlotClarificationManager', (accounts) => {
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotClarificationManager.address, true, {
       from: coreTeam
     });
-  });
-
-  it('should be initialized successfully', async function() {
-    assert.equal(await this.plotClarificationManager.ggr(), this.ggr.address);
   });
 
   describe('application pipeline for GALT', () => {

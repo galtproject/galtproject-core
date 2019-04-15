@@ -24,6 +24,6 @@ interface IMultiSigRegistry {
   ) external;
   function requireValidMultiSig(address _multiSig) external view;
   function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig);
-  function getMultiSigList() external returns (address[] memory);
-  function getMultiSigCount() external returns (uint256);
+  function getMultiSigList() external view returns (address[] memory);
+  function getMultiSigCount() external view returns (uint256);
 }

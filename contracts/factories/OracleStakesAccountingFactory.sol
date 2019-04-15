@@ -18,7 +18,6 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 // This contract will be included into the current one
-import "../Oracles.sol";
 import "../multisig/OracleStakesAccounting.sol";
 
 
