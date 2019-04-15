@@ -17,7 +17,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "../interfaces/ISplitMerge.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../Oracles.sol";
 import "./AbstractOracleApplication.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
@@ -96,8 +95,6 @@ contract PlotClarificationManager is AbstractOracleApplication {
     Application storage a = applications[_aId];
 
     require(a.addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
-    // TODO: fetch the value from multiSig
-//    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, a.addressOracleTypes[msg.sender]);
 
     _;
   }
@@ -117,15 +114,14 @@ contract PlotClarificationManager is AbstractOracleApplication {
     isInitializer
   {
     ggr = _ggr;
-    oracles = Oracles(ggr.getOraclesAddress());
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -133,7 +129,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submitApplication(
@@ -212,11 +208,10 @@ contract PlotClarificationManager is AbstractOracleApplication {
     return _id;
   }
 
-  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external anyOracle {
+  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
-    // TODO: fetch the value from multiSig
-//    oracles.requireOracleActiveWithAssignedActiveOracleType(msg.sender, _oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, _oracleType);
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
     require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock a oracle type not in PENDING status");
@@ -239,6 +234,8 @@ contract PlotClarificationManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
+
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
 
     require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
@@ -276,6 +273,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
 
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
 
     require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[senderOracleType] == msg.sender, "Sender not assigned to this application");
@@ -347,6 +345,7 @@ contract PlotClarificationManager is AbstractOracleApplication {
 
     require(a.tokenWithdrawn == true, "Token should be withdrawn first");
     require(a.oracleTypeRewardPaidOut[oracleType] == false, "Reward is already withdrawn");
+    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
 
     _assignGaltProtocolFee(a);
 

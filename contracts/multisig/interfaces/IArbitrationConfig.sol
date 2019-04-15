@@ -15,6 +15,7 @@ pragma solidity 0.5.3;
 
 import "./IArbitratorsMultiSig.sol";
 import "./IArbitratorStakeAccounting.sol";
+import "./IArbitrationOracles.sol";
 import "./IOracleStakesAccounting.sol";
 import "../voting/interfaces/IArbitrationCandidateTop.sol";
 import "../voting/interfaces/IDelegateReputationVoting.sol";
@@ -23,7 +24,7 @@ import "../../registries/GaltGlobalRegistry.sol";
 
 
 interface IArbitrationConfig {
-  function ggr() external returns(GaltGlobalRegistry);
+  function ggr() external view returns(GaltGlobalRegistry);
   function setThreshold(bytes32 _key, uint256 _value) external;
   function setMofN(uint256 _m, uint256 _n) external;
   function setMinimalArbitratorStake(uint256 _value) external;
@@ -32,6 +33,7 @@ interface IArbitrationConfig {
   function getMultiSig() external view returns (IArbitratorsMultiSig);
   function getArbitratorStakes() external view returns (IArbitratorStakeAccounting);
   function getOracleStakes() external view returns (IOracleStakesAccounting);
+  function getOracles() external view returns (IArbitrationOracles);
   function getArbitrationCandidateTop() external view returns (IArbitrationCandidateTop);
   function getDelegateSpaceVoting() external view returns (IDelegateReputationVoting);
   function getDelegateGaltVoting() external view returns (IDelegateReputationVoting);

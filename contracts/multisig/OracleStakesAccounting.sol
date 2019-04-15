@@ -17,7 +17,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../Oracles.sol";
 import "./ArbitrationConfig.sol";
 import "./interfaces/IOracleStakesAccounting.sol";
 
@@ -96,7 +95,6 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    oracles().onOracleStakeChanged(_oracle, _oracleType, finalOracleTypeStake);
     arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
@@ -119,18 +117,40 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    oracles().onOracleStakeChanged(_oracle, _oracleType, finalRoleStake);
     arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }
 
-  function oracles() internal view returns (Oracles) {
-    return Oracles(arbitrationConfig.ggr().getOraclesAddress());
+  function oracles() internal view returns (IArbitrationOracles) {
+    return arbitrationConfig.getOracles();
   }
 
   function galtToken() internal view returns (IERC20) {
     return arbitrationConfig.ggr().getGaltToken();
+  }
+
+  // GETTERS
+
+  function oracleTypeMinimalStakeKey(bytes32 _oracleType) public pure returns (bytes32) {
+    return keccak256(abi.encode("ORACLE_TYPE_MINIMAL_STAKE", _oracleType));
+  }
+
+  function oracleTypeMinimalStake(bytes32 _oracleType) public view returns (uint256) {
+    return uint256(arbitrationConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
+  }
+
+  function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool) {
+    int256 required = int256(oracleTypeMinimalStake(_oracleType));
+
+    // The role has not properly set up yet
+    if (required == 0) {
+      return false;
+    }
+
+    int256 current = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
+
+    return current >= required;
   }
 
   function balanceOf(address _oracle) external view returns (int256) {

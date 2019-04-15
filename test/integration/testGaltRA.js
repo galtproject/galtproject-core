@@ -6,7 +6,6 @@ const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
 const GaltLocker = artifacts.require('./GaltLocker.sol');
 const GaltRA = artifacts.require('./GaltRA.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -36,7 +35,6 @@ contract('GaltRA', accounts => {
     this.acl = await ACL.new({ from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
@@ -54,7 +52,6 @@ contract('GaltRA', accounts => {
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_LOCKER_REGISTRY(), this.galtLockerRegistry.address, {

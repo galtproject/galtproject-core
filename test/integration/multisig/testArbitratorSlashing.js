@@ -3,11 +3,11 @@ const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -32,8 +32,6 @@ const OLIVER = bytes32('Oliver');
 const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 const PC_AUDITOR_ORACLE_TYPE = bytes32('PC_AUDITOR_ORACLE_TYPE');
 
-const MY_APPLICATION = '0x70042f08921e5b7de231736485f834c3bda2cd3587936c6a668d44c1ccdeddf0';
-
 const PaymentMethods = {
   NONE: 0,
   ETH_ONLY: 1,
@@ -52,9 +50,8 @@ const ClaimApplicationStatus = {
 contract('Arbitrator Stake Slashing', accounts => {
   const [
     coreTeam,
-    applicationTypeManager,
     spaceRA,
-    oracleManager,
+    oracleModifier,
 
     // initial arbitrators
     a1,
@@ -107,7 +104,6 @@ contract('Arbitrator Stake Slashing', accounts => {
     // Create and initialize contracts
     await (async () => {
       this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-      this.oracles = await Oracles.new({ from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
 
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -117,6 +113,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
         from: coreTeam
       });
+      this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -124,7 +121,6 @@ contract('Arbitrator Stake Slashing', accounts => {
         from: coreTeam
       });
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
         from: coreTeam
@@ -136,6 +132,7 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
       await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
       await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
@@ -160,6 +157,12 @@ contract('Arbitrator Stake Slashing', accounts => {
       applicationConfig[bytes32('CM_N')] = numberToEvmWord(3);
       applicationConfig[bytes32('CM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
+      const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
+      const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
+
+      applicationConfig[pcCustodianKey] = numberToEvmWord(ether(200));
+      applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
+
       await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
       this.abX = await buildArbitration(
         this.multiSigFactory,
@@ -178,24 +181,9 @@ contract('Arbitrator Stake Slashing', accounts => {
       this.candidateTopX = this.abX.candidateTop;
       this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
       this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
+      this.oraclesX = this.abX.oracles;
 
       this.mX = this.abMultiSigX.address;
-    })();
-
-    // Setup roles and fees
-    await (async () => {
-      await this.oracles.addRoleTo(applicationTypeManager, await this.oracles.ROLE_APPLICATION_TYPE_MANAGER(), {
-        from: coreTeam
-      });
-      await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_TYPE_MANAGER(), {
-        from: coreTeam
-      });
-      await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_MANAGER(), {
-        from: coreTeam
-      });
-      await this.oracles.addRoleTo(oracleManager, await this.oracles.ROLE_ORACLE_STAKES_MANAGER(), {
-        from: coreTeam
-      });
     })();
 
     // Mint and distribute SRA reputation using mock
@@ -270,61 +258,16 @@ contract('Arbitrator Stake Slashing', accounts => {
 
   describe('#slashing ()', () => {
     it('should slash', async function() {
-      // > Setup an application, its roles and shares
-      await this.oracles.setApplicationTypeOracleTypes(
-        MY_APPLICATION,
-        [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
-        [50, 50],
-        [_ES, _ES],
-        {
-          from: applicationTypeManager
-        }
-      );
-
-      await this.oracles.setOracleTypeMinimalDeposit(PC_CUSTODIAN_ORACLE_TYPE, ether(200), {
-        from: applicationTypeManager
+      // > 3 oracles are added by oracleModifier
+      await this.oraclesX.addOracle(mike, MIKE, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        from: oracleModifier
       });
-      await this.oracles.setOracleTypeMinimalDeposit(PC_AUDITOR_ORACLE_TYPE, ether(200), {
-        from: applicationTypeManager
+      await this.oraclesX.addOracle(nick, NICK, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        from: oracleModifier
       });
-
-      // > 3 oracles are added by oracleManager
-      await this.oracles.addOracle(
-        this.mX,
-        mike,
-        MIKE,
-        MN,
-        '',
-        [_ES],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(
-        this.mX,
-        nick,
-        NICK,
-        MN,
-        '',
-        [_ES],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
-      await this.oracles.addOracle(
-        this.mX,
-        oliver,
-        OLIVER,
-        MN,
-        '',
-        [_ES],
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
-        {
-          from: oracleManager
-        }
-      );
+      await this.oraclesX.addOracle(oliver, OLIVER, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+        from: oracleModifier
+      });
 
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(3000), { from: alice });
       await this.oracleStakesAccountingX.stake(mike, PC_AUDITOR_ORACLE_TYPE, ether(350), { from: alice });
@@ -335,25 +278,21 @@ contract('Arbitrator Stake Slashing', accounts => {
       await this.oracleStakesAccountingX.stake(oliver, PC_CUSTODIAN_ORACLE_TYPE, ether(350), { from: alice });
 
       // > Asserting that oracles have all their roles active
-      let res = await this.oracles.getOracle(mike);
+      let res = await this.oraclesX.getOracle(mike);
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
       );
-      assert.sameMembers(
-        res.activeOracleTypes.map(hexToUtf8),
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
-      );
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(mike, PC_CUSTODIAN_ORACLE_TYPE), true);
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(mike, PC_AUDITOR_ORACLE_TYPE), true);
 
-      res = await this.oracles.getOracle(nick);
+      res = await this.oraclesX.getOracle(nick);
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
       );
-      assert.sameMembers(
-        res.activeOracleTypes.map(hexToUtf8),
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
-      );
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(nick, PC_CUSTODIAN_ORACLE_TYPE), true);
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(nick, PC_AUDITOR_ORACLE_TYPE), true);
 
       // > Unknown user makes a new claim using Claim Manager
       res = await this.claimManager.submit(
@@ -396,23 +335,24 @@ contract('Arbitrator Stake Slashing', accounts => {
       assert.equal(res, ether(350));
       res = await this.oracleStakesAccountingX.stakeOf(mike, PC_CUSTODIAN_ORACLE_TYPE);
       assert.equal(res, ether(150));
-      res = await this.oracles.getOracle(mike);
+
+      res = await this.oraclesX.getOracle(mike);
 
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
       );
-      assert.sameMembers(res.activeOracleTypes.map(hexToUtf8), [PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8));
+      // assert.sameMembers(res.activeOracleTypes.map(hexToUtf8), [PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8));
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(mike, PC_CUSTODIAN_ORACLE_TYPE), false);
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(mike, PC_AUDITOR_ORACLE_TYPE), true);
 
-      res = await this.oracles.getOracle(nick);
+      res = await this.oraclesX.getOracle(nick);
       assert.sameMembers(
         res.assignedOracleTypes.map(hexToUtf8),
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
       );
-      assert.sameMembers(
-        res.activeOracleTypes.map(hexToUtf8),
-        [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToUtf8)
-      );
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(nick, PC_CUSTODIAN_ORACLE_TYPE), true);
+      assert.equal(await this.oracleStakesAccountingX.isOracleStakeActive(nick, PC_AUDITOR_ORACLE_TYPE), true);
 
       // > Check that arbitrators were punished
       res = await this.arbitratorStakeAccountingX.balanceOf(alice);

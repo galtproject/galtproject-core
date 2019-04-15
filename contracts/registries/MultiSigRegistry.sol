@@ -69,20 +69,21 @@ contract MultiSigRegistry is IMultiSigRegistry {
   // REQUIRES
 
   function requireValidMultiSig(address _multiSig) external view {
-    require(multiSigs[_multiSig].active, "MultiSig address is invalid");
+    require(multiSigs[_multiSig].active == true, "MultiSig address is invalid");
   }
 
   // GETTERS
 
   function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig) {
+    require(multiSigs[_multiSig].active == true, "MultiSig address is invalid");
     return multiSigs[_multiSig].arbitrationConfig;
   }
 
-  function getMultiSigList() external returns (address[] memory) {
+  function getMultiSigList() external view returns (address[] memory) {
     return multiSigArray.elements();
   }
 
-  function getMultiSigCount() external returns (uint256) {
+  function getMultiSigCount() external view returns (uint256) {
     return multiSigArray.size();
   }
   // TODO: how to update Factory Address?

@@ -20,4 +20,5 @@ interface IOracleStakesAccounting {
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external;
   function balanceOf(address _oracle) external view returns (int256);
   function stakeOf(address _oracle, bytes32 _oracleType) external view returns (int256);
+  function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool);
 }

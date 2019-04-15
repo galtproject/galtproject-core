@@ -7,7 +7,6 @@ const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
-const Oracles = artifacts.require('./Oracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -39,7 +38,6 @@ contract('SpaceRA', accounts => {
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
     this.splitMerge = await deploySplitMerge(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.oracles = await Oracles.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
@@ -60,14 +58,11 @@ contract('SpaceRA', accounts => {
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.ORACLES(), this.oracles.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });
-    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
-      from: coreTeam
-    });
+    await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, { from: coreTeam });
 
     await this.feeRegistry.setGaltFee(await this.spaceLockerFactory.FEE_KEY(), ether(10), { from: coreTeam });
     await this.feeRegistry.setEthFee(await this.spaceLockerFactory.FEE_KEY(), ether(5), { from: coreTeam });
@@ -336,6 +331,7 @@ contract('SpaceRA', accounts => {
     it('should allow revoking locked reputation', async function() {
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+
       await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
       await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
       await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
@@ -528,7 +524,6 @@ contract('SpaceRA', accounts => {
     it('should deny minting reputation', async function() {
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
       await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
-      // await this.multiSigFactory.build([a1, a2, a3], 2, { from: alice });
 
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
