@@ -88,4 +88,3 @@ contract GlobalGovernance is Initializable {
     emit NewProposal(msg.sender, _destination);
   }
 }
-

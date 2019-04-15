@@ -41,6 +41,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
   bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
   bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
+  bytes32 public constant CREATE_GLOBAL_PROPOSAL_THRESHOLD = bytes32("create_global_prop_threshold");
+  bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_THRESHOLD = bytes32("support_global_prop_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
@@ -82,7 +84,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 6, "Invalid number of thresholds passed in");
+    require(_thresholds.length == 8, "Invalid number of thresholds passed in");
 
     thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
     thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
@@ -90,6 +92,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
     thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
     thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
+    thresholds[CREATE_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[6];
+    thresholds[SUPPORT_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[7];
   }
 
   function initialize(

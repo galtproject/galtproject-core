@@ -32,6 +32,8 @@ contract GaltGlobalRegistry is Ownable {
 
   bytes32 public constant ACL = bytes32("ACL");
 
+  bytes32 public constant GLOBAL_GOVERNANCE = bytes32("global_governance");
+
   // Tokens
   bytes32 public constant GALT_TOKEN = bytes32("galt_token");
   bytes32 public constant SPACE_TOKEN = bytes32("space_token");
@@ -79,6 +81,11 @@ contract GaltGlobalRegistry is Ownable {
   function getApplicationRegistry() external view returns (address) {
     require(contracts[APPLICATION_REGISTRY] != ZERO_ADDRESS, "GGR: APPLICATION_REGISTRY not set");
     return contracts[APPLICATION_REGISTRY];
+  }
+
+  function getGlobalGovernanceAddress() external view returns (address) {
+    require(contracts[GLOBAL_GOVERNANCE] != ZERO_ADDRESS, "GGR: GLOBAL_GOVERNANCE not set");
+    return contracts[GLOBAL_GOVERNANCE];
   }
 
   function getFeeRegistryAddress() external view returns (address) {

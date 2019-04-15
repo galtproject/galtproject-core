@@ -38,6 +38,8 @@ import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
 import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
 import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
 import "./arbitration/ArbitrationModifyApplicationConfigProposalFactory.sol";
+import "./arbitration/ArbitrationCreateGlobalProposalProposalManagerFactory.sol";
+import "./arbitration/ArbitrationSupportGlobalProposalProposalManagerFactory.sol";
 import "./arbitration/DelegateReputationVotingFactory.sol";
 import "./arbitration/OracleStakeVotingFactory.sol";
 import "../multisig/voting/ArbitrationCandidateTop.sol";
@@ -128,6 +130,8 @@ contract MultiSigFactory is Ownable {
   ArbitrationModifyContractAddressProposalFactory arbitrationModifyContractAddressProposalFactory;
   ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
   ArbitrationModifyApplicationConfigProposalFactory arbitrationModifyApplicationConfigProposalFactory;
+  ArbitrationCreateGlobalProposalProposalManagerFactory arbitrationCreateGlobalProposalProposalManagerFactory;
+  ArbitrationSupportGlobalProposalProposalManagerFactory arbitrationSupportGlobalProposalProposalManagerFactory;
 
   mapping(bytes32 => MultiSigContractGroup) public multiSigContractGroups;
 
@@ -144,6 +148,8 @@ contract MultiSigFactory is Ownable {
     ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
     ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory,
     ArbitrationModifyApplicationConfigProposalFactory _arbitrationModifyApplicationConfigProposalFactory,
+    ArbitrationCreateGlobalProposalProposalManagerFactory _arbitrationCreateGlobalProposalProposalManagerFactory,
+    ArbitrationSupportGlobalProposalProposalManagerFactory _arbitrationSupportGlobalProposalProposalManagerFactory,
     DelegateReputationVotingFactory _delegateReputationVotingFactory,
     OracleStakeVotingFactory _oracleStakeVotingFactory
   ) public {
@@ -163,6 +169,8 @@ contract MultiSigFactory is Ownable {
     arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
     arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
     arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
+    arbitrationCreateGlobalProposalProposalManagerFactory = _arbitrationCreateGlobalProposalProposalManagerFactory;
+    arbitrationSupportGlobalProposalProposalManagerFactory = _arbitrationSupportGlobalProposalProposalManagerFactory;
   }
 
   modifier onlyFeeCollector() {
