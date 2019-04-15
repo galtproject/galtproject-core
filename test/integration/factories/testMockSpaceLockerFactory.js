@@ -21,7 +21,7 @@ const bytes32 = utf8ToHex;
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-contract.only('SpaceLockerFactory', accounts => {
+contract('SpaceLockerFactory', accounts => {
   const [coreTeam, alice] = accounts;
 
   beforeEach(async function() {
