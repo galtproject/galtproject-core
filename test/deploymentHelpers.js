@@ -22,6 +22,12 @@ const ArbitrationModifyContractAddressProposalFactory = artifacts.require(
 const ArbitrationRevokeArbitratorsProposalFactory = artifacts.require(
   './ArbitrationRevokeArbitratorsProposalFactory.sol'
 );
+const ArbitrationCreateGlobalProposalProposalManagerFactory = artifacts.require(
+  './ArbitrationCreateGlobalProposalProposalManagerFactory.sol'
+);
+const ArbitrationSupportGlobalProposalProposalManagerFactory = artifacts.require(
+  './ArbitrationSupportGlobalProposalProposalManagerFactory.sol'
+);
 
 const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
@@ -37,6 +43,8 @@ const ModifyMofNProposalManager = artifacts.require('./ModifyMofNProposalManager
 const ModifyMinimalArbitratrorStakeProposalManager = artifacts.require(
   './ModifyMinimalArbitratorStakeProposalManager.sol'
 );
+const CreateGlobalProposalProposalManager = artifacts.require('./CreateGlobalProposalProposalManager.sol');
+const SupportGlobalProposalProposalManager = artifacts.require('./SupportGlobalProposalProposalManager.sol');
 const ModifyContractAddressProposalManager = artifacts.require('./ModifyContractAddressProposalManager.sol');
 const RevokeArbitratorsProposalManager = artifacts.require('./RevokeArbitratorsProposalManager.sol');
 
@@ -73,8 +81,20 @@ const Helpers = {
         from: owner
       }
     );
+    // eslint-disable-next-line
+    const arbitrationCreateGlobalProposalProposalManagerFactory = await ArbitrationCreateGlobalProposalProposalManagerFactory.new(
+      {
+        from: owner
+      }
+    );
+    // eslint-disable-next-line
+    const arbitrationSupportGlobalProposalProposalManagerFactory = await ArbitrationSupportGlobalProposalProposalManagerFactory.new(
+      {
+        from: owner
+      }
+    );
 
-    return MultiSigFactory.new(
+    const multiSigFactory = await MultiSigFactory.new(
       ggr.address,
       multiSig.address,
       candidateTop.address,
@@ -82,16 +102,23 @@ const Helpers = {
       oracleStakes.address,
       arbitrationConfig.address,
       arbitrationOracleFactory.address,
+      delegateReputationVotingFactory.address,
+      oracleStakeVotingFactory.address,
+      { from: owner }
+    );
+
+    await multiSigFactory.initialize(
       arbitrationModifyThresholdProposalFactory.address,
       arbitrationModifyMofNProposalFactory.address,
       arbitrationModifyArbitratorStakeProposalFactory.address,
       arbitrationModifyContractAddressProposalFactory.address,
       arbitrationRevokeArbitratorsProposalFactory.address,
       arbitrationModifyApplicationConfigProposalFactory.address,
-      delegateReputationVotingFactory.address,
-      oracleStakeVotingFactory.address,
-      { from: owner }
+      arbitrationCreateGlobalProposalProposalManagerFactory.address,
+      arbitrationSupportGlobalProposalProposalManagerFactory.address
     );
+
+    return multiSigFactory;
   },
   async buildArbitration(
     factory,
@@ -157,6 +184,14 @@ const Helpers = {
     const oracleStakeVoting = await OracleStakeVoting.at(res.logs[0].args.oracleStakeVoting);
 
     res = await factory.buildEighthStep(groupId, { from: owner });
+    const createGlobalProposalProposalManager = await CreateGlobalProposalProposalManager.at(
+      res.logs[0].args.createGlobalProposal
+    );
+    const supportGlobalProposalProposalManager = await SupportGlobalProposalProposalManager.at(
+      res.logs[0].args.supportGlobalProposal
+    );
+
+    res = await factory.buildNinthStep(groupId, { from: owner });
     const oracles = await ArbitrationOracles.at(res.logs[0].args.oracles);
 
     return {
@@ -172,6 +207,8 @@ const Helpers = {
       modifyContractAddressProposalManager,
       modifyApplicationConfigProposalManager,
       revokeArbitratorsProposalManager,
+      createGlobalProposalProposalManager,
+      supportGlobalProposalProposalManager,
       delegateSpaceVoting,
       delegateGaltVoting,
       oracleStakeVoting,

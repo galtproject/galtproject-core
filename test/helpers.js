@@ -69,6 +69,26 @@ const Helpers = {
       setTimeout(resolve, timeout);
     });
   },
+  async traceReplayTransaction(transactionHash, traceTypes = ['vmTrace']) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'trace_replayTransaction',
+          params: [transactionHash, traceTypes],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
   async evmMineBlock() {
     return new Promise(function(resolve, reject) {
       web3.eth.currentProvider.send(

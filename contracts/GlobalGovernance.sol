@@ -20,12 +20,13 @@ import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "./interfaces/IACL.sol";
 import "./registries/interfaces/IMultiSigRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
+import "./interfaces/IGlobalGovernance.sol";
 
 
-contract GlobalGovernance is Initializable {
+contract GlobalGovernance is Initializable, IGlobalGovernance {
   using Counter for Counter.Counter;
 
-  event NewProposal(address indexed creator, address indexed destination);
+  event NewProposal(uint256 id, address indexed creator, address indexed destination);
 
   enum ProposalStatus {
     NULL,
@@ -61,7 +62,11 @@ contract GlobalGovernance is Initializable {
   GaltGlobalRegistry internal ggr;
 
   modifier onlyValidMultiSig() {
-    IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).requireValidMultiSig(msg.sender);
+    require(
+      IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).isMultiSigValid(msg.sender) == true,
+      "Invalid MultiSig"
+    );
+
     _;
   }
 
@@ -75,7 +80,8 @@ contract GlobalGovernance is Initializable {
     bytes calldata _data
   )
     external
-    onlyValidMultiSig
+//    onlyValidMultiSig
+    returns(uint256)
   {
     uint256 id = idCounter.next();
     Proposal storage p = proposals[id];
@@ -85,6 +91,8 @@ contract GlobalGovernance is Initializable {
     p.value = _value;
     p.data = _data;
 
-    emit NewProposal(msg.sender, _destination);
+    emit NewProposal(id, msg.sender, _destination);
+
+    return id;
   }
 }

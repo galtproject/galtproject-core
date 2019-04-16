@@ -151,7 +151,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         applicationConfig,
         alice
       );
@@ -171,7 +171,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         applicationConfig,
         bob
       );
@@ -190,7 +190,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         applicationConfig,
         charlie
       );
@@ -583,7 +583,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         3,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         {},
         alice
       );

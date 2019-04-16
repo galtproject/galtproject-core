@@ -61,8 +61,12 @@ contract SupportGlobalProposalProposalManager is IProposalManager, AbstractArbit
   }
 
   function _execute(uint256 _proposalId) internal {
-    // Nothing to do, GlobalGovernance contract should poll such contracts in order
-    // to collect results
+    Proposal storage p = _proposals[_proposalId];
+    arbitrationConfig.setGlobalProposalSupport(_proposalId, true);
+  }
+
+  function _reject(uint256 _proposalId) internal {
+    arbitrationConfig.setGlobalProposalSupport(_proposalId, false);
   }
 
   function getThreshold() public view returns (uint256) {

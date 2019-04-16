@@ -1,4 +1,5 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
+const GlobalGovernance = artifacts.require('./GlobalGovernance.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
@@ -83,6 +84,7 @@ contract('Proposals', accounts => {
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
 
+      this.globalGovernance = await GlobalGovernance.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
       this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
@@ -99,6 +101,7 @@ contract('Proposals', accounts => {
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.SPACE_RA(), this.sra.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.GLOBAL_GOVERNANCE(), this.globalGovernance.address, { from: coreTeam });
 
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
@@ -130,7 +133,7 @@ contract('Proposals', accounts => {
         10,
         60,
         ether(1000),
-        [24, 24, 24, 24, 24, 24],
+        [24, 24, 24, 24, 24, 24, 24, 24],
         {},
         alice
       );
@@ -426,6 +429,67 @@ contract('Proposals', accounts => {
 
       res = await this.ab.config.applicationConfig(bytes32('my_key'));
       assert.equal(res, '0x000000000000000000000000000000000000000000000000000000000000002a');
+    });
+  });
+
+  describe('Create/Support Global Proposal Proposals', () => {
+    it('should change a corresponding application config value', async function() {
+      // when MultiSigRegistry is transferred to globalGovernance
+      await this.multiSigRegistry.transferOwnership(this.globalGovernance.address);
+      const transferBackBytecode = this.multiSigRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
+
+      // we want to vote to transfer it back to the coreTeam
+      let res = await this.ab.createGlobalProposalProposalManager.propose(
+        this.multiSigRegistry.address,
+        '0',
+        transferBackBytecode,
+        'back to centralization',
+        { from: alice }
+      );
+      let { proposalId } = res.logs[0].args;
+
+      await this.ab.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.ab.createGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.ab.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+
+      await assertRevert(this.ab.createGlobalProposalProposalManager.triggerReject(proposalId));
+      await this.ab.createGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.createGlobalProposalProposalManager.getProposal(proposalId);
+      const globalProposalId = res.globalId;
+
+      assert.equal(res.destination, this.multiSigRegistry.address);
+      assert.equal(res.value, 0);
+      assert.equal(res.globalId, 1);
+      assert.equal(res.data, transferBackBytecode);
+      assert.equal(res.description, 'back to centralization');
+
+      res = await this.globalGovernance.proposals(globalProposalId);
+      assert.equal(res.creator, this.ab.createGlobalProposalProposalManager.address);
+      assert.equal(res.value, 0);
+      assert.equal(res.destination, this.multiSigRegistry.address);
+      assert.equal(res.data, transferBackBytecode);
+
+      // support
+      res = await this.ab.supportGlobalProposalProposalManager.propose(
+        globalProposalId,
+        'looks good',
+        { from: alice }
+      );
+      // eslint-disable-next-line
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.ab.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.ab.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.ab.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+
+      res = await this.ab.config.globalProposalSupport(globalProposalId);
+      assert.equal(res, false);
+
+      await this.ab.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.ab.config.globalProposalSupport(globalProposalId);
+      assert.equal(res, true);
     });
   });
 });

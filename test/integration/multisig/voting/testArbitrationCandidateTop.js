@@ -144,7 +144,7 @@ contract('ArbitrationCandidateTop', accounts => {
         3,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         {},
         alice
       );
@@ -2477,7 +2477,7 @@ contract('ArbitrationCandidateTop', accounts => {
         5,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30],
+        [30, 30, 30, 30, 30, 30, 30, 30],
         {},
         bob
       );

@@ -20,7 +20,7 @@ contract('ArbitratorsMultiSig', accounts => {
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
 
-    this.abConfig = await ArbitrationConfig.new(this.ggr.address, 2, 3, 200, [30, 30, 30, 30, 30, 30], {
+    this.abConfig = await ArbitrationConfig.new(this.ggr.address, 2, 3, 200, [30, 30, 30, 30, 30, 30, 30, 30], {
       from: coreTeam
     });
     this.abMultiSig = await ArbitratorsMultiSig.new([alice, bob, charlie], 2, this.abConfig.address, {

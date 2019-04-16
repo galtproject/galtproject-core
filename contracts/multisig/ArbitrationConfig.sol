@@ -34,6 +34,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
   string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
   string public constant APPLICATION_CONFIG_MANAGER = "application_config_manager";
+  string public constant CREATE_GLOBAL_PROPOSAL_MANAGER = "create_global_proposal_manager";
+  string public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = "support_global_proposal_manager";
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
@@ -56,6 +58,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
   mapping(bytes32 => bytes32) public applicationConfig;
+  mapping(uint256 => bool) public globalProposalSupport;
+
   uint256 public minimalArbitratorStake;
 
   bool initialized;
@@ -148,6 +152,16 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyRole(APPLICATION_CONFIG_MANAGER) {
     applicationConfig[_key] = _value;
+  }
+
+  function setGlobalProposalSupport(
+    uint256 _globalProposalId,
+    bool _isSupported
+  )
+    external
+    onlyRole(SUPPORT_GLOBAL_PROPOSAL_MANAGER)
+  {
+    globalProposalSupport[_globalProposalId] = _isSupported;
   }
 
   // GETTERS (TODO: replace contract getters with interfaces only)

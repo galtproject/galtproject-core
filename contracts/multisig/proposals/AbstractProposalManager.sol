@@ -73,6 +73,10 @@ contract AbstractProposalManager is Permissionable {
 
   function getThreshold() public view returns (uint256);
 
+  // Nothing to do in case when non-overridden
+  function _reject(uint256 _proposalId) internal {
+  }
+
   function aye(uint256 _proposalId) external onlyMember {
     require(_proposalVotings[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
@@ -120,6 +124,8 @@ contract AbstractProposalManager is Permissionable {
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _rejectedProposals.push(_proposalId);
+
+    _reject(_proposalId);
 
     emit Rejected(nayShare, threshold);
   }

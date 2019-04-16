@@ -61,7 +61,7 @@ contract('OracleStakesAccounting', accounts => {
 
     assert.equal(await this.acl.hasRole(slashManager, bytes32('ORACLE_STAKE_SLASHER')), true);
 
-    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
+    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
       from: coreTeam
     });
     this.candidateTop = await ArbitrationCandidateTop.new(this.config.address, { from: coreTeam });

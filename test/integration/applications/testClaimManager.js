@@ -149,7 +149,7 @@ contract("ClaimManager", (accounts) => {
       10,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30, 30, 30],
       applicationConfig,
       alice
     );

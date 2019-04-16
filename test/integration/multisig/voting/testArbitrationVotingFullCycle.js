@@ -156,7 +156,7 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
       4,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30, 30, 30],
       applicationConfigX,
       alice
     );

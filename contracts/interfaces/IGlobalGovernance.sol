@@ -15,5 +15,5 @@ pragma solidity 0.5.3;
 
 
 interface IGlobalGovernance {
-  function propose(address _destination, uint256 _value, bytes calldata _data) external;
+  function propose(address _destination, uint256 _value, bytes calldata _data) external returns(uint256);
 }

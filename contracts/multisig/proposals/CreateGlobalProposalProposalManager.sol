@@ -27,6 +27,7 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
     address destination;
     uint256 value;
     bytes data;
+    uint256 globalId;
     string description;
   }
 
@@ -54,6 +55,7 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
       destination: _destination,
       value: _value,
       data: _data,
+      globalId: 0,
       description: _description
     });
 
@@ -69,7 +71,7 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    IGlobalGovernance(arbitrationConfig.ggr().getGlobalGovernanceAddress()).propose(
+    p.globalId = IGlobalGovernance(arbitrationConfig.ggr().getGlobalGovernanceAddress()).propose(
       p.destination,
       p.value,
       p.data
@@ -88,11 +90,12 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
     returns (
       address destination,
       uint256 value,
+      uint256 globalId,
       bytes memory data,
       string memory description
     )
   {
     Proposal storage p = _proposals[_id];
-    return (p.destination, p.value, p.data, p.description);
+    return (p.destination, p.value, p.globalId, p.data, p.description);
   }
 }

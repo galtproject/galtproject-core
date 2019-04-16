@@ -36,7 +36,7 @@ contract('ArbitratorStakeAccounting', accounts => {
     await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
 
-    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30], {
+    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
       from: coreTeam
     });
     this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.config.address, 60, {

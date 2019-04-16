@@ -61,7 +61,7 @@ contract("MultiSigFactory", (accounts) => {
         10,
         60,
         ether(1000),
-        [24, 24, 24, 24, 24, 24],
+        [24, 24, 24, 24, 24, 24, 24, 24],
         {},
         alice,
         value
