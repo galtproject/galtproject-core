@@ -471,11 +471,7 @@ contract('Proposals', accounts => {
       assert.equal(res.data, transferBackBytecode);
 
       // support
-      res = await this.ab.supportGlobalProposalProposalManager.propose(
-        globalProposalId,
-        'looks good',
-        { from: alice }
-      );
+      res = await this.ab.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', { from: alice });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
 

@@ -72,7 +72,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
   function initialize(GaltGlobalRegistry _ggr) external isInitializer {
     ggr = _ggr;
- }
+  }
 
   function propose(
     address _destination,
