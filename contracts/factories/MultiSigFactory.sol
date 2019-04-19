@@ -462,6 +462,11 @@ contract MultiSigFactory is Ownable, Initializable {
     g.arbitrationConfig.addRoleTo(address(supportGlobalProposal), g.arbitrationConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
     g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
 
+    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.EXTERNAL_ROLE_MANAGER());
+    g.arbitrationConfig.addExternalRoleTo(address(createGlobalProposal), g.arbitrationConfig.GLOBAL_PROPOSAL_CREATOR_ROLE());
+    g.arbitrationConfig.addExternalRoleTo(address(g.oracleStakesAccounting), g.arbitrationConfig.STAKE_TRACKER_NOTIFIER_ROLE());
+    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.EXTERNAL_ROLE_MANAGER());
+
     g.nextStep = Step.NINTH;
 
     emit BuildMultiSigEighthStep(

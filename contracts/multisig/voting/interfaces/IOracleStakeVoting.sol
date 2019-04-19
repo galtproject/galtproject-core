@@ -21,4 +21,5 @@ contract IOracleStakeVoting {
   function totalSupply() external view returns (uint256);
   function balanceOf(address _candidate) external view returns (uint256);
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
+  function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256);
 }

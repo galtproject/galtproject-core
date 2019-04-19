@@ -51,6 +51,7 @@ contract GaltGlobalRegistry is Ownable {
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
+  bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
@@ -130,6 +131,11 @@ contract GaltGlobalRegistry is Ownable {
   function getGaltRAAddress() external view returns (address) {
     require(contracts[GALT_RA] != ZERO_ADDRESS, "GGR: GALT_RA not set");
     return contracts[GALT_RA];
+  }
+
+  function getStakeTrackerAddress() external view returns (address) {
+    require(contracts[STAKE_TRACKER] != ZERO_ADDRESS, "GGR: STAKE_TRACKER not set");
+    return contracts[STAKE_TRACKER];
   }
 
   function getSplitMergeAddress() external view returns (address) {

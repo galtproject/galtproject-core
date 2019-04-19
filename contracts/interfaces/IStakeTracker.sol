@@ -14,12 +14,10 @@
 pragma solidity 0.5.3;
 
 
-interface IDelegateReputationVoting {
-  function grantReputation(address _candidate, uint256 _amount) external;
-  function revokeReputation(address _candidate, uint256 _amount) external;
-  function onDelegateReputationChanged(address _delegate, uint256 _newLocked) external;
+contract IStakeTracker {
+  function onStake(address _multiSig, uint256 _amount) external;
+  function onSlash(address _multiSig, uint256 _amount) external;
+  function balancesOf(address[] calldata _multiSigs) external view returns(uint256);
+  function balanceOf(address _multiSig) external view returns(uint256);
   function totalSupply() external view returns(uint256);
-  function balanceOf(address _candidate) external view returns(uint256);
-  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
-  function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256);
 }

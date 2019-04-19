@@ -29,6 +29,7 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
   // TODO: need to be a private?
   mapping(address => MultiSig) public multiSigs;
   ArraySet.AddressSet private multiSigArray;
+  ArraySet.AddressSet private configArray;
 
   struct MultiSig {
     bool active;
@@ -65,6 +66,7 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
     ms.factoryAddress = msg.sender;
 
     multiSigArray.add(address(_abMultiSig));
+    configArray.add(address(_arbitrationConfig));
   }
 
   // REQUIRES
@@ -86,6 +88,10 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
 
   function getMultiSigList() external view returns (address[] memory) {
     return multiSigArray.elements();
+  }
+
+  function getConfigList() external view returns (address[] memory) {
+    return configArray.elements();
   }
 
   function getMultiSigCount() external view returns (uint256) {

@@ -178,6 +178,30 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
     return (spaceReputationRatio + galtReputationRatio + stakeReputationRatio);
   }
 
+  function getHolderWeight(address _candidate) public view returns (uint256) {
+    uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
+
+    uint256 spaceReputationRatio = 0;
+    uint256 galtReputationRatio = 0;
+    uint256 stakeReputationRatio = 0;
+
+    if (candidateSpaceReputationShare > 0) {
+      spaceReputationRatio = (candidateSpaceReputationShare * SPACE_REPUTATION_SHARE) / 100;
+    }
+
+    if (candidateGaltReputationShare > 0) {
+      galtReputationRatio = (candidateGaltReputationShare * GALT_REPUTATION_SHARE) / 100;
+    }
+
+    if (candidateStakeReputationShare > 0) {
+      stakeReputationRatio = (candidateStakeReputationShare * STAKE_REPUTATION_SHARE) / 100;
+    }
+
+    return (spaceReputationRatio + galtReputationRatio + stakeReputationRatio);
+  }
+
   function getCandidatesWithStakes() public view returns (address[] memory) {
     if (votingList.count == 0) {
       return new address[](0);
@@ -227,8 +251,8 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
     return c;
   }
 
-  function getCandidateWeights(
-    address[] calldata _candidates
+  function getHolderWeights(
+    address[] calldata _holders
   )
     external
     view
@@ -236,8 +260,8 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   {
     uint256 total = 0;
 
-    for (uint256 i = 0; i < _candidates.length; i++) {
-      total += getCandidateWeight(_candidates[i]);
+    for (uint256 i = 0; i < _holders.length; i++) {
+      total += getHolderWeight(_holders[i]);
     }
 
     return total * 100 / DECIMALS;
