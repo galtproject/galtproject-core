@@ -23,6 +23,8 @@ test: only-skip
 	tput bel
 	$(MAKE) only-recover
 
+ctest: compile test
+
 retest: cleanup test
 
 check-size:
