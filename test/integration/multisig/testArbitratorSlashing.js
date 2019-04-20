@@ -8,6 +8,7 @@ const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -47,7 +48,7 @@ const ClaimApplicationStatus = {
   REVERTED: 4
 };
 
-contract('Arbitrator Stake Slashing', accounts => {
+contract('ArbitratorSlashing', accounts => {
   const [
     coreTeam,
     spaceRA,
@@ -114,9 +115,11 @@ contract('Arbitrator Stake Slashing', accounts => {
         from: coreTeam
       });
       this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+      this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
+      await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
         from: coreTeam
       });
@@ -259,6 +262,7 @@ contract('Arbitrator Stake Slashing', accounts => {
   describe('#slashing ()', () => {
     it('should slash', async function() {
       // > 3 oracles are added by oracleModifier
+
       await this.oraclesX.addOracle(mike, MIKE, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });

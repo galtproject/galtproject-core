@@ -97,7 +97,10 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
     arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
-    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onSlash(address(this), _amount);
+    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onSlash(
+      address(arbitrationConfig.getMultiSig()),
+      _amount
+    );
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }

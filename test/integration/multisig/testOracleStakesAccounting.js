@@ -6,6 +6,8 @@ const ArbitrationCandidateTop = artifacts.require('./ArbitrationCandidateTop.sol
 const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
 const ArbitrationOracles = artifacts.require('./ArbitrationOracles.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
+const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 
 const Web3 = require('web3');
 const { assertRevert, ether, initHelperWeb3 } = require('../../helpers');
@@ -37,6 +39,7 @@ contract('OracleStakesAccounting', accounts => {
     coreTeam,
     slashManager,
     oracleModifier,
+    multiSigRegistrar,
     multiSig,
     zeroAddress,
     delegateSpaceVoting,
@@ -52,12 +55,19 @@ contract('OracleStakesAccounting', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+      from: coreTeam
+    });
 
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), multiSigRegistrar, true, { from: coreTeam });
 
     assert.equal(await this.acl.hasRole(slashManager, bytes32('ORACLE_STAKE_SLASHER')), true);
 
@@ -79,6 +89,8 @@ contract('OracleStakesAccounting', accounts => {
       delegateGaltVoting,
       this.oracleStakeVotingX.address
     );
+
+    await this.multiSigRegistry.addMultiSig(multiSig, this.config.address, { from: multiSigRegistrar });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
@@ -103,7 +115,6 @@ contract('OracleStakesAccounting', accounts => {
     it('should allow any user stake for oracle', async function() {
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
       await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
-
       let res = await this.oracleStakesAccountingX.stakeOf(bob, NON_EXISTENT_ROLE);
       assert.equal(res, 0);
       res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);

@@ -6,6 +6,7 @@ const UpdateOracleManager = artifacts.require('./UpdateOracleManager.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -88,6 +89,7 @@ contract('UpdateOracleManager', (accounts) => {
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
     this.updateOracle = await UpdateOracleManager.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -100,6 +102,7 @@ contract('UpdateOracleManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
       from: coreTeam
