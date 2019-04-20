@@ -12,6 +12,7 @@ const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
 const GaltLocker = artifacts.require('./GaltLocker.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const {
@@ -40,7 +41,7 @@ const GEORGE = bytes32('George');
 const FRANK = bytes32('Frank');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig Owners', accounts => {
+contract('Arbitration Voting Full Cycle', accounts => {
   const [
     coreTeam,
     oracleManager,
@@ -76,6 +77,7 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
 
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
@@ -87,6 +89,7 @@ contract('Arbitration Voting From (Space/Galt/Stake) Inputs To Assigned MultiSig
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {

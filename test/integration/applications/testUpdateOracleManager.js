@@ -89,11 +89,11 @@ contract('UpdateOracleManager', (accounts) => {
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
     this.updateOracle = await UpdateOracleManager.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
 
