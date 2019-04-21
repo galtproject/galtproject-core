@@ -16,6 +16,7 @@ pragma solidity 0.5.3;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../registries/interfaces/IMultiSigRegistry.sol";
+import "../interfaces/ILockableRA.sol";
 import "./LiquidRA.sol";
 
 // LiquidRA - base class
@@ -29,7 +30,7 @@ import "./LiquidRA.sol";
 // FundRA  = LiquidRA + (SpaceInputRA + SharableRA)
 
 
-contract LockableRA is LiquidRA {
+contract LockableRA is ILockableRA, LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 

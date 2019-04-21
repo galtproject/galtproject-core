@@ -111,7 +111,7 @@ contract('GlobalGovernance', accounts => {
       this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
       this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
 
-      this.globalGovernance.initialize(this.ggr.address, { from: coreTeam });
+      this.globalGovernance.initialize(this.ggr.address, 750000, 750000, { from: coreTeam });
 
       await this.spaceToken.addRoleTo(minter, 'minter', {
         from: coreTeam
@@ -175,7 +175,182 @@ contract('GlobalGovernance', accounts => {
       await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam
       });
+
+      await this.ggr.transferOwnership(this.globalGovernance.address, { from: coreTeam });
     })();
+  });
+
+  describe('#setThreshold()', () => {
+    it('should apply custom threshold if one exists', async function() {
+      const { seedArbitration } = globalGovernanceHelpers(
+        this.galtToken,
+        this.spaceToken,
+        this.spaceRA,
+        this.galtRA,
+        this.splitMerge,
+        this.spaceLockerFactory,
+        this.galtLockerFactory,
+        [a1, a2, a3],
+        minter,
+        oracleModifier,
+        geoDataManager,
+        alice,
+        log
+      );
+
+      await this.galtToken.approve(this.multiSigFactory.address, ether(100), { from: alice });
+
+      this.abM = await seedArbitration(
+        this.multiSigFactory,
+        alice,
+        [alice, bob, charlie, dan],
+        [bob, george, hannah, mike],
+        [xander, bob],
+        500,
+        200,
+        200
+      );
+
+      this.abN = await seedArbitration(
+        this.multiSigFactory,
+        alice,
+        [bob, charlie, dan, eve],
+        [george, hannah, mike, nick],
+        [yan, zack],
+        10,
+        30,
+        0
+      );
+      log('M weight', (await this.globalGovernance.getMultiSigWeight(this.abM.multiSig.address)).weight);
+      log('N weight', (await this.globalGovernance.getMultiSigWeight(this.abN.multiSig.address)).weight);
+
+      // Step #1. Create proposal for an increased threshold for add2ggr change to 95% instead of default 75%
+      const signatureHash = await this.ggr.contract.methods
+        .setContract(bytes32(''), alice)
+        .encodeABI()
+        .substr(0, 10);
+
+      // console.log('signatureHash >>>', signatureHash);
+      const marker = await this.globalGovernance.getMarker(this.ggr.address, signatureHash);
+      // console.log('marker >>>', marker);
+      const increaseThreshold = this.globalGovernance.contract.methods.setThreshold(marker, 950000).encodeABI();
+
+      // we want to vote to transfer it back to the coreTeam
+      let res = await this.abM.createGlobalProposalProposalManager.propose(
+        this.globalGovernance.address,
+        '0',
+        increaseThreshold,
+        'back to centralization',
+        { from: alice }
+      );
+      let { proposalId } = res.logs[0].args;
+
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.createGlobalProposalProposalManager.getProposal(proposalId);
+      let globalProposalId = res.globalId;
+
+      // Step #2. Create support proposal and accept it
+      res = await this.abM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        from: alice
+      });
+      // eslint-disable-next-line
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+
+      await this.abM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.config.globalProposalSupport(globalProposalId);
+      assert.equal(true, res);
+
+      await this.globalGovernance.trigger(globalProposalId);
+
+      // Step #3. Crate proposal to add a record
+      const addRecordBytecode = this.ggr.contract.methods
+        .setContract(await this.ggr.FEE_COLLECTOR(), charlie)
+        .encodeABI();
+
+      res = await this.abM.createGlobalProposalProposalManager.propose(
+        this.ggr.address,
+        '0',
+        addRecordBytecode,
+        'charlie is a new fee manager',
+        { from: alice }
+      );
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.createGlobalProposalProposalManager.getProposal(proposalId);
+      globalProposalId = res.globalId;
+
+      // Step #4. Support proposal to add a record at around 94.19%
+      res = await this.abM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        from: alice
+      });
+      // eslint-disable-next-line
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+
+      await this.abM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      await assertRevert(this.globalGovernance.trigger(globalProposalId));
+
+      // Step #5. Support proposal to add a record at 100%
+      res = await this.abN.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        from: alice
+      });
+      // eslint-disable-next-line
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.abN.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: eve });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: george });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: yan });
+      await this.abN.supportGlobalProposalProposalManager.aye(proposalId, { from: zack });
+
+      await this.abN.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.config.globalProposalSupport(globalProposalId);
+      log('M support', res);
+      res = await this.abN.config.globalProposalSupport(globalProposalId);
+      log('N support', res);
+
+      // Step #6. Trigger the proposal and check the new key
+      await this.globalGovernance.trigger(globalProposalId);
+
+      res = await this.ggr.getContract(await this.ggr.FEE_COLLECTOR());
+      assert.equal(res, charlie);
+    });
   });
 
   describe('Create/Support Global Proposal Proposals', () => {

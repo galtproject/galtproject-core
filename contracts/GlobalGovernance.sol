@@ -31,6 +31,11 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
   event NewProposal(uint256 id, address indexed creator, address indexed destination);
 
+  // keccak256(setShares(uint256,uint256,uint256))
+  bytes32 public constant SET_SHARES_THRESHOLD = bytes32(uint256(0xa0885e93));
+  // keccak256(setThreshold(bytes32,uint256))
+  bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32(uint256(0xa4db7b4d));
+
   uint256 public constant DECIMALS = 10**6;
 
   enum ProposalStatus {
@@ -60,6 +65,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     uint256 value;
     bytes32 marker;
     bytes data;
+    bool executed;
     bytes response;
   }
 
@@ -85,17 +91,56 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     _;
   }
 
-  function initialize(GaltGlobalRegistry _ggr) external isInitializer {
-    ggr = _ggr;
-    defaultThreshold = 51 * DECIMALS / 100;
+  modifier onlyGlobalGovernance() {
+    require(msg.sender == address(this), "Not a GlobalGovernance contract");
+
+    _;
   }
 
-  function setShares(uint256 _spaceShare, uint256 _galtShare, uint256 _stakeShare) public {
+  function initialize(
+    GaltGlobalRegistry _ggr,
+    uint256 _setSharesThreshold,
+    uint256 _setThresholdThreshold
+  )
+    external
+    isInitializer
+  {
+    ggr = _ggr;
+    defaultThreshold = 51 * DECIMALS / 100;
+
+    thresholds[keccak256(abi.encode(address(this), SET_SHARES_THRESHOLD))] = _setSharesThreshold;
+    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_THRESHOLD))] = _setThresholdThreshold;
+  }
+
+  function setShares(uint256 _spaceShare, uint256 _galtShare, uint256 _stakeShare) external onlyGlobalGovernance {
     require(_spaceShare + _galtShare + _stakeShare == 100, "Share sum should be eq 100");
 
     spaceSharePercent = _spaceShare;
     galtSharePercent = _galtShare;
     stakeSharePercent = _stakeShare;
+  }
+
+  /**
+   * @dev Set a new threshold for a given key. Can be called only while executing a proposal.
+   *
+   * @param _marker is keccak256(abi.encode(bytes32 destination, bytes32 methodSignature))
+   * @param _value of threshold in percents when 100% == 1 * DECIMALS (currently 1000000)
+   */
+  function setThreshold(bytes32 _marker, uint256 _value) external onlyGlobalGovernance {
+    require(msg.sender == address(this), "Not a GlobalGovernance contract");
+    require(_value > 0 && _value <= DECIMALS, "Invalid threshold value");
+
+    thresholds[_marker] = _value;
+  }
+
+  function getMarker(address _destination, bytes memory _data) public view returns(bytes32 marker) {
+    bytes32 methodName;
+
+    assembly {
+      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+    }
+
+    return keccak256(abi.encode(_destination, methodName));
   }
 
   function propose(
@@ -114,8 +159,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     p.destination = _destination;
     p.value = _value;
     p.data = _data;
-
-    // TODO: build marker
+    p.marker = getMarker(_destination, _data);
 
     emit NewProposal(id, msg.sender, _destination);
 
@@ -124,11 +168,16 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
   function trigger(uint256 _proposalId) external {
     uint256 support = getSupport(_proposalId);
-
     assert(support <= DECIMALS);
 
-    // TODO: check custom thresholds
-    require(support > defaultThreshold, "Threshold doesn't reached yet");
+    Proposal storage p = proposals[_proposalId];
+
+    uint256 customThreshold = thresholds[p.marker];
+    if (customThreshold > 0) {
+      require(support > customThreshold, "Threshold doesn't reached yet");
+    } else {
+      require(support > defaultThreshold, "Threshold doesn't reached yet");
+    }
 
     execute(_proposalId);
   }
@@ -136,14 +185,14 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   function execute(uint256 _proposalId) internal {
     Proposal storage p = proposals[_proposalId];
 
-    // TODO: configure the gas value
+    require(p.executed == false, "Already executed");
+
     (bool x, bytes memory response) = address(p.destination)
       .call
       .value(p.value)
       .gas(gasleft() - 50000)(p.data);
 
-    assert(x == true);
-
+    p.executed = x;
     p.response = response;
   }
 
@@ -229,6 +278,39 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     supportByStake = stakeTracker.balancesOf(supportMultiSigs);
 
     (spaceShare, galtShare, stakeShare, totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
+  }
+
+  function getMultiSigWeight(
+    address _multiSig
+  )
+    external
+    view
+    returns(
+      uint256 space,
+      uint256 galt,
+      uint256 stake,
+      uint256 totalSpace,
+      uint256 totalGalt,
+      uint256 totalStake,
+      uint256 spaceShare,
+      uint256 galtShare,
+      uint256 stakeShare,
+      uint256 weight
+    )
+  {
+    address spaceRA = ggr.getSpaceRAAddress();
+    address galtRA = ggr.getGaltRAAddress();
+    IStakeTracker stakeTracker = IStakeTracker(ggr.getStakeTrackerAddress());
+
+    totalSpace = IRA(spaceRA).totalSupply();
+    totalGalt = IRA(galtRA).totalSupply();
+    totalStake = stakeTracker.totalSupply();
+
+    space = ILockableRA(spaceRA).lockedMultiSigBalance(_multiSig);
+    galt = ILockableRA(galtRA).lockedMultiSigBalance(_multiSig);
+    stake = stakeTracker.balanceOf(_multiSig);
+
+    (spaceShare, galtShare, stakeShare, weight) = calculateSupport(space, galt, stake, totalSpace, totalGalt, totalStake);
   }
 
   function calculateSupport(
