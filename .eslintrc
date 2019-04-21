@@ -30,6 +30,7 @@
       }
     ],
     "import/named": "off",
+    "prefer-destructuring": "off",
     "no-console": "off",
     "func-names": "off",
     "prettier/prettier": [
