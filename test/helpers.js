@@ -43,6 +43,9 @@ const Helpers = {
   addressToEvmWord(address) {
     return web3.utils.padLeft(address, 64);
   },
+  bytes32ToEvmWord(bytes32) {
+    return web3.utils.padRight(bytes32, 64);
+  },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
   },
@@ -69,6 +72,28 @@ const Helpers = {
       setTimeout(resolve, timeout);
     });
   },
+  // For Geth/Truffle
+  async debugTraceTransaction(transactionHash, traceTypes = {}) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'debug_traceTransaction',
+          params: [transactionHash, traceTypes],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
+  // For Parity
   async traceReplayTransaction(transactionHash, traceTypes = ['vmTrace']) {
     return new Promise(function(resolve, reject) {
       web3.eth.currentProvider.send(
