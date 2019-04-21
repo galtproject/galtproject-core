@@ -25,7 +25,7 @@ contract('GlobalGovernance Unit', accounts => {
         ['address', 'bytes32'],
         [alice, '0xf44db40200000000000000000000000000000000000000000000000000000000']
       );
-      assert.equal(res.marker, web3.utils.soliditySha3(encoded));
+      assert.equal(res, web3.utils.soliditySha3(encoded));
     });
 
     it('should provide correct marker for method with arguments', async function() {
@@ -35,7 +35,7 @@ contract('GlobalGovernance Unit', accounts => {
         ['address', 'bytes32'],
         [alice, '0x88d7ca0300000000000000000000000000000000000000000000000000000000']
       );
-      assert.equal(res.marker, web3.utils.soliditySha3(encoded));
+      assert.equal(res, web3.utils.soliditySha3(encoded));
     });
   });
 });
