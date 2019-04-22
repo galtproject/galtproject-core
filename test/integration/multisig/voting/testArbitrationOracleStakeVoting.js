@@ -7,6 +7,7 @@ const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const {
@@ -72,6 +73,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
@@ -84,6 +86,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
@@ -139,7 +142,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
       4,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30, 30, 30],
       applicationConfigX,
       alice
     );

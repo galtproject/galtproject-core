@@ -32,6 +32,7 @@ const config = {
       provider: Ganache.provider({
         unlocked_accounts: [0, 1, 2, 3, 4, 5],
         total_accounts: 30,
+        debug: true,
         vmErrorsOnRPCResponse: true,
         default_balance_ether: 5000000,
         // 7 800 000

@@ -13,10 +13,11 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/geodesic/contracts/Geodesic.sol";
-import "@galtproject/libs/contracts/proxy/unstructured-storage/OwnedUpgradeabilityProxy.sol";
 
-// solium-disable-next-line no-empty-blocks
-contract Imports {
-
+contract IStakeTracker {
+  function onStake(address _multiSig, uint256 _amount) external;
+  function onSlash(address _multiSig, uint256 _amount) external;
+  function balancesOf(address[] calldata _multiSigs) external view returns(uint256);
+  function balanceOf(address _multiSig) external view returns(uint256);
+  function totalSupply() external view returns(uint256);
 }

@@ -13,13 +13,14 @@
 
 pragma solidity 0.5.3;
 
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IMultiSigRegistry.sol";
 import "../multisig/interfaces/IArbitrationConfig.sol";
 import "../multisig/interfaces/IArbitratorsMultiSig.sol";
 
 
-contract MultiSigRegistry is IMultiSigRegistry {
+contract MultiSigRegistry is IMultiSigRegistry, Ownable {
   using ArraySet for ArraySet.AddressSet;
 
   bytes32 public constant ROLE_MULTI_SIG_REGISTRAR = bytes32("MULTI_SIG_REGISTRAR");
@@ -28,6 +29,7 @@ contract MultiSigRegistry is IMultiSigRegistry {
   // TODO: need to be a private?
   mapping(address => MultiSig) public multiSigs;
   ArraySet.AddressSet private multiSigArray;
+  ArraySet.AddressSet private configArray;
 
   struct MultiSig {
     bool active;
@@ -64,6 +66,7 @@ contract MultiSigRegistry is IMultiSigRegistry {
     ms.factoryAddress = msg.sender;
 
     multiSigArray.add(address(_abMultiSig));
+    configArray.add(address(_arbitrationConfig));
   }
 
   // REQUIRES
@@ -74,6 +77,10 @@ contract MultiSigRegistry is IMultiSigRegistry {
 
   // GETTERS
 
+  function isMultiSigValid(address _multiSig) external view returns(bool) {
+    return (multiSigs[_multiSig].active == true);
+  }
+
   function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig) {
     require(multiSigs[_multiSig].active == true, "MultiSig address is invalid");
     return multiSigs[_multiSig].arbitrationConfig;
@@ -81,6 +88,10 @@ contract MultiSigRegistry is IMultiSigRegistry {
 
   function getMultiSigList() external view returns (address[] memory) {
     return multiSigArray.elements();
+  }
+
+  function getConfigList() external view returns (address[] memory) {
+    return configArray.elements();
   }
 
   function getMultiSigCount() external view returns (uint256) {

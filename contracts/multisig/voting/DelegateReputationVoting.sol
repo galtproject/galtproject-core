@@ -37,11 +37,12 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
   uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
   uint256 private constant DECIMALS = 10**6;
 
-  // Delegate => Delegate details
+  // Initially all reputation minted both to delegate and candidate balances
+  // Delegate => distribution details
   mapping(address => Delegate) private delegatedReputation;
-  // Candidate/Delegate => locked
+  // Delegate => locked (in RA contract)
   mapping(address => uint256) private lockedReputation;
-  // Candidate/Delegate => balance
+  // Candidate => balance
   mapping(address => uint256) private reputationBalance;
 
   struct Delegate {
@@ -205,5 +206,14 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
     if (_decimals == 0) { return 0; }
 
     return (reputationBalance[_candidate] * _decimals) / totalReputation;
+  }
+
+  function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = lockedReputation[_delegate];
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
+    return (lockedReputation[_delegate] * _decimals) / totalReputation;
   }
 }

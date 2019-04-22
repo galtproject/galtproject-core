@@ -21,4 +21,5 @@ interface IDelegateReputationVoting {
   function totalSupply() external view returns(uint256);
   function balanceOf(address _candidate) external view returns(uint256);
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
+  function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256);
 }

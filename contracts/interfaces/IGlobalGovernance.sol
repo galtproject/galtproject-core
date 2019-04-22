@@ -13,10 +13,12 @@
 
 pragma solidity 0.5.3;
 
-import "@galtproject/geodesic/contracts/Geodesic.sol";
-import "@galtproject/libs/contracts/proxy/unstructured-storage/OwnedUpgradeabilityProxy.sol";
 
-// solium-disable-next-line no-empty-blocks
-contract Imports {
-
+interface IGlobalGovernance {
+  function propose(
+    address _multiSig,
+    address _destination,
+    uint256 _value,
+    bytes calldata _data
+  ) external returns(uint256);
 }

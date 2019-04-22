@@ -19,6 +19,7 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./ArbitrationConfig.sol";
 import "./interfaces/IOracleStakesAccounting.sol";
+import "../interfaces/IStakeTracker.sol";
 
 
 contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
@@ -96,13 +97,18 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
     arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
+    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onSlash(
+      address(arbitrationConfig.getMultiSig()),
+      _amount
+    );
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
     oracles().requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    galtToken().transferFrom(msg.sender, address(arbitrationConfig.getMultiSig()), _amount);
+    address multiSig = address(arbitrationConfig.getMultiSig());
+    galtToken().transferFrom(msg.sender, multiSig, _amount);
 
     require(_amount > 0, "Expect positive amount");
 
@@ -118,6 +124,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
     arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
+    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }

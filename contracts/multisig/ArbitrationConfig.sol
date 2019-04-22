@@ -29,11 +29,17 @@ import "./voting/interfaces/IArbitrationCandidateTop.sol";
 
 
 contract ArbitrationConfig is IArbitrationConfig, Permissionable {
+  using ArraySet for ArraySet.AddressSet;
+
   string public constant THRESHOLD_MANAGER = "threshold_manager";
   string public constant M_N_MANAGER = "m_n_manager";
   string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
   string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
   string public constant APPLICATION_CONFIG_MANAGER = "application_config_manager";
+
+  string public constant CREATE_GLOBAL_PROPOSAL_MANAGER = "create_global_proposal_manager";
+  string public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = "support_global_proposal_manager";
+  string public constant EXTERNAL_ROLE_MANAGER = "external_role_manager";
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
@@ -41,6 +47,9 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
   bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
   bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
+  bytes32 public constant CREATE_GLOBAL_PROPOSAL_THRESHOLD = bytes32("create_global_prop_threshold");
+  bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_THRESHOLD = bytes32("support_global_prop_threshold");
+  bytes32 public constant EXTERNAL_ROLE_PROPOSAL_THRESHOLD = bytes32("external_role_threshold");
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLES_CONTRACT = bytes32("oracles_contract");
@@ -51,9 +60,17 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
   bytes32 public constant DELEGATE_GALT_VOTING_CONTRACT = bytes32("delegate_galt_voting_contract");
   bytes32 public constant ORACLE_STAKE_VOTING_CONTRACT = bytes32("oracle_stake_voting_contract");
 
+  // Notifies StakeTracker about stake changes
+  bytes32 public constant STAKE_TRACKER_NOTIFIER_ROLE = bytes32("stake_tracker_notifier");
+  // Creates new global governance proposals
+  bytes32 public constant GLOBAL_PROPOSAL_CREATOR_ROLE = bytes32("global_proposal_creator");
+
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
   mapping(bytes32 => bytes32) public applicationConfig;
+  mapping(uint256 => bool) public globalProposalSupport;
+  mapping(bytes32 => ArraySet.AddressSet) private externalRoles;
+
   uint256 public minimalArbitratorStake;
 
   bool initialized;
@@ -83,7 +100,7 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 6, "Invalid number of thresholds passed in");
+    require(_thresholds.length == 8, "Invalid number of thresholds passed in");
 
     thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
     thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
@@ -91,6 +108,8 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
     thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
     thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
+    thresholds[CREATE_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[6];
+    thresholds[SUPPORT_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[7];
   }
 
   function initialize(
@@ -146,6 +165,24 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
     applicationConfig[_key] = _value;
   }
 
+  function addExternalRoleTo(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
+    externalRoles[_role].add(_address);
+  }
+
+  function removeExternalRoleFrom(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
+    externalRoles[_role].remove(_address);
+  }
+
+  function setGlobalProposalSupport(
+    uint256 _globalProposalId,
+    bool _isSupported
+  )
+    external
+    onlyRole(SUPPORT_GLOBAL_PROPOSAL_MANAGER)
+  {
+    globalProposalSupport[_globalProposalId] = _isSupported;
+  }
+
   // GETTERS (TODO: replace contract getters with interfaces only)
   function getMultiSig() external view returns (IArbitratorsMultiSig) {
     address payable ms = address(uint160(contracts[MULTI_SIG_CONTRACT]));
@@ -178,5 +215,13 @@ contract ArbitrationConfig is IArbitrationConfig, Permissionable {
 
   function getOracleStakeVoting() external view returns (IOracleStakeVoting) {
     return IOracleStakeVoting(contracts[ORACLE_STAKE_VOTING_CONTRACT]);
+  }
+
+  function getExternalRoles(bytes32 _role) external view returns(address[] memory) {
+    return externalRoles[_role].elements();
+  }
+
+  function hasExternalRole(bytes32 _role, address _address) external view returns(bool) {
+    return externalRoles[_role].has(_address);
   }
 }

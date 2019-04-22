@@ -25,6 +25,7 @@ import "../../registries/GaltGlobalRegistry.sol";
 
 interface IArbitrationConfig {
   function ggr() external view returns(GaltGlobalRegistry);
+  function globalProposalSupport(uint256) external view returns(bool);
   function setThreshold(bytes32 _key, uint256 _value) external;
   function setMofN(uint256 _m, uint256 _n) external;
   function setMinimalArbitratorStake(uint256 _value) external;
@@ -38,4 +39,6 @@ interface IArbitrationConfig {
   function getDelegateSpaceVoting() external view returns (IDelegateReputationVoting);
   function getDelegateGaltVoting() external view returns (IDelegateReputationVoting);
   function getOracleStakeVoting() external view returns (IOracleStakeVoting);
+  function getExternalRoles(bytes32 _role) external view returns(address[] memory);
+  function hasExternalRole(bytes32 _role, address _address) external view returns(bool);
 }

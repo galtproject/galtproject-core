@@ -19,8 +19,9 @@ interface IArbitrationCandidateTop {
   function pushArbitrators() external;
   function ignoreMe(bool _value) external;
   function getCandidatesWithStakes() external view returns (address[] memory);
-  function getCandidateWeights(address[] calldata _candidates) external view returns (uint256);
   function getCandidateWeight(address _candidate) external view returns (uint256);
+  function getHolderWeight(address _candidate) external view returns (uint256);
+  function getHolderWeights(address[] calldata _candidates) external view returns (uint256);
   function isCandidateInList(address _candidate) external view returns (bool);
   function isIgnored(address _candidate) external view returns (bool);
   function getSize() external view returns (uint256 size);

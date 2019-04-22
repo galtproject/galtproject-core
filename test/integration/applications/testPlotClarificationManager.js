@@ -9,6 +9,7 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -128,6 +129,7 @@ contract('PlotClarificationManager', (accounts) => {
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
     const deployment = await deploySplitMergeMock(this.ggr);
     this.splitMerge = deployment.splitMerge;
@@ -139,6 +141,7 @@ contract('PlotClarificationManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesic.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceReputationAccountingAddress, {
       from: coreTeam
     });
@@ -190,7 +193,7 @@ contract('PlotClarificationManager', (accounts) => {
       10,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30, 30],
+      [30, 30, 30, 30, 30, 30, 30, 30],
       applicationConfig,
       alice
     );

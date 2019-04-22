@@ -15,6 +15,7 @@ pragma solidity 0.5.3;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
@@ -40,11 +41,13 @@ import "./arbitration/ArbitrationModifyArbitratorStakeProposalFactory.sol";
 import "./arbitration/ArbitrationRevokeArbitratorsProposalFactory.sol";
 import "./arbitration/ArbitrationModifyContractAddressProposalFactory.sol";
 import "./arbitration/ArbitrationModifyApplicationConfigProposalFactory.sol";
+import "./arbitration/ArbitrationCreateGlobalProposalProposalManagerFactory.sol";
+import "./arbitration/ArbitrationSupportGlobalProposalProposalManagerFactory.sol";
 import "./arbitration/DelegateReputationVotingFactory.sol";
 import "./arbitration/OracleStakeVotingFactory.sol";
 
 
-contract MultiSigFactory is Ownable {
+contract MultiSigFactory is Ownable, Initializable {
   event BuildMultiSigFirstStep(
     bytes32 groupId,
     address arbitrationConfig,
@@ -85,6 +88,12 @@ contract MultiSigFactory is Ownable {
 
   event BuildMultiSigEighthStep(
     bytes32 groupId,
+    address createGlobalProposal,
+    address supportGlobalProposal
+  );
+
+  event BuildMultiSigNinthStep(
+    bytes32 groupId,
     address oracles
   );
 
@@ -97,6 +106,7 @@ contract MultiSigFactory is Ownable {
     SIXTH,
     SEVENTH,
     EIGHTH,
+    NINTH,
     DONE
   }
 
@@ -143,6 +153,8 @@ contract MultiSigFactory is Ownable {
   ArbitrationModifyContractAddressProposalFactory arbitrationModifyContractAddressProposalFactory;
   ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
   ArbitrationModifyApplicationConfigProposalFactory arbitrationModifyApplicationConfigProposalFactory;
+  ArbitrationCreateGlobalProposalProposalManagerFactory arbitrationCreateGlobalProposalProposalManagerFactory;
+  ArbitrationSupportGlobalProposalProposalManagerFactory arbitrationSupportGlobalProposalProposalManagerFactory;
 
   mapping(bytes32 => MultiSigContractGroup) private multiSigContractGroups;
 
@@ -154,30 +166,18 @@ contract MultiSigFactory is Ownable {
     OracleStakesAccountingFactory _oracleStakesAccountingFactory,
     ArbitrationConfigFactory _arbitrationConfigFactory,
     ArbitrationOracleFactory _arbitrationOracleFactory,
-    ArbitrationModifyThresholdProposalFactory _arbitrationModifyThresholdProposalFactory,
-    ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
-    ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
-    ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
-    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory,
-    ArbitrationModifyApplicationConfigProposalFactory _arbitrationModifyApplicationConfigProposalFactory,
     DelegateReputationVotingFactory _delegateReputationVotingFactory,
     OracleStakeVotingFactory _oracleStakeVotingFactory
   ) public {
-    arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
-    arbitrationCandidateTopFactory = _arbitrationCandidateTopFactory;
-    arbitratorStakeAccountingFactory = _arbitratorStakeAccountingFactory;
-    oracleStakesAccountingFactory = _oracleStakesAccountingFactory;
-    arbitrationConfigFactory = _arbitrationConfigFactory;
-    delegateReputationVotingFactory = _delegateReputationVotingFactory;
     oracleStakeVotingFactory = _oracleStakeVotingFactory;
-    arbitrationOracleFactory = _arbitrationOracleFactory;
+    delegateReputationVotingFactory = _delegateReputationVotingFactory;
 
-    arbitrationModifyThresholdProposalFactory = _arbitrationModifyThresholdProposalFactory;
-    arbitrationModifyMofNProposalFactory = _arbitrationModifyMofNProposalFactory;
-    arbitrationModifyArbitratorStakeProposalFactory = _arbitrationModifyArbitratorStakeProposalFactory;
-    arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
-    arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
-    arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
+    arbitrationOracleFactory = _arbitrationOracleFactory;
+    arbitrationConfigFactory = _arbitrationConfigFactory;
+    oracleStakesAccountingFactory = _oracleStakesAccountingFactory;
+    arbitratorStakeAccountingFactory = _arbitratorStakeAccountingFactory;
+    arbitrationCandidateTopFactory = _arbitrationCandidateTopFactory;
+    arbitratorMultiSigFactory = _arbitratorMultiSigFactory;
 
     ggr = _ggr;
   }
@@ -185,6 +185,30 @@ contract MultiSigFactory is Ownable {
   modifier onlyFeeCollector() {
     require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
     _;
+  }
+
+  function initialize(
+    ArbitrationModifyThresholdProposalFactory _arbitrationModifyThresholdProposalFactory,
+    ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
+    ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
+    ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
+    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory,
+    ArbitrationModifyApplicationConfigProposalFactory _arbitrationModifyApplicationConfigProposalFactory,
+    ArbitrationCreateGlobalProposalProposalManagerFactory _arbitrationCreateGlobalProposalProposalManagerFactory,
+    ArbitrationSupportGlobalProposalProposalManagerFactory _arbitrationSupportGlobalProposalProposalManagerFactory
+  )
+    external
+    isInitializer
+    onlyOwner
+  {
+    arbitrationSupportGlobalProposalProposalManagerFactory = _arbitrationSupportGlobalProposalProposalManagerFactory;
+    arbitrationCreateGlobalProposalProposalManagerFactory = _arbitrationCreateGlobalProposalProposalManagerFactory;
+    arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
+    arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
+    arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
+    arbitrationModifyArbitratorStakeProposalFactory = _arbitrationModifyArbitratorStakeProposalFactory;
+    arbitrationModifyMofNProposalFactory = _arbitrationModifyMofNProposalFactory;
+    arbitrationModifyThresholdProposalFactory = _arbitrationModifyThresholdProposalFactory;
   }
 
   function _acceptPayment() internal {
@@ -403,9 +427,6 @@ contract MultiSigFactory is Ownable {
       "GALT_REPUTATION_NOTIFIER"
     );
 
-    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
-    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
-
     g.nextStep = Step.EIGHTH;
     g.delegateSpaceVoting = delegateSpaceVoting;
     g.delegateGaltVoting = delegateGaltVoting;
@@ -426,6 +447,42 @@ contract MultiSigFactory is Ownable {
   {
     MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
     require(g.nextStep == Step.EIGHTH, "EIGHTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    IProposalManager createGlobalProposal = arbitrationCreateGlobalProposalProposalManagerFactory.build(
+      g.arbitrationConfig
+    );
+
+    IProposalManager supportGlobalProposal = arbitrationSupportGlobalProposalProposalManagerFactory.build(
+      g.arbitrationConfig
+    );
+
+    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+    g.arbitrationConfig.addRoleTo(address(createGlobalProposal), g.arbitrationConfig.CREATE_GLOBAL_PROPOSAL_MANAGER());
+    g.arbitrationConfig.addRoleTo(address(supportGlobalProposal), g.arbitrationConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
+    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.APPLICATION_CONFIG_MANAGER());
+
+    g.arbitrationConfig.addRoleTo(address(this), g.arbitrationConfig.EXTERNAL_ROLE_MANAGER());
+    g.arbitrationConfig.addExternalRoleTo(address(createGlobalProposal), g.arbitrationConfig.GLOBAL_PROPOSAL_CREATOR_ROLE());
+    g.arbitrationConfig.addExternalRoleTo(address(g.oracleStakesAccounting), g.arbitrationConfig.STAKE_TRACKER_NOTIFIER_ROLE());
+    g.arbitrationConfig.removeRoleFrom(address(this), g.arbitrationConfig.EXTERNAL_ROLE_MANAGER());
+
+    g.nextStep = Step.NINTH;
+
+    emit BuildMultiSigEighthStep(
+      _groupId,
+      address(createGlobalProposal),
+      address(supportGlobalProposal)
+    );
+  }
+
+  function buildNinthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+    MultiSigContractGroup storage g = multiSigContractGroups[_groupId];
+    require(g.nextStep == Step.NINTH, "NINTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     ArbitrationOracles oracles = arbitrationOracleFactory.build(g.arbitrationConfig);
@@ -461,7 +518,7 @@ contract MultiSigFactory is Ownable {
 
     g.nextStep = Step.DONE;
 
-    emit BuildMultiSigEighthStep(
+    emit BuildMultiSigNinthStep(
       _groupId,
       address(oracles)
     );

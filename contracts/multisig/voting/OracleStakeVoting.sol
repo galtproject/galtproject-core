@@ -133,10 +133,16 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
     return _totalReputation;
   }
 
+  // TODO: rename to balanceOfCandidate
   function balanceOf(address _candidate) external view returns (uint256) {
     return _candidateReputation[_candidate];
   }
 
+  function balanceOfOracle(address _oracle) external view returns (uint256) {
+    return oracles[_oracle].reputation;
+  }
+
+  // TODO: rename to shareOfCandidate
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = _candidateReputation[_candidate];
 
@@ -144,5 +150,14 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
     if (_decimals == 0) { return 0; }
 
     return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+  }
+
+  function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = oracles[_oracle].reputation;
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
+    return (reputation * _decimals) / _totalReputation;
   }
 }

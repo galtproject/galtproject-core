@@ -32,6 +32,8 @@ contract GaltGlobalRegistry is Ownable {
 
   bytes32 public constant ACL = bytes32("ACL");
 
+  bytes32 public constant GLOBAL_GOVERNANCE = bytes32("global_governance");
+
   // Tokens
   bytes32 public constant GALT_TOKEN = bytes32("galt_token");
   bytes32 public constant SPACE_TOKEN = bytes32("space_token");
@@ -49,6 +51,7 @@ contract GaltGlobalRegistry is Ownable {
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
+  bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
@@ -77,6 +80,11 @@ contract GaltGlobalRegistry is Ownable {
   function getApplicationRegistry() external view returns (address) {
     require(contracts[APPLICATION_REGISTRY] != ZERO_ADDRESS, "GGR: APPLICATION_REGISTRY not set");
     return contracts[APPLICATION_REGISTRY];
+  }
+
+  function getGlobalGovernanceAddress() external view returns (address) {
+    require(contracts[GLOBAL_GOVERNANCE] != ZERO_ADDRESS, "GGR: GLOBAL_GOVERNANCE not set");
+    return contracts[GLOBAL_GOVERNANCE];
   }
 
   function getFeeRegistryAddress() external view returns (address) {
@@ -123,6 +131,11 @@ contract GaltGlobalRegistry is Ownable {
   function getGaltRAAddress() external view returns (address) {
     require(contracts[GALT_RA] != ZERO_ADDRESS, "GGR: GALT_RA not set");
     return contracts[GALT_RA];
+  }
+
+  function getStakeTrackerAddress() external view returns (address) {
+    require(contracts[STAKE_TRACKER] != ZERO_ADDRESS, "GGR: STAKE_TRACKER not set");
+    return contracts[STAKE_TRACKER];
   }
 
   function getSplitMergeAddress() external view returns (address) {

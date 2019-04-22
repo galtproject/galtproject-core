@@ -1,31 +1,47 @@
 {
-    "extends": "@galtproject/eslint-config-galt",
-    "env": {
-        "node": true,
-        "mocha": true
-    },
-    "globals": {
-        "web3": true,
-        "assert": true,
-        "artifacts": true,
-        "contract": true
-    },
-    "rules": {
-        "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
-        "import/no-extraneous-dependencies": [2, {"devDependencies": ["**/*.js"]}],
-        "max-len": [2, { "code": 120, "ignoreComments": true }],
-        "import/named": "off",
-        "no-console": "off",
-        "func-names": "off",
-        "prettier/prettier": [
-            "error",
-            {
-                "singleQuote": true,
-                "printWidth": 120
-            }
+  "extends": "@galtproject/eslint-config-galt",
+  "env": {
+    "node": true,
+    "mocha": true
+  },
+  "globals": {
+    "web3": true,
+    "assert": true,
+    "artifacts": true,
+    "contract": true
+  },
+  "rules": {
+    "no-plusplus": [
+      "off"
+    ],
+    "import/no-extraneous-dependencies": [
+      2,
+      {
+        "devDependencies": [
+          "**/*.js"
         ]
-    },
-    "parserOptions": {
-        "ecmaVersion": 2017
-    }
+      }
+    ],
+    "max-len": [
+      2,
+      {
+        "code": 120,
+        "ignoreComments": true
+      }
+    ],
+    "import/named": "off",
+    "prefer-destructuring": "off",
+    "no-console": "off",
+    "func-names": "off",
+    "prettier/prettier": [
+      "error",
+      {
+        "singleQuote": true,
+        "printWidth": 120
+      }
+    ]
+  },
+  "parserOptions": {
+    "ecmaVersion": 2017
+  }
 }
