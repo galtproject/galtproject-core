@@ -85,11 +85,10 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   uint256 public defaultThreshold;
 
   modifier onlyValidMultiSig(address _multiSig) {
-
-  require(
-    IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-      .getArbitrationConfig(_multiSig)
-      .hasExternalRole(GLOBAL_PROPOSAL_CREATOR_ROLE, msg.sender) == true,
+    require(
+      IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
+        .getArbitrationConfig(_multiSig)
+        .hasExternalRole(GLOBAL_PROPOSAL_CREATOR_ROLE, msg.sender) == true,
       "Invalid MultiSig"
     );
 
