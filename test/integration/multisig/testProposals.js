@@ -103,6 +103,8 @@ contract('Proposals', accounts => {
       await this.ggr.setContract(await this.ggr.SPACE_RA(), this.sra.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.GLOBAL_GOVERNANCE(), this.globalGovernance.address, { from: coreTeam });
 
+      this.globalGovernance.initialize(this.ggr.address, 750000, 750000, { from: coreTeam });
+
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
       await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
