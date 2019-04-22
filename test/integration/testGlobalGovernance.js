@@ -1,5 +1,4 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
-const GlobalGovernance = artifacts.require('./GlobalGovernance.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
@@ -12,10 +11,16 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
+const OwnedUpgradeabilityProxy = artifacts.require('./OwnedUpgradeabilityProxy.sol');
+const GlobalGovernance = artifacts.require('./GlobalGovernance.sol');
+// eslint-disable-next-line
+const MockGlobalGovernance_V2 = artifacts.require('./MockGlobalGovernance_V2.sol');
 
 const Web3 = require('web3');
 
 GlobalGovernance.numberFormat = 'String';
+MockGlobalGovernance_V2.numberFormat = 'String';
+OwnedUpgradeabilityProxy.numberFormat = 'String';
 StakeTracker.numberFormat = 'String';
 GaltRA.numberFormat = 'String';
 SpaceRA.numberFormat = 'String';
@@ -175,13 +180,110 @@ contract('GlobalGovernance', accounts => {
       await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam
       });
-
-      await this.ggr.transferOwnership(this.globalGovernance.address, { from: coreTeam });
     })();
+  });
+
+  describe('self-upgrade', () => {
+    it('should allow self-upgrade logic using proxy', async function() {
+      const proxy = await OwnedUpgradeabilityProxy.new({ from: alice });
+      let globalGovernance = await GlobalGovernance.at(proxy.address);
+
+      const globalGovernanceV1 = await GlobalGovernance.new({ from: coreTeam });
+      const txData1 = globalGovernanceV1.contract.methods.initialize(this.ggr.address, 75000, 75000).encodeABI();
+      await proxy.upgradeToAndCall(globalGovernanceV1.address, txData1, { from: alice });
+      await proxy.transferProxyOwnership(globalGovernance.address, { from: alice });
+
+      await this.ggr.setContract(await this.ggr.GLOBAL_GOVERNANCE(), globalGovernance.address, { from: coreTeam });
+
+      const { seedArbitration } = globalGovernanceHelpers(
+        this.galtToken,
+        this.spaceToken,
+        this.spaceRA,
+        this.galtRA,
+        this.splitMerge,
+        this.spaceLockerFactory,
+        this.galtLockerFactory,
+        [a1, a2, a3],
+        minter,
+        oracleModifier,
+        geoDataManager,
+        alice,
+        log
+      );
+
+      await this.galtToken.approve(this.multiSigFactory.address, ether(100), { from: alice });
+
+      this.abM = await seedArbitration(
+        this.multiSigFactory,
+        alice,
+        [alice, bob, charlie, dan],
+        [bob, george, hannah, mike],
+        [xander, bob],
+        500,
+        200,
+        200
+      );
+
+      log('M weight', (await globalGovernance.getMultiSigWeight(this.abM.multiSig.address)).weight);
+
+      // Step #1. Create proposal for an increased threshold for add2ggr change to 95% instead of default 75%
+      const globalGovernanceV2 = await MockGlobalGovernance_V2.new({ from: coreTeam });
+      const upgradeBytecode = await proxy.contract.methods.upgradeTo(globalGovernanceV2.address).encodeABI();
+
+      // we want to vote to transfer it back to the coreTeam
+      let res = await this.abM.createGlobalProposalProposalManager.propose(
+        globalGovernance.address,
+        '0',
+        upgradeBytecode,
+        'back to centralization',
+        { from: alice }
+      );
+      let { proposalId } = res.logs[0].args;
+
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.createGlobalProposalProposalManager.getProposal(proposalId);
+      const globalProposalId = res.globalId;
+
+      // Step #2. Create support proposal and accept it
+      res = await this.abM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        from: alice
+      });
+      // eslint-disable-next-line
+      proposalId = res.logs[0].args.proposalId;
+
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.abM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
+      await this.abM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+
+      await this.abM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+
+      res = await this.abM.config.globalProposalSupport(globalProposalId);
+      assert.equal(true, res);
+
+      // Step #3. Now accept the proposal and check that #foo() method works correctly
+      globalGovernance = await MockGlobalGovernance_V2.at(proxy.address);
+      await assertRevert(globalGovernance.foo());
+
+      await globalGovernance.trigger(globalProposalId);
+
+      res = await globalGovernance.foo();
+      assert.equal(res, 'bar');
+    });
   });
 
   describe('#setThreshold()', () => {
     it('should apply custom threshold if one exists', async function() {
+      await this.ggr.transferOwnership(this.globalGovernance.address, { from: coreTeam });
       const { seedArbitration } = globalGovernanceHelpers(
         this.galtToken,
         this.spaceToken,
@@ -355,6 +457,7 @@ contract('GlobalGovernance', accounts => {
 
   describe('Create/Support Global Proposal Proposals', () => {
     it('should change a corresponding application config value', async function() {
+      await this.ggr.transferOwnership(this.globalGovernance.address, { from: coreTeam });
       const { seedArbitration } = globalGovernanceHelpers(
         this.galtToken,
         this.spaceToken,

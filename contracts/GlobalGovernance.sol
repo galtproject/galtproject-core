@@ -77,9 +77,9 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   Counter.Counter internal idCounter;
   GaltGlobalRegistry internal ggr;
 
-  uint256 public spaceSharePercent = 30;
-  uint256 public galtSharePercent = 40;
-  uint256 public stakeSharePercent = 30;
+  uint256 public spaceSharePercent;
+  uint256 public galtSharePercent;
+  uint256 public stakeSharePercent;
 
   // in percents (0 < threshold <= 100)
   uint256 public defaultThreshold;
@@ -114,6 +114,10 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
     thresholds[keccak256(abi.encode(address(this), SET_SHARES_THRESHOLD))] = _setSharesThreshold;
     thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_THRESHOLD))] = _setThresholdThreshold;
+
+    spaceSharePercent = 30;
+    galtSharePercent = 40;
+    stakeSharePercent = 30;
   }
 
   function setShares(uint256 _spaceShare, uint256 _galtShare, uint256 _stakeShare) external onlyGlobalGovernance {
@@ -333,6 +337,8 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
       uint256 totalSupport
     )
   {
+    assert(spaceSharePercent + galtSharePercent + stakeSharePercent == 100);
+
     spaceShare = (_supportBySpace * DECIMALS * spaceSharePercent) / _totalSpace / 100;
     galtShare = (_supportByGalt * DECIMALS * galtSharePercent) / _totalGalt / 100;
     stakeShare = (_supportByStake * DECIMALS * stakeSharePercent) / _totalStake / 100;
