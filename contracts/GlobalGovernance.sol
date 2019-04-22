@@ -31,6 +31,8 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
   event NewProposal(uint256 id, address indexed creator, address indexed destination);
 
+  bytes32 public constant GLOBAL_PROPOSAL_CREATOR_ROLE = bytes32("global_proposal_creator");
+
   // keccak256(setShares(uint256,uint256,uint256))
   bytes32 public constant SET_SHARES_THRESHOLD = bytes32(uint256(0xa0885e93));
   // keccak256(setThreshold(bytes32,uint256))
@@ -82,9 +84,12 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   // in percents (0 < threshold <= 100)
   uint256 public defaultThreshold;
 
-  modifier onlyValidMultiSig() {
-    require(
-      IMultiSigRegistry(ggr.getMultiSigRegistryAddress()).isMultiSigValid(msg.sender) == true,
+  modifier onlyValidMultiSig(address _multiSig) {
+
+  require(
+    IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
+      .getArbitrationConfig(_multiSig)
+      .hasExternalRole(GLOBAL_PROPOSAL_CREATOR_ROLE, msg.sender) == true,
       "Invalid MultiSig"
     );
 
@@ -127,7 +132,6 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
    * @param _value of threshold in percents when 100% == 1 * DECIMALS (currently 1000000)
    */
   function setThreshold(bytes32 _marker, uint256 _value) external onlyGlobalGovernance {
-    require(msg.sender == address(this), "Not a GlobalGovernance contract");
     require(_value > 0 && _value <= DECIMALS, "Invalid threshold value");
 
     thresholds[_marker] = _value;
@@ -144,12 +148,13 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   }
 
   function propose(
+    address _multiSig,
     address _destination,
     uint256 _value,
     bytes calldata _data
   )
     external
-//    onlyValidMultiSig
+    onlyValidMultiSig(_multiSig)
     returns(uint256)
   {
     uint256 id = idCounter.next();
@@ -225,7 +230,6 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     address[] memory supportMultiSigs = new address[](len);
     uint256 sI = 0;
 
-    // TODO: walk through the multiSig list and poll for approval
     for (uint256 i = 0; i < len; i++) {
       IArbitrationConfig config = IArbitrationConfig(multiSigRegistry.getArbitrationConfig(validMultiSigs[i]));
 

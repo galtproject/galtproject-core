@@ -67,11 +67,11 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
     proposalVoting.status = ProposalStatus.ACTIVE;
   }
 
-  // Should be implemented inside descendant
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
     p.globalId = IGlobalGovernance(arbitrationConfig.ggr().getGlobalGovernanceAddress()).propose(
+      address(arbitrationConfig.getMultiSig()),
       p.destination,
       p.value,
       p.data
