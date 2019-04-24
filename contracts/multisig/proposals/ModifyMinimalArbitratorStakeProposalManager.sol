@@ -11,11 +11,9 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../ArbitrationConfig.sol";
 import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
@@ -38,7 +36,8 @@ contract ModifyMinimalArbitratorStakeProposalManager is IProposalManager, Abstra
   }
 
   function propose(uint256 _value, string calldata _description) external {
-    uint256 id = idCounter.next();
+    idCounter.increment();
+    uint256 id = idCounter.current();
 
     _proposals[id] = Proposal({
       value: _value,
