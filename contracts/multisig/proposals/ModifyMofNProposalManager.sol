@@ -14,8 +14,6 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../ArbitrationConfig.sol";
 import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
@@ -39,7 +37,8 @@ contract ModifyMofNProposalManager is IProposalManager, AbstractArbitrationPropo
   }
 
   function propose(uint256 _m, uint256 _n, string calldata _description) external {
-    uint256 id = idCounter.next();
+    idCounter.increment();
+    uint256 id = idCounter.current();
 
     _proposals[id] = Proposal({
       m: _m,

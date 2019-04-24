@@ -14,12 +14,12 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
+import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 contract AbstractProposalManager is Permissionable {
-  using Counter for Counter.Counter;
+  using Counters for Counters.Counter;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
@@ -27,7 +27,7 @@ contract AbstractProposalManager is Permissionable {
   event Approved(uint256 ayeShare, uint256 threshold);
   event Rejected(uint256 nayShare, uint256 threshold);
 
-  Counter.Counter idCounter;
+  Counters.Counter internal idCounter;
 
   ArraySet.Uint256Set private _activeProposals;
   mapping(address => ArraySet.Uint256Set) private _activeProposalsBySender;

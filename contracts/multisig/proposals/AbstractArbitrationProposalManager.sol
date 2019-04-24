@@ -13,9 +13,6 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../ArbitrationConfig.sol";
 import "./AbstractProposalManager.sol";
 

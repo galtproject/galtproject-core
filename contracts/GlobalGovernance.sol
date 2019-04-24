@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
+import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "./interfaces/IACL.sol";
@@ -27,7 +27,7 @@ import "./interfaces/IStakeTracker.sol";
 
 
 contract GlobalGovernance is Initializable, IGlobalGovernance {
-  using Counter for Counter.Counter;
+  using Counters for Counters.Counter;
 
   event NewProposal(uint256 id, address indexed creator, address indexed destination);
 
@@ -74,7 +74,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   mapping(bytes32 => uint256) public thresholds;
   mapping(uint256 => Proposal) public proposals;
 
-  Counter.Counter internal idCounter;
+  Counters.Counter internal idCounter;
   GaltGlobalRegistry internal ggr;
 
   uint256 public spaceSharePercent;
@@ -160,7 +160,9 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     onlyValidMultiSig(_multiSig)
     returns(uint256)
   {
-    uint256 id = idCounter.next();
+    idCounter.increment();
+    uint256 id = idCounter.current();
+
     Proposal storage p = proposals[id];
 
     p.creator = msg.sender;
