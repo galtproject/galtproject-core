@@ -8,7 +8,7 @@
   "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
-    "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#402031b",
+    "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#96a52a9",
     "@galtproject/libs": "git+ssh://git@github.com/galtspace/galtproject-libs.git#1b2e5ae",
     "@galtproject/math": "git+ssh://git@github.com/galtspace/galtproject-math.git#4d734ca",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git#72ed184",
