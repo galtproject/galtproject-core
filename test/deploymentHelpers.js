@@ -29,7 +29,7 @@ const ArbitrationSupportGlobalProposalProposalManagerFactory = artifacts.require
   './ArbitrationSupportGlobalProposalProposalManagerFactory.sol'
 );
 
-const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
+const ArbitratorStakeAccounting = artifacts.require('./ArbitratorStakeAccounting.sol');
 const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
 const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
 const ArbitrationCandidateTop = artifacts.require('./ArbitrationCandidateTop.sol');
