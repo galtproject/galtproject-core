@@ -383,7 +383,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
           });
 
           it('should be allowed', async function() {
@@ -463,7 +463,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
           });
 
           it('should revert on claim without token been withdrawn', async function() {
@@ -909,7 +909,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
       });
     });
 
-    describe('#withdrawPackageToken()', () => {
+    describe('#withdrawSpaceToken()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
@@ -936,7 +936,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
       });
 
       it('should change status tokenWithdrawn flag to true', async function() {
-        await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
+        await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
 
         const res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
@@ -975,7 +975,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
           });
 
           it('should be allowed', async function() {
@@ -1055,7 +1055,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
           });
 
           it('should revert on claim without token been withdrawn', async function() {

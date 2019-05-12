@@ -54,7 +54,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
   event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
   event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
-  event LogPackageTokenWithdrawn(bytes32 applicationId, uint256 spaceTokenId);
+  event LogSpaceTokenTokenWithdrawn(bytes32 applicationId, uint256 spaceTokenId);
   event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
@@ -253,9 +253,9 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     if (allApproved) {
       ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
-      splitMerge.setPackageContour(a.spaceTokenId, a.newContour);
-      splitMerge.setPackageHeights(a.spaceTokenId, a.newHeights);
-      splitMerge.setPackageLevel(a.spaceTokenId, a.newLevel);
+      splitMerge.setSpaceTokenContour(a.spaceTokenId, a.newContour);
+      splitMerge.setSpaceTokenHeights(a.spaceTokenId, a.newHeights);
+      splitMerge.setSpaceTokenLevel(a.spaceTokenId, a.newLevel);
       splitMerge.setTokenInfo(a.spaceTokenId, a.ledgerIdentifier, a.description);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
@@ -315,7 +315,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
-  function withdrawPackageToken(bytes32 _aId) external onlyApplicant(_aId) {
+  function withdrawSpaceToken(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
     ApplicationStatus status = a.status;
 
@@ -330,7 +330,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     ggr.getSpaceToken().transferFrom(address(this), msg.sender, a.spaceTokenId);
 
     a.tokenWithdrawn = true;
-    emit LogPackageTokenWithdrawn(a.id, a.spaceTokenId);
+    emit LogSpaceTokenTokenWithdrawn(a.id, a.spaceTokenId);
   }
 
   function claimOracleReward(bytes32 _aId) external {

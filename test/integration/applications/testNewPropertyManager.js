@@ -21,7 +21,7 @@ const {
   assertEqualBN,
   assertRevert,
   zeroAddress,
-  deploySplitMerge,
+  deploySpaceGeoData,
   addressToEvmWord,
   numberToEvmWord,
   paymentMethods,
@@ -80,7 +80,7 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-contract('NewPropertyManager', accounts => {
+contract.only('NewPropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -153,7 +153,7 @@ contract('NewPropertyManager', accounts => {
     this.newPropertyManager = await NewPropertyManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    this.spaceGeoData = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySpaceGeoData(this.ggr);
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
@@ -257,7 +257,7 @@ contract('NewPropertyManager', accounts => {
     describe('#submitApplication() Galt', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.newPropertyManager.getApplicationById(this.aId);
-        const res3 = await this.spaceGeoData.getPackageContour(
+        const res3 = await this.spaceGeoData.getSpaceTokenContour(
           '0x0000000000000000000000000000000000000000000000000000000000000000'
         );
 

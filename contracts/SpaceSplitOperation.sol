@@ -58,7 +58,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     ggr = _ggr;
     subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
     subjectTokenId = _subjectTokenId;
-    subjectContour = ISpaceGeoData(_ggr.getSpaceGeoDataAddress()).getPackageContour(_subjectTokenId);
+    subjectContour = ISpaceGeoData(_ggr.getSpaceGeoDataAddress()).getSpaceTokenContour(_subjectTokenId);
     clippingContour = _clippingContour;
   }
 

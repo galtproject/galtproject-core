@@ -11,7 +11,7 @@ const { BN } = Web3.utils;
 
 const web3 = new Web3(SpaceSplitOperation.web3.currentProvider);
 
-const { initHelperWeb3, initHelperArtifacts, deploySplitMerge, clearLibCache } = require('../test/helpers');
+const { initHelperWeb3, initHelperArtifacts, deploySpaceGeoData, clearLibCache } = require('../test/helpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -23,7 +23,7 @@ module.exports = async function(callback) {
   const coreTeam = accounts[0];
 
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-  const splitMerge = await deploySplitMerge(spaceToken.address);
+  const spaceGeoData = await deploySpaceGeoData(spaceToken.address);
 
   await spaceGeoData.initialize(spaceToken.address, { from: coreTeam });
 
@@ -92,7 +92,7 @@ module.exports = async function(callback) {
   }
 
   async function getGeohashesContour(_spaceTokenId) {
-    return (await spaceGeoData.getPackageContour(_spaceTokenId)).map(geohash =>
+    return (await spaceGeoData.getSpaceTokenContour(_spaceTokenId)).map(geohash =>
       galt.numberToGeohash(geohash.toString(10))
     );
   }
@@ -109,11 +109,11 @@ module.exports = async function(callback) {
   }
 
   async function mintSpaceTokenId(geohashContour) {
-    const res = await spaceGeoData.initPackage(coreTeam);
+    const res = await spaceGeoData.initSpaceToken(coreTeam);
     const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
-    await spaceGeoData.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-    await spaceGeoData.setPackageHeights(tokenId, geohashContour.map(() => 10));
+    await spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
+    await spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
     return tokenId;
   }
 

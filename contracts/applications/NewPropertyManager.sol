@@ -252,7 +252,7 @@ contract NewPropertyManager is AbstractOracleApplication {
    * @param _aId application id
    * @param _credentialsHash keccak256 of user credentials
    * @param _ledgerIdentifier of a plot
-   * @param _newPackageContour array, empty if not changed
+   * @param _newSpaceTokenContour array, empty if not changed
    * @param _newHeights array, empty if not changed
    * @param _newLevel int
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
@@ -262,7 +262,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
     string calldata _description,
-    uint256[] calldata _newPackageContour,
+    uint256[] calldata _newSpaceTokenContour,
     int256[] calldata _newHeights,
     int256 _newLevel,
     uint256 _customArea,
@@ -278,11 +278,11 @@ contract NewPropertyManager is AbstractOracleApplication {
       applications[_aId].status == ApplicationStatus.REVERTED,
       "Application status should be REVERTED");
 
-    checkResubmissionPayment(applications[_aId], _resubmissionFeeInGalt, _newPackageContour);
+    checkResubmissionPayment(applications[_aId], _resubmissionFeeInGalt, _newSpaceTokenContour);
 
     applications[_aId].details.level = _newLevel;
     applications[_aId].details.heights = _newHeights;
-    applications[_aId].details.packageContour = _newPackageContour;
+    applications[_aId].details.packageContour = _newSpaceTokenContour;
     applications[_aId].details.description = _description;
     applications[_aId].details.ledgerIdentifier = _ledgerIdentifier;
     applications[_aId].details.credentialsHash = _credentialsHash;
@@ -303,7 +303,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   function checkResubmissionPayment(
     Application storage a,
     uint256 _resubmissionFeeInGalt,
-    uint256[] memory _newPackageContour
+    uint256[] memory _newSpaceTokenContour
   )
     internal
   {
@@ -318,7 +318,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       fee = msg.value;
     }
 
-    uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newPackageContour);
+    uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newSpaceTokenContour);
     uint256 newMinimalFee = getSubmissionFeeByArea(a.multiSig, a.currency, area);
     uint256 alreadyPaid = a.fees.latestCommittedFee;
 
@@ -407,13 +407,13 @@ contract NewPropertyManager is AbstractOracleApplication {
   function mintToken(Application storage a) internal {
     ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
 
-    uint256 tokenId = splitMerge.initPackage(address(this));
+    uint256 tokenId = splitMerge.initSpaceToken(address(this));
 
     a.spaceTokenId = tokenId;
 
-    splitMerge.setPackageContour(tokenId, a.details.packageContour);
-    splitMerge.setPackageHeights(tokenId, a.details.heights);
-    splitMerge.setPackageLevel(tokenId, a.details.level);
+    splitMerge.setSpaceTokenContour(tokenId, a.details.packageContour);
+    splitMerge.setSpaceTokenHeights(tokenId, a.details.heights);
+    splitMerge.setSpaceTokenLevel(tokenId, a.details.level);
     splitMerge.setTokenArea(tokenId, a.details.area, a.details.areaSource);
     splitMerge.setTokenInfo(tokenId, a.details.ledgerIdentifier, a.details.description);
 

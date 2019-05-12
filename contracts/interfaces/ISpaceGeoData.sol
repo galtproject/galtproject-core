@@ -21,12 +21,12 @@ interface ISpaceGeoData {
   
 //  IGeodesic public geodesic;
   
-  function setPackageContour(uint256 _spaceTokenId, uint256[] calldata _geohashesContour) external;
-  function setPackageHeights(uint256 _spaceTokenId, int256[] calldata _heightsList) external;
-  function setPackageLevel(uint256 _spaceTokenId, int256 _level) external;
+  function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] calldata _geohashesContour) external;
+  function setSpaceTokenHeights(uint256 _spaceTokenId, int256[] calldata _heightsList) external;
+  function setSpaceTokenLevel(uint256 _spaceTokenId, int256 _level) external;
   function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external;
   function setTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external;
-  function initPackage(address _owner) external returns (uint256);
+  function initSpaceToken(address _owner) external returns (uint256);
   function getContourArea(uint256 _tokenId) external view returns (uint256);
-  function getPackageContour(uint256 _tokenId) external view returns (uint256[] memory);
+  function getSpaceTokenContour(uint256 _tokenId) external view returns (uint256[] memory);
 }

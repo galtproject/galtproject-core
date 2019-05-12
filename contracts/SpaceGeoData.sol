@@ -38,7 +38,7 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
 
   GaltGlobalRegistry internal ggr;
 
-  event PackageInit(bytes32 id, address owner);
+  event SpaceTokenInit(bytes32 id, address owner);
   event SpaceTokenHeightsChange(bytes32 id, int256[] heights);
   event SpaceTokenContourChange(bytes32 id, uint256[] contour);
   event SpaceTokenLevelChange(bytes32 id, int256 level);
@@ -89,18 +89,18 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     _;
   }
 
-  function initPackage(address spaceTokenOwner)
+  function initSpaceToken(address spaceTokenOwner)
     public onlyGeoDataManager()
     returns (uint256)
   {
     uint256 _packageTokenId = spaceToken().mint(spaceTokenOwner);
 
-    emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
+    emit SpaceTokenInit(bytes32(_packageTokenId), spaceTokenOwner);
 
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour)
+  function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour)
     public onlyGeoDataManager()
   {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
@@ -121,16 +121,16 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
-  function setPackageHeights(uint256 _spaceTokenId, int256[] memory _heightsList)
+  function setSpaceTokenHeights(uint256 _spaceTokenId, int256[] memory _heightsList)
     public onlyGeoDataManager()
   {
-    require(_heightsList.length == getPackageContour(_spaceTokenId).length, "Number of height elements should be equal contour length");
+    require(_heightsList.length == getSpaceTokenContour(_spaceTokenId).length, "Number of height elements should be equal contour length");
 
     packageToHeights[_spaceTokenId] = _heightsList;
     emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), _heightsList);
   }
 
-  function setPackageLevel(uint256 _spaceTokenId, int256 _level)
+  function setSpaceTokenLevel(uint256 _spaceTokenId, int256 _level)
     public onlyGeoDataManager()
   {
     packageToLevel[_spaceTokenId] = _level;
@@ -182,42 +182,42 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
 
     int256 minHeight = packageToHeights[_spaceTokenId][0];
 
-    int256[] memory subjectPackageHeights = new int256[](packageToContour[_spaceTokenId].length);
+    int256[] memory subjectSpaceTokenHeights = new int256[](packageToContour[_spaceTokenId].length);
     for (uint i = 0; i < packageToContour[_spaceTokenId].length; i++) {
       if (i + 1 > packageToHeights[_spaceTokenId].length) {
-        subjectPackageHeights[i] = minHeight;
+        subjectSpaceTokenHeights[i] = minHeight;
       } else {
         if (packageToHeights[_spaceTokenId][i] < minHeight) {
           minHeight = packageToHeights[_spaceTokenId][i];
         }
-        subjectPackageHeights[i] = packageToHeights[_spaceTokenId][i];
+        subjectSpaceTokenHeights[i] = packageToHeights[_spaceTokenId][i];
       }
     }
 
-    packageToHeights[_spaceTokenId] = subjectPackageHeights;
-    emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), subjectPackageHeights);
+    packageToHeights[_spaceTokenId] = subjectSpaceTokenHeights;
+    emit SpaceTokenHeightsChange(bytes32(_spaceTokenId), subjectSpaceTokenHeights);
 
     spaceToken().transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
 
     for (uint j = 0; j < resultContoursLength; j++) {
-      uint256 newPackageId = spaceToken().mint(subjectTokenOwner);
+      uint256 newSpaceTokenId = spaceToken().mint(subjectTokenOwner);
       
-      packageToContour[newPackageId] = splitOperation.getResultContour(j);
-      emit SpaceTokenContourChange(bytes32(newPackageId), packageToContour[newPackageId]);
+      packageToContour[newSpaceTokenId] = splitOperation.getResultContour(j);
+      emit SpaceTokenContourChange(bytes32(newSpaceTokenId), packageToContour[newSpaceTokenId]);
 
-      tokenArea[newPackageId] = calculateTokenArea(newPackageId);
-      emit SpaceTokenAreaChange(bytes32(newPackageId), tokenArea[newPackageId]);
-      tokenAreaSource[newPackageId] = AreaSource.CONTRACT;
+      tokenArea[newSpaceTokenId] = calculateTokenArea(newSpaceTokenId);
+      emit SpaceTokenAreaChange(bytes32(newSpaceTokenId), tokenArea[newSpaceTokenId]);
+      tokenAreaSource[newSpaceTokenId] = AreaSource.CONTRACT;
 
-      for (uint k = 0; k < packageToContour[newPackageId].length; k++) {
-        packageToHeights[newPackageId].push(minHeight);
+      for (uint k = 0; k < packageToContour[newSpaceTokenId].length; k++) {
+        packageToHeights[newSpaceTokenId].push(minHeight);
       }
-      emit SpaceTokenHeightsChange(bytes32(newPackageId), packageToHeights[newPackageId]);
+      emit SpaceTokenHeightsChange(bytes32(newSpaceTokenId), packageToHeights[newSpaceTokenId]);
       
-      packageToLevel[newPackageId] = getPackageLevel(_spaceTokenId);
-      emit SpaceTokenLevelChange(bytes32(newPackageId), packageToLevel[newPackageId]);
+      packageToLevel[newSpaceTokenId] = getSpaceTokenLevel(_spaceTokenId);
+      emit SpaceTokenLevelChange(bytes32(newSpaceTokenId), packageToLevel[newSpaceTokenId]);
       
-      emit NewSplitSpaceToken(newPackageId);
+      emit NewSplitSpaceToken(newSpaceTokenId);
     }
 
     tokenArea[_spaceTokenId] = calculateTokenArea(_spaceTokenId);
@@ -227,7 +227,7 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     activeSplitOperations[splitOperationAddress] = false;
   }
 
-  function cancelSplitPackage(uint256 _spaceTokenId) external {
+  function cancelSplitSpaceToken(uint256 _spaceTokenId) external {
     address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
@@ -238,7 +238,7 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     activeSplitOperations[splitOperationAddress] = false;
   }
 
-  function mergePackage(
+  function mergeSpaceToken(
     uint256 _sourceSpaceTokenId,
     uint256 _destinationSpaceTokenId,
     uint256[] calldata _destinationSpaceContour
@@ -250,26 +250,26 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     require(tokenAreaSource[_sourceSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
     require(tokenAreaSource[_destinationSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
     require(
-      getPackageLevel(_sourceSpaceTokenId) == getPackageLevel(_destinationSpaceTokenId),
+      getSpaceTokenLevel(_sourceSpaceTokenId) == getSpaceTokenLevel(_destinationSpaceTokenId),
       "Space tokens levels should be equal"
     );
     SpaceGeoDataLib.checkMergeContours(
-      getPackageContour(_sourceSpaceTokenId),
-      getPackageContour(_destinationSpaceTokenId),
+      getSpaceTokenContour(_sourceSpaceTokenId),
+      getSpaceTokenContour(_destinationSpaceTokenId),
       _destinationSpaceContour
     );
 
     packageToContour[_destinationSpaceTokenId] = _destinationSpaceContour;
     emit SpaceTokenContourChange(bytes32(_destinationSpaceTokenId), _destinationSpaceContour);
 
-    int256[] memory sourcePackageHeights = getPackageHeights(_sourceSpaceTokenId);
+    int256[] memory sourceSpaceTokenHeights = getSpaceTokenHeights(_sourceSpaceTokenId);
 
     int256[] memory packageHeights = new int256[](_destinationSpaceContour.length);
     for (uint i = 0; i < _destinationSpaceContour.length; i++) {
-      if (i + 1 > sourcePackageHeights.length) {
-        packageHeights[i] = packageToHeights[_destinationSpaceTokenId][i - sourcePackageHeights.length];
+      if (i + 1 > sourceSpaceTokenHeights.length) {
+        packageHeights[i] = packageToHeights[_destinationSpaceTokenId][i - sourceSpaceTokenHeights.length];
       } else {
-        packageHeights[i] = sourcePackageHeights[i];
+        packageHeights[i] = sourceSpaceTokenHeights[i];
       }
     }
     packageToHeights[_destinationSpaceTokenId] = packageHeights;
@@ -309,15 +309,15 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     return ISpaceToken(ggr.getSpaceTokenAddress());
   }
 
-  function getPackageContour(uint256 _spaceTokenId) public view returns (uint256[] memory) {
+  function getSpaceTokenContour(uint256 _spaceTokenId) public view returns (uint256[] memory) {
     return packageToContour[_spaceTokenId];
   }
 
-  function getPackageHeights(uint256 _spaceTokenId) public view returns (int256[] memory) {
+  function getSpaceTokenHeights(uint256 _spaceTokenId) public view returns (int256[] memory) {
     return packageToHeights[_spaceTokenId];
   }
 
-  function getPackageLevel(uint256 _spaceTokenId) public view returns (int256) {
+  function getSpaceTokenLevel(uint256 _spaceTokenId) public view returns (int256) {
     return packageToLevel[_spaceTokenId];
   }
   
@@ -341,7 +341,7 @@ contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
     ti.description = _description;
   }
 
-  function getPackageGeoData(uint256 _spaceTokenId) public view returns (
+  function getSpaceTokenGeoData(uint256 _spaceTokenId) public view returns (
     uint256[] memory contour,
     int256[] memory heights,
     int256 level,

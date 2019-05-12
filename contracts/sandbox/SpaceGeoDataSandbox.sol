@@ -8,15 +8,15 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
 
   constructor() public {}
 
-  function initPackage(address spaceTokenOwner) public returns (uint256) {
+  function initSpaceToken(address spaceTokenOwner) public returns (uint256) {
     uint256 _packageTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(spaceTokenOwner);
 
-    emit PackageInit(bytes32(_packageTokenId), spaceTokenOwner);
+    emit SpaceTokenInit(bytes32(_packageTokenId), spaceTokenOwner);
 
     return _packageTokenId;
   }
 
-  function setPackageContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour) public {
+  function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour) public {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
       _geohashesContour.length <= MAX_CONTOUR_GEOHASH_COUNT,
@@ -35,8 +35,8 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
     emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
-  function setPackageHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
-    require(_heightsList.length == getPackageContour(_packageTokenId).length, "Number of height elements should be equal contour length");
+  function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
+    require(_heightsList.length == getSpaceTokenContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
     packageToHeights[_packageTokenId] = _heightsList;
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
@@ -48,10 +48,10 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
   }
 
-  function createPackage(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList, uint256 _area, AreaSource _areaSource) public returns (uint256) {
-    uint256 _spaceTokenId = initPackage(spaceTokenOwner);
-    setPackageContour(_spaceTokenId, _geohashesContour);
-    setPackageHeights(_spaceTokenId, _heightsList);
+  function createSpaceToken(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList, uint256 _area, AreaSource _areaSource) public returns (uint256) {
+    uint256 _spaceTokenId = initSpaceToken(spaceTokenOwner);
+    setSpaceTokenContour(_spaceTokenId, _geohashesContour);
+    setSpaceTokenHeights(_spaceTokenId, _heightsList);
     setTokenArea(_spaceTokenId, _area, _areaSource);
     return _spaceTokenId;
   }
