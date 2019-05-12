@@ -21,7 +21,7 @@ import "../interfaces/ISplitMerge.sol";
 import "./interfaces/IPlotManagerFeeCalculator.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
-import "./PlotManagerLib.sol";
+import "./NewPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 

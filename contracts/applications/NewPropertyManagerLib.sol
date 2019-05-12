@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./PlotManager.sol";
+import "./NewPropertyManager.sol";
 
 
 library PlotManagerLib {
