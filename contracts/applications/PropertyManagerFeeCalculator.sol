@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 
-library PlotManagerFeeCalculator {
+library PropertyManagerFeeCalculator {
   uint256 public constant ETH_MULTIPLIER = 1;
   uint256 public constant ETH_DIVISOR = 2000;
   uint256 public constant GALT_MULTIPLIER = 1;

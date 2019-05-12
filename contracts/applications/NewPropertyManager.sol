@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../interfaces/ISplitMerge.sol";
-import "./interfaces/IPlotManagerFeeCalculator.sol";
+import "./interfaces/IPropertyManagerFeeCalculator.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./NewPropertyManagerLib.sol";
@@ -26,7 +26,7 @@ import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 
 
-contract PlotManager is AbstractOracleApplication {
+contract NewPropertyManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
   bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
@@ -133,8 +133,8 @@ contract PlotManager is AbstractOracleApplication {
     _;
   }
 
-  function feeCalculator(address _multiSig) public view returns (IPlotManagerFeeCalculator) {
-    return IPlotManagerFeeCalculator(address(uint160(uint256(applicationConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
+  function feeCalculator(address _multiSig) public view returns (IPropertyManagerFeeCalculator) {
+    return IPropertyManagerFeeCalculator(address(uint160(uint256(applicationConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -434,7 +434,7 @@ contract PlotManager is AbstractOracleApplication {
     requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
 
     // TODO: merge into the contract
-    PlotManagerLib.rejectApplicationHelper(a, _message);
+    NewPropertyManagerLib.rejectApplicationHelper(a, _message);
 
     changeValidationStatus(a, a.addressOracleTypes[msg.sender], ValidationStatus.REJECTED);
     changeApplicationStatus(a, ApplicationStatus.REJECTED);

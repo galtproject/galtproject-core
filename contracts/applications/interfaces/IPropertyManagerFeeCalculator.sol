@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IPlotManagerFeeCalculator {
+interface IPropertyManagerFeeCalculator {
   function calculateEthFee(uint256 _area) external view returns (uint256 fee);
   function calculateGaltFee(uint256 _area) external view returns (uint256 fee);
 }

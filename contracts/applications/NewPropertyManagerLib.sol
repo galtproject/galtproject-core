@@ -17,24 +17,24 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./NewPropertyManager.sol";
 
 
-library PlotManagerLib {
+library NewPropertyManagerLib {
   using SafeMath for uint256;
 
   function rejectApplicationHelper(
-    PlotManager.Application storage _a,
+    NewPropertyManager.Application storage _a,
     string memory _message
   )
     internal
   {
     require(
-      _a.status == PlotManager.ApplicationStatus.SUBMITTED,
+      _a.status == NewPropertyManager.ApplicationStatus.SUBMITTED,
       "Application status should be SUBMITTED");
 
     uint256 len = _a.assignedOracleTypes.length;
 
     for (uint8 i = 0; i < len; i++) {
       bytes32 currentOracleType = _a.assignedOracleTypes[i];
-      if (_a.validationStatus[currentOracleType] == PlotManager.ValidationStatus.PENDING) {
+      if (_a.validationStatus[currentOracleType] == NewPropertyManager.ValidationStatus.PENDING) {
         revert("One of the oracle type has PENDING status");
       }
     }
