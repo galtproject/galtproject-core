@@ -22,12 +22,12 @@ import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./interfaces/ISpaceToken.sol";
-import "./interfaces/ISplitMerge.sol";
+import "./interfaces/ISpaceGeoData.sol";
 import "./registries/GaltGlobalRegistry.sol";
-import "./SplitMergeLib.sol";
+import "./SpaceGeoDataLib.sol";
 
 
-contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
+contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
@@ -253,7 +253,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
       getPackageLevel(_sourceSpaceTokenId) == getPackageLevel(_destinationSpaceTokenId),
       "Space tokens levels should be equal"
     );
-    SplitMergeLib.checkMergeContours(
+    SpaceGeoDataLib.checkMergeContours(
       getPackageContour(_sourceSpaceTokenId),
       getPackageContour(_destinationSpaceTokenId),
       _destinationSpaceContour
@@ -302,7 +302,7 @@ contract SplitMerge is Initializable, ISplitMerge, Ownable, Permissionable {
   )
     public
   {
-    SplitMergeLib.checkMergeContours(sourceContour, mergeContour, resultContour);
+    SpaceGeoDataLib.checkMergeContours(sourceContour, mergeContour, resultContour);
   }
 
   function spaceToken() internal view returns (ISpaceToken) {

@@ -14,7 +14,7 @@
 pragma solidity ^0.5.7;
 
 
-contract MockSplitMerge {
+contract MockSpaceGeoData {
   string public constant GEO_DATA_MANAGER = "geo_data_manager";
 
   mapping(uint256 => uint256) private _tokenAreas;

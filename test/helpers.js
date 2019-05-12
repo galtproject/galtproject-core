@@ -392,14 +392,14 @@ const Helpers = {
     libCache.WeilerAtherton = await WeilerAtherton.new();
     return libCache.WeilerAtherton;
   },
-  async getSplitMergeLib() {
-    if (libCache.SplitMergeLib) {
-      return libCache.SplitMergeLib;
+  async getSpaceGeoDataLib() {
+    if (libCache.SpaceGeoDataLib) {
+      return libCache.SpaceGeoDataLib;
     }
-    const SplitMergeLib = Helpers.requireContract('./SplitMergeLib.sol');
-    SplitMergeLib.link('ArrayUtils', (await Helpers.getArrayUtilsLib()).address);
-    libCache.SplitMergeLib = await SplitMergeLib.new();
-    return libCache.SplitMergeLib;
+    const SpaceGeoDataLib = Helpers.requireContract('./SpaceGeoDataLib.sol');
+    SpaceGeoDataLib.link('ArrayUtils', (await Helpers.getArrayUtilsLib()).address);
+    libCache.SpaceGeoDataLib = await SpaceGeoDataLib.new();
+    return libCache.SpaceGeoDataLib;
   },
   async deployGeodesic() {
     const Geodesic = Helpers.requireContract('./Geodesic.sol');
@@ -410,46 +410,46 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySplitMergeMock(ggr) {
-    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+  async deploySpaceGeoDataMock(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoData.sol');
     const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
-    const splitMergeLib = await Helpers.getSplitMergeLib();
+    const spaceGeoDataLib = await Helpers.getSpaceGeoDataLib();
 
-    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
+    SpaceGeoData.link('SpaceGeoDataLib', spaceGeoDataLib.address);
 
-    const splitMerge = await SplitMerge.new();
+    const spaceGeoData = await SpaceGeoData.new();
     const geodesic = await Geodesic.new();
 
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA(), spaceGeoData.address);
 
-    await splitMerge.initialize(ggr.address);
+    await spaceGeoData.initialize(ggr.address);
 
-    return { splitMerge, geodesic };
+    return { spaceGeoData, geodesic };
   },
-  async deploySplitMerge(ggr) {
-    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+  async deploySpaceGeoData(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoData.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
-    const splitMergeLib = await Helpers.getSplitMergeLib();
+    const spaceGeoDataLib = await Helpers.getSpaceGeoDataLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
 
-    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
+    SpaceGeoData.link('SpaceGeoDataLib', spaceGeoDataLib.address);
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
 
-    const splitMerge = await SplitMerge.new();
+    const spaceGeoData = await SpaceGeoData.new();
     const splitOperationFactory = await SpaceSplitOperationFactory.new(ggr.address);
     const geodesic = await Helpers.deployGeodesic();
 
     await ggr.setContract(await ggr.SPACE_SPLIT_OPERATION_FACTORY(), splitOperationFactory.address);
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA(), spaceGeoData.address);
 
-    await splitMerge.initialize(ggr.address);
+    await spaceGeoData.initialize(ggr.address);
 
-    return splitMerge;
+    return spaceGeoData;
   },
 
   // TODO: fix Error: Invalid number of arguments to Solidity function

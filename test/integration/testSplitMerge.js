@@ -15,7 +15,7 @@ const web3 = new Web3(SpaceToken.web3.currentProvider);
 const { utf8ToHex, BN } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-const { assertRevert, deploySplitMerge, initHelperArtifacts, clearLibCache } = require('../helpers');
+const { assertRevert, deploySpaceGeoData, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
 
@@ -27,7 +27,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract('SpaceGeoData', ([coreTeam, alice]) => {
   before(clearLibCache);
   const areaAccurancy = 7;
 
@@ -41,12 +41,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
 
-    this.splitMerge = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySpaceGeoData(this.ggr);
 
     this.geodesic = await this.ggr.getGeodesicAddress();
 
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'burner');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'burner');
 
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), coreTeam, true, { from: coreTeam });
 
@@ -74,12 +74,12 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     };
 
     this.mintSpaceTokenId = async geohashContour => {
-      const res = await this.splitMerge.initPackage(alice);
+      const res = await this.spaceGeoData.initPackage(alice);
       const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
-      await this.splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
-      await this.splitMerge.setTokenArea(
+      await this.spaceGeoData.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
+      await this.spaceGeoData.setPackageHeights(tokenId, geohashContour.map(() => 10));
+      await this.spaceGeoData.setTokenArea(
         tokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
         '1'
@@ -88,14 +88,14 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     };
 
     this.getSpaceTokenContour = async _spaceTokenId =>
-      (await this.splitMerge.getPackageContour(_spaceTokenId)).map(geohash =>
+      (await this.spaceGeoData.getPackageContour(_spaceTokenId)).map(geohash =>
         galt.numberToGeohash(geohash.toString(10))
       );
 
     this.splitPackage = async (subjectSpaceTokenId, clippingContour) => {
       let res;
-      await this.spaceToken.approve(this.splitMerge.address, subjectSpaceTokenId, { from: alice });
-      res = await this.splitMerge.startSplitOperation(
+      await this.spaceToken.approve(this.spaceGeoData.address, subjectSpaceTokenId, { from: alice });
+      res = await this.spaceGeoData.startSplitOperation(
         subjectSpaceTokenId,
         clippingContour.map(galt.geohashToGeohash5),
         {
@@ -122,7 +122,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       await splitOperation.finishAllPolygons();
 
-      res = await this.splitMerge.finishSplitOperation(subjectSpaceTokenId, {
+      res = await this.spaceGeoData.finishSplitOperation(subjectSpaceTokenId, {
         from: alice
       });
 
@@ -142,7 +142,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.splitMerge.getContourArea(spaceTokenId);
+      const solArea = await this.spaceGeoData.getContourArea(spaceTokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };
@@ -153,21 +153,21 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       const resultPackage = resultContour.map(galt.geohashToGeohash5);
 
       let res;
-      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
+      res = await this.spaceGeoData.initPackage(alice, { from: coreTeam });
       const firstPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      await this.splitMerge.setPackageContour(firstPackageId, firstPackage, { from: coreTeam });
-      await this.splitMerge.setPackageHeights(firstPackageId, firstPackage.map((geohash, index) => index + 10), {
+      await this.spaceGeoData.setPackageContour(firstPackageId, firstPackage, { from: coreTeam });
+      await this.spaceGeoData.setPackageHeights(firstPackageId, firstPackage.map((geohash, index) => index + 10), {
         from: coreTeam
       });
 
-      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
+      res = await this.spaceGeoData.initPackage(alice, { from: coreTeam });
       const secondPackageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
-      await this.splitMerge.setPackageContour(secondPackageId, secondPackage, { from: coreTeam });
-      await this.splitMerge.setPackageHeights(secondPackageId, secondPackage.map((geohash, index) => index + 10), {
+      await this.spaceGeoData.setPackageContour(secondPackageId, secondPackage, { from: coreTeam });
+      await this.spaceGeoData.setPackageHeights(secondPackageId, secondPackage.map((geohash, index) => index + 10), {
         from: coreTeam
       });
 
-      await this.splitMerge.mergePackage(firstPackageId, secondPackageId, resultPackage, {
+      await this.spaceGeoData.mergePackage(firstPackageId, secondPackageId, resultPackage, {
         from: alice
       });
     };
@@ -177,16 +177,16 @@ contract('SplitMerge', ([coreTeam, alice]) => {
     it('should creating correctly', async function() {
       let res;
 
-      res = await this.splitMerge.initPackage(alice, { from: coreTeam });
+      res = await this.spaceGeoData.initPackage(alice, { from: coreTeam });
 
       const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      await this.splitMerge.setPackageContour(packageId, this.subjectContour, { from: coreTeam });
+      await this.spaceGeoData.setPackageContour(packageId, this.subjectContour, { from: coreTeam });
 
-      res = (await this.splitMerge.getPackageContour(packageId)).map(geohash => geohash.toString(10));
+      res = (await this.spaceGeoData.getPackageContour(packageId)).map(geohash => geohash.toString(10));
 
       assert.deepEqual(res, this.subjectContour.map(geohash => geohash.toString(10)));
     });
@@ -196,7 +196,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         galt.geohashToGeohash5
       );
       const mergeContour = ['w9cx6wbuuy', 'w9cx63zs88', 'w9cx71gk90'].map(galt.geohashToGeohash5);
-      await this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.subjectContour);
+      await this.spaceGeoData.checkMergeContours(sourceContour, mergeContour, this.subjectContour);
     });
 
     it('should check merge user case 1 correctly', async function() {
@@ -218,7 +218,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const resultContour = galt.geohash.contour.mergeContours(sourceContour, mergeContour);
 
-      await this.splitMerge.checkMergeContours(
+      await this.spaceGeoData.checkMergeContours(
         sourceContour.map(galt.geohashToGeohash5),
         mergeContour.map(galt.geohashToGeohash5),
         resultContour.map(galt.geohashToGeohash5)
@@ -230,7 +230,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
         galt.geohashToGeohash5
       );
       const mergeContour = ['w9cx6wbuuyu', 'w9cx63zs884', 'w9cx6wbuuyu', 'w9cx71gk90n'].map(galt.geohashToGeohash5);
-      await assertRevert(this.splitMerge.checkMergeContours(sourceContour, mergeContour, this.subjectContour));
+      await assertRevert(this.spaceGeoData.checkMergeContours(sourceContour, mergeContour, this.subjectContour));
     });
 
     it('should correctly split 4, 4 => 6, 4', async function() {
@@ -463,8 +463,8 @@ contract('SplitMerge', ([coreTeam, alice]) => {
 
       const clippingContour = ['w24qfpu7xbxy', 'w24qfrw580b5', 'w24qfjjp5tt2', 'w24qfm1uttt9'];
 
-      await this.spaceToken.approve(this.splitMerge.address, subjectSpaceTokenId, { from: alice });
-      const res = await this.splitMerge.startSplitOperation(
+      await this.spaceToken.approve(this.spaceGeoData.address, subjectSpaceTokenId, { from: alice });
+      const res = await this.spaceGeoData.startSplitOperation(
         subjectSpaceTokenId,
         clippingContour.map(galt.geohashToGeohash5),
         {
@@ -552,7 +552,7 @@ contract('SplitMerge', ([coreTeam, alice]) => {
       assert.equal(await this.spaceToken.ownerOf(subjectSpaceTokenId), alice);
       assert.equal(await this.spaceToken.ownerOf(clippingSpaceTokensIds[0]), alice);
 
-      await this.splitMerge.mergePackage(clippingSpaceTokensIds[0], subjectSpaceTokenId, subjectContourGeohash5, {
+      await this.spaceGeoData.mergePackage(clippingSpaceTokensIds[0], subjectSpaceTokenId, subjectContourGeohash5, {
         from: alice
       });
 

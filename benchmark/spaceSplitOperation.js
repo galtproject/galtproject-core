@@ -25,14 +25,14 @@ module.exports = async function(callback) {
   const spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
   const splitMerge = await deploySplitMerge(spaceToken.address);
 
-  await splitMerge.initialize(spaceToken.address, { from: coreTeam });
+  await spaceGeoData.initialize(spaceToken.address, { from: coreTeam });
 
-  const geodesic = Geodesic.at(await splitMerge.geodesic());
+  const geodesic = Geodesic.at(await spaceGeoData.geodesic());
 
-  await spaceToken.addRoleTo(splitMerge.address, 'minter');
-  await spaceToken.addRoleTo(splitMerge.address, 'burner');
+  await spaceToken.addRoleTo(spaceGeoData.address, 'minter');
+  await spaceToken.addRoleTo(spaceGeoData.address, 'burner');
 
-  await splitMerge.addRoleTo(coreTeam, await splitMerge.GEO_DATA_MANAGER());
+  await spaceGeoData.addRoleTo(coreTeam, await spaceGeoData.GEO_DATA_MANAGER());
 
   const spaceTokenId = await mintSpaceTokenId(['w24qfpvbmnkt', 'w24qf5ju3pkx', 'w24qfejgkp2p', 'w24qfxqukn80']);
   await splitSpaceTokenByClipping(spaceTokenId, ['w24r42pt2n24', 'w24qfmpp2p00', 'w24qfuvb7zpg', 'w24r50dr2n0n'], true);
@@ -51,9 +51,9 @@ module.exports = async function(callback) {
       console.log('');
     }
 
-    await spaceToken.approve(splitMerge.address, _spaceTokenId);
+    await spaceToken.approve(spaceGeoData.address, _spaceTokenId);
 
-    let res = await splitMerge.startSplitOperation(_spaceTokenId, _clippingGeohashContour.map(galt.geohashToNumber));
+    let res = await spaceGeoData.startSplitOperation(_spaceTokenId, _clippingGeohashContour.map(galt.geohashToNumber));
     console.log('      startSplitOperation gasUsed', res.receipt.gasUsed);
 
     let totalGasUsed = res.receipt.gasUsed;
@@ -74,7 +74,7 @@ module.exports = async function(callback) {
     res = await splitOperation.finishAllPolygons();
     console.log('      finishAllPolygons gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
-    res = await splitMerge.finishSplitOperation(_spaceTokenId);
+    res = await spaceGeoData.finishSplitOperation(_spaceTokenId);
     console.log('      finishSplitOperation gasUsed', res.receipt.gasUsed);
     totalGasUsed += res.receipt.gasUsed;
     console.log('      totalGasUsed', totalGasUsed);
@@ -92,7 +92,7 @@ module.exports = async function(callback) {
   }
 
   async function getGeohashesContour(_spaceTokenId) {
-    return (await splitMerge.getPackageContour(_spaceTokenId)).map(geohash =>
+    return (await spaceGeoData.getPackageContour(_spaceTokenId)).map(geohash =>
       galt.numberToGeohash(geohash.toString(10))
     );
   }
@@ -109,11 +109,11 @@ module.exports = async function(callback) {
   }
 
   async function mintSpaceTokenId(geohashContour) {
-    const res = await splitMerge.initPackage(coreTeam);
+    const res = await spaceGeoData.initPackage(coreTeam);
     const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
-    await splitMerge.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
-    await splitMerge.setPackageHeights(tokenId, geohashContour.map(() => 10));
+    await spaceGeoData.setPackageContour(tokenId, geohashContour.map(galt.geohashToNumber));
+    await spaceGeoData.setPackageHeights(tokenId, geohashContour.map(() => 10));
     return tokenId;
   }
 

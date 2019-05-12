@@ -101,7 +101,7 @@ contract('GlobalGovernance', accounts => {
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
       const deployment = await deploySplitMergeMock(this.ggr);
-      this.splitMerge = deployment.splitMerge;
+      this.spaceGeoData = deployment.spaceGeoData;
 
       this.globalGovernance = await GlobalGovernance.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
@@ -200,7 +200,7 @@ contract('GlobalGovernance', accounts => {
         this.spaceToken,
         this.spaceRA,
         this.galtRA,
-        this.splitMerge,
+        this.spaceGeoData,
         this.spaceLockerFactory,
         this.galtLockerFactory,
         [a1, a2, a3],
@@ -289,7 +289,7 @@ contract('GlobalGovernance', accounts => {
         this.spaceToken,
         this.spaceRA,
         this.galtRA,
-        this.splitMerge,
+        this.spaceGeoData,
         this.spaceLockerFactory,
         this.galtLockerFactory,
         [a1, a2, a3],
@@ -463,7 +463,7 @@ contract('GlobalGovernance', accounts => {
         this.spaceToken,
         this.spaceRA,
         this.galtRA,
-        this.splitMerge,
+        this.spaceGeoData,
         this.spaceLockerFactory,
         this.galtLockerFactory,
         [a1, a2, a3],

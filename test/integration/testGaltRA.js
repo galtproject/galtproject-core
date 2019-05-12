@@ -33,7 +33,7 @@ contract('GaltRA', accounts => {
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
-    this.splitMerge = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySplitMerge(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });

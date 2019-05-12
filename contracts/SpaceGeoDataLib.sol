@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "./utils/ArrayUtils.sol";
 
-library SplitMergeLib {
+library SpaceGeoDataLib {
   
   function checkMergeContours(
     uint256[] memory sourceContour,

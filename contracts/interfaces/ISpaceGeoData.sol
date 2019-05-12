@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.7;
 
-interface ISplitMerge {
+interface ISpaceGeoData {
   enum AreaSource {
     USER_INPUT,
     CONTRACT

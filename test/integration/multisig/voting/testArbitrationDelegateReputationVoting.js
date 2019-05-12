@@ -67,7 +67,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
-    this.splitMerge = deployment.splitMerge;
+    this.spaceGeoData = deployment.spaceGeoData;
 
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
       from: coreTeam
@@ -244,13 +244,13 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
 
       // SET AREAS
       let p = [
-        this.splitMerge.setTokenArea(x1, '300', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x2, '500', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x3, '400', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x4, '700', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x5, '100', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x6, '1000', '0', { from: geoDateManagement }),
-        this.splitMerge.setTokenArea(x7, '0', '0', { from: geoDateManagement })
+        this.spaceGeoData.setTokenArea(x1, '300', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x2, '500', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x3, '400', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x4, '700', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x5, '100', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x6, '1000', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setTokenArea(x7, '0', '0', { from: geoDateManagement })
       ];
 
       await Promise.all(p);

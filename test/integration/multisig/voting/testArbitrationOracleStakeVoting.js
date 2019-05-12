@@ -60,7 +60,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
-    this.splitMerge = deployment.splitMerge;
+    this.spaceGeoData = deployment.spaceGeoData;
 
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
       from: coreTeam
@@ -78,7 +78,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
-    await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
+    await this.spaceGeoData.addRoleTo(geoDateManagement, 'geo_data_manager', {
       from: coreTeam
     });
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });

@@ -1,10 +1,10 @@
 pragma solidity 0.5.7;
 
-import "../SplitMerge.sol";
+import "../SpaceGeoData.sol";
 import "../interfaces/ISpaceToken.sol";
 
 
-contract SplitMergeSandbox is SplitMerge {
+contract SpaceGeoDataSandbox is SpaceGeoData {
 
   constructor() public {}
 

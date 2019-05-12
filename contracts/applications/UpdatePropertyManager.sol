@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "../interfaces/ISplitMerge.sol";
+import "../interfaces/ISpaceGeoData.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./AbstractOracleApplication.sol";
 import "../registries/GaltGlobalRegistry.sol";
@@ -252,7 +252,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
 
     if (allApproved) {
-      ISplitMerge splitMerge = ISplitMerge(ggr.getSplitMergeAddress());
+      ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
       splitMerge.setPackageContour(a.spaceTokenId, a.newContour);
       splitMerge.setPackageHeights(a.spaceTokenId, a.newHeights);
       splitMerge.setPackageLevel(a.spaceTokenId, a.newLevel);

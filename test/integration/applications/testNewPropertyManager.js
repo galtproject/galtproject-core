@@ -153,7 +153,7 @@ contract('NewPropertyManager', accounts => {
     this.newPropertyManager = await NewPropertyManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
 
-    this.splitMerge = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySplitMerge(this.ggr);
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
 
     await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
@@ -194,15 +194,15 @@ contract('NewPropertyManager', accounts => {
     this.oraclesX = this.abX.oracles;
 
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA(), this.spaceGeoData.address, { from: coreTeam });
 
     await this.newPropertyManager.initialize(this.ggr.address, {
       from: coreTeam
     });
 
     await this.spaceToken.addRoleTo(this.newPropertyManager.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
 
     await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR], { from: oracleModifier });
     await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER], { from: oracleModifier });
@@ -257,7 +257,7 @@ contract('NewPropertyManager', accounts => {
     describe('#submitApplication() Galt', () => {
       it('should provide methods to create and read an application', async function() {
         const res2 = await this.newPropertyManager.getApplicationById(this.aId);
-        const res3 = await this.splitMerge.getPackageContour(
+        const res3 = await this.spaceGeoData.getPackageContour(
           '0x0000000000000000000000000000000000000000000000000000000000000000'
         );
 

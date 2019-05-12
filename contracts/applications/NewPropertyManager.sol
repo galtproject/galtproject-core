@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISplitMerge.sol";
+import "../interfaces/ISpaceGeoData.sol";
 import "./interfaces/IPropertyManagerFeeCalculator.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
@@ -97,7 +97,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     string description;
     int256 level;
     uint256 area;
-    ISplitMerge.AreaSource areaSource;
+    ISpaceGeoData.AreaSource areaSource;
     uint256[] packageContour;
     int256[] heights;
   }
@@ -194,7 +194,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
-      a.details.areaSource = ISplitMerge.AreaSource.CONTRACT;
+      a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
       a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_packageContour);
     } else {
       a.details.area = _customArea;
@@ -405,7 +405,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function mintToken(Application storage a) internal {
-    ISplitMerge splitMerge = ISplitMerge(ggr.getSplitMergeAddress());
+    ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
 
     uint256 tokenId = splitMerge.initPackage(address(this));
 
@@ -698,7 +698,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       bytes32 ledgerIdentifier,
       int256 level,
       uint256 area,
-      ISplitMerge.AreaSource areaSource,
+      ISpaceGeoData.AreaSource areaSource,
       uint256[] memory packageContour,
       int256[] memory heights
     )

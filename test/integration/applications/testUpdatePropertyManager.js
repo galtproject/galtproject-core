@@ -20,7 +20,7 @@ const {
   numberToEvmWord,
   paymentMethods,
   zeroAddress,
-  deploySplitMergeMock,
+  deploySpaceGeoDataMock,
   clearLibCache
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
@@ -123,8 +123,8 @@ contract.only('UpdatePropertyManager', (accounts) => {
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
     this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
 
-    const deployment = await deploySplitMergeMock(this.ggr);
-    this.splitMerge = deployment.splitMerge;
+    const deployment = await deploySpaceGeoDataMock(this.ggr);
+    this.spaceGeoData = deployment.spaceGeoData;
     this.geodesic = deployment.geodesic;
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
@@ -138,7 +138,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.splitMerge.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA(), this.spaceGeoData.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
@@ -197,8 +197,8 @@ contract.only('UpdatePropertyManager', (accounts) => {
     this.oraclesX = this.abX.oracles;
 
     await this.spaceToken.addRoleTo(minter, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
-    await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
+    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
 
     await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR, PL_SURVEYOR], {
       from: oracleModifier

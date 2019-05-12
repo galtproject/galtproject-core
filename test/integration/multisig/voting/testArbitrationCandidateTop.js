@@ -59,7 +59,7 @@ contract('ArbitrationCandidateTop', accounts => {
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySplitMergeMock(this.ggr);
-    this.splitMerge = deployment.splitMerge;
+    this.spaceGeoData = deployment.spaceGeoData;
 
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
       from: coreTeam
