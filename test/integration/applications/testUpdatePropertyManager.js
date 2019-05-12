@@ -1,8 +1,5 @@
-const PlotManager = artifacts.require('./PlotManager.sol');
-const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
-const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
 const ACL = artifacts.require('./ACL.sol');
-const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
+const UpdatePropertyManager = artifacts.require('./UpdatePropertyManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
@@ -28,7 +25,7 @@ const {
 } = require('../../helpers');
 const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
 
-const web3 = new Web3(PlotClarificationManager.web3.currentProvider);
+const web3 = new Web3(UpdatePropertyManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
 // const PUSHER_ROLE = 'clarification pusher';
@@ -83,7 +80,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract('PlotClarificationManager', (accounts) => {
+contract.only('UpdatePropertyManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -118,14 +115,9 @@ contract('PlotClarificationManager', (accounts) => {
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
-    this.plotManagerLib = await PlotManagerLib.new({ from: coreTeam });
-    PlotManager.link('PlotManagerLib', this.plotManagerLib.address);
-
-    this.feeCalculator = await PlotManagerFeeCalculator.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
-    this.plotManager = await PlotManager.new({ from: coreTeam });
-    this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
+    this.updatePropertyManager = await UpdatePropertyManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
@@ -172,9 +164,9 @@ contract('PlotClarificationManager', (accounts) => {
     applicationConfig[bytes32('PL_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
     // [52, 47, 1],
-    applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_SURVEYOR)] = numberToEvmWord(50);
-    applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_LAWYER)] = numberToEvmWord(25);
-    applicationConfig[await this.plotClarificationManager.getOracleTypeShareKey(PL_AUDITOR)] = numberToEvmWord(25);
+    applicationConfig[await this.updatePropertyManager.getOracleTypeShareKey(PL_SURVEYOR)] = numberToEvmWord(50);
+    applicationConfig[await this.updatePropertyManager.getOracleTypeShareKey(PL_LAWYER)] = numberToEvmWord(25);
+    applicationConfig[await this.updatePropertyManager.getOracleTypeShareKey(PL_AUDITOR)] = numberToEvmWord(25);
 
     // Oracle minimal stake values setup
     const surveyorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_SURVEYOR);
@@ -204,10 +196,6 @@ contract('PlotClarificationManager', (accounts) => {
     this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
     this.oraclesX = this.abX.oracles;
 
-    await this.plotManager.initialize(this.ggr.address, {
-      from: coreTeam
-    });
-
     await this.spaceToken.addRoleTo(minter, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
@@ -235,18 +223,16 @@ contract('PlotClarificationManager', (accounts) => {
     await this.oracleStakesAccountingX.stake(charlie, PL_LAWYER, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(dan, PL_LAWYER, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(eve, PL_AUDITOR, ether(2000), { from: alice });
-
-    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotManager.address, true, { from: coreTeam });
   });
 
   beforeEach(async function() {
-    this.plotClarificationManager = await PlotClarificationManager.new({ from: coreTeam });
+    this.updatePropertyManager = await UpdatePropertyManager.new({ from: coreTeam });
 
-    await this.plotClarificationManager.initialize(this.ggr.address, {
+    await this.updatePropertyManager.initialize(this.ggr.address, {
       from: coreTeam
     });
 
-    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.plotClarificationManager.address, true, {
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.updatePropertyManager.address, true, {
       from: coreTeam
     });
   });
@@ -257,13 +243,13 @@ contract('PlotClarificationManager', (accounts) => {
       this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
-      await this.spaceToken.approve(this.plotClarificationManager.address, this.spaceTokenId, { from: alice });
+      await this.spaceToken.approve(this.updatePropertyManager.address, this.spaceTokenId, { from: alice });
     });
 
     describe('#submitApplication()', () => {
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
-        await this.galtToken.approve(this.plotClarificationManager.address, ether(45), { from: alice });
-        let res = await this.plotClarificationManager.submitApplication(
+        await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
+        let res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -279,15 +265,15 @@ contract('PlotClarificationManager', (accounts) => {
 
         this.aId = res.logs[0].args.id;
 
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       describe('payable', () => {
         it('should reject applications with payment less than required', async function() {
-          await this.galtToken.approve(this.plotClarificationManager.address, ether(42), { from: alice });
+          await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
-            this.plotClarificationManager.submitApplication(
+            this.updatePropertyManager.submitApplication(
               this.abMultiSigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
@@ -304,8 +290,8 @@ contract('PlotClarificationManager', (accounts) => {
         });
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
-          await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
-          let res = await this.plotClarificationManager.submitApplication(
+          await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
+          let res = await this.updatePropertyManager.submitApplication(
             this.abMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
@@ -323,14 +309,14 @@ contract('PlotClarificationManager', (accounts) => {
           // oracle share - 87%
           // galtspace share - 13%
 
-          res = await this.plotClarificationManager.getApplicationById(this.aId);
+          res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.equal(res.oraclesReward, '40890000000000000000');
           assert.equal(res.galtProtocolFee, '6110000000000000000');
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
-          await this.galtToken.approve(this.plotClarificationManager.address, ether(47), { from: alice });
-          let res = await this.plotClarificationManager.submitApplication(
+          await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
+          let res = await this.updatePropertyManager.submitApplication(
             this.abMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
@@ -348,19 +334,19 @@ contract('PlotClarificationManager', (accounts) => {
           // oracle share - 87% (50%/25%/25%)
           // galtspace share - 13%
 
-          res = await this.plotClarificationManager.getApplicationById(this.aId);
+          res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.sameMembers(
             res.assignedOracleTypes.map(hexToUtf8),
             [PL_SURVEYOR, PL_LAWYER, PL_AUDITOR].map(hexToUtf8)
           );
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
           assert.equal(res.reward.toString(), '10222500000000000000');
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
           assert.equal(res.reward.toString(), '20445000000000000000');
         });
       });
@@ -368,8 +354,8 @@ contract('PlotClarificationManager', (accounts) => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        await this.galtToken.approve(this.plotClarificationManager.address, ether(57), { from: alice });
-        const res = await this.plotClarificationManager.submitApplication(
+        await this.galtToken.approve(this.updatePropertyManager.address, ether(57), { from: alice });
+        const res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -383,42 +369,42 @@ contract('PlotClarificationManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.id;
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
       });
 
       describe('for approved applications', () => {
         beforeEach(async function() {
-          await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
         });
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
           });
 
           it('should be allowed', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
-            let res = await this.plotClarificationManager.getApplicationById(this.aId);
+            let res = await this.updatePropertyManager.getApplicationById(this.aId);
 
             assert.equal(res.status, ApplicationStatus.APPROVED);
             assert.equal(res.tokenWithdrawn, true);
             assert.equal(res.galtProtocolFeePaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
             assert.equal(res.rewardPaidOut, true);
           });
 
@@ -428,17 +414,17 @@ contract('PlotClarificationManager', (accounts) => {
             const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
             const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
             const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
             const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
             const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
-            const res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            const res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.reward.toString(), '24795000000000000000');
 
             // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
@@ -450,55 +436,55 @@ contract('PlotClarificationManager', (accounts) => {
           });
 
           it('should revert on double claim', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: bob }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: dan }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: eve }));
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: bob }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: dan }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: eve }));
           });
 
           // TODO: fix
           it.skip('should revert on non-oracle claim', async function() {
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
           });
         });
 
         it('should revert on claim without token been withdrawn', async function() {
-          await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+          await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
 
       describe('for reverted applications', () => {
         beforeEach(async function() {
-          await this.plotClarificationManager.revertApplication(this.aId, 'some reason', { from: bob });
+          await this.updatePropertyManager.revertApplication(this.aId, 'some reason', { from: bob });
         });
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
           });
 
           it('should revert on claim without token been withdrawn', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
-            let res = await this.plotClarificationManager.getApplicationById(this.aId);
+            let res = await this.updatePropertyManager.getApplicationById(this.aId);
 
             assert.equal(res.status, ApplicationStatus.REVERTED);
             assert.equal(res.tokenWithdrawn, true);
             assert.equal(res.galtProtocolFeePaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
             assert.equal(res.rewardPaidOut, true);
           });
 
@@ -508,17 +494,17 @@ contract('PlotClarificationManager', (accounts) => {
             const evesInitialBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
             const orgsInitialBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN((await this.galtToken.balanceOf(bob)).toString());
             const dansFinalBalance = new BN((await this.galtToken.balanceOf(dan)).toString());
             const evesFinalBalance = new BN((await this.galtToken.balanceOf(eve)).toString());
             const orgsFinalBalance = new BN((await this.galtToken.balanceOf(feeMixerAddress)).toString());
 
-            const res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            const res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.reward.toString(), '24795000000000000000');
 
             // bobs fee is (100 - 13) / 100 * 57 ether * 50%  = 24795000000000000000 wei
@@ -530,23 +516,23 @@ contract('PlotClarificationManager', (accounts) => {
           });
 
           it('should revert on double claim', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: bob }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: dan }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: eve }));
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: bob }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: dan }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: eve }));
           });
 
           // TODO: fix
           it.skip('should revert on non-oracle claim', async function() {
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
           });
         });
 
         it('should revert on claim without token been withdrawn', async function() {
-          await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+          await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
     });
@@ -559,12 +545,12 @@ contract('PlotClarificationManager', (accounts) => {
       this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
-      await this.spaceToken.approve(this.plotClarificationManager.address, this.spaceTokenId, { from: alice });
+      await this.spaceToken.approve(this.updatePropertyManager.address, this.spaceTokenId, { from: alice });
     });
 
     describe('#submitApplication()', () => {
       it('should create a new application', async function() {
-        let res = await this.plotClarificationManager.submitApplication(
+        let res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -581,10 +567,10 @@ contract('PlotClarificationManager', (accounts) => {
         this.aId = res.logs[0].args.id;
 
         res = await this.spaceToken.ownerOf(this.spaceTokenId);
-        assert.equal(res, this.plotClarificationManager.address);
+        assert.equal(res, this.updatePropertyManager.address);
 
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
-        const res2 = await this.plotClarificationManager.getApplicationPayloadById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
+        const res2 = await this.updatePropertyManager.getApplicationPayloadById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.spaceTokenId, this.spaceTokenId);
         assert.equal(res.applicant, alice);
@@ -595,7 +581,7 @@ contract('PlotClarificationManager', (accounts) => {
       describe('payable', () => {
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
-            this.plotClarificationManager.submitApplication(
+            this.updatePropertyManager.submitApplication(
               this.abMultiSigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
@@ -613,7 +599,7 @@ contract('PlotClarificationManager', (accounts) => {
         });
 
         it('should allow applications with payment greater than required', async function() {
-          await this.plotClarificationManager.submitApplication(
+          await this.updatePropertyManager.submitApplication(
             this.abMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
@@ -630,7 +616,7 @@ contract('PlotClarificationManager', (accounts) => {
         });
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
-          let res = await this.plotClarificationManager.submitApplication(
+          let res = await this.updatePropertyManager.submitApplication(
             this.abMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
@@ -648,13 +634,13 @@ contract('PlotClarificationManager', (accounts) => {
           // oracle share - 67%
           // galtspace share - 33%
 
-          res = await this.plotClarificationManager.getApplicationById(this.aId);
+          res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.equal(res.galtProtocolFee, '2310000000000000000');
           assert.equal(res.oraclesReward, '4690000000000000000');
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
-          let res = await this.plotClarificationManager.submitApplication(
+          let res = await this.updatePropertyManager.submitApplication(
             this.abMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
@@ -672,19 +658,19 @@ contract('PlotClarificationManager', (accounts) => {
           // oracle share - 67% (50%/25%/25%)
           // galtspace share - 33%
 
-          res = await this.plotClarificationManager.getApplicationById(this.aId);
+          res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.sameMembers(
             res.assignedOracleTypes.map(hexToUtf8),
             [PL_LAWYER, PL_AUDITOR, PL_SURVEYOR].map(hexToUtf8)
           );
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
           assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
           assert.equal(res.reward.toString(), '2177500000000000000');
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
           assert.equal(res.reward.toString(), '4355000000000000000');
         });
       });
@@ -692,7 +678,7 @@ contract('PlotClarificationManager', (accounts) => {
 
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
-        const res = await this.plotClarificationManager.submitApplication(
+        const res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -710,43 +696,43 @@ contract('PlotClarificationManager', (accounts) => {
       });
 
       it('should allow multiple oracles of different roles to lock a submitted application', async function() {
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
 
-        let res = await this.plotClarificationManager.getApplicationById(this.aId);
+        let res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
         assert.equal(res.oracle, bob);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
         assert.equal(res.oracle, dan);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
         assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
       // eslint-disable-next-line
       it('should deny a oracle with the same role to lock an application which is already on consideration', async function() {
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
         await assertRevert(
-          this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: charlie })
+          this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: charlie })
         );
       });
 
       it('should deny non-oracle lock application', async function() {
         await assertRevert(
-          this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: coreTeam })
+          this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: coreTeam })
         );
       });
     });
 
     describe('#approveApplication', () => {
       beforeEach(async function() {
-        let res = await this.plotClarificationManager.submitApplication(
+        let res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -762,50 +748,50 @@ contract('PlotClarificationManager', (accounts) => {
         );
         this.aId = res.logs[0].args.id;
 
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
       });
 
       it('should allow a oracle approve application', async function() {
-        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
 
-        let res = await this.plotClarificationManager.getApplicationById(this.aId);
+        let res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
 
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
       it('should deny non-oracle approve application', async function() {
-        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: coreTeam }));
-        const res = await this.plotClarificationManager.getApplicationById(this.aId);
+        await assertRevert(this.updatePropertyManager.approveApplication(this.aId, { from: coreTeam }));
+        const res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       // eslint-disable-next-line
       it('should deny oracle whose role doesnt present in application type to approve application', async function() {
-        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: charlie }));
+        await assertRevert(this.updatePropertyManager.approveApplication(this.aId, { from: charlie }));
       });
 
       // eslint-disable-next-line
       it('should deny oracle approve application with other than submitted', async function() {
-        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-        await assertRevert(this.plotClarificationManager.approveApplication(this.aId, { from: bob }));
+        await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
+        await assertRevert(this.updatePropertyManager.approveApplication(this.aId, { from: bob }));
       });
     });
 
     describe('#revertApplication', () => {
       beforeEach(async function() {
-        let res = await this.plotClarificationManager.submitApplication(
+        let res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -820,62 +806,62 @@ contract('PlotClarificationManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.id;
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       describe('completely locked application', () => {
         beforeEach(async function() {
-          await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-          await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
-          await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+          await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+          await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+          await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
         });
 
         it('should allow a oracle revert application', async function() {
-          await this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: bob });
+          await this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: bob });
 
-          let res = await this.plotClarificationManager.getApplicationById(this.aId);
+          let res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.equal(res.status, ApplicationStatus.REVERTED);
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
           assert.equal(res.status, ValidationStatus.REVERTED);
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
           assert.equal(res.status, ValidationStatus.LOCKED);
 
-          res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+          res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
           assert.equal(res.status, ValidationStatus.LOCKED);
         });
 
         it('should deny non-oracle revert application', async function() {
-          await assertRevert(this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: coreTeam }));
-          const res = await this.plotClarificationManager.getApplicationById(this.aId);
+          await assertRevert(this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: coreTeam }));
+          const res = await this.updatePropertyManager.getApplicationById(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
         });
 
         // eslint-disable-next-line
         it('should deny oracle whose role doesnt present in application type to revret application', async function() {
-          await assertRevert(this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: charlie }));
+          await assertRevert(this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: charlie }));
         });
 
         // eslint-disable-next-line
         it('should deny oracle reverted application with other than submitted', async function() {
-          await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
-          await assertRevert(this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: bob }));
+          await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
+          await assertRevert(this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: bob }));
         });
       });
 
       it('should deny revert partially locked application', async function() {
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await assertRevert(this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: bob }));
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await assertRevert(this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: bob }));
       });
     });
 
     describe('#resubmitApplication', () => {
       beforeEach(async function() {
-        let res = await this.plotClarificationManager.submitApplication(
+        let res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -890,42 +876,42 @@ contract('PlotClarificationManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.id;
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
-        await this.plotClarificationManager.revertApplication(this.aId, 'msg', { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+        await this.updatePropertyManager.revertApplication(this.aId, 'msg', { from: bob });
 
-        res = await this.plotClarificationManager.getApplicationById(this.aId);
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
       it('should allow an applicant resubmit application', async function() {
-        await this.plotClarificationManager.resubmitApplication(this.aId, { from: alice });
+        await this.updatePropertyManager.resubmitApplication(this.aId, { from: alice });
 
-        let res = await this.plotClarificationManager.getApplicationById(this.aId);
+        let res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
         assert.equal(res.status, ValidationStatus.LOCKED);
 
-        res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
         assert.equal(res.status, ValidationStatus.LOCKED);
       });
 
       it('should deny non-applicant resubmit application', async function() {
-        await assertRevert(this.plotClarificationManager.resubmitApplication(this.aId, { from: bob }));
+        await assertRevert(this.updatePropertyManager.resubmitApplication(this.aId, { from: bob }));
 
-        const res = await this.plotClarificationManager.getApplicationById(this.aId);
+        const res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
     });
 
     describe('#withdrawPackageToken()', () => {
       beforeEach(async function() {
-        const res = await this.plotClarificationManager.submitApplication(
+        const res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -940,19 +926,19 @@ contract('PlotClarificationManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.id;
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
 
-        await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-        await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
+        await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
       });
 
       it('should change status tokenWithdrawn flag to true', async function() {
-        await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+        await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
 
-        const res = await this.plotClarificationManager.getApplicationById(this.aId);
+        const res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.tokenWithdrawn, true);
       });
@@ -960,7 +946,7 @@ contract('PlotClarificationManager', (accounts) => {
 
     describe('claim reward', () => {
       beforeEach(async function() {
-        const res = await this.plotClarificationManager.submitApplication(
+        const res = await this.updatePropertyManager.submitApplication(
           this.abMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
@@ -975,42 +961,42 @@ contract('PlotClarificationManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.id;
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
-        await this.plotClarificationManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_LAWYER, { from: dan });
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_AUDITOR, { from: eve });
       });
 
       describe('for approved applications', () => {
         beforeEach(async function() {
-          await this.plotClarificationManager.approveApplication(this.aId, { from: bob });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: dan });
-          await this.plotClarificationManager.approveApplication(this.aId, { from: eve });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: bob });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: dan });
+          await this.updatePropertyManager.approveApplication(this.aId, { from: eve });
         });
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
           });
 
           it('should be allowed', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
-            let res = await this.plotClarificationManager.getApplicationById(this.aId);
+            let res = await this.updatePropertyManager.getApplicationById(this.aId);
 
             assert.equal(res.status, ApplicationStatus.APPROVED);
             assert.equal(res.tokenWithdrawn, true);
             assert.equal(res.galtProtocolFeePaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
             assert.equal(res.rewardPaidOut, true);
           });
 
@@ -1020,17 +1006,17 @@ contract('PlotClarificationManager', (accounts) => {
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
             const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
             const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
-            const res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            const res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.reward.toString(), '2010000000000000000');
 
             // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
@@ -1042,55 +1028,55 @@ contract('PlotClarificationManager', (accounts) => {
           });
 
           it('should revert on double claim', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: bob }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: dan }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: eve }));
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: bob }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: dan }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: eve }));
           });
 
           // TODO: fix
           it.skip('should revert on non-oracle claim', async function() {
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
           });
         });
 
         it('should revert on claim without token been withdrawn', async function() {
-          await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+          await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
 
       describe('for reverted applications', () => {
         beforeEach(async function() {
-          await this.plotClarificationManager.revertApplication(this.aId, 'some reason', { from: bob });
+          await this.updatePropertyManager.revertApplication(this.aId, 'some reason', { from: bob });
         });
 
         describe('after package token was withdrawn by user', () => {
           beforeEach(async function() {
-            await this.plotClarificationManager.withdrawPackageToken(this.aId, { from: alice });
+            await this.updatePropertyManager.withdrawPackageToken(this.aId, { from: alice });
           });
 
           it('should revert on claim without token been withdrawn', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
-            let res = await this.plotClarificationManager.getApplicationById(this.aId);
+            let res = await this.updatePropertyManager.getApplicationById(this.aId);
 
             assert.equal(res.status, ApplicationStatus.REVERTED);
             assert.equal(res.tokenWithdrawn, true);
             assert.equal(res.galtProtocolFeePaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_LAWYER);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_LAWYER);
             assert.equal(res.rewardPaidOut, true);
 
-            res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_AUDITOR);
+            res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
             assert.equal(res.rewardPaidOut, true);
           });
 
@@ -1100,17 +1086,17 @@ contract('PlotClarificationManager', (accounts) => {
             const evesInitialBalance = new BN(await web3.eth.getBalance(eve));
             const orgsInitialBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
             const bobsFinalBalance = new BN(await web3.eth.getBalance(bob));
             const dansFinalBalance = new BN(await web3.eth.getBalance(dan));
             const evesFinalBalance = new BN(await web3.eth.getBalance(eve));
             const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
-            const res = await this.plotClarificationManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+            const res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
             assert.equal(res.reward.toString(), '2010000000000000000');
 
             // eves fee is around (100 - 33) / 100 * 6 ether * 50%  = 1005000000000000000 wei
@@ -1123,23 +1109,23 @@ contract('PlotClarificationManager', (accounts) => {
           });
 
           it('should revert on double claim', async function() {
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: bob });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: dan });
-            await this.plotClarificationManager.claimOracleReward(this.aId, { from: eve });
-            await this.plotClarificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: bob }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: dan }));
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: eve }));
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: bob });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: dan });
+            await this.updatePropertyManager.claimOracleReward(this.aId, { from: eve });
+            await this.updatePropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: bob }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: dan }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: eve }));
           });
 
           // TODO: fix
           it.skip('should revert on non-oracle claim', async function() {
-            await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+            await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
           });
         });
 
         it('should revert on claim without token been withdrawn', async function() {
-          await assertRevert(this.plotClarificationManager.claimOracleReward(this.aId, { from: alice }));
+          await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
     });

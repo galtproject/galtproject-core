@@ -22,7 +22,7 @@ import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IMultiSigRegistry.sol";
 
 
-contract PlotClarificationManager is AbstractOracleApplication {
+contract UpdatePropertyManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
   // 'PlotClarificationManager' hash

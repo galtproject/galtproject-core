@@ -80,7 +80,7 @@ Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
-contract.only('NewPropertyManager', accounts => {
+contract('NewPropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
