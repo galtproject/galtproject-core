@@ -1,5 +1,3 @@
-const PlotManager = artifacts.require('./PlotManager.sol');
-const PlotManagerLib = artifacts.require('./PlotManagerLib.sol');
 const PlotManagerFeeCalculator = artifacts.require('./PlotManagerFeeCalculator.sol');
 const ACL = artifacts.require('./ACL.sol');
 const PlotClarificationManager = artifacts.require('./PlotClarificationManager.sol');
