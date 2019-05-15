@@ -51,10 +51,10 @@ contract LiquidRA is Permissionable, Initializable {
   // L0
   uint256 internal totalStakedSpace;
 
-  function initialize(
+  function initializeInternal(
     GaltGlobalRegistry _ggr
   )
-    public
+    internal
     isInitializer
   {
     ggr = _ggr;
