@@ -13,14 +13,14 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IMultiSigRegistry.sol";
 import "../multisig/interfaces/IArbitrationConfig.sol";
 import "../multisig/interfaces/IArbitratorsMultiSig.sol";
 
 
-contract MultiSigRegistry is IMultiSigRegistry, Ownable {
+contract MultiSigRegistry is IMultiSigRegistry, OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
 
   bytes32 public constant ROLE_MULTI_SIG_REGISTRAR = bytes32("MULTI_SIG_REGISTRAR");
@@ -28,8 +28,8 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
   // MultiSig address => Details
   // TODO: need to be a private?
   mapping(address => MultiSig) public multiSigs;
-  ArraySet.AddressSet private multiSigArray;
-  ArraySet.AddressSet private configArray;
+  ArraySet.AddressSet internal multiSigArray;
+  ArraySet.AddressSet internal configArray;
 
   struct MultiSig {
     bool active;
@@ -37,9 +37,9 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
     address factoryAddress;
   }
 
-  GaltGlobalRegistry private ggr;
+  GaltGlobalRegistry internal ggr;
 
-  constructor (GaltGlobalRegistry _ggr) public {
+  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
     ggr = _ggr;
   }
 

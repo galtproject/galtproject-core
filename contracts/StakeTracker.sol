@@ -13,25 +13,27 @@
 
 pragma solidity 0.5.7;
 
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./registries/interfaces/IMultiSigRegistry.sol";
 import "./interfaces/IStakeTracker.sol";
 
 
-contract StakeTracker is IStakeTracker {
+contract StakeTracker is IStakeTracker, OwnableAndInitializable {
 
-  GaltGlobalRegistry private ggr;
-  uint256 private _totalSupply;
+  GaltGlobalRegistry internal ggr;
+  uint256 internal _totalSupply;
 
   // MultiSig => totalStaked
-  mapping(address => uint256) private _multiSigStakes;
+  mapping(address => uint256) internal _multiSigStakes;
 
   bytes32 public constant MULTI_SIG_ROLE = bytes32("stake_tracker_notifier");
 
-  constructor(
+  function initialize(
     GaltGlobalRegistry _ggr
   )
     public
+    isInitializer
   {
     ggr = _ggr;
   }

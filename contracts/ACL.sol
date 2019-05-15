@@ -13,11 +13,15 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./interfaces/IACL.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 
-contract ACL is IACL, Ownable {
+
+contract ACL is IACL, OwnableAndInitializable {
   mapping(bytes32 => mapping(address => bool)) _roles;
+
+  function initialize() external isInitializer {
+  }
 
   function setRole(bytes32 _role, address _candidate, bool _allow) external onlyOwner {
     _roles[_role][_candidate] = _allow;
