@@ -30,6 +30,8 @@ contract('ArbitratorStakeAccounting', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
+    await this.acl.initialize();
+    await this.ggr.initialize();
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });

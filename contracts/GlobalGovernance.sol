@@ -17,6 +17,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/IACL.sol";
 import "./reputation/interfaces/ILockableRA.sol";
 import "./reputation/interfaces/IRA.sol";
@@ -26,7 +27,7 @@ import "./interfaces/IGlobalGovernance.sol";
 import "./interfaces/IStakeTracker.sol";
 
 
-contract GlobalGovernance is Initializable, IGlobalGovernance {
+contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
   using Counters for Counters.Counter;
 
   event NewProposal(uint256 id, address indexed creator, address indexed destination);

@@ -13,12 +13,15 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
-contract ApplicationRegistry is Ownable {
+contract ApplicationRegistry is OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
+
+  function initialize() public isInitializer {
+  }
 
   // Oracle managed applications
   bytes32 public constant PLOT_MANAGER = bytes32("plot_manager");

@@ -13,11 +13,11 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/IFeeRegistry.sol";
 
 
-contract FeeRegistry is IFeeRegistry, Ownable {
+contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
 
   uint256 private protocolApplicationEthShare;
   uint256 private protocolApplicationGaltShare;
@@ -26,6 +26,9 @@ contract FeeRegistry is IFeeRegistry, Ownable {
   mapping(bytes32 => uint256) private ethFees;
   mapping(bytes32 => uint256) private galtFees;
   mapping(bytes32 => PaymentMethod) private paymentMethods;
+
+  function initialize() public isInitializer {
+  }
 
   function setEthFee(bytes32 _key, uint256 _amount) external onlyOwner {
     ethFees[_key] = _amount;

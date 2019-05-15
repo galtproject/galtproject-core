@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "../interfaces/IACL.sol";
@@ -25,7 +25,7 @@ import "../interfaces/IACL.sol";
  * Getters with `address` suffix return contract instances,
  * the rest of them return just an `address` primitive.
  */
-contract GaltGlobalRegistry is Ownable {
+contract GaltGlobalRegistry is OwnableAndInitializable {
   address private ZERO_ADDRESS = address(0);
 
   bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
@@ -61,6 +61,9 @@ contract GaltGlobalRegistry is Ownable {
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
 
   mapping(bytes32 => address) private contracts;
+
+  function initialize() public isInitializer {
+  }
 
   function setContract(bytes32 _key, address _value) external onlyOwner {
     contracts[_key] = _value;

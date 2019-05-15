@@ -81,6 +81,11 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.feeRegistry.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
@@ -127,6 +132,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
   describe('Scenarios', () => {
     beforeEach(async function() {
       this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
+      await this.spaceRA.initialize(this.ggr.address);
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {

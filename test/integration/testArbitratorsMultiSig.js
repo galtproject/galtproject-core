@@ -16,6 +16,8 @@ contract('ArbitratorsMultiSig', accounts => {
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    await this.ggr.initialize();
+
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });

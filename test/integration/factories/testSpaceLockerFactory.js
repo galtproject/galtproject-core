@@ -41,6 +41,10 @@ contract('SpaceLockerFactory', accounts => {
     });
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
 
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.feeRegistry.initialize();
+
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
