@@ -86,12 +86,20 @@ contract('Proposals', accounts => {
 
       this.globalGovernance = await GlobalGovernance.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-      this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+      this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
         from: coreTeam
       });
 
       this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
+
+      await this.acl.initialize();
+      await this.ggr.initialize();
+      await this.feeRegistry.initialize();
+      await this.multiSigRegistry.initialize(this.ggr.address);
+      await this.sra.initialize(this.ggr.address);
+      await this.claimManager.initialize(this.ggr.address);
+      this.globalGovernance.initialize(this.ggr.address, 750000, 750000, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -103,8 +111,6 @@ contract('Proposals', accounts => {
       await this.ggr.setContract(await this.ggr.SPACE_RA(), this.sra.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.GLOBAL_GOVERNANCE(), this.globalGovernance.address, { from: coreTeam });
 
-      this.globalGovernance.initialize(this.ggr.address, 750000, 750000, { from: coreTeam });
-
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
       await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
@@ -115,10 +121,6 @@ contract('Proposals', accounts => {
       await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
       await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
       await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
-        from: coreTeam
-      });
-
-      await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam
       });
     })();

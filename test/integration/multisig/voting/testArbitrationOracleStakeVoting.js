@@ -72,8 +72,8 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     this.galtLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
@@ -81,7 +81,14 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     await this.splitMerge.addRoleTo(geoDateManagement, 'geo_data_manager', {
       from: coreTeam
     });
-    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
+    this.spaceRA = await SpaceRA.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.feeRegistry.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
+    await this.spaceRA.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
