@@ -4,7 +4,7 @@ cleanup:
 	rm -rf ./build
 
 compile: cleanup
-	./node_modules/truffle/build/cli.bundled.js compile
+	npm run compile
 	node scripts/checkContractSize.js
 	tput bel
 
