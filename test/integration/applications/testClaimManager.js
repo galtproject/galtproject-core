@@ -173,17 +173,17 @@ contract("ClaimManager", (accounts) => {
     await this.arbitratorStakeAccountingX.stake(alice, ether(1000000), { from: alice });
     await this.arbitratorStakeAccountingX.stake(bob, ether(1000000), { from: bob });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
-    await this.oraclesX.addOracle(dan, DAN, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
-    await this.oraclesX.addOracle(eve, EVE, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
 

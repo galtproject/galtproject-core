@@ -204,16 +204,16 @@ contract('PlotClarificationManager', (accounts) => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR, PL_SURVEYOR], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER, PL_LAWYER], {
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [PM_LAWYER, PL_LAWYER], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER, PL_LAWYER], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [PM_LAWYER, PL_LAWYER], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(eve, EVE, MN, [], [PM_AUDITOR, PL_AUDITOR], {
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [], [PM_AUDITOR, PL_AUDITOR], {
       from: oracleModifier
     });
 

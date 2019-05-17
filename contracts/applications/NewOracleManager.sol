@@ -33,6 +33,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     address addr;
     string name;
     bytes32 position;
+    string description;
     bytes32[] descriptionHashes;
     bytes32[] oracleTypes;
   }
@@ -77,30 +78,31 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     address _oracleAddress,
     string calldata _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
   )
     external
     payable
-    returns (bytes32)
   {
-    require(_descriptionHashes.length > 0, "Description hashes required");
-    require(_oracleTypes.length > 0, "Oracle Types required");
+    bytes32 id = _generateId(_oracleTypes, _descriptionHashes, _name);
 
-    bytes32 id = _generateId(_descriptionHashes, _name);
+    _submit(id, _multiSig, _applicationFeeInGalt);
 
     OracleDetails storage o = oracleDetails[id];
     o.oracleTypes = _oracleTypes;
     o.descriptionHashes = _descriptionHashes;
+    o.description = _description;
     o.name = _name;
     o.position = _position;
     o.addr = _oracleAddress;
-
-    return _submit(id, _multiSig, _applicationFeeInGalt);
   }
 
-  function _generateId(bytes32[] memory _descriptionHashes, string memory _name) internal returns (bytes32) {
+  function _generateId(bytes32[] memory _oracleTypes, bytes32[] memory _descriptionHashes, string memory _name) internal returns (bytes32) {
+    require(_descriptionHashes.length > 0, "Description hashes required");
+    require(_oracleTypes.length > 0, "Oracle Types required");
+
     return keccak256(
       abi.encodePacked(
         msg.sender,
@@ -117,7 +119,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
 
     arbitrationConfig(a.multiSig)
       .getOracles()
-      .addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+      .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -132,6 +134,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       address addr,
       bytes32 position,
       string memory name,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory oracleTypes
     )
@@ -144,6 +147,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       o.addr,
       o.position,
       o.name,
+      o.description,
       o.descriptionHashes,
       o.oracleTypes
     );

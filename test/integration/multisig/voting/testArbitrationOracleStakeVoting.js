@@ -159,13 +159,13 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     this.oraclesX = this.abX.oracles;
 
     // CONFIGURING
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [TYPE_A], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
   });

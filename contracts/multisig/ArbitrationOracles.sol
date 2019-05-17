@@ -85,6 +85,7 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
     address _oracle,
     string calldata _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes
   )
@@ -98,6 +99,7 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
 
     o.name = _name;
     o.descriptionHashes = _descriptionHashes;
+    o.description = _description;
     o.position = _position;
     o.active = true;
 

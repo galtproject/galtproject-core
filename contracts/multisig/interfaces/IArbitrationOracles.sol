@@ -18,6 +18,7 @@ interface IArbitrationOracles {
     address _oracle,
     string calldata _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes
   )
