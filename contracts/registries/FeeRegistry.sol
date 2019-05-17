@@ -88,6 +88,10 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
     return galtFees[_key];
   }
 
+  function getPaymentMethod(bytes32 _key) external view returns (PaymentMethod) {
+    return paymentMethods[_key];
+  }
+
   function getProtocolApplicationEthShare() external view returns (uint256) {
     return protocolApplicationEthShare;
   }
