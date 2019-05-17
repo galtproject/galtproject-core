@@ -76,8 +76,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   function submit(
     address payable _multiSig,
     address _oracleAddress,
-    bytes32 _position,
     string calldata _name,
+    bytes32 _position,
     string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes,

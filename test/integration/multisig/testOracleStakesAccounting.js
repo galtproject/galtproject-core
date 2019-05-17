@@ -102,16 +102,24 @@ contract('OracleStakesAccounting', accounts => {
     this.mX = multiSig;
 
     // assign oracles
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(
+      charlie,
+      CHARLIE,
+      MN,
+      '',
+      [],
+      [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      {
+        from: oracleModifier
+      }
+    );
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
-      from: oracleModifier
-    });
-    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
   });
@@ -147,7 +155,7 @@ contract('OracleStakesAccounting', accounts => {
 
   describe('#slash()', () => {
     beforeEach(async function() {
-      await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
+      await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
         from: oracleModifier
       });
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(1000), { from: alice });

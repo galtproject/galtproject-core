@@ -342,13 +342,13 @@ contract('Arbitration Voting Full Cycle', accounts => {
     // *********************************
     // Step #1-3 >>> STAKE ORACLE DEPOSITS
     // *********************************
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(george, GEORGE, MN, [], [TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(george, GEORGE, MN, '', [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(frank, FRANK, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(frank, FRANK, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
 

@@ -210,9 +210,9 @@ contract('PlotManager', accounts => {
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'minter');
     await this.spaceToken.addRoleTo(this.splitMerge.address, 'operator');
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR], { from: oracleModifier });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER], { from: oracleModifier });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER], { from: oracleModifier });
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR], { from: oracleModifier });
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [PM_LAWYER], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [PM_LAWYER], { from: oracleModifier });
 
     await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice });
 

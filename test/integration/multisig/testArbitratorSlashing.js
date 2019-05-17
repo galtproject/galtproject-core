@@ -267,13 +267,13 @@ contract('ArbitratorSlashing', accounts => {
     it('should slash', async function() {
       // > 3 oracles are added by oracleModifier
 
-      await this.oraclesX.addOracle(mike, MIKE, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(mike, MIKE, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(nick, NICK, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(nick, NICK, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(oliver, OLIVER, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(oliver, OLIVER, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
 

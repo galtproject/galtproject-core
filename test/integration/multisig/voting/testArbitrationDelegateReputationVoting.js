@@ -208,16 +208,16 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       // this.oraclesZ = this.abZ.oracles;
 
       // CONFIGURING
-      await this.oraclesX.addOracle(bob, BOB, MN, [], [TYPE_A], {
+      await this.oraclesX.addOracle(bob, BOB, MN, '', [], [TYPE_A], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+      await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [TYPE_B, TYPE_C], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oraclesX.addOracle(dan, DAN, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleModifier
       });
-      await this.oraclesY.addOracle(eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oraclesY.addOracle(eve, EVE, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleModifier
       });
 
