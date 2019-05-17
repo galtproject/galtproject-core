@@ -197,7 +197,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     uint256 _applicationFeeInGalt
   )
     internal
-    returns (bytes32)
   {
     multiSigRegistry().requireValidMultiSig(_multiSig);
 

@@ -21,7 +21,6 @@ import "./AbstractApplication.sol";
 
 
 contract UpdateOracleManager is ArbitratorApprovableApplication {
-//  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("UO_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("UO_MINIMAL_FEE_GALT");
@@ -35,6 +34,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     address addr;
     string name;
     bytes32 position;
+    string description;
     bytes32[] descriptionHashes;
     bytes32[] oracleTypes;
   }
@@ -79,13 +79,13 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     address _oracleAddress,
     string calldata _name,
     bytes32 _position,
+    string calldata _description,
     bytes32[] calldata _descriptionHashes,
     bytes32[] calldata _oracleTypes,
     uint256 _applicationFeeInGalt
   )
     external
     payable
-    returns (bytes32)
   {
     arbitrationConfig(_multiSig).getOracles().requireOracleActive(_oracleAddress);
     require(_descriptionHashes.length > 0, "Description hashes required");
@@ -106,11 +106,12 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     o.position = _position;
     o.multiSig = _multiSig;
     o.descriptionHashes = _descriptionHashes;
+    o.description = _description;
     o.oracleTypes = _oracleTypes;
 
     oracleDetails[id] = o;
 
-    return _submit(id, _multiSig, _applicationFeeInGalt);
+    _submit(id, _multiSig, _applicationFeeInGalt);
   }
 
   function _execute(bytes32 _id) internal {
@@ -119,7 +120,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
     arbitrationConfig(a.multiSig)
       .getOracles()
-      .addOracle(d.addr, d.name, d.position, d.descriptionHashes, d.oracleTypes);
+      .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -134,6 +135,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
       address addr,
       bytes32 position,
       string memory name,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory oracleTypes
     )
@@ -146,6 +148,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
       o.addr,
       o.position,
       o.name,
+      o.description,
       o.descriptionHashes,
       o.oracleTypes
     );
