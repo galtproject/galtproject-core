@@ -177,7 +177,7 @@ contract('UpdateOracleManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
   });
