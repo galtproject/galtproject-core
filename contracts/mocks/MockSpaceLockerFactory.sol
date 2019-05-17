@@ -1,8 +1,7 @@
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "../factories/SpaceLockerFactory.sol";
 import "./MockSpaceLocker.sol";
-// TODO: remove initializer
 
 
 contract MockSpaceLockerFactory is SpaceLockerFactory {
