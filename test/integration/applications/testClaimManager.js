@@ -92,9 +92,9 @@ contract("ClaimManager", (accounts) => {
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
@@ -111,7 +111,11 @@ contract("ClaimManager", (accounts) => {
     await this.galtToken.mint(alice, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(1000000000), { from: coreTeam });
 
-    await this.claimManager.initialize(this.ggr.address, { from: coreTeam });
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
+    await this.claimManager.initialize(this.ggr.address);
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
@@ -169,17 +173,17 @@ contract("ClaimManager", (accounts) => {
     await this.arbitratorStakeAccountingX.stake(alice, ether(1000000), { from: alice });
     await this.arbitratorStakeAccountingX.stake(bob, ether(1000000), { from: bob });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
-    await this.oraclesX.addOracle(dan, DAN, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
-    await this.oraclesX.addOracle(eve, EVE, MN, [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [_ES], [PC_AUDITOR_ORACLE_TYPE], { from: oracleModifier });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
 

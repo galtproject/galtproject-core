@@ -13,20 +13,19 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "@galtproject/libs/contracts/traits/Initializable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/IACL.sol";
 import "./reputation/interfaces/ILockableRA.sol";
 import "./reputation/interfaces/IRA.sol";
-import "./registries/interfaces/IGovernanceRegistry.sol";
+import "./registries/interfaces/IPGGRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./interfaces/IGlobalGovernance.sol";
 import "./interfaces/IStakeTracker.sol";
 
 
-contract GlobalGovernance is Initializable, IGlobalGovernance {
+contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
   using Counters for Counters.Counter;
 
   event NewProposal(uint256 id, address indexed creator, address indexed destination);
@@ -86,8 +85,8 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
 
   modifier onlyValidMultiSig(address _multiSig) {
     require(
-      IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-        .getArbitrationConfig(_multiSig)
+      IPGGRegistry(ggr.getPggRegistryAddress())
+        .getPggConfig(_multiSig)
         .hasExternalRole(GLOBAL_PROPOSAL_CREATOR_ROLE, msg.sender) == true,
       "Invalid MultiSig"
     );
@@ -209,7 +208,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   // GETTERS
 
   function getSupport(uint256 _proposalId) public view returns(uint256) {
-    address[] memory supportMultiSigs = getSupportedMultiSigs(_proposalId);
+    address[] memory supportPggs = getSupportedMultiSigs(_proposalId);
 
     address spaceRA = ggr.getSpaceRAAddress();
     address galtRA = ggr.getGaltRAAddress();
@@ -219,9 +218,9 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     uint256 totalGalt = IRA(galtRA).totalSupply();
     uint256 totalStake = stakeTracker.totalSupply();
 
-    uint256 supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportMultiSigs);
-    uint256 supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportMultiSigs);
-    uint256 supportByStake = stakeTracker.balancesOf(supportMultiSigs);
+    uint256 supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportPggs);
+    uint256 supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportPggs);
+    uint256 supportByStake = stakeTracker.balancesOf(supportPggs);
 
     (, , , uint256 totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
 
@@ -229,17 +228,17 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
   }
 
   function getSupportedMultiSigs(uint256 _proposalId) public view returns(address[] memory) {
-    IMultiSigRegistry multiSigRegistry = IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
-    address[] memory validMultiSigs = multiSigRegistry.getMultiSigList();
+    IPGGRegistry pggRegistry = IPGGRegistry(ggr.getPggRegistryAddress());
+    address[] memory validMultiSigs = pggRegistry.getPggMultiSigList();
     uint256 len = validMultiSigs.length;
-    address[] memory supportMultiSigs = new address[](len);
+    address[] memory supportPggs = new address[](len);
     uint256 sI = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      IArbitrationConfig config = IArbitrationConfig(multiSigRegistry.getArbitrationConfig(validMultiSigs[i]));
+      IPGGConfig config = IPGGConfig(pggRegistry.getPggConfig(validMultiSigs[i]));
 
       if (config.globalProposalSupport(_proposalId) == true) {
-        supportMultiSigs[sI] = validMultiSigs[i];
+        supportPggs[sI] = validMultiSigs[i];
         sI += 1;
       }
     }
@@ -248,10 +247,10 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
       return new address[](0);
     }
 
-    // supportMultiSigs.length = pI
-    assembly { mstore(supportMultiSigs, sI) }
+    // supportPggs.length = pI
+    assembly { mstore(supportPggs, sI) }
 
-    return supportMultiSigs;
+    return supportPggs;
   }
 
   function getSupportDetails(
@@ -272,7 +271,7 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
       uint256 totalSupport
     )
   {
-    address[] memory supportMultiSigs = getSupportedMultiSigs(_proposalId);
+    address[] memory supportPggs = getSupportedMultiSigs(_proposalId);
 
     address spaceRA = ggr.getSpaceRAAddress();
     address galtRA = ggr.getGaltRAAddress();
@@ -282,14 +281,14 @@ contract GlobalGovernance is Initializable, IGlobalGovernance {
     totalGalt = IRA(galtRA).totalSupply();
     totalStake = stakeTracker.totalSupply();
 
-    supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportMultiSigs);
-    supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportMultiSigs);
-    supportByStake = stakeTracker.balancesOf(supportMultiSigs);
+    supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportPggs);
+    supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportPggs);
+    supportByStake = stakeTracker.balancesOf(supportPggs);
 
     (spaceShare, galtShare, stakeShare, totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
   }
 
-  function getMultiSigWeight(
+  function getPggWeight(
     address _multiSig
   )
     external

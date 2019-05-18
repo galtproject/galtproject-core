@@ -17,6 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../interfaces/ISpaceToken.sol";
 import "../../interfaces/ISpaceLocker.sol";
@@ -24,7 +25,7 @@ import "../../registries/interfaces/ILockerRegistry.sol";
 import "../../registries/GaltGlobalRegistry.sol";
 
 
-contract LiquidRA is Permissionable {
+contract LiquidRA is Permissionable, Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
@@ -50,10 +51,11 @@ contract LiquidRA is Permissionable {
   // L0
   uint256 internal totalStakedSpace;
 
-  constructor(
+  function initializeInternal(
     GaltGlobalRegistry _ggr
   )
-    public
+    internal
+    isInitializer
   {
     ggr = _ggr;
   }

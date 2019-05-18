@@ -93,9 +93,14 @@ contract('UpdateOracleManager', (accounts) => {
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -172,7 +177,7 @@ contract('UpdateOracleManager', (accounts) => {
       from: coreTeam
     });
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
   });
@@ -186,6 +191,7 @@ contract('UpdateOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          '',
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -206,6 +212,7 @@ contract('UpdateOracleManager', (accounts) => {
             unauthorized,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(45),
@@ -224,6 +231,7 @@ contract('UpdateOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          '',
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -244,6 +252,7 @@ contract('UpdateOracleManager', (accounts) => {
             unauthorized,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -266,6 +275,7 @@ contract('UpdateOracleManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         this.attachedDocumentsBytes32,
         [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
         ether(47),
@@ -292,6 +302,7 @@ contract('UpdateOracleManager', (accounts) => {
         bob,
         BOB,
         MN,
+        '',
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_ANOTHER_ORACLE_TYPE],
         ether(47),

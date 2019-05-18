@@ -99,7 +99,7 @@ function globalGovernanceHelpers(
     async addStakeReputationOracle(oracleAddress, oraclesContract, oracleStakeAccountingContract, amount) {
       log('Adding oracle', oracleAddress, 'with stake', amount);
 
-      await oraclesContract.addOracle(oracleAddress, 'Foo', bytes32('Bar'), [], [FAKE_TYPE], {
+      await oraclesContract.addOracle(oracleAddress, 'Foo', bytes32('Bar'), '', [], [FAKE_TYPE], {
         from: _oracleModifierAddress
       });
 

@@ -81,6 +81,11 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
     this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
 
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.feeRegistry.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
@@ -127,6 +132,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
   describe('Scenarios', () => {
     beforeEach(async function() {
       this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
+      await this.spaceRA.initialize(this.ggr.address);
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
 
       await this.ggr.setContract(await this.ggr.SPACE_RA(), this.spaceRA.address, {
@@ -202,16 +208,16 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       // this.oraclesZ = this.abZ.oracles;
 
       // CONFIGURING
-      await this.oraclesX.addOracle(bob, BOB, MN, [], [TYPE_A], {
+      await this.oraclesX.addOracle(bob, BOB, MN, '', [], [TYPE_A], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [TYPE_B, TYPE_C], {
+      await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [TYPE_B, TYPE_C], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oraclesX.addOracle(dan, DAN, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleModifier
       });
-      await this.oraclesY.addOracle(eve, EVE, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+      await this.oraclesY.addOracle(eve, EVE, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
         from: oracleModifier
       });
 

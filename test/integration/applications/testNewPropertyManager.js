@@ -112,15 +112,21 @@ contract.only('NewPropertyManager', accounts => {
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
+    await this.acl.initialize();
+    await this.ggr.initialize();
+
     this.newPropertyManagerLib = await NewPropertyManagerLib.new({ from: coreTeam });
     this.feeCalculator = await PropertyManagerFeeCalculator.new({ from: coreTeam });
 
     this.geodesicMock = await MockGeodesic.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -204,9 +210,9 @@ contract.only('NewPropertyManager', accounts => {
     await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
     await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
 
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PM_SURVEYOR], { from: oracleModifier });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [PM_LAWYER], { from: oracleModifier });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [PM_LAWYER], { from: oracleModifier });
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR], { from: oracleModifier });
+    await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [PM_LAWYER], { from: oracleModifier });
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [PM_LAWYER], { from: oracleModifier });
 
     await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(10000), { from: alice });
 

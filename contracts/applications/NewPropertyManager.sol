@@ -23,7 +23,7 @@ import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./NewPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IGovernanceRegistry.sol";
+import "../registries/interfaces/IPGGRegistry.sol";
 
 
 contract NewPropertyManager is AbstractOracleApplication {
@@ -134,7 +134,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function feeCalculator(address _multiSig) public view returns (IPropertyManagerFeeCalculator) {
-    return IPropertyManagerFeeCalculator(address(uint160(uint256(applicationConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
+    return IPropertyManagerFeeCalculator(address(uint160(uint256(pggConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -142,7 +142,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -177,7 +177,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
-    multiSigRegistry().requireValidMultiSig(_multiSig);
+    pggRegistry().requireValidPggMultiSig(_multiSig);
 
     bytes32 _id = keccak256(
       abi.encodePacked(

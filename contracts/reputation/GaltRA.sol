@@ -20,16 +20,17 @@ import "./components/GaltInputRA.sol";
 
 
 contract GaltRA is IRA, LiquidRA, LockableRA, GaltInputRA {
-  constructor(
+  function initialize(
     GaltGlobalRegistry _ggr
   )
-    public
-    LiquidRA(_ggr)
+    external
   {
+    initializeInternal(_ggr);
+    ggr = _ggr;
   }
 
   function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
-    arbitrationConfig(_multiSig)
+    pggConfig(_multiSig)
       .getDelegateGaltVoting()
       .onDelegateReputationChanged(_delegate, _amount);
   }

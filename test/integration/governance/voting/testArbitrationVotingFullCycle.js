@@ -75,15 +75,23 @@ contract('Arbitration Voting Full Cycle', accounts => {
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
 
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
-    this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
-    this.galtRA = await GaltRA.new(this.ggr.address, { from: coreTeam });
+    this.spaceRA = await SpaceRA.new({ from: coreTeam });
+    this.galtRA = await GaltRA.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.feeRegistry.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
+    await this.spaceRA.initialize(this.ggr.address);
+    await this.galtRA.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -334,13 +342,13 @@ contract('Arbitration Voting Full Cycle', accounts => {
     // *********************************
     // Step #1-3 >>> STAKE ORACLE DEPOSITS
     // *********************************
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [TYPE_A], {
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [TYPE_A], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(george, GEORGE, MN, [], [TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(george, GEORGE, MN, '', [], [TYPE_B, TYPE_C], {
       from: oracleManager
     });
-    await this.oraclesX.addOracle(frank, FRANK, MN, [], [TYPE_A, TYPE_B, TYPE_C], {
+    await this.oraclesX.addOracle(frank, FRANK, MN, '', [], [TYPE_A, TYPE_B, TYPE_C], {
       from: oracleManager
     });
 

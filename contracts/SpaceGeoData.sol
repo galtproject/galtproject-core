@@ -13,12 +13,11 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
-import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/ISpaceSplitOperationFactory.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./interfaces/ISpaceToken.sol";
@@ -27,7 +26,7 @@ import "./registries/GaltGlobalRegistry.sol";
 import "./SpaceGeoDataLib.sol";
 
 
-contract SpaceGeoData is Initializable, ISpaceGeoData, Ownable, Permissionable {
+contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12

@@ -13,16 +13,16 @@
 
 pragma solidity 0.5.7;
 
-import "../governance/GovernanceMultiSig.sol";
-import "../registries/GovernanceRegistry.sol";
+import "../pgg/PGGMultiSig.sol";
+import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 
 contract AbstractArbitratorApplication is AbstractApplication {
   mapping(address => bytes32[]) public applicationsByArbitrator;
 
   modifier anyArbitrator(address payable _multiSig) {
-    multiSigRegistry().requireValidMultiSig(_multiSig);
-    require(ArbitratorsMultiSig(_multiSig).isOwner(msg.sender), "Not active arbitrator");
+    pggRegistry().requireValidPggMultiSig(_multiSig);
+    require(PGGMultiSig(_multiSig).isOwner(msg.sender), "Not active arbitrator");
     _;
   }
 

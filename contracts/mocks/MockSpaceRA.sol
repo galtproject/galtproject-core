@@ -19,13 +19,6 @@ import "../reputation/SpaceRA.sol";
 
 
 contract MockSpaceRA is SpaceRA {
-  constructor(
-    GaltGlobalRegistry _ggr
-  )
-    public
-    SpaceRA(_ggr)
-  {
-  }
 
   function mintHack(address _beneficiary, uint256 _amount, uint256 spaceToken) external {
     _mint(_beneficiary, _amount);

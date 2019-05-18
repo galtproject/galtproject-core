@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../registries/interfaces/IGovernanceRegistry.sol";
+import "../../registries/interfaces/IPGGRegistry.sol";
 import "../interfaces/ILockableRA.sol";
 import "./LiquidRA.sol";
 
@@ -90,9 +90,9 @@ contract LockableRA is ILockableRA, LiquidRA {
     onDelegateReputationChanged(_multiSig, msg.sender, afterUnlock);
   }
 
-  function arbitrationConfig(address _multiSig) internal returns (IArbitrationConfig) {
-    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-      .getArbitrationConfig(_multiSig);
+  function pggConfig(address _multiSig) internal returns (IPGGConfig) {
+    return IPGGRegistry(ggr.getPggRegistryAddress())
+      .getPggConfig(_multiSig);
   }
 
   // GETTERS

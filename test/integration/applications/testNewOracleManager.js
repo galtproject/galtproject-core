@@ -98,10 +98,21 @@ contract('NewOracleManager', (accounts) => {
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+
+    this.acl = await ACL.new({ from: coreTeam });
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -178,6 +189,7 @@ contract('NewOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          '',
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           ether(45),
@@ -199,6 +211,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              '',
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -217,6 +230,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              '',
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               ether(10),
@@ -234,6 +248,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(53),
@@ -262,6 +277,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             ether(47),
@@ -334,6 +350,7 @@ contract('NewOracleManager', (accounts) => {
           bob,
           BOB,
           MN,
+          '',
           this.attachedDocumentsBytes32,
           [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
           0,
@@ -371,6 +388,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              '',
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -388,6 +406,7 @@ contract('NewOracleManager', (accounts) => {
               bob,
               BOB,
               MN,
+              '',
               this.attachedDocumentsBytes32,
               [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
               0,
@@ -405,6 +424,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -433,6 +453,7 @@ contract('NewOracleManager', (accounts) => {
             bob,
             BOB,
             MN,
+            '',
             this.attachedDocumentsBytes32,
             [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
             0,
@@ -513,6 +534,7 @@ contract('NewOracleManager', (accounts) => {
         eve,
         EVE,
         MN,
+        '',
         this.attachedDocumentsBytes32,
         [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
         0,

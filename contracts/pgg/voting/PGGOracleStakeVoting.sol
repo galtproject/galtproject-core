@@ -1,0 +1,163 @@
+/*
+ * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka),
+ * [Dima Starodubcev](https://github.com/xhipster),
+ * [Valery Litvin](https://github.com/litvintech) by
+ * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ *
+ * Copyright ©️ 2018 Galt•Core Blockchain Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
+ * Galt•Space Society Construction and Terraforming Company by
+ * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ */
+
+pragma solidity 0.5.7;
+
+import "@galtproject/libs/contracts/traits/Permissionable.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "../../collections/AddressLinkedList.sol";
+import "./interfaces/IPGGMultiSigCandidateTop.sol";
+import "../interfaces/IPGGConfig.sol";
+import "./interfaces/IPGGOracleStakeVoting.sol";
+
+
+contract PGGOracleStakeVoting is IPGGOracleStakeVoting, Permissionable {
+  using ArraySet for ArraySet.AddressSet;
+  using AddressLinkedList for AddressLinkedList.Data;
+
+  event ReputationMint(address delegate, uint256 amount);
+  event ReputationBurn(address delegate, uint256 amount);
+  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
+
+  event OracleStakeChanged(
+    address oracle,
+    address candidate,
+    uint256 oracleReputationBefore,
+    uint256 oracleReputationAfter,
+    uint256 candidateReputation,
+    uint256 totalReputation
+  );
+
+  event ReputationBurnWithRevoke(
+    address delegate,
+    uint256 remainder,
+    uint256 limit
+  );
+
+  string public constant ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
+
+  // Oracle address => Oracle details
+  mapping(address => Oracle) private oracles;
+  // Oracle Candidate => totalWeights
+  mapping(address => uint256) private _candidateReputation;
+
+  struct Oracle {
+    address candidate;
+    uint256 reputation;
+  }
+
+  uint256 private _totalReputation;
+
+  IPGGConfig governanceConfig;
+
+  constructor(
+    IPGGConfig _governanceConfig
+  )
+    public
+  {
+    governanceConfig = _governanceConfig;
+  }
+
+
+  // 'Oracle Stake Locking' accounting only inside this contract
+  function vote(address _candidate) external {
+    // TODO: check oracle is activev
+
+    uint256 newReputation = uint256(governanceConfig.getOracleStakes().balanceOf(msg.sender));
+    require(newReputation > 0, "Reputation is 0");
+
+    address previousCandidate = oracles[msg.sender].candidate;
+
+    // If already voted
+    if (previousCandidate != address(0)) {
+      _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
+    }
+    // TODO: what about total oracle stakes?
+
+    oracles[msg.sender].reputation = newReputation;
+    oracles[msg.sender].candidate = _candidate;
+    _candidateReputation[_candidate] += newReputation;
+  }
+
+  // TODO: fix oracle stake change logic
+  // @dev Oracle balance changed
+  //    onlyRole(ORACLE_STAKES_NOTIFIER)
+  function onOracleStakeChanged(
+    address _oracle,
+    uint256 _reputationAfter
+  )
+    external
+  {
+    address currentCandidate = oracles[_oracle].candidate;
+    uint256 reputationBefore = oracles[_oracle].reputation;
+
+    _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
+
+    emit OracleStakeChanged(
+      _oracle,
+      currentCandidate,
+      reputationBefore,
+      _reputationAfter,
+      _candidateReputation[currentCandidate],
+      _totalReputation
+    );
+
+    // Change oracle weight
+    oracles[_oracle].reputation = _reputationAfter;
+
+    // The oracle hadn't vote or revoked his vote
+    if (currentCandidate == address(0)) {
+      return;
+    }
+
+    // Change candidate reputation
+    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
+  }
+
+  function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
+    Oracle storage oracle = oracles[_oracle];
+    return (oracle.candidate, oracle.reputation);
+  }
+
+  function totalSupply() external view returns (uint256) {
+    return _totalReputation;
+  }
+
+  // TODO: rename to balanceOfCandidate
+  function balanceOf(address _candidate) external view returns (uint256) {
+    return _candidateReputation[_candidate];
+  }
+
+  function balanceOfOracle(address _oracle) external view returns (uint256) {
+    return oracles[_oracle].reputation;
+  }
+
+  // TODO: rename to shareOfCandidate
+  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = _candidateReputation[_candidate];
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
+    return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+  }
+
+  function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256) {
+    uint256 reputation = oracles[_oracle].reputation;
+
+    if (reputation == 0) { return 0; }
+    if (_decimals == 0) { return 0; }
+
+    return (reputation * _decimals) / _totalReputation;
+  }
+}

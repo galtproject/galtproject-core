@@ -16,10 +16,10 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../registries/interfaces/IGovernanceRegistry.sol";
+import "../registries/interfaces/IPGGRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
-import "../governance/interfaces/IGovernanceConfig.sol";
 import "../registries/GaltGlobalRegistry.sol";
+import "../pgg/interfaces/IPGGConfig.sol";
 
 
 contract AbstractApplication is Initializable, Permissionable {
@@ -68,16 +68,16 @@ contract AbstractApplication is Initializable, Permissionable {
     return IFeeRegistry(ggr.getFeeRegistryAddress()).getProtocolApplicationShares();
   }
 
-  function governanceRegistry() internal view returns(IGovernanceRegistry) {
-    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
+  function pggRegistry() internal view returns(IPGGRegistry) {
+    return IPGGRegistry(ggr.getPggRegistryAddress());
   }
 
-  function governanceConfig(address _multiSig) internal view returns (IGovernanceConfig) {
-    return multiSigRegistry().getArbitrationConfig(_multiSig);
+  function pggConfig(address _multiSig) internal view returns (IPGGConfig) {
+    return pggRegistry().getPggConfig(_multiSig);
   }
 
-  function governanceConfigValue(address _multiSig, bytes32 _key) internal view returns (bytes32) {
-    return arbitrationConfig(_multiSig).applicationConfig(_key);
+  function pggConfigValue(address _multiSig, bytes32 _key) internal view returns (bytes32) {
+    return pggConfig(_multiSig).applicationConfig(_key);
   }
 
   function getAllApplications() external view returns (bytes32[] memory) {

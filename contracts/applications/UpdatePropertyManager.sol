@@ -19,7 +19,7 @@ import "../interfaces/ISpaceGeoData.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./AbstractOracleApplication.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IGovernanceRegistry.sol";
+import "../registries/interfaces/IPGGRegistry.sol";
 
 
 contract UpdatePropertyManager is AbstractOracleApplication {
@@ -117,11 +117,11 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -129,7 +129,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submitApplication(
@@ -150,7 +150,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
     require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
 
-    multiSigRegistry().requireValidMultiSig(_multiSig);
+    pggRegistry().requireValidPggMultiSig(_multiSig);
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
 
     // TODO: use storage instead

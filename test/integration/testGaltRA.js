@@ -37,12 +37,17 @@ contract('GaltRA', accounts => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
     this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
       from: coreTeam
     });
     this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
-    this.galtRA = await GaltRA.new(this.ggr.address, { from: coreTeam });
+    this.galtRA = await GaltRA.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.galtRA.initialize(this.ggr.address);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });

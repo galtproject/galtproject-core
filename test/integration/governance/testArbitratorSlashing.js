@@ -109,13 +109,20 @@ contract('ArbitratorSlashing', accounts => {
 
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-      this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
+      this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
         from: coreTeam
       });
       this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
-      this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+      this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+
+      await this.acl.initialize();
+      await this.ggr.initialize();
+      await this.feeRegistry.initialize();
+      await this.multiSigRegistry.initialize(this.ggr.address);
+      await this.stakeTracker.initialize(this.ggr.address);
+      await this.claimManager.initialize(this.ggr.address);
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -129,6 +136,7 @@ contract('ArbitratorSlashing', accounts => {
         from: coreTeam
       });
       this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
+      await this.sra.initialize(this.ggr.address);
       this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
 
       await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
@@ -143,10 +151,6 @@ contract('ArbitratorSlashing', accounts => {
       await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
       await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
       await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
-        from: coreTeam
-      });
-
-      await this.claimManager.initialize(this.ggr.address, {
         from: coreTeam
       });
     })();
@@ -263,13 +267,13 @@ contract('ArbitratorSlashing', accounts => {
     it('should slash', async function() {
       // > 3 oracles are added by oracleModifier
 
-      await this.oraclesX.addOracle(mike, MIKE, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(mike, MIKE, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(nick, NICK, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(nick, NICK, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
-      await this.oraclesX.addOracle(oliver, OLIVER, MN, [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+      await this.oraclesX.addOracle(oliver, OLIVER, MN, '', [_ES], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
         from: oracleModifier
       });
 

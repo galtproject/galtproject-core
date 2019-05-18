@@ -55,8 +55,13 @@ contract('OracleStakesAccounting', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new(this.ggr.address, { from: coreTeam });
-    this.stakeTracker = await StakeTracker.new(this.ggr.address, { from: coreTeam });
+    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.stakeTracker.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
@@ -97,16 +102,24 @@ contract('OracleStakesAccounting', accounts => {
     this.mX = multiSig;
 
     // assign oracles
-    await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
+    await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(charlie, CHARLIE, MN, [], [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(
+      charlie,
+      CHARLIE,
+      MN,
+      '',
+      [],
+      [BAR, PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE],
+      {
+        from: oracleModifier
+      }
+    );
+    await this.oraclesX.addOracle(dan, DAN, MN, '', [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
-    await this.oraclesX.addOracle(dan, DAN, MN, [], [BUZZ, PE_AUDITOR_ORACLE_TYPE], {
-      from: oracleModifier
-    });
-    await this.oraclesX.addOracle(eve, EVE, MN, [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
+    await this.oraclesX.addOracle(eve, EVE, MN, '', [], [PC_AUDITOR_ORACLE_TYPE, PE_AUDITOR_ORACLE_TYPE], {
       from: oracleModifier
     });
   });
@@ -142,7 +155,7 @@ contract('OracleStakesAccounting', accounts => {
 
   describe('#slash()', () => {
     beforeEach(async function() {
-      await this.oraclesX.addOracle(bob, BOB, MN, [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
+      await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
         from: oracleModifier
       });
       await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(1000), { from: alice });

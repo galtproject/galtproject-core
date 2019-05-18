@@ -17,9 +17,9 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../multisig/OracleStakesAccounting.sol";
-import "../multisig/ArbitratorsMultiSig.sol";
-import "../registries/GovernanceRegistry.sol";
+import "../pgg/PGGOracleStakeAccounting.sol";
+import "../pgg/PGGMultiSig.sol";
+import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 
 
@@ -135,25 +135,25 @@ contract ClaimManager is AbstractApplication {
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
   function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_M));
+    return uint256(pggConfigValue(_multiSig, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
   function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_N));
+    return uint256(pggConfigValue(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   /**
@@ -177,7 +177,7 @@ contract ClaimManager is AbstractApplication {
     payable
     returns (bytes32)
   {
-    multiSigRegistry().requireValidMultiSig(_multiSig);
+    pggRegistry().requireValidPggMultiSig(_multiSig);
 
     // Default is ETH
     Currency currency;
@@ -241,7 +241,7 @@ contract ClaimManager is AbstractApplication {
   function lock(bytes32 _cId) external {
     Claim storage c = claims[_cId];
 
-    require(ArbitratorsMultiSig(c.multiSig).isOwner(msg.sender), "Invalid arbitrator");
+    require(PGGMultiSig(c.multiSig).isOwner(msg.sender), "Invalid arbitrator");
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
@@ -291,8 +291,8 @@ contract ClaimManager is AbstractApplication {
     Claim storage c = claims[_cId];
 
     require(
-      multiSigRegistry()
-        .getArbitrationConfig(c.multiSig)
+      pggRegistry()
+        .getPggConfig(c.multiSig)
         .getOracles()
         .oraclesHasTypesAssigned(_oracles, _oracleTypes),
       "Some oracle types are invalid"
@@ -372,17 +372,17 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        multiSigRegistry()
-          .getArbitrationConfig(c.multiSig)
+        pggRegistry()
+          .getPggConfig(c.multiSig)
           .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        multiSigRegistry()
-          .getArbitrationConfig(c.multiSig)
+        pggRegistry()
+          .getPggConfig(c.multiSig)
           .getArbitratorStakes()
           .slashMultiple(p.arbitrators, p.arbitratorFines);
 
-        c.multiSigTransactionId = ArbitratorsMultiSig(c.multiSig).proposeTransaction(
+        c.multiSigTransactionId = PGGMultiSig(c.multiSig).proposeTransaction(
           address(ggr.getGaltToken()),
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
@@ -488,7 +488,7 @@ contract ClaimManager is AbstractApplication {
   }
 
   function _checkMultiSigTransactionExecuted(Claim storage c) internal returns (bool) {
-    (, , , bool executed) = ArbitratorsMultiSig(c.multiSig).transactions(c.multiSigTransactionId);
+    (, , , bool executed) = PGGMultiSig(c.multiSig).transactions(c.multiSigTransactionId);
     return executed;
   }
 
