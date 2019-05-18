@@ -22,14 +22,14 @@ import "../../pgg/interfaces/IPGGConfig.sol";
 
 contract PGGDelegateReputationVotingFactory is Ownable {
   function build(
-    IPGGConfig _arbitrationConfig,
+    IPGGConfig _pggConfig,
     bytes32 _roleReputationNotifier
   )
     external
     returns (PGGDelegateReputationVoting)
   {
     PGGDelegateReputationVoting voting = new PGGDelegateReputationVoting(
-      _arbitrationConfig,
+      _pggConfig,
       _roleReputationNotifier
     );
 

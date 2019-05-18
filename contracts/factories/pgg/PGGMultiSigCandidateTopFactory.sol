@@ -22,13 +22,13 @@ import "../../pgg/PGGConfig.sol";
 
 contract PGGMultiSigCandidateTopFactory is Ownable {
   function build(
-    PGGConfig arbitrationConfig
+    PGGConfig pggConfig
   )
     external
     returns (PGGMultiSigCandidateTop)
   {
     PGGMultiSigCandidateTop voting = new PGGMultiSigCandidateTop(
-      arbitrationConfig
+      pggConfig
     );
 
     voting.addRoleTo(msg.sender, "role_manager");

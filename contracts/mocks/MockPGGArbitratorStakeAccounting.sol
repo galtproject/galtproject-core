@@ -7,9 +7,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 contract MockPGGArbitratorStakeAccounting is PGGArbitratorStakeAccounting {
   constructor(
-    PGGConfig _arbitrationConfig,
+    PGGConfig _pggConfig,
     uint256 _periodLengthInSeconds
-  ) public PGGArbitratorStakeAccounting(_arbitrationConfig, _periodLengthInSeconds) {
+  ) public PGGArbitratorStakeAccounting(_pggConfig, _periodLengthInSeconds) {
 
   }
 

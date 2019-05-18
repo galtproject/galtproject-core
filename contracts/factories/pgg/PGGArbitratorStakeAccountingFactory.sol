@@ -24,12 +24,12 @@ import "../../pgg/PGGConfig.sol";
 
 contract PGGArbitratorStakeAccountingFactory is Ownable {
   function build(
-    PGGConfig _arbitrationConfig,
+    PGGConfig _pggConfig,
     uint256 _periodLength
   )
     external
     returns (PGGArbitratorStakeAccounting arbitratorStakeAccounting)
   {
-    arbitratorStakeAccounting = new PGGArbitratorStakeAccounting(_arbitrationConfig, _periodLength);
+    arbitratorStakeAccounting = new PGGArbitratorStakeAccounting(_pggConfig, _periodLength);
   }
 }

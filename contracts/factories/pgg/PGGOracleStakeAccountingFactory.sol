@@ -24,12 +24,12 @@ import "../../pgg/PGGConfig.sol";
 
 contract PGGOracleStakeAccountingFactory is Ownable {
   function build(
-    PGGConfig _arbitrationConfig
+    PGGConfig _pggConfig
   )
     external
     returns (PGGOracleStakeAccounting oracleStakes)
   {
-    oracleStakes = new PGGOracleStakeAccounting(_arbitrationConfig);
+    oracleStakes = new PGGOracleStakeAccounting(_pggConfig);
 
     oracleStakes.addRoleTo(msg.sender, "role_manager");
     oracleStakes.removeRoleFrom(address(this), "role_manager");

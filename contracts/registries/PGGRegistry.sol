@@ -33,7 +33,7 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
 
   struct ProtocolGovernanceGroup {
     bool active;
-    IPGGConfig arbitrationConfig;
+    IPGGConfig pggConfig;
     address factoryAddress;
   }
 
@@ -62,7 +62,7 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
     ProtocolGovernanceGroup storage pgg = groups[address(_pggMultiSig)];
 
     pgg.active = true;
-    pgg.arbitrationConfig = _pggConfig;
+    pgg.pggConfig = _pggConfig;
     pgg.factoryAddress = msg.sender;
 
     multiSigArray.add(address(_pggMultiSig));
@@ -83,7 +83,7 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
 
   function getPggConfig(address _multiSig) external view returns (IPGGConfig) {
     require(groups[_multiSig].active == true, "MultiSig address is invalid");
-    return groups[_multiSig].arbitrationConfig;
+    return groups[_multiSig].pggConfig;
   }
 
   function getPggMultiSigList() external view returns (address[] memory) {

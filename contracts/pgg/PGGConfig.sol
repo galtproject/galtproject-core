@@ -113,7 +113,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
   }
 
   function initialize(
-    IPGGMultiSig _arbitratorMultiSig,
+    IPGGMultiSig _pggMultiSig,
     IPGGMultiSigCandidateTop _arbitratorVoting,
     IPGGArbitratorStakeAccounting _arbitratorStakeAccounting,
     IPGGOracleStakeAccounting _oracleStakesAccounting,
@@ -127,7 +127,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
     assert(initialized == false);
     assert(hasRole(msg.sender, "role_manager"));
 
-    contracts[MULTI_SIG_CONTRACT] = address(_arbitratorMultiSig);
+    contracts[MULTI_SIG_CONTRACT] = address(_pggMultiSig);
     contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT] = address(_arbitratorVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
     contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakesAccounting);

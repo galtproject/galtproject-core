@@ -24,12 +24,12 @@ contract PGGMultiSigFactory is Ownable {
   function build(
     address[] calldata _initialOwners,
     uint256 _multiSigRequired,
-    PGGConfig _arbitrationConfig
+    PGGConfig _pggConfig
   )
     external
     returns (PGGMultiSig multiSig)
   {
-    multiSig = new PGGMultiSig(_initialOwners, _multiSigRequired, _arbitrationConfig);
+    multiSig = new PGGMultiSig(_initialOwners, _multiSigRequired, _pggConfig);
 
     multiSig.addRoleTo(msg.sender, "role_manager");
     multiSig.removeRoleFrom(address(this), "role_manager");

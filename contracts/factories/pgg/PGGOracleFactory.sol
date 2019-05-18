@@ -22,13 +22,13 @@ import "../../pgg/PGGOracles.sol";
 
 contract PGGOracleFactory is Ownable {
   function build(
-    IPGGConfig arbitrationConfig
+    IPGGConfig pggConfig
   )
     external
     returns (PGGOracles)
   {
     PGGOracles voting = new PGGOracles(
-      arbitrationConfig
+      pggConfig
     );
 
     voting.addRoleTo(msg.sender, "role_manager");
