@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IArbitrationCandidateTop {
+interface IGovernanceMultiSigCandidateTop {
   function recalculate(address _candidate) external;
   function pushArbitrators() external;
   function ignoreMe(bool _value) external;

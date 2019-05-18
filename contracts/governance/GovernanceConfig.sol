@@ -17,18 +17,18 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./interfaces/IArbitrationConfig.sol";
-import "./interfaces/IArbitratorStakeAccounting.sol";
-import "./interfaces/IOracleStakesAccounting.sol";
-import "./interfaces/IArbitratorsMultiSig.sol";
-import "./ArbitratorsMultiSig.sol";
+import "./interfaces/IGovernanceConfig.sol";
+import "./interfaces/IGovernanceArbitratorStakeAccounting.sol";
+import "./interfaces/IGovernanceOracleStakeAccounting.sol";
+import "./interfaces/IGovernanceMultiSig.sol";
+import "./GovernanceMultiSig.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "./voting/interfaces/IDelegateReputationVoting.sol";
-import "./voting/interfaces/IOracleStakeVoting.sol";
-import "./voting/interfaces/IArbitrationCandidateTop.sol";
+import "./voting/interfaces/IGovernanceDelegateReputationVoting.sol";
+import "./voting/interfaces/IGovernanceOracleStakeVoting.sol";
+import "./voting/interfaces/IGovernanceMultiSigCandidateTop.sol";
 
 
-contract ArbitrationConfig is IArbitrationConfig, Permissionable {
+contract GovernanceConfig is IGovernanceConfig, Permissionable {
   using ArraySet for ArraySet.AddressSet;
 
   string public constant THRESHOLD_MANAGER = "threshold_manager";

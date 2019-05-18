@@ -15,11 +15,11 @@ pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../collections/AddressLinkedList.sol";
-import "./interfaces/IArbitrationCandidateTop.sol";
-import "../interfaces/IArbitrationConfig.sol";
-import "./interfaces/IDelegateReputationVoting.sol";
+import "./interfaces/IGovernanceMultiSigCandidateTop.sol";
+import "../interfaces/IGovernanceConfig.sol";
+import "./interfaces/IGovernanceDelegateReputationVoting.sol";
 
-contract DelegateReputationVoting is IDelegateReputationVoting {
+contract GovernanceDelegateReputationVoting is IGovernanceDelegateReputationVoting {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -53,21 +53,21 @@ contract DelegateReputationVoting is IDelegateReputationVoting {
   bytes32 public roleReputationNotifier;
   uint256 public totalReputation;
 
-  IArbitrationConfig internal arbitrationConfig;
+  IGovernanceConfig internal governanceConfig;
 
   constructor(
-    IArbitrationConfig _arbitrationConfig,
+    IGovernanceConfig _governanceConfig,
     bytes32 _roleSpaceReputationNotifier
   )
     public
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
     roleReputationNotifier = _roleSpaceReputationNotifier;
   }
 
   modifier onlySpaceReputationNotifier() {
     require(
-      arbitrationConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
+      governanceConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
       "Invalid notifier"
     );
 

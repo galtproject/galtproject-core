@@ -17,12 +17,12 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./ArbitrationConfig.sol";
-import "./interfaces/IOracleStakesAccounting.sol";
+import "./GovernanceConfig.sol";
+import "./interfaces/IGovernanceOracleStakeAccounting.sol";
 import "../interfaces/IStakeTracker.sol";
 
 
-contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
+contract GovernanceOracleStakeAccounting is IGovernanceOracleStakeAccounting, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -44,7 +44,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
 
   bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
 
-  ArbitrationConfig arbitrationConfig;
+  GovernanceConfig governanceConfig;
   mapping(address => OracleTypes) oracleTypes;
 
   struct OracleTypes {
@@ -54,7 +54,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
 
   modifier onlySlashManager {
     require(
-      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_STAKE_SLASHER),
+      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_STAKE_SLASHER),
       "Only ORACLE_STAKE_SLASHER role allowed"
     );
 
@@ -62,11 +62,11 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
   }
 
   constructor(
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
   }
 
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
@@ -96,9 +96,9 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
-    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onSlash(
-      address(arbitrationConfig.getMultiSig()),
+    governanceConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
+    IStakeTracker(governanceConfig.ggr().getStakeTrackerAddress()).onSlash(
+      address(governanceConfig.getMultiSig()),
       _amount
     );
 
@@ -107,7 +107,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
     oracles().requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    address multiSig = address(arbitrationConfig.getMultiSig());
+    address multiSig = address(governanceConfig.getMultiSig());
     galtToken().transferFrom(msg.sender, multiSig, _amount);
 
     require(_amount > 0, "Expect positive amount");
@@ -123,18 +123,18 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    arbitrationConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
-    IStakeTracker(arbitrationConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
+    governanceConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
+    IStakeTracker(governanceConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }
 
-  function oracles() internal view returns (IArbitrationOracles) {
-    return arbitrationConfig.getOracles();
+  function oracles() internal view returns (IGovernanceOracles) {
+    return governanceConfig.getOracles();
   }
 
   function galtToken() internal view returns (IERC20) {
-    return arbitrationConfig.ggr().getGaltToken();
+    return governanceConfig.ggr().getGaltToken();
   }
 
   // GETTERS
@@ -144,7 +144,7 @@ contract OracleStakesAccounting is IOracleStakesAccounting, Permissionable {
   }
 
   function oracleTypeMinimalStake(bytes32 _oracleType) public view returns (uint256) {
-    return uint256(arbitrationConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
+    return uint256(governanceConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
   }
 
   function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool) {

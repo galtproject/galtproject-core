@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IArbitratorsMultiSig {
+interface IGovernanceMultiSig {
   function proposeTransaction(address destination, uint value, bytes calldata data) external returns (uint transactionId);
   function setArbitrators(address[] calldata descArbitrators) external;
   function revokeArbitrators() external;

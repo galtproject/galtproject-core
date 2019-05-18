@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-contract IOracleStakeVoting {
+contract IGovernanceOracleStakeVoting {
   function vote(address _candidate) external;
   function onOracleStakeChanged(address _oracle, uint256 _newReputation)external;
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation);

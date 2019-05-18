@@ -19,7 +19,7 @@ import "../interfaces/ISpaceGeoData.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./AbstractOracleApplication.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IGovernanceRegistry.sol";
 
 
 contract UpdatePropertyManager is AbstractOracleApplication {

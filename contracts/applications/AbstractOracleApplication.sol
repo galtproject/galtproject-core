@@ -45,7 +45,7 @@ contract AbstractOracleApplication is AbstractApplication {
   )
     internal
   {
-    arbitrationConfig(_multiSig)
+    governanceConfig(_multiSig)
       .getOracles()
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }

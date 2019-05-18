@@ -19,7 +19,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../multisig/OracleStakesAccounting.sol";
 import "../multisig/ArbitratorsMultiSig.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/GovernanceRegistry.sol";
 import "./AbstractApplication.sol";
 
 

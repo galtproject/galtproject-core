@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../ArbitrationConfig.sol";
+import "../GovernanceConfig.sol";
 import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
@@ -27,10 +27,10 @@ contract RevokeArbitratorsProposalManager is IProposalManager, AbstractArbitrati
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
-    AbstractArbitrationProposalManager(_arbitrationConfig)
+    AbstractArbitrationProposalManager(_governanceConfig)
   {
   }
 
@@ -51,11 +51,11 @@ contract RevokeArbitratorsProposalManager is IProposalManager, AbstractArbitrati
   }
 
   function _execute(uint256 _proposalId) internal {
-    arbitrationConfig.getMultiSig().revokeArbitrators();
+    governanceConfig.getMultiSig().revokeArbitrators();
   }
 
   function getThreshold() public view returns (uint256) {
-    return arbitrationConfig.thresholds(arbitrationConfig.REVOKE_ARBITRATORS_THRESHOLD());
+    return governanceConfig.thresholds(governanceConfig.REVOKE_ARBITRATORS_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (string memory description) {

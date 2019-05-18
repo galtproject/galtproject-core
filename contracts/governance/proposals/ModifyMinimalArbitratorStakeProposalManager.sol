@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../ArbitrationConfig.sol";
+import "../GovernanceConfig.sol";
 import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
@@ -28,10 +28,10 @@ contract ModifyMinimalArbitratorStakeProposalManager is IProposalManager, Abstra
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
-    AbstractArbitrationProposalManager(_arbitrationConfig)
+    AbstractArbitrationProposalManager(_governanceConfig)
   {
   }
 
@@ -56,13 +56,13 @@ contract ModifyMinimalArbitratorStakeProposalManager is IProposalManager, Abstra
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    arbitrationConfig.setMinimalArbitratorStake(
+    governanceConfig.setMinimalArbitratorStake(
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return arbitrationConfig.thresholds(arbitrationConfig.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD());
+    return governanceConfig.thresholds(governanceConfig.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (uint256 value, string memory description) {

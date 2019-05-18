@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.7;
 
-interface IArbitrationOracles {
+interface IGovernanceOracles {
   function addOracle(
     address _oracle,
     string calldata _name,

@@ -17,7 +17,7 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/GovernanceRegistry.sol";
 import "./AbstractApplication.sol";
 import "./AbstractArbitratorApplication.sol";
 

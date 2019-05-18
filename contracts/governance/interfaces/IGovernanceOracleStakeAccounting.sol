@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IOracleStakesAccounting {
+interface IGovernanceOracleStakeAccounting {
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external;
   function slashMultiple(address[] calldata _oracles, bytes32[] calldata _oracleTypes, uint256[] calldata _amounts) external;
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external;

@@ -16,12 +16,12 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./ArbitratorsMultiSig.sol";
-import "./ArbitrationConfig.sol";
-import "./interfaces/IArbitratorStakeAccounting.sol";
+import "./GovernanceMultiSig.sol";
+import "./GovernanceConfig.sol";
+import "./interfaces/IGovernanceArbitratorStakeAccounting.sol";
 
 
-contract ArbitratorStakeAccounting is IArbitratorStakeAccounting {
+contract GovernanceArbitratorStakeAccounting is IGovernanceArbitratorStakeAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -44,13 +44,13 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting {
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
-  ArbitrationConfig internal arbitrationConfig;
+  GovernanceConfig internal governanceConfig;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
 
   modifier onlySlashManager {
     require(
-      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ARBITRATION_STAKE_SLASHER),
+      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ARBITRATION_STAKE_SLASHER),
       "Only ARBITRATION_STAKE_SLASHER role allowed"
     );
 
@@ -58,12 +58,12 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting {
   }
 
   constructor(
-    ArbitrationConfig _arbitrationConfig,
+    GovernanceConfig _governanceConfig,
     uint256 _periodLengthInSeconds
   )
     public
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
     periodLengthInSeconds = _periodLengthInSeconds;
     _initialTimestamp = block.timestamp;
   }
@@ -93,9 +93,9 @@ contract ArbitratorStakeAccounting is IArbitratorStakeAccounting {
   function stake(address _arbitrator, uint256 _amount) external {
     require(_amount > 0, "Expect positive amount");
 
-    address multiSig = address(arbitrationConfig.getMultiSig());
+    address multiSig = address(governanceConfig.getMultiSig());
 
-    arbitrationConfig.ggr().getGaltToken().transferFrom(msg.sender, multiSig, _amount);
+    governanceConfig.ggr().getGaltToken().transferFrom(msg.sender, multiSig, _amount);
 
     uint256 arbitratorStakeBefore = _balances[_arbitrator];
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);

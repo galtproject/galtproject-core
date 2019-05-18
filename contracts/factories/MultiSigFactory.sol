@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IGovernanceRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../multisig/ArbitrationConfig.sol";

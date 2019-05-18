@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../registries/interfaces/IMultiSigRegistry.sol";
+import "../../registries/interfaces/IGovernanceRegistry.sol";
 import "../interfaces/ILockableRA.sol";
 import "./LiquidRA.sol";
 

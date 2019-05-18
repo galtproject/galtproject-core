@@ -13,27 +13,27 @@
 
 pragma solidity 0.5.7;
 
-import "../ArbitrationConfig.sol";
+import "../GovernanceConfig.sol";
 import "./AbstractProposalManager.sol";
 
 
 contract AbstractArbitrationProposalManager is AbstractProposalManager {
-  ArbitrationConfig public arbitrationConfig;
+  GovernanceConfig public governanceConfig;
 
-  constructor(ArbitrationConfig _arbitrationConfig) public {
-    arbitrationConfig = _arbitrationConfig;
+  constructor(GovernanceConfig _governanceConfig) public {
+    governanceConfig = _governanceConfig;
   }
 
   // GETTERS
 
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return arbitrationConfig
+    return governanceConfig
       .getArbitrationCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].ayes.elements());
   }
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return arbitrationConfig
+    return governanceConfig
       .getArbitrationCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].nays.elements());
   }

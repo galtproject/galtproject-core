@@ -16,11 +16,11 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./interfaces/IArbitrationOracles.sol";
-import "./interfaces/IArbitrationConfig.sol";
+import "./interfaces/IGovernanceOracles.sol";
+import "./interfaces/IGovernanceConfig.sol";
 
 
-contract ArbitrationOracles is IArbitrationOracles, Permissionable {
+contract GovernanceOracles is IGovernanceOracles, Permissionable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Bytes32Set;
@@ -63,17 +63,17 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
   // so do not rely on this variable to verify whether oracle
   // exists or not.
   mapping(bytes32 => ArraySet.AddressSet) private oraclesByType;
-  IArbitrationConfig private arbitrationConfig;
+  IGovernanceConfig private governanceConfig;
 
-  constructor(IArbitrationConfig _arbitrationConfig) public {
-    arbitrationConfig = _arbitrationConfig;
+  constructor(IGovernanceConfig _governanceConfig) public {
+    governanceConfig = _governanceConfig;
   }
 
   // MODIFIERS
 
   modifier onlyOracleModifier() {
     require(
-      arbitrationConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
+      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
       "Only ORACLE_MODIFIER role allowed"
     );
 
@@ -105,7 +105,7 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
-      // TODO: check arbitrationConfig for roleShare > 0
+      // TODO: check governanceConfig for roleShare > 0
       o.assignedOracleTypes.add(_oracleType);
       oraclesByType[_oracleType].addSilent(_oracle);
     }
@@ -138,7 +138,7 @@ contract ArbitrationOracles is IArbitrationOracles, Permissionable {
     require(o.active == true, "Oracle is not active");
     require(o.assignedOracleTypes.has(_oracleType), "Oracle type not assigned");
     require(
-      arbitrationConfig.getOracleStakes().isOracleStakeActive(_oracle, _oracleType) == true,
+      governanceConfig.getOracleStakes().isOracleStakeActive(_oracle, _oracleType) == true,
       "Oracle type not active"
     );
   }

@@ -15,25 +15,25 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./interfaces/IMultiSigRegistry.sol";
-import "../multisig/interfaces/IArbitrationConfig.sol";
-import "../multisig/interfaces/IArbitratorsMultiSig.sol";
+import "./interfaces/IGovernanceRegistry.sol";
+import "../governance/interfaces/IGovernanceConfig.sol";
+import "../governance/interfaces/IGovernanceMultiSig.sol";
 
 
-contract MultiSigRegistry is IMultiSigRegistry, Ownable {
+contract MultiSigRegistry is IGovernanceRegistry, Ownable {
   using ArraySet for ArraySet.AddressSet;
 
   bytes32 public constant ROLE_MULTI_SIG_REGISTRAR = bytes32("MULTI_SIG_REGISTRAR");
 
   // MultiSig address => Details
   // TODO: need to be a private?
-  mapping(address => MultiSig) public multiSigs;
+  mapping(address => Governance) public Governance;
   ArraySet.AddressSet private multiSigArray;
   ArraySet.AddressSet private configArray;
 
-  struct MultiSig {
+  struct Governance {
     bool active;
-    IArbitrationConfig arbitrationConfig;
+    IGovernanceConfig arbitrationConfig;
     address factoryAddress;
   }
 
@@ -53,20 +53,20 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
   }
 
   function addMultiSig(
-    IArbitratorsMultiSig _abMultiSig,
-    IArbitrationConfig _arbitrationConfig
+    IGovernanceMultiSig _governanceMultiSig,
+    IGovernanceConfig _governanceConfig
   )
     external
     onlyMultiSigRegistrar
   {
-    MultiSig storage ms = multiSigs[address(_abMultiSig)];
+    MultiSig storage ms = multiSigs[address(_governanceMultiSig)];
 
     ms.active = true;
-    ms.arbitrationConfig = _arbitrationConfig;
+    ms.arbitrationConfig = _governanceConfig;
     ms.factoryAddress = msg.sender;
 
-    multiSigArray.add(address(_abMultiSig));
-    configArray.add(address(_arbitrationConfig));
+    multiSigArray.add(address(_governanceMultiSig));
+    configArray.add(address(_governanceConfig));
   }
 
   // REQUIRES
@@ -81,7 +81,7 @@ contract MultiSigRegistry is IMultiSigRegistry, Ownable {
     return (multiSigs[_multiSig].active == true);
   }
 
-  function getArbitrationConfig(address _multiSig) external view returns (IArbitrationConfig) {
+  function getGovernanceGroupConfig(address _multiSig) external view returns (IGovernanceConfig) {
     require(multiSigs[_multiSig].active == true, "MultiSig address is invalid");
     return multiSigs[_multiSig].arbitrationConfig;
   }

@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "./registries/GaltGlobalRegistry.sol";
-import "./registries/interfaces/IMultiSigRegistry.sol";
+import "./registries/interfaces/IGovernanceRegistry.sol";
 import "./interfaces/IStakeTracker.sol";
 
 

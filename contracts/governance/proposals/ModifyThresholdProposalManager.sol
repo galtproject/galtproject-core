@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../ArbitrationConfig.sol";
+import "../GovernanceConfig.sol";
 import "./AbstractArbitrationProposalManager.sol";
 import "./interfaces/IProposalManager.sol";
 
@@ -29,10 +29,10 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractArbitration
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
-    AbstractArbitrationProposalManager(_arbitrationConfig)
+    AbstractArbitrationProposalManager(_governanceConfig)
   {
   }
 
@@ -58,14 +58,14 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractArbitration
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    arbitrationConfig.setThreshold(
+    governanceConfig.setThreshold(
       p.key,
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return arbitrationConfig.thresholds(arbitrationConfig.SET_THRESHOLD_THRESHOLD());
+    return governanceConfig.thresholds(governanceConfig.SET_THRESHOLD_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (bytes32 key, uint256 value, string memory description) {

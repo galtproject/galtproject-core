@@ -23,7 +23,7 @@ import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./NewPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IGovernanceRegistry.sol";
 
 
 contract NewPropertyManager is AbstractOracleApplication {

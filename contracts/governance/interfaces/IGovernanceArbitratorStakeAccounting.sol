@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IArbitratorStakeAccounting {
+interface IGovernanceArbitratorStakeAccounting {
   function slash(address _arbitrator, uint256 _amount) external;
   function slashMultiple(address[] calldata _arbitrators, uint256[] calldata _amounts) external;
   function stake(address _arbitrator, uint256 _amount) external;

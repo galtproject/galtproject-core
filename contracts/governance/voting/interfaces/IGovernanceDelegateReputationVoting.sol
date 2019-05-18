@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 
-interface IDelegateReputationVoting {
+interface IGovernanceDelegateReputationVoting {
   function grantReputation(address _candidate, uint256 _amount) external;
   function revokeReputation(address _candidate, uint256 _amount) external;
   function onDelegateReputationChanged(address _delegate, uint256 _newLocked) external;

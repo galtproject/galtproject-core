@@ -16,12 +16,12 @@ pragma solidity 0.5.7;
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../collections/AddressLinkedList.sol";
-import "./interfaces/IArbitrationCandidateTop.sol";
-import "../interfaces/IArbitrationConfig.sol";
-import "./interfaces/IOracleStakeVoting.sol";
+import "./interfaces/IGovernanceMultiSigCandidateTop.sol";
+import "../interfaces/IGovernanceConfig.sol";
+import "./interfaces/IGovernanceOracleStakeVoting.sol";
 
 
-contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
+contract GovernanceOracleStakeVoting is IGovernanceOracleStakeVoting, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -58,14 +58,14 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
 
   uint256 private _totalReputation;
 
-  IArbitrationConfig arbitrationConfig;
+  IGovernanceConfig governanceConfig;
 
   constructor(
-    IArbitrationConfig _arbitrationConfig
+    IGovernanceConfig _governanceConfig
   )
     public
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
   }
 
 
@@ -73,7 +73,7 @@ contract OracleStakeVoting is IOracleStakeVoting, Permissionable {
   function vote(address _candidate) external {
     // TODO: check oracle is activev
 
-    uint256 newReputation = uint256(arbitrationConfig.getOracleStakes().balanceOf(msg.sender));
+    uint256 newReputation = uint256(governanceConfig.getOracleStakes().balanceOf(msg.sender));
     require(newReputation > 0, "Reputation is 0");
 
     address previousCandidate = oracles[msg.sender].candidate;

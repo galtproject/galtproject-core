@@ -13,17 +13,17 @@
 
 pragma solidity 0.5.7;
 
-import "./IArbitratorsMultiSig.sol";
-import "./IArbitratorStakeAccounting.sol";
-import "./IArbitrationOracles.sol";
-import "./IOracleStakesAccounting.sol";
-import "../voting/interfaces/IArbitrationCandidateTop.sol";
-import "../voting/interfaces/IDelegateReputationVoting.sol";
-import "../voting/interfaces/IOracleStakeVoting.sol";
+import "./IGovernanceMultiSig.sol";
+import "./IGovernanceArbitratorStakeAccounting.sol";
+import "./IGovernanceOracles.sol";
+import "./IGovernanceOracleStakeAccounting.sol";
+import "../voting/interfaces/IGovernanceMultiSigCandidateTop.sol";
+import "../voting/interfaces/IGovernanceDelegateReputationVoting.sol";
+import "../voting/interfaces/IGovernanceOracleStakeVoting.sol";
 import "../../registries/GaltGlobalRegistry.sol";
 
 
-interface IArbitrationConfig {
+interface IGovernanceConfig {
   function ggr() external view returns(GaltGlobalRegistry);
   function globalProposalSupport(uint256) external view returns(bool);
   function setThreshold(bytes32 _key, uint256 _value) external;
@@ -32,10 +32,10 @@ interface IArbitrationConfig {
   function setContractAddress(bytes32 _key, address _address) external;
   function applicationConfig(bytes32) external view returns (bytes32);
   function getMultiSig() external view returns (IArbitratorsMultiSig);
-  function getArbitratorStakes() external view returns (IArbitratorStakeAccounting);
-  function getOracleStakes() external view returns (IOracleStakesAccounting);
+  function getArbitratorStakes() external view returns (IGovernanceArbitratorStakeAccounting);
+  function getOracleStakes() external view returns (IGovernanceOracleStakeAccounting);
   function getOracles() external view returns (IArbitrationOracles);
-  function getArbitrationCandidateTop() external view returns (IArbitrationCandidateTop);
+  function getArbitrationCandidateTop() external view returns (IGovernanceMultiSigCandidateTop);
   function getDelegateSpaceVoting() external view returns (IDelegateReputationVoting);
   function getDelegateGaltVoting() external view returns (IDelegateReputationVoting);
   function getOracleStakeVoting() external view returns (IOracleStakeVoting);

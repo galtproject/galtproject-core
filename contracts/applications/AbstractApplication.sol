@@ -16,8 +16,9 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IGovernanceRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
+import "../governance/interfaces/IGovernanceConfig.sol";
 import "../registries/GaltGlobalRegistry.sol";
 
 
@@ -67,15 +68,15 @@ contract AbstractApplication is Initializable, Permissionable {
     return IFeeRegistry(ggr.getFeeRegistryAddress()).getProtocolApplicationShares();
   }
 
-  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
+  function governanceRegistry() internal view returns(IGovernanceRegistry) {
     return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
   }
 
-  function arbitrationConfig(address _multiSig) internal view returns (IArbitrationConfig) {
+  function governanceConfig(address _multiSig) internal view returns (IGovernanceConfig) {
     return multiSigRegistry().getArbitrationConfig(_multiSig);
   }
 
-  function applicationConfigValue(address _multiSig, bytes32 _key) internal view returns (bytes32) {
+  function governanceConfigValue(address _multiSig, bytes32 _key) internal view returns (bytes32) {
     return arbitrationConfig(_multiSig).applicationConfig(_key);
   }
 

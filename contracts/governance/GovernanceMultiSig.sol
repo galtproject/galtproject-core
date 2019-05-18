@@ -15,11 +15,11 @@ pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../vendor/MultiSigWallet/MultiSigWallet.sol";
-import "./ArbitratorStakeAccounting.sol";
-import "./ArbitrationConfig.sol";
-import "./interfaces/IArbitratorsMultiSig.sol";
+import "./GovernanceArbitratorStakeAccounting.sol";
+import "./GovernanceConfig.sol";
+import "./interfaces/IGovernanceMultiSig.sol";
 
-contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permissionable {
+contract GovernanceMultiSig is IGovernanceMultiSig, MultiSigWallet, Permissionable {
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
   event GaltRunningTotalIncrease(
@@ -34,7 +34,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
   string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
-  ArbitrationConfig public arbitrationConfig;
+  GovernanceConfig public governanceConfig;
 
   bool initialized;
 
@@ -48,12 +48,12 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
   constructor(
     address[] memory _initialOwners,
     uint256 _required,
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
   }
 
   function addOwner(address owner) public forbidden {}
@@ -88,8 +88,8 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    uint256 m = arbitrationConfig.m();
-    uint256 n = arbitrationConfig.n();
+    uint256 m = governanceConfig.m();
+    uint256 n = governanceConfig.n();
 
     require(descArbitrators.length >= 3, "List should be L >= 3");
 
@@ -124,7 +124,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
   }
 
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
-    if (destination == arbitrationConfig.ggr().getGaltTokenAddress()) {
+    if (destination == governanceConfig.ggr().getGaltTokenAddress()) {
       checkGaltLimits(data);
     }
 
@@ -169,7 +169,7 @@ contract ArbitratorsMultiSig is IArbitratorsMultiSig, MultiSigWallet, Permission
       return;
     }
 
-    (uint256 currentPeriodId, uint256 totalStakes) = arbitrationConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
+    (uint256 currentPeriodId, uint256 totalStakes) = governanceConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
     uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
 

@@ -20,7 +20,7 @@ import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "./interfaces/IACL.sol";
 import "./reputation/interfaces/ILockableRA.sol";
 import "./reputation/interfaces/IRA.sol";
-import "./registries/interfaces/IMultiSigRegistry.sol";
+import "./registries/interfaces/IGovernanceRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./interfaces/IGlobalGovernance.sol";
 import "./interfaces/IStakeTracker.sol";

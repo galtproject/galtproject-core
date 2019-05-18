@@ -15,15 +15,15 @@ pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../ArbitratorsMultiSig.sol";
-import "../OracleStakesAccounting.sol";
-import "../ArbitrationConfig.sol";
-import "../ArbitratorStakeAccounting.sol";
+import "../GovernanceMultiSig.sol";
+import "../GovernanceOracleStakeAccounting.sol";
+import "../GovernanceConfig.sol";
+import "../GovernanceArbitratorStakeAccounting.sol";
 import "../../collections/AddressLinkedList.sol";
 import "../../collections/VotingLinkedList.sol";
-import "./interfaces/IArbitrationCandidateTop.sol";
+import "./interfaces/IGovernanceMultiSigCandidateTop.sol";
 
-contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
+contract GovernanceMultiSigCandidateTop is IGovernanceMultiSigCandidateTop, Permissionable {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -70,17 +70,17 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   VotingLinkedList.Data votingData;
   AddressLinkedList.Data votingList;
 
-  ArbitrationConfig arbitrationConfig;
+  GovernanceConfig governanceConfig;
 
   constructor(
-    ArbitrationConfig _arbitrationConfig
+    GovernanceConfig _governanceConfig
   )
     public
   {
-    arbitrationConfig = _arbitrationConfig;
+    governanceConfig = _governanceConfig;
     votingList.withTail = true;
-    // FIX: should rely on arbitrationConfig
-    votingData.maxCount = _arbitrationConfig.n();
+    // FIX: should rely on governanceConfig
+    votingData.maxCount = _governanceConfig.n();
   }
 
   function recalculate(address _candidate) external {
@@ -109,9 +109,9 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   }
 
   function _calculateWeight(address _candidate) internal returns (uint256) {
-    uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -143,7 +143,7 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   }
 
   function pushArbitrators() external {
-    arbitrationConfig
+    governanceConfig
       .getMultiSig()
       .setArbitrators(getCandidatesWithStakes());
   }
@@ -155,9 +155,9 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   // Getters
 
   function getCandidateWeight(address _candidate) public view returns (uint256) {
-    uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -179,9 +179,9 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
   }
 
   function getHolderWeight(address _candidate) public view returns (uint256) {
-    uint256 candidateSpaceReputationShare = arbitrationConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = arbitrationConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = arbitrationConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -207,9 +207,9 @@ contract ArbitrationCandidateTop is IArbitrationCandidateTop, Permissionable {
       return new address[](0);
     }
 
-    IArbitratorStakeAccounting arbitratorStakes = arbitrationConfig.getArbitratorStakes();
+    IArbitratorStakeAccounting arbitratorStakes = governanceConfig.getArbitratorStakes();
     address[] memory p = new address[](votingList.count);
-    uint256 minimalStake = arbitrationConfig.minimalArbitratorStake();
+    uint256 minimalStake = governanceConfig.minimalArbitratorStake();
     uint256 pI = 0;
 
     address currentAddress = votingList.head;
