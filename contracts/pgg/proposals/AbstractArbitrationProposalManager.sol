@@ -18,22 +18,22 @@ import "./AbstractProposalManager.sol";
 
 
 contract AbstractArbitrationProposalManager is AbstractProposalManager {
-  PGGConfig public governanceConfig;
+  PGGConfig public pggConfig;
 
-  constructor(PGGConfig _governanceConfig) public {
-    governanceConfig = _governanceConfig;
+  constructor(PGGConfig _pggConfig) public {
+    pggConfig = _pggConfig;
   }
 
   // GETTERS
 
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return governanceConfig
+    return pggConfig
       .getArbitrationCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].ayes.elements());
   }
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return governanceConfig
+    return pggConfig
       .getArbitrationCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].nays.elements());
   }

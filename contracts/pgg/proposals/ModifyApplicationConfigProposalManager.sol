@@ -29,10 +29,10 @@ contract ModifyApplicationConfigProposalManager is IProposalManager, AbstractArb
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -57,14 +57,14 @@ contract ModifyApplicationConfigProposalManager is IProposalManager, AbstractArb
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    governanceConfig.setApplicationConfigValue(
+    pggConfig.setApplicationConfigValue(
       p.key,
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.APPLICATION_CONFIG_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.APPLICATION_CONFIG_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (bytes32 key, bytes32 value, string memory description) {

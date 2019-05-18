@@ -29,10 +29,10 @@ contract ModifyContractAddressProposalManager is IProposalManager, AbstractArbit
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -58,14 +58,14 @@ contract ModifyContractAddressProposalManager is IProposalManager, AbstractArbit
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    governanceConfig.setContractAddress(
+    pggConfig.setContractAddress(
       p.key,
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.CHANGE_CONTRACT_ADDRESS_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.CHANGE_CONTRACT_ADDRESS_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (bytes32 key, address value, string memory description) {

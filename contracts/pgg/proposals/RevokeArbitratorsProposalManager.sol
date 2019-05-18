@@ -27,10 +27,10 @@ contract RevokeArbitratorsProposalManager is IProposalManager, AbstractArbitrati
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -51,11 +51,11 @@ contract RevokeArbitratorsProposalManager is IProposalManager, AbstractArbitrati
   }
 
   function _execute(uint256 _proposalId) internal {
-    governanceConfig.getMultiSig().revokeArbitrators();
+    pggConfig.getMultiSig().revokeArbitrators();
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.REVOKE_ARBITRATORS_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.REVOKE_ARBITRATORS_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (string memory description) {

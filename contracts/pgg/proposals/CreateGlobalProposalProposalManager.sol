@@ -32,10 +32,10 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -69,8 +69,8 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    p.globalId = IGlobalGovernance(governanceConfig.ggr().getGlobalGovernanceAddress()).propose(
-      address(governanceConfig.getMultiSig()),
+    p.globalId = IGlobalGovernance(pggConfig.ggr().getGlobalGovernanceAddress()).propose(
+      address(pggConfig.getMultiSig()),
       p.destination,
       p.value,
       p.data
@@ -78,7 +78,7 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.CREATE_GLOBAL_PROPOSAL_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.CREATE_GLOBAL_PROPOSAL_THRESHOLD());
   }
 
   function getProposal(

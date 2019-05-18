@@ -58,14 +58,14 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting, Permissionable {
 
   uint256 private _totalReputation;
 
-  IPGGConfig governanceConfig;
+  IPGGConfig pggConfig;
 
   constructor(
-    IPGGConfig _governanceConfig
+    IPGGConfig _pggConfig
   )
     public
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
   }
 
 
@@ -73,7 +73,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting, Permissionable {
   function vote(address _candidate) external {
     // TODO: check oracle is activev
 
-    uint256 newReputation = uint256(governanceConfig.getOracleStakes().balanceOf(msg.sender));
+    uint256 newReputation = uint256(pggConfig.getOracleStakes().balanceOf(msg.sender));
     require(newReputation > 0, "Reputation is 0");
 
     address previousCandidate = oracles[msg.sender].candidate;

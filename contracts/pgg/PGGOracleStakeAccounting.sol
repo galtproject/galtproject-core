@@ -44,7 +44,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
 
   bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
 
-  IPGGConfig governanceConfig;
+  IPGGConfig pggConfig;
   mapping(address => OracleTypes) oracleTypes;
 
   struct OracleTypes {
@@ -54,7 +54,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
 
   modifier onlySlashManager {
     require(
-      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_STAKE_SLASHER),
+      pggConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_STAKE_SLASHER),
       "Only ORACLE_STAKE_SLASHER role allowed"
     );
 
@@ -62,11 +62,11 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
   }
 
   constructor(
-    IPGGConfig _governanceConfig
+    IPGGConfig _pggConfig
   )
     public
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
   }
 
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
@@ -96,9 +96,9 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
 
-    governanceConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
-    IStakeTracker(governanceConfig.ggr().getStakeTrackerAddress()).onSlash(
-      address(governanceConfig.getMultiSig()),
+    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
+    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onSlash(
+      address(pggConfig.getMultiSig()),
       _amount
     );
 
@@ -107,7 +107,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
 
   function stake(address _oracle, bytes32 _oracleType, uint256 _amount) external {
     oracles().requireOracleActiveWithAssignedOracleType(_oracle, _oracleType);
-    address multiSig = address(governanceConfig.getMultiSig());
+    address multiSig = address(pggConfig.getMultiSig());
     galtToken().transferFrom(msg.sender, multiSig, _amount);
 
     require(_amount > 0, "Expect positive amount");
@@ -123,18 +123,18 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
     oracleTypes[_oracle].totalStakes = finalTotalStakes;
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
-    governanceConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
-    IStakeTracker(governanceConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
+    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
+    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }
 
   function oracles() internal view returns (IPGGOracles) {
-    return governanceConfig.getOracles();
+    return pggConfig.getOracles();
   }
 
   function galtToken() internal view returns (IERC20) {
-    return governanceConfig.ggr().getGaltToken();
+    return pggConfig.ggr().getGaltToken();
   }
 
   // GETTERS
@@ -144,7 +144,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
   }
 
   function oracleTypeMinimalStake(bytes32 _oracleType) public view returns (uint256) {
-    return uint256(governanceConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
+    return uint256(pggConfig.applicationConfig(oracleTypeMinimalStakeKey(_oracleType)));
   }
 
   function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool) {

@@ -70,17 +70,17 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
   VotingLinkedList.Data votingData;
   AddressLinkedList.Data votingList;
 
-  PGGConfig governanceConfig;
+  PGGConfig pggConfig;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
     votingList.withTail = true;
-    // FIX: should rely on governanceConfig
-    votingData.maxCount = _governanceConfig.n();
+    // FIX: should rely on pggConfig
+    votingData.maxCount = _pggConfig.n();
   }
 
   function recalculate(address _candidate) external {
@@ -109,9 +109,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
   }
 
   function _calculateWeight(address _candidate) internal returns (uint256) {
-    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -143,7 +143,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
   }
 
   function pushArbitrators() external {
-    governanceConfig
+    pggConfig
       .getMultiSig()
       .setArbitrators(getCandidatesWithStakes());
   }
@@ -155,9 +155,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
   // Getters
 
   function getCandidateWeight(address _candidate) public view returns (uint256) {
-    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -179,9 +179,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
   }
 
   function getHolderWeight(address _candidate) public view returns (uint256) {
-    uint256 candidateSpaceReputationShare = governanceConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
-    uint256 candidateGaltReputationShare = governanceConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = governanceConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
+    uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -207,9 +207,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
       return new address[](0);
     }
 
-    IPGGArbitratorStakeAccounting arbitratorStakes = governanceConfig.getArbitratorStakes();
+    IPGGArbitratorStakeAccounting arbitratorStakes = pggConfig.getArbitratorStakes();
     address[] memory p = new address[](votingList.count);
-    uint256 minimalStake = governanceConfig.minimalArbitratorStake();
+    uint256 minimalStake = pggConfig.minimalArbitratorStake();
     uint256 pI = 0;
 
     address currentAddress = votingList.head;

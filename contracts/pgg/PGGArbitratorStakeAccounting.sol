@@ -44,13 +44,13 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
-  IPGGConfig internal governanceConfig;
+  IPGGConfig internal pggConfig;
   ArraySet.AddressSet arbitrators;
   mapping(address => uint256) _balances;
 
   modifier onlySlashManager {
     require(
-      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ARBITRATION_STAKE_SLASHER),
+      pggConfig.ggr().getACL().hasRole(msg.sender, ROLE_ARBITRATION_STAKE_SLASHER),
       "Only ARBITRATION_STAKE_SLASHER role allowed"
     );
 
@@ -58,12 +58,12 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   }
 
   constructor(
-    IPGGConfig _governanceConfig,
+    IPGGConfig _pggConfig,
     uint256 _periodLengthInSeconds
   )
     public
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
     periodLengthInSeconds = _periodLengthInSeconds;
     _initialTimestamp = block.timestamp;
   }
@@ -93,9 +93,9 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   function stake(address _arbitrator, uint256 _amount) external {
     require(_amount > 0, "Expect positive amount");
 
-    address multiSig = address(governanceConfig.getMultiSig());
+    address multiSig = address(pggConfig.getMultiSig());
 
-    governanceConfig.ggr().getGaltToken().transferFrom(msg.sender, multiSig, _amount);
+    pggConfig.ggr().getGaltToken().transferFrom(msg.sender, multiSig, _amount);
 
     uint256 arbitratorStakeBefore = _balances[_arbitrator];
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);

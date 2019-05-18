@@ -30,10 +30,10 @@ contract SupportGlobalProposalProposalManager is IProposalManager, AbstractArbit
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -61,16 +61,16 @@ contract SupportGlobalProposalProposalManager is IProposalManager, AbstractArbit
 
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
-    governanceConfig.setGlobalProposalSupport(p.globalProposalId, true);
+    pggConfig.setGlobalProposalSupport(p.globalProposalId, true);
   }
 
   function _reject(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
-    governanceConfig.setGlobalProposalSupport(p.globalProposalId, false);
+    pggConfig.setGlobalProposalSupport(p.globalProposalId, false);
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.SUPPORT_GLOBAL_PROPOSAL_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.SUPPORT_GLOBAL_PROPOSAL_THRESHOLD());
   }
 
   function getProposal(

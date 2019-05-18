@@ -28,10 +28,10 @@ contract ModifyMinimalArbitratorStakeProposalManager is IProposalManager, Abstra
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -56,13 +56,13 @@ contract ModifyMinimalArbitratorStakeProposalManager is IProposalManager, Abstra
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    governanceConfig.setMinimalArbitratorStake(
+    pggConfig.setMinimalArbitratorStake(
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (uint256 value, string memory description) {

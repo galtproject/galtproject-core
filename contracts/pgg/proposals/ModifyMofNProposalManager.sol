@@ -29,10 +29,10 @@ contract ModifyMofNProposalManager is IProposalManager, AbstractArbitrationPropo
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -58,14 +58,14 @@ contract ModifyMofNProposalManager is IProposalManager, AbstractArbitrationPropo
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    governanceConfig.setMofN(
+    pggConfig.setMofN(
       p.m,
       p.n
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.SET_M_OF_N_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.SET_M_OF_N_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (uint256 m, uint256 n, string memory description) {

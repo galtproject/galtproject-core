@@ -63,17 +63,17 @@ contract PGGOracles is IPGGOracles, Permissionable {
   // so do not rely on this variable to verify whether oracle
   // exists or not.
   mapping(bytes32 => ArraySet.AddressSet) private oraclesByType;
-  IPGGConfig private governanceConfig;
+  IPGGConfig private pggConfig;
 
-  constructor(IPGGConfig _governanceConfig) public {
-    governanceConfig = _governanceConfig;
+  constructor(IPGGConfig _pggConfig) public {
+    pggConfig = _pggConfig;
   }
 
   // MODIFIERS
 
   modifier onlyOracleModifier() {
     require(
-      governanceConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
+      pggConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
       "Only ORACLE_MODIFIER role allowed"
     );
 
@@ -107,7 +107,7 @@ contract PGGOracles is IPGGOracles, Permissionable {
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
-      // TODO: check governanceConfig for roleShare > 0
+      // TODO: check pggConfig for roleShare > 0
       o.assignedOracleTypes.add(_oracleType);
       oraclesByType[_oracleType].addSilent(_oracle);
     }
@@ -140,7 +140,7 @@ contract PGGOracles is IPGGOracles, Permissionable {
     require(o.active == true, "Oracle is not active");
     require(o.assignedOracleTypes.has(_oracleType), "Oracle type not assigned");
     require(
-      governanceConfig.getOracleStakes().isOracleStakeActive(_oracle, _oracleType) == true,
+      pggConfig.getOracleStakes().isOracleStakeActive(_oracle, _oracleType) == true,
       "Oracle type not active"
     );
   }

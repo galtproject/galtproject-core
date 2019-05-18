@@ -29,10 +29,10 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractArbitration
   mapping(uint256 => Proposal) private _proposals;
 
   constructor(
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
-    AbstractArbitrationProposalManager(_governanceConfig)
+    AbstractArbitrationProposalManager(_pggConfig)
   {
   }
 
@@ -58,14 +58,14 @@ contract ModifyThresholdProposalManager is IProposalManager, AbstractArbitration
   function _execute(uint256 _proposalId) internal {
     Proposal storage p = _proposals[_proposalId];
 
-    governanceConfig.setThreshold(
+    pggConfig.setThreshold(
       p.key,
       p.value
     );
   }
 
   function getThreshold() public view returns (uint256) {
-    return governanceConfig.thresholds(governanceConfig.SET_THRESHOLD_THRESHOLD());
+    return pggConfig.thresholds(pggConfig.SET_THRESHOLD_THRESHOLD());
   }
 
   function getProposal(uint256 _id) external view returns (bytes32 key, uint256 value, string memory description) {

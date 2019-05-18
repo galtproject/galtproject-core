@@ -34,7 +34,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
   string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
-  PGGConfig public governanceConfig;
+  PGGConfig public pggConfig;
 
   bool initialized;
 
@@ -48,12 +48,12 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
   constructor(
     address[] memory _initialOwners,
     uint256 _required,
-    PGGConfig _governanceConfig
+    PGGConfig _pggConfig
   )
     public
     MultiSigWallet(_initialOwners, _required)
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
   }
 
   function addOwner(address owner) public forbidden {}
@@ -88,8 +88,8 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
     external
     onlyRole(ROLE_ARBITRATOR_MANAGER)
   {
-    uint256 m = governanceConfig.m();
-    uint256 n = governanceConfig.n();
+    uint256 m = pggConfig.m();
+    uint256 n = pggConfig.n();
 
     require(descArbitrators.length >= 3, "List should be L >= 3");
 
@@ -124,7 +124,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
   }
 
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
-    if (destination == governanceConfig.ggr().getGaltTokenAddress()) {
+    if (destination == pggConfig.ggr().getGaltTokenAddress()) {
       checkGaltLimits(data);
     }
 
@@ -169,7 +169,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
       return;
     }
 
-    (uint256 currentPeriodId, uint256 totalStakes) = governanceConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
+    (uint256 currentPeriodId, uint256 totalStakes) = pggConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
     uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
 

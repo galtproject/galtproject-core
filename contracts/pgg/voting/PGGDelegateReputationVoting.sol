@@ -53,21 +53,21 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
   bytes32 public roleReputationNotifier;
   uint256 public totalReputation;
 
-  IPGGConfig internal governanceConfig;
+  IPGGConfig internal pggConfig;
 
   constructor(
-    IPGGConfig _governanceConfig,
+    IPGGConfig _pggConfig,
     bytes32 _roleSpaceReputationNotifier
   )
     public
   {
-    governanceConfig = _governanceConfig;
+    pggConfig = _pggConfig;
     roleReputationNotifier = _roleSpaceReputationNotifier;
   }
 
   modifier onlySpaceReputationNotifier() {
     require(
-      governanceConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
+      pggConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
       "Invalid notifier"
     );
 
