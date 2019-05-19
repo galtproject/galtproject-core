@@ -25,49 +25,49 @@ contract('PGGMultiSig', accounts => {
     this.pggConfigX = await PGGConfig.new(this.ggr.address, 2, 3, 200, [30, 30, 30, 30, 30, 30, 30, 30], {
       from: coreTeam
     });
-    this.abMultiSig = await PGGMultiSig.new([alice, bob, charlie], 2, this.pggConfigX.address, {
+    this.pggMultiSig = await PGGMultiSig.new([alice, bob, charlie], 2, this.pggConfigX.address, {
       from: coreTeam
     });
   });
 
   describe('forbidden methods', () => {
     it('#addOwner()', async function() {
-      const txData = this.abMultiSig.contract.methods.addOwner(dan).encodeABI();
-      let res = await this.abMultiSig.submitTransaction(this.abMultiSig.address, '0', txData, { from: alice });
+      const txData = this.pggMultiSig.contract.methods.addOwner(dan).encodeABI();
+      let res = await this.pggMultiSig.submitTransaction(this.pggMultiSig.address, '0', txData, { from: alice });
       const txId = res.logs[0].args.transactionId.toString(10);
-      res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
+      res = await this.pggMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
-      res = await this.abMultiSig.getOwners();
+      res = await this.pggMultiSig.getOwners();
       assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#removeOwner()', async function() {
-      const txData = this.abMultiSig.contract.methods.removeOwner(charlie).encodeABI();
-      let res = await this.abMultiSig.submitTransaction(this.abMultiSig.address, '0', txData, { from: alice });
+      const txData = this.pggMultiSig.contract.methods.removeOwner(charlie).encodeABI();
+      let res = await this.pggMultiSig.submitTransaction(this.pggMultiSig.address, '0', txData, { from: alice });
       const txId = res.logs[0].args.transactionId.toString(10);
-      res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
+      res = await this.pggMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
-      res = await this.abMultiSig.getOwners();
+      res = await this.pggMultiSig.getOwners();
       assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#replaceOwner()', async function() {
-      const txData = this.abMultiSig.contract.methods.replaceOwner(charlie, dan).encodeABI();
-      let res = await this.abMultiSig.submitTransaction(this.abMultiSig.address, '0', txData, { from: alice });
+      const txData = this.pggMultiSig.contract.methods.replaceOwner(charlie, dan).encodeABI();
+      let res = await this.pggMultiSig.submitTransaction(this.pggMultiSig.address, '0', txData, { from: alice });
       const txId = res.logs[0].args.transactionId.toString(10);
-      res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
+      res = await this.pggMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
-      res = await this.abMultiSig.getOwners();
+      res = await this.pggMultiSig.getOwners();
       assert.sameMembers(res, [alice, bob, charlie]);
     });
 
     it('#changeRequirement()', async function() {
-      const txData = this.abMultiSig.contract.methods.changeRequirement(1).encodeABI();
-      let res = await this.abMultiSig.submitTransaction(this.abMultiSig.address, '0', txData, { from: alice });
+      const txData = this.pggMultiSig.contract.methods.changeRequirement(1).encodeABI();
+      let res = await this.pggMultiSig.submitTransaction(this.pggMultiSig.address, '0', txData, { from: alice });
       const txId = res.logs[0].args.transactionId.toString(10);
-      res = await this.abMultiSig.confirmTransaction(txId, { from: bob });
+      res = await this.pggMultiSig.confirmTransaction(txId, { from: bob });
       assert.equal(res.logs[1].event, 'ExecutionFailure');
-      res = await this.abMultiSig.getOwners();
+      res = await this.pggMultiSig.getOwners();
       assert.sameMembers(res, [alice, bob, charlie]);
     });
   });

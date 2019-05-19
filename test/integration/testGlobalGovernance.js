@@ -465,7 +465,7 @@ contract('GlobalGovernance', accounts => {
   describe('Create/Support Global Proposal Proposals', () => {
     it('should change a corresponding application config value', async function() {
       await this.ggr.transferOwnership(this.globalGovernance.address, { from: coreTeam });
-      const { seedArbitration } = globalGovernanceHelpers(
+      const { seedArbitration: seedPgg } = globalGovernanceHelpers(
         this.galtToken,
         this.spaceToken,
         this.spaceRA,
@@ -485,7 +485,7 @@ contract('GlobalGovernance', accounts => {
       await (async () => {
         await this.galtToken.approve(this.pggFactory.address, ether(100), { from: alice });
 
-        this.pggM = await seedArbitration(
+        this.pggM = await seedPgg(
           this.pggFactory,
           alice,
           [alice, bob, charlie, dan],
@@ -495,7 +495,7 @@ contract('GlobalGovernance', accounts => {
           200,
           200
         );
-        this.pggN = await seedArbitration(
+        this.pggN = await seedPgg(
           this.pggFactory,
           alice,
           [bob, charlie, dan, eve],
@@ -506,7 +506,7 @@ contract('GlobalGovernance', accounts => {
           0
         );
         // X: charlie, dan, eve, george, hannah, mike, nick, yan, zack
-        this.pggX = await seedArbitration(
+        this.pggX = await seedPgg(
           this.pggFactory,
           alice,
           [charlie, dan, eve, george],
@@ -517,7 +517,7 @@ contract('GlobalGovernance', accounts => {
           100
         );
         // Y: hannah, mike, nick, oliver, alice, bob, charlie, dan, xander, yan, zack
-        this.abY = await seedArbitration(
+        this.pggY = await seedPgg(
           this.pggFactory,
           alice,
           [hannah, mike, nick, oliver],
@@ -528,7 +528,7 @@ contract('GlobalGovernance', accounts => {
           50
         );
         // Z: oliver, alice, xander
-        this.pggZ = await seedArbitration(this.pggFactory, alice, [oliver, xander], [alice], [xander], 3500, 0, 600);
+        this.pggZ = await seedPgg(this.pggFactory, alice, [oliver, xander], [alice], [xander], 3500, 0, 600);
       })();
 
       // Step #2. Transfer PGGRegistry to the Governance contract
@@ -677,30 +677,30 @@ contract('GlobalGovernance', accounts => {
       // Y: charlie, dan, eve, george, hannah, mike, nick, yan, zack
       await (async () => {
         log('### MultiSig Y');
-        res = await this.abY.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        res = await this.pggY.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: charlie });
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: dan });
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: eve });
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: hannah });
-        await this.abY.supportGlobalProposalProposalManager.nay(proposalId, { from: mike });
-        await this.abY.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: charlie });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: dan });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: eve });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: hannah });
+        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: mike });
+        await this.pggY.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
 
-        res = await this.abY.supportGlobalProposalProposalManager.getAyeShare(proposalId);
+        res = await this.pggY.supportGlobalProposalProposalManager.getAyeShare(proposalId);
         log('>>>', res.toString(10));
         // assert.equal(res, 30);
 
-        await this.abY.supportGlobalProposalProposalManager.triggerReject(proposalId);
+        await this.pggY.supportGlobalProposalProposalManager.triggerReject(proposalId);
 
         res = await this.globalGovernance.getSupportedMultiSigs(globalProposalId);
         assert.sameMembers(res, [this.pggM.multiSig.address, this.pggN.multiSig.address]);
 
-        res = await this.abY.config.globalProposalSupport(globalProposalId);
+        res = await this.pggY.config.globalProposalSupport(globalProposalId);
         assert.equal(res, false);
 
         res = await this.globalGovernance.getSupportDetails(globalProposalId);
@@ -760,36 +760,36 @@ contract('GlobalGovernance', accounts => {
 
       log(
         'M',
-        await this.spaceRA.lockedMultiSigBalance(this.pggM.multiSig.address),
-        await this.galtRA.lockedMultiSigBalance(this.pggM.multiSig.address),
+        await this.spaceRA.lockedPggBalance(this.pggM.multiSig.address),
+        await this.galtRA.lockedPggBalance(this.pggM.multiSig.address),
         await this.stakeTracker.balanceOf(this.pggM.multiSig.address)
       );
 
       log(
         'N',
-        await this.spaceRA.lockedMultiSigBalance(this.pggN.multiSig.address),
-        await this.galtRA.lockedMultiSigBalance(this.pggN.multiSig.address),
+        await this.spaceRA.lockedPggBalance(this.pggN.multiSig.address),
+        await this.galtRA.lockedPggBalance(this.pggN.multiSig.address),
         await this.stakeTracker.balanceOf(this.pggN.multiSig.address)
       );
 
       log(
         'X',
-        await this.spaceRA.lockedMultiSigBalance(this.pggX.multiSig.address),
-        await this.galtRA.lockedMultiSigBalance(this.pggX.multiSig.address),
+        await this.spaceRA.lockedPggBalance(this.pggX.multiSig.address),
+        await this.galtRA.lockedPggBalance(this.pggX.multiSig.address),
         await this.stakeTracker.balanceOf(this.pggX.multiSig.address)
       );
 
       log(
         'Y',
-        await this.spaceRA.lockedMultiSigBalance(this.abY.multiSig.address),
-        await this.galtRA.lockedMultiSigBalance(this.abY.multiSig.address),
-        await this.stakeTracker.balanceOf(this.abY.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggY.multiSig.address),
+        await this.galtRA.lockedPggBalance(this.pggY.multiSig.address),
+        await this.stakeTracker.balanceOf(this.pggY.multiSig.address)
       );
 
       log(
         'Z',
-        await this.spaceRA.lockedMultiSigBalance(this.pggZ.multiSig.address),
-        await this.galtRA.lockedMultiSigBalance(this.pggZ.multiSig.address),
+        await this.spaceRA.lockedPggBalance(this.pggZ.multiSig.address),
+        await this.galtRA.lockedPggBalance(this.pggZ.multiSig.address),
         await this.stakeTracker.balanceOf(this.pggZ.multiSig.address)
       );
 

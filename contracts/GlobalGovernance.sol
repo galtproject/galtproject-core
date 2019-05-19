@@ -218,8 +218,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     uint256 totalGalt = IRA(galtRA).totalSupply();
     uint256 totalStake = stakeTracker.totalSupply();
 
-    uint256 supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportPggs);
-    uint256 supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportPggs);
+    uint256 supportBySpace = ILockableRA(spaceRA).lockedPggBalances(supportPggs);
+    uint256 supportByGalt = ILockableRA(galtRA).lockedPggBalances(supportPggs);
     uint256 supportByStake = stakeTracker.balancesOf(supportPggs);
 
     (, , , uint256 totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
@@ -281,8 +281,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     totalGalt = IRA(galtRA).totalSupply();
     totalStake = stakeTracker.totalSupply();
 
-    supportBySpace = ILockableRA(spaceRA).lockedMultiSigBalances(supportPggs);
-    supportByGalt = ILockableRA(galtRA).lockedMultiSigBalances(supportPggs);
+    supportBySpace = ILockableRA(spaceRA).lockedPggBalances(supportPggs);
+    supportByGalt = ILockableRA(galtRA).lockedPggBalances(supportPggs);
     supportByStake = stakeTracker.balancesOf(supportPggs);
 
     (spaceShare, galtShare, stakeShare, totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
@@ -314,8 +314,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     totalGalt = IRA(galtRA).totalSupply();
     totalStake = stakeTracker.totalSupply();
 
-    space = ILockableRA(spaceRA).lockedMultiSigBalance(_multiSig);
-    galt = ILockableRA(galtRA).lockedMultiSigBalance(_multiSig);
+    space = ILockableRA(spaceRA).lockedPggBalance(_multiSig);
+    galt = ILockableRA(galtRA).lockedPggBalance(_multiSig);
     stake = stakeTracker.balanceOf(_multiSig);
 
     (spaceShare, galtShare, stakeShare, weight) = calculateSupport(space, galt, stake, totalSpace, totalGalt, totalStake);

@@ -195,7 +195,7 @@ contract('NewPropertyManager', accounts => {
 
     this.mX = this.pggX.multiSig.address;
     this.pggMultiSigX = this.pggX.multiSig;
-    this.abConfigX = this.pggX.config;
+    this.pggConfigX = this.pggX.config;
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.oraclesX = this.pggX.oracles;
 
@@ -537,9 +537,9 @@ contract('NewPropertyManager', accounts => {
         const surveyorKey = await this.newPropertyManager.getOracleTypeShareKey(PM_SURVEYOR);
         const lawyerKey = await this.newPropertyManager.getOracleTypeShareKey(PM_LAWYER);
 
-        let res = await this.abConfigX.applicationConfig(surveyorKey);
+        let res = await this.pggConfigX.applicationConfig(surveyorKey);
         assert.equal(res, 52);
-        res = await this.abConfigX.applicationConfig(lawyerKey);
+        res = await this.pggConfigX.applicationConfig(lawyerKey);
         assert.equal(res, 48);
 
         this.fee = ether(20);

@@ -169,7 +169,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       this.oraclesX = this.pggX.oracles;
 
       // PGG_Y
-      this.abY = await buildPGG(
+      this.pggY = await buildPGG(
         this.pggFactory,
         [bob, charlie, dan, eve],
         2,
@@ -181,11 +181,11 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         applicationConfig,
         bob
       );
-      this.abMultiSigY = this.abY.multiSig;
-      this.candidateTopY = this.abY.candidateTop;
-      this.delegateSpaceVotingY = this.abY.delegateSpaceVoting;
-      // this.oracleStakeVotingY = this.abY.oracleStakeVoting;
-      this.oraclesY = this.abY.oracles;
+      this.pggMultiSigY = this.pggY.multiSig;
+      this.candidateTopY = this.pggY.candidateTop;
+      this.delegateSpaceVotingY = this.pggY.delegateSpaceVoting;
+      // this.oracleStakeVotingY = this.pggY.oracleStakeVoting;
+      this.oraclesY = this.pggY.oracles;
 
       // PGG_Z
       this.pggZ = await buildPGG(
@@ -200,7 +200,7 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
         applicationConfig,
         charlie
       );
-      this.abMultiSigZ = this.pggZ.multiSig;
+      this.pggMultiSigZ = this.pggZ.multiSig;
       // this.abVotingZ = this.pggZ.voting;
       this.delegateSpaceVotingZ = this.pggZ.delegateSpaceVoting;
       // this.delegateGaltVotingZ = this.pggZ.delegateGaltVoting;
@@ -222,8 +222,8 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       });
 
       this.X = this.pggMultiSigX.address;
-      this.Y = this.abMultiSigY.address;
-      this.Z = this.abMultiSigZ.address;
+      this.Y = this.pggMultiSigY.address;
+      this.Z = this.pggMultiSigZ.address;
     });
 
     afterEach(async function() {
@@ -442,24 +442,24 @@ contract('ArbitrationDelegateReputationVoting', accounts => {
       assert.equal(res, 1050);
 
       // CHECK LOCKED BALANCE AFTER LOCKING
-      res = await this.spaceRA.lockedMultiSigBalanceOf(alice, this.Y);
+      res = await this.spaceRA.lockedPggBalanceOf(alice, this.Y);
       assert.equal(res, 500);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(alice, this.Z);
+      res = await this.spaceRA.lockedPggBalanceOf(alice, this.Z);
       assert.equal(res, 0);
 
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, this.X);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, this.X);
       assert.equal(res, 200);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, this.Y);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, this.Y);
       assert.equal(res, 500);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, this.Z);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, this.Z);
       assert.equal(res, 400);
 
-      res = await this.spaceRA.lockedMultiSigBalanceOf(charlie, this.Y);
+      res = await this.spaceRA.lockedPggBalanceOf(charlie, this.Y);
       assert.equal(res, 200);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(charlie, this.Z);
+      res = await this.spaceRA.lockedPggBalanceOf(charlie, this.Z);
       assert.equal(res, 150);
 
-      res = await this.spaceRA.lockedMultiSigBalanceOf(dan, this.X);
+      res = await this.spaceRA.lockedPggBalanceOf(dan, this.X);
       assert.equal(res, 700);
 
       // CHECK VOTING REPUTATION BALANCE

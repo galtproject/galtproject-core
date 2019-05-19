@@ -322,7 +322,7 @@ contract('GaltRA', accounts => {
       const pggMultiSigX = this.pggX.multiSig;
 
       // MultiSigY
-      this.abY = await buildPGG(
+      this.pggY = await buildPGG(
         this.pggFactory,
         [a1, a2, a3],
         2,
@@ -334,7 +334,7 @@ contract('GaltRA', accounts => {
         {},
         bob
       );
-      const pggMultiSigY = this.abY.multiSig;
+      const pggMultiSigY = this.pggY.multiSig;
 
       // MultiSigZ
       this.pggZ = await buildPGG(
@@ -417,7 +417,7 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
@@ -429,7 +429,7 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
       await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
@@ -443,7 +443,7 @@ contract('GaltRA', accounts => {
       assert.equal(res, 100);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
       await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigZ.address, 71, { from: alice }));
