@@ -1,7 +1,7 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltLockerFactory = artifacts.require('./GaltLockerFactory.sol');
 const GaltLocker = artifacts.require('./GaltLocker.sol');
@@ -11,13 +11,13 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const Web3 = require('web3');
 const {
   ether,
-  deploySplitMerge,
+  deploySpaceGeoData,
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
   paymentMethods
 } = require('../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../deploymentHelpers');
 
 const web3 = new Web3(GaltLockerFactory.web3.currentProvider);
 
@@ -33,11 +33,11 @@ contract('GaltRA', accounts => {
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
-    this.spaceGeoData = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySpaceGeoData(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.galtLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('GALT_LOCKER_REGISTRAR'), {
       from: coreTeam
     });
@@ -46,7 +46,7 @@ contract('GaltRA', accounts => {
 
     await this.acl.initialize();
     await this.ggr.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.galtRA.initialize(this.ggr.address);
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
@@ -55,7 +55,7 @@ contract('GaltRA', accounts => {
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, { from: coreTeam });
@@ -294,21 +294,21 @@ contract('GaltRA', accounts => {
 
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
-      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
-      await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-      await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-      await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
+      await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
+      await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+      await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+      await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
         from: coreTeam
       });
 
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: alice });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: bob });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: charlie });
 
       // MultiSigX
-      this.abX = await buildArbitration(
-        this.multiSigFactory,
+      this.pggX = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -319,11 +319,11 @@ contract('GaltRA', accounts => {
         {},
         alice
       );
-      const abMultiSigX = this.abX.multiSig;
+      const pggMultiSigX = this.pggX.multiSig;
 
       // MultiSigY
-      this.abY = await buildArbitration(
-        this.multiSigFactory,
+      this.abY = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -334,11 +334,11 @@ contract('GaltRA', accounts => {
         {},
         bob
       );
-      const abMultiSigY = this.abY.multiSig;
+      const pggMultiSigY = this.abY.multiSig;
 
       // MultiSigZ
-      this.abZ = await buildArbitration(
-        this.multiSigFactory,
+      this.pggZ = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -349,7 +349,7 @@ contract('GaltRA', accounts => {
         {},
         charlie
       );
-      const abMultiSigZ = this.abZ.multiSig;
+      const pggMultiSigZ = this.pggZ.multiSig;
 
       await this.galtToken.approve(this.galtLockerFactory.address, ether(10), { from: alice });
       let res = await this.galtLockerFactory.build({ from: alice });
@@ -399,9 +399,9 @@ contract('GaltRA', accounts => {
       assert.equal(res, 450);
 
       // Bob stakes reputation in multiSigA
-      await this.galtRA.lockReputation(abMultiSigX.address, 100, { from: bob });
-      await this.galtRA.lockReputation(abMultiSigY.address, 30, { from: bob });
-      await this.galtRA.lockReputation(abMultiSigZ.address, 70, { from: bob });
+      await this.galtRA.lockReputation(pggMultiSigX.address, 100, { from: bob });
+      await this.galtRA.lockReputation(pggMultiSigY.address, 30, { from: bob });
+      await this.galtRA.lockReputation(pggMultiSigZ.address, 70, { from: bob });
 
       // Alice can revoke only 50 unlocked reputation tokens
       await assertRevert(this.galtRA.revoke(bob, 51, { from: alice }));
@@ -409,7 +409,7 @@ contract('GaltRA', accounts => {
 
       // To revoke locked reputation Alice uses #revokeLocked() and explicitly
       // specifies multiSig to revoke reputation from
-      await assertRevert(this.galtRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
 
       res = await this.galtRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -417,11 +417,11 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
-      await this.galtRA.revokeLocked(bob, abMultiSigX.address, 100, { from: bob });
+      await this.galtRA.revokeLocked(bob, pggMultiSigX.address, 100, { from: bob });
 
       res = await this.galtRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -429,10 +429,10 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.galtRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
 
       // The above doesn't affect on Alice ability to revoke delegated to Bob balance
       await this.galtRA.revoke(bob, 100, { from: alice });
@@ -443,12 +443,12 @@ contract('GaltRA', accounts => {
       assert.equal(res, 100);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.galtRA.lockedMultiSigBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.galtRA.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
-      await this.galtRA.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
-      await this.galtRA.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
+      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigZ.address, 71, { from: alice }));
+      await this.galtRA.revokeLocked(bob, pggMultiSigZ.address, 70, { from: alice });
+      await this.galtRA.revokeLocked(bob, pggMultiSigY.address, 30, { from: alice });
       await this.galtRA.revoke(charlie, 50, { from: alice });
 
       // ATTEMPT TO BURN

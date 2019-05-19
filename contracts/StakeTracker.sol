@@ -38,7 +38,7 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     ggr = _ggr;
   }
 
-  modifier onlyValidOracleStakesAccounting(address _multiSig) {
+  modifier onlyValidOracleStakeAccounting(address _multiSig) {
     IPGGRegistry(ggr.getPggRegistryAddress())
       .getPggConfig(_multiSig)
       .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
@@ -46,12 +46,12 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     _;
   }
 
-  function onStake(address _multiSig, uint256 _amount) external onlyValidOracleStakesAccounting(_multiSig) {
+  function onStake(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
     _totalSupply += _amount;
     _pggStakes[_multiSig] += _amount;
   }
 
-  function onSlash(address _multiSig, uint256 _amount) external onlyValidOracleStakesAccounting(_multiSig) {
+  function onSlash(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
     _totalSupply -= _amount;
     _pggStakes[_multiSig] -= _amount;
   }

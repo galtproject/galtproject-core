@@ -116,7 +116,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
     IPGGMultiSig _pggMultiSig,
     IPGGMultiSigCandidateTop _arbitratorVoting,
     IPGGArbitratorStakeAccounting _arbitratorStakeAccounting,
-    IPGGOracleStakeAccounting _oracleStakesAccounting,
+    IPGGOracleStakeAccounting _oracleStakeAccounting,
     IPGGOracles _arbitrationOracles,
     IPGGDelegateReputationVoting _delegateSpaceVoting,
     IPGGDelegateReputationVoting _delegateGaltVoting,
@@ -130,7 +130,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
     contracts[MULTI_SIG_CONTRACT] = address(_pggMultiSig);
     contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT] = address(_arbitratorVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
-    contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakesAccounting);
+    contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakeAccounting);
     contracts[ORACLES_CONTRACT] = address(_arbitrationOracles);
     contracts[DELEGATE_SPACE_VOTING_CONTRACT] = address(_delegateSpaceVoting);
     contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);

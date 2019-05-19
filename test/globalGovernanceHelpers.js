@@ -4,7 +4,7 @@ const GaltLocker = artifacts.require('./GaltLocker.sol');
 const pIteration = require('p-iteration');
 
 const { ether, initHelperWeb3 } = require('./helpers');
-const { buildArbitration } = require('./deploymentHelpers');
+const { buildPGG } = require('./deploymentHelpers');
 
 const { web3 } = SpaceLocker;
 const { utf8ToHex } = web3.utils;
@@ -21,7 +21,7 @@ function globalGovernanceHelpers(
   _spaceToken,
   _spaceRA,
   _galtRA,
-  _splitMerge,
+  _spaceGeoData,
   _spaceLockerFactory,
   _galtLockerFactory,
   _initialOwners,
@@ -35,7 +35,7 @@ function globalGovernanceHelpers(
   const spaceToken = _spaceToken;
   const spaceRA = _spaceRA;
   const galtRA = _galtRA;
-  const splitMerge = _splitMerge;
+  const spaceGeoData = _spaceGeoData;
   const spaceLockerFactory = _spaceLockerFactory;
   const galtLockerFactory = _galtLockerFactory;
   const spaceMinterAddress = _spaceMinterAddress;
@@ -117,7 +117,7 @@ function globalGovernanceHelpers(
       galtReputationToLock = 0,
       oracleReputationToStake = 0
     ) {
-      const ab = await buildArbitration(
+      const pgg = await buildPGG(
         factory,
         _initialOwners,
         2,
@@ -132,13 +132,13 @@ function globalGovernanceHelpers(
 
       if (spaceReputationToLock > 0) {
         await pIteration.forEach(spaceReputationDelegates, async function(delegate) {
-          await Helpers.addSpaceReputationDelegate(delegate, ab.multiSig.address, spaceReputationToLock);
+          await Helpers.addSpaceReputationDelegate(delegate, pgg.multiSig.address, spaceReputationToLock);
         });
       }
 
       if (galtReputationToLock > 0) {
         await pIteration.forEach(galtReputationDelegates, async function(delegate) {
-          await Helpers.addGaltReputationDelegate(delegate, ab.multiSig.address, galtReputationToLock);
+          await Helpers.addGaltReputationDelegate(delegate, pgg.multiSig.address, galtReputationToLock);
         });
       }
 
@@ -146,14 +146,14 @@ function globalGovernanceHelpers(
         await pIteration.forEach(stakeReputationOracles, async function(delegate) {
           await Helpers.addStakeReputationOracle(
             delegate,
-            ab.oracles,
-            ab.oracleStakeAccounting,
+            pgg.oracles,
+            pgg.oracleStakeAccounting,
             oracleReputationToStake
           );
         });
       }
 
-      return ab;
+      return pgg;
     }
   };
 

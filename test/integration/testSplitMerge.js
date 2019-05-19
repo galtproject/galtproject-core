@@ -27,7 +27,7 @@ chai.use(chaiAsPromised);
 chai.use(chaiBigNumber);
 chai.should();
 
-contract.only('SpaceGeoData', ([coreTeam, alice]) => {
+contract('SpaceGeoData', ([coreTeam, alice]) => {
   before(clearLibCache);
   const areaAccurancy = 7;
 

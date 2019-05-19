@@ -3,9 +3,9 @@ const UpdatePropertyManager = artifacts.require('./UpdatePropertyManager.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
@@ -23,7 +23,7 @@ const {
   deploySpaceGeoDataMock,
   clearLibCache
 } = require('../../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 const web3 = new Web3(UpdatePropertyManager.web3.currentProvider);
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -80,7 +80,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only('UpdatePropertyManager', (accounts) => {
+contract('UpdatePropertyManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -118,15 +118,15 @@ contract.only('UpdatePropertyManager', (accounts) => {
     this.updatePropertyManager = await UpdatePropertyManager.new({ from: coreTeam });
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+    this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
     await this.acl.initialize();
     await this.ggr.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
 
     const deployment = await deploySpaceGeoDataMock(this.ggr);
@@ -135,7 +135,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
@@ -149,19 +149,19 @@ contract.only('UpdatePropertyManager', (accounts) => {
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
 
-    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+    await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
       from: coreTeam
     });
-    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
-    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+    await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
     const applicationConfig = {};
     applicationConfig[bytes32('PL_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
@@ -174,16 +174,16 @@ contract.only('UpdatePropertyManager', (accounts) => {
     applicationConfig[await this.updatePropertyManager.getOracleTypeShareKey(PL_AUDITOR)] = numberToEvmWord(25);
 
     // Oracle minimal stake values setup
-    const surveyorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_SURVEYOR);
-    const lawyerKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_LAWYER);
-    const auditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PL_AUDITOR);
+    const surveyorKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PL_SURVEYOR);
+    const lawyerKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PL_LAWYER);
+    const auditorKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PL_AUDITOR);
 
     applicationConfig[surveyorKey] = numberToEvmWord(ether(1500));
     applicationConfig[lawyerKey] = numberToEvmWord(ether(1500));
     applicationConfig[auditorKey] = numberToEvmWord(ether(1500));
 
-    this.abX = await buildArbitration(
-      this.multiSigFactory,
+    this.pggX = await buildPGG(
+      this.pggFactory,
       [bob, charlie, dan, eve, frank],
       3,
       7,
@@ -195,11 +195,11 @@ contract.only('UpdatePropertyManager', (accounts) => {
       alice
     );
 
-    this.mX = this.abX.multiSig.address;
-    this.abMultiSigX = this.abX.multiSig;
-    this.abConfig = this.abX.config;
-    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.oraclesX = this.abX.oracles;
+    this.mX = this.pggX.multiSig.address;
+    this.pggMultiSigX = this.pggX.multiSig;
+    this.pggConfigX = this.pggX.config;
+    this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
+    this.oraclesX = this.pggX.oracles;
 
     await this.spaceToken.addRoleTo(minter, 'minter');
     await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
@@ -255,7 +255,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
         let res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -279,7 +279,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.abMultiSigX.address,
+              this.pggMultiSigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.description,
@@ -297,7 +297,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.abMultiSigX.address,
+            this.pggMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -322,7 +322,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
         it('should calculate oracle rewards according to their roles share', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.abMultiSigX.address,
+            this.pggMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -361,7 +361,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(57), { from: alice });
         const res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -556,7 +556,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#submitApplication()', () => {
       it('should create a new application', async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -587,7 +587,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.abMultiSigX.address,
+              this.pggMultiSigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.description,
@@ -605,7 +605,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         it('should allow applications with payment greater than required', async function() {
           await this.updatePropertyManager.submitApplication(
-            this.abMultiSigX.address,
+            this.pggMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -622,7 +622,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.abMultiSigX.address,
+            this.pggMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -646,7 +646,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.abMultiSigX.address,
+            this.pggMultiSigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -684,7 +684,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -738,7 +738,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#approveApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -797,7 +797,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#revertApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -867,7 +867,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#resubmitApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -917,7 +917,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('#withdrawSpaceToken()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -952,7 +952,7 @@ contract.only('UpdatePropertyManager', (accounts) => {
     describe('claim reward', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.abMultiSigX.address,
+          this.pggMultiSigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,

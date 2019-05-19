@@ -23,7 +23,7 @@ import "../pgg/interfaces/IPGGMultiSig.sol";
 contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
 
-  bytes32 public constant ROLE_MULTI_SIG_REGISTRAR = bytes32("MULTI_SIG_REGISTRAR");
+  bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
 
   // MultiSig address => Details
   // TODO: need to be a private?
@@ -45,8 +45,8 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
 
   modifier onlyMultiSigRegistrar() {
     require(
-      ggr.getACL().hasRole(msg.sender, ROLE_MULTI_SIG_REGISTRAR),
-      "Only MULTI_SIG_REGISTRAR role allowed"
+      ggr.getACL().hasRole(msg.sender, ROLE_PGG_REGISTRAR),
+      "Only PGG_REGISTRAR role allowed"
     );
 
     _;
@@ -77,7 +77,7 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
 
   // GETTERS
 
-  function isMultiSigValid(address _multiSig) external view returns(bool) {
+  function isPggMultiSigValid(address _multiSig) external view returns(bool) {
     return (groups[_multiSig].active == true);
   }
 

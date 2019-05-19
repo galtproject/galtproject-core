@@ -2,19 +2,19 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const ClaimManager = artifacts.require('./ClaimManager.sol');
 const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
 const { assertRevert, ether, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
@@ -109,25 +109,25 @@ contract('ArbitratorSlashing', accounts => {
 
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-      this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+      this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
       this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
         from: coreTeam
       });
-      this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+      this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
       this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
       await this.acl.initialize();
       await this.ggr.initialize();
       await this.feeRegistry.initialize();
-      await this.multiSigRegistry.initialize(this.ggr.address);
+      await this.pggRegistry.initialize(this.ggr.address);
       await this.stakeTracker.initialize(this.ggr.address);
       await this.claimManager.initialize(this.ggr.address);
 
       await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, {
+      await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, {
         from: coreTeam
       });
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
@@ -137,20 +137,20 @@ contract('ArbitratorSlashing', accounts => {
       });
       this.sra = await MockSpaceRA.new(this.ggr.address, { from: coreTeam });
       await this.sra.initialize(this.ggr.address);
-      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+      this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
 
       await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
-      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
       await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
       await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
 
-      await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-      await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-      await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+      await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+      await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
         from: coreTeam
       });
     })();
@@ -164,15 +164,15 @@ contract('ArbitratorSlashing', accounts => {
       applicationConfig[bytes32('CM_N')] = numberToEvmWord(3);
       applicationConfig[bytes32('CM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
-      const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
-      const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
+      const pcCustodianKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
+      const pcAuditorKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
 
       applicationConfig[pcCustodianKey] = numberToEvmWord(ether(200));
       applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
 
-      await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
-      this.abX = await buildArbitration(
-        this.multiSigFactory,
+      await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+      this.pggX = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         7,
@@ -183,14 +183,14 @@ contract('ArbitratorSlashing', accounts => {
         applicationConfig,
         alice
       );
-      this.abMultiSigX = this.abX.multiSig;
-      this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-      this.candidateTopX = this.abX.candidateTop;
-      this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
-      this.delegateSpaceVotingX = this.abX.delegateSpaceVoting;
-      this.oraclesX = this.abX.oracles;
+      this.pggMultiSigX = this.pggX.multiSig;
+      this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
+      this.candidateTopX = this.pggX.candidateTop;
+      this.arbitratorStakeAccountingX = this.pggX.arbitratorStakeAccounting;
+      this.delegateSpaceVotingX = this.pggX.delegateSpaceVoting;
+      this.oraclesX = this.pggX.oracles;
 
-      this.mX = this.abMultiSigX.address;
+      this.mX = this.pggMultiSigX.address;
     })();
 
     // Mint and distribute SRA reputation using mock
@@ -258,7 +258,7 @@ contract('ArbitratorSlashing', accounts => {
 
       await this.candidateTopX.pushArbitrators();
 
-      res = await this.abMultiSigX.getOwners();
+      res = await this.pggMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
     })();
   });
@@ -377,7 +377,7 @@ contract('ArbitratorSlashing', accounts => {
 
       await this.candidateTopX.pushArbitrators();
 
-      res = await this.abMultiSigX.getOwners();
+      res = await this.pggMultiSigX.getOwners();
       assert.sameMembers(res, [alice, charlie, eve]);
     });
   });
@@ -402,7 +402,7 @@ contract('ArbitratorSlashing', accounts => {
 
       await this.candidateTopX.pushArbitrators();
 
-      res = await this.abMultiSigX.getOwners();
+      res = await this.pggMultiSigX.getOwners();
       assert.sameMembers(res, [bob, charlie, eve]);
 
       // and turn in on again
@@ -424,7 +424,7 @@ contract('ArbitratorSlashing', accounts => {
 
       await this.candidateTopX.pushArbitrators();
 
-      res = await this.abMultiSigX.getOwners();
+      res = await this.pggMultiSigX.getOwners();
       assert.sameMembers(res, [alice, bob, charlie, eve]);
     });
   });

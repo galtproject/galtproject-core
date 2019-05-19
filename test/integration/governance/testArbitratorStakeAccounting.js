@@ -1,7 +1,7 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
-const ArbitratorStakeAccounting = artifacts.require('./MockArbitratorStakeAccounting.sol');
-const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
+const PGGArbitratorStakeAccounting = artifacts.require('./MockPGGArbitratorStakeAccounting.sol');
+const PGGConfig = artifacts.require('./PGGConfig.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
@@ -13,7 +13,7 @@ const bytes32 = utf8ToHex;
 
 initHelperWeb3(web3);
 
-contract('ArbitratorStakeAccounting', accounts => {
+contract('PGGArbitratorStakeAccounting', accounts => {
   const [
     coreTeam,
     slashManager,
@@ -38,10 +38,10 @@ contract('ArbitratorStakeAccounting', accounts => {
     await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
 
-    this.config = await ArbitrationConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
+    this.config = await PGGConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
       from: coreTeam
     });
-    this.arbitratorStakeAccountingX = await ArbitratorStakeAccounting.new(this.config.address, 60, {
+    this.arbitratorStakeAccountingX = await PGGArbitratorStakeAccounting.new(this.config.address, 60, {
       from: coreTeam
     });
 

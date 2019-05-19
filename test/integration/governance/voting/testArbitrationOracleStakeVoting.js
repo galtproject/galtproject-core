@@ -3,7 +3,7 @@ const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
@@ -15,7 +15,7 @@ const {
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
-  deploySplitMergeMock,
+  deploySpaceGeoDataMock,
   numberToEvmWord,
   paymentMethods
 } = require('../../../helpers');
@@ -23,7 +23,7 @@ const {
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 const { utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
-const { deployMultiSigFactory, buildArbitration } = require('../../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../../deploymentHelpers');
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -37,7 +37,7 @@ const CHARLIE = bytes32('Charlie');
 const DAN = bytes32('Dan');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('ArbitrationOracleStakeVoting', accounts => {
+contract('PGGOracleStakeVoting', accounts => {
   const [
     coreTeam,
     oracleManager,
@@ -59,7 +59,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
-    const deployment = await deploySplitMergeMock(this.ggr);
+    const deployment = await deploySpaceGeoDataMock(this.ggr);
     this.spaceGeoData = deployment.spaceGeoData;
 
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
@@ -72,7 +72,7 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     this.galtLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
     await this.spaceToken.addRoleTo(minter, 'minter', {
@@ -86,13 +86,13 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     await this.acl.initialize();
     await this.ggr.initialize();
     await this.feeRegistry.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
     await this.spaceRA.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -112,10 +112,10 @@ contract('ArbitrationOracleStakeVoting', accounts => {
     await this.galtToken.mint(charlie, ether(1000000000), { from: coreTeam });
     await this.galtToken.mint(dan, ether(1000000000), { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
-    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+    this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
+    await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
       from: coreTeam
     });
 
@@ -130,19 +130,19 @@ contract('ArbitrationOracleStakeVoting', accounts => {
   });
 
   beforeEach(async function() {
-    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
-    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
+    await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
 
-    await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
+    await this.galtToken.approve(this.pggFactory.address, ether(10), { from: alice });
 
     const applicationConfigX = {};
     applicationConfigX[TYPE_A] = numberToEvmWord(ether(200));
     applicationConfigX[TYPE_B] = numberToEvmWord(ether(200));
     applicationConfigX[TYPE_C] = numberToEvmWord(ether(200));
 
-    // MultiSigX
-    this.abX = await buildArbitration(
-      this.multiSigFactory,
+    // PGG_X
+    this.pggX = await buildPGG(
+      this.pggFactory,
       [bob, charlie, dan, eve],
       2,
       3,
@@ -153,10 +153,10 @@ contract('ArbitrationOracleStakeVoting', accounts => {
       applicationConfigX,
       alice
     );
-    this.abMultiSigX = this.abX.multiSig;
-    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.oracleStakeVotingX = this.abX.oracleStakeVoting;
-    this.oraclesX = this.abX.oracles;
+    this.pggMultiSigX = this.pggX.multiSig;
+    this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
+    this.oracleStakeVotingX = this.pggX.oracleStakeVoting;
+    this.oraclesX = this.pggX.oracles;
 
     // CONFIGURING
     await this.oraclesX.addOracle(bob, BOB, MN, '', [], [TYPE_A], {

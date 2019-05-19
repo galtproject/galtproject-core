@@ -47,12 +47,12 @@ import "./pgg/proposals/ArbitrationCreateGlobalProposalProposalManagerFactory.so
 import "./pgg/proposals/ArbitrationSupportGlobalProposalProposalManagerFactory.sol";
 
 
-contract MultiSigFactory is Ownable, Initializable {
+contract PGGFactory is Ownable, Initializable {
   event BuildPGGFirstStep(
     bytes32 groupId,
     address pggConfig,
     address pggMultiSig,
-    address pggAracleStakesAccounting
+    address pggOracleStakeAccounting
   );
 
   event BuildPGGSecondStep(
