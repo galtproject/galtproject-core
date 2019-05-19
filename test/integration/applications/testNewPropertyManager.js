@@ -377,7 +377,11 @@ contract('NewPropertyManager', accounts => {
 
     describe('#submitApplication() with area provided by the applicant', () => {
       beforeEach(async function() {
-        this.fee = await this.newPropertyManager.getSubmissionFeeByArea(this.pggMultiSigX.address, Currency.GALT, ether(600));
+        this.fee = await this.newPropertyManager.getSubmissionFeeByArea(
+          this.pggMultiSigX.address,
+          Currency.GALT,
+          ether(600)
+        );
         assert.equal(this.fee, ether(5));
 
         await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
@@ -654,7 +658,11 @@ contract('NewPropertyManager', accounts => {
       await this.geodesicMock.calculateContourArea(this.contour);
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
-      const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(this.pggMultiSigX.address, Currency.ETH, area);
+      const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
+        this.pggMultiSigX.address,
+        Currency.ETH,
+        area
+      );
       assert.equal(expectedFee, ether(1.5));
       this.fee = ether(2);
     });

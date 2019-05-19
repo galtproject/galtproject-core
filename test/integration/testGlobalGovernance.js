@@ -528,16 +528,7 @@ contract('GlobalGovernance', accounts => {
           50
         );
         // Z: oliver, alice, xander
-        this.pggZ = await seedArbitration(
-          this.pggFactory,
-          alice,
-          [oliver, xander],
-          [alice],
-          [xander],
-          3500,
-          0,
-          600
-        );
+        this.pggZ = await seedArbitration(this.pggFactory, alice, [oliver, xander], [alice], [xander], 3500, 0, 600);
       })();
 
       // Step #2. Transfer PGGRegistry to the Governance contract
