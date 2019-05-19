@@ -31,20 +31,20 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
       );
     }
 
-    packageToContour[_spaceTokenId] = _geohashesContour;
+    spaceTokenContour[_spaceTokenId] = _geohashesContour;
     emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
   }
 
   function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
     require(_heightsList.length == getSpaceTokenContour(_packageTokenId).length, "Number of height elements should be equal contour length");
 
-    packageToHeights[_packageTokenId] = _heightsList;
+    spaceTokenHeight[_packageTokenId] = _heightsList;
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
   }
 
   function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
-    tokenArea[_spaceTokenId] = _area;
-    tokenAreaSource[_spaceTokenId] = _areaSource;
+    spaceTokenArea[_spaceTokenId] = _area;
+    spaceTokenAreaSource[_spaceTokenId] = _areaSource;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
   }
 
