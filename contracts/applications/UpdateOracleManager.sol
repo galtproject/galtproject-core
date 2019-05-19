@@ -53,25 +53,25 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
   function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_M));
+    return uint256(pggConfigValue(_multiSig, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
   function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_N));
+    return uint256(pggConfigValue(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
@@ -87,7 +87,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     external
     payable
   {
-    arbitrationConfig(_multiSig).getOracles().requireOracleActive(_oracleAddress);
+    pggConfig(_multiSig).getOracles().requireOracleActive(_oracleAddress);
     require(_descriptionHashes.length > 0, "Description hashes required");
     require(_oracleTypes.length > 0, "Oracle Types required");
 
@@ -118,7 +118,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
 
-    arbitrationConfig(a.multiSig)
+    pggConfig(a.multiSig)
       .getOracles()
       .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }

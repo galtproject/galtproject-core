@@ -17,7 +17,7 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 import "./AbstractArbitratorApplication.sol";
 
@@ -90,8 +90,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   function lock(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
-    multiSigRegistry().requireValidMultiSig(a.multiSig);
-    require(ArbitratorsMultiSig(a.multiSig).isOwner(msg.sender), "Not active arbitrator");
+    pggRegistry().requireValidPggMultiSig(a.multiSig);
+    require(PGGMultiSig(a.multiSig).isOwner(msg.sender), "Not active arbitrator");
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
@@ -198,7 +198,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   )
     internal
   {
-    multiSigRegistry().requireValidMultiSig(_multiSig);
+    pggRegistry().requireValidPggMultiSig(_multiSig);
 
     // Default is ETH
     Currency currency;

@@ -20,7 +20,7 @@ contract ILockableRA {
   function lockReputation(address _multiSig, uint256 _amount) external;
   function unlockReputation(address _multiSig, uint256 _amount) external;
   function lockedBalanceOf(address _owner) external view returns (uint256);
-  function lockedMultiSigBalance(address _multiSig) external view returns (uint256);
-  function lockedMultiSigBalanceOf(address _owner, address _multiSig) external view returns (uint256);
-  function lockedMultiSigBalances(address[] calldata _multiSigs) external view returns (uint256);
+  function lockedPggBalance(address _multiSig) external view returns (uint256);
+  function lockedPggBalanceOf(address _owner, address _multiSig) external view returns (uint256);
+  function lockedPggBalances(address[] calldata _multiSigs) external view returns (uint256);
 }

@@ -1,17 +1,17 @@
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const NewOracleManager = artifacts.require('./NewOracleManager.sol');
 const UpdateOracleManager = artifacts.require('./UpdateOracleManager.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const { initHelperWeb3, ether, assertRevert, numberToEvmWord, paymentMethods } = require('../../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
@@ -88,23 +88,23 @@ contract('UpdateOracleManager', (accounts) => {
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
     this.updateOracle = await UpdateOracleManager.new({ from: coreTeam });
-    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+    this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
 
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
 
     await this.acl.initialize();
     await this.ggr.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
@@ -116,14 +116,14 @@ contract('UpdateOracleManager', (accounts) => {
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
 
-    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+    await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
       from: coreTeam
     });
-    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
 
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), this.newOracle.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), this.updateOracle.address, true, { from: coreTeam });
@@ -143,16 +143,16 @@ contract('UpdateOracleManager', (accounts) => {
     applicationConfig[bytes32('UO_N')] = numberToEvmWord(5);
     applicationConfig[bytes32('UO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
-    const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
-    const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
+    const pcCustodianKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
+    const pcAuditorKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
 
     applicationConfig[pcCustodianKey] = numberToEvmWord(ether(30));
     applicationConfig[pcAuditorKey] = numberToEvmWord(ether(30));
 
-    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+    await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
-    this.abX = await buildArbitration(
-      this.multiSigFactory,
+    this.pggX = await buildPGG(
+      this.pggFactory,
       [bob, charlie, dan, frank, george],
       3,
       7,
@@ -164,10 +164,10 @@ contract('UpdateOracleManager', (accounts) => {
       alice
     );
 
-    this.mX = this.abX.multiSig.address;
-    this.abMultiSigX = this.abX.multiSig;
-    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.oraclesX = this.abX.oracles;
+    this.mX = this.pggX.multiSig.address;
+    this.pggMultiSigX = this.pggX.multiSig;
+    this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
+    this.oraclesX = this.pggX.oracles;
 
     await this.newOracle.initialize(this.ggr.address, {
       from: coreTeam

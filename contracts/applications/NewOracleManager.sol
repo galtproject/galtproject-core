@@ -17,7 +17,7 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 import "./ArbitratorApprovableApplication.sol";
 
@@ -52,25 +52,25 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   }
 
   function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
   }
 
   function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
   function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_M));
+    return uint256(pggConfigValue(_multiSig, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
   function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfigValue(_multiSig, CONFIG_N));
+    return uint256(pggConfigValue(_multiSig, CONFIG_N));
   }
 
   function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
@@ -117,7 +117,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
 
-    arbitrationConfig(a.multiSig)
+    pggConfig(a.multiSig)
       .getOracles()
       .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }

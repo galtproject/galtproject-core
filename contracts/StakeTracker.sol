@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./registries/GaltGlobalRegistry.sol";
-import "./registries/interfaces/IMultiSigRegistry.sol";
+import "./registries/interfaces/IPGGRegistry.sol";
 import "./interfaces/IStakeTracker.sol";
 
 
@@ -25,7 +25,7 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
   uint256 internal _totalSupply;
 
   // MultiSig => totalStaked
-  mapping(address => uint256) internal _multiSigStakes;
+  mapping(address => uint256) internal _pggStakes;
 
   bytes32 public constant MULTI_SIG_ROLE = bytes32("stake_tracker_notifier");
 
@@ -38,22 +38,22 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     ggr = _ggr;
   }
 
-  modifier onlyValidOracleStakesAccounting(address _multiSig) {
-    IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-      .getArbitrationConfig(_multiSig)
+  modifier onlyValidOracleStakeAccounting(address _multiSig) {
+    IPGGRegistry(ggr.getPggRegistryAddress())
+      .getPggConfig(_multiSig)
       .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
 
     _;
   }
 
-  function onStake(address _multiSig, uint256 _amount) external onlyValidOracleStakesAccounting(_multiSig) {
+  function onStake(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
     _totalSupply += _amount;
-    _multiSigStakes[_multiSig] += _amount;
+    _pggStakes[_multiSig] += _amount;
   }
 
-  function onSlash(address _multiSig, uint256 _amount) external onlyValidOracleStakesAccounting(_multiSig) {
+  function onSlash(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
     _totalSupply -= _amount;
-    _multiSigStakes[_multiSig] -= _amount;
+    _pggStakes[_multiSig] -= _amount;
   }
 
   // GETTERS
@@ -63,14 +63,14 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _multiSigStakes[_multiSigs[i]];
+      total += _pggStakes[_multiSigs[i]];
     }
 
     return total;
   }
 
   function balanceOf(address _multiSig) external view returns(uint256) {
-    return _multiSigStakes[_multiSig];
+    return _pggStakes[_multiSig];
   }
 
   function totalSupply() external view returns(uint256) {

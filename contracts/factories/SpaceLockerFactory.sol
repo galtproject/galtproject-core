@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISplitMerge.sol";
+import "../interfaces/ISpaceGeoData.sol";
 import "./interfaces/ISpaceLockerFactory.sol";
 import "../SpaceLocker.sol";
 

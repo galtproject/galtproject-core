@@ -2,7 +2,7 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const LockerRegistry = artifacts.require('./LockerRegistry.sol');
 const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const SpaceLocker = artifacts.require('./SpaceLocker.sol');
@@ -13,13 +13,13 @@ const Web3 = require('web3');
 
 const {
   ether,
-  deploySplitMerge,
+  deploySpaceGeoData,
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
   paymentMethods
 } = require('../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../deploymentHelpers');
 
 const web3 = new Web3(SpaceRA.web3.currentProvider);
 
@@ -36,11 +36,11 @@ contract('SpaceRA', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.splitMerge = await deploySplitMerge(this.ggr);
+    this.spaceGeoData = await deploySpaceGeoData(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'), {
       from: coreTeam
     });
@@ -49,7 +49,7 @@ contract('SpaceRA', accounts => {
 
     await this.acl.initialize();
     await this.ggr.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.spaceRA.initialize(this.ggr.address);
 
     await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
@@ -60,7 +60,7 @@ contract('SpaceRA', accounts => {
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
@@ -99,9 +99,9 @@ contract('SpaceRA', accounts => {
       assert.equal(res, charlie);
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -334,22 +334,22 @@ contract('SpaceRA', accounts => {
 
   describe('revokeLocked', () => {
     it('should allow revoking locked reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
-      await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+      this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
+      await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
 
-      await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-      await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-      await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+      await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+      await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+      await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
         from: coreTeam
       });
 
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: alice });
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: bob });
-      await this.galtToken.approve(this.multiSigFactory.address, ether(10), { from: charlie });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: alice });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: bob });
+      await this.galtToken.approve(this.pggFactory.address, ether(10), { from: charlie });
 
       // MultiSigX
-      this.abX = await buildArbitration(
-        this.multiSigFactory,
+      this.pggX = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -360,11 +360,11 @@ contract('SpaceRA', accounts => {
         {},
         alice
       );
-      const abMultiSigX = this.abX.multiSig;
+      const pggMultiSigX = this.pggX.multiSig;
 
       // MultiSigY
-      this.abY = await buildArbitration(
-        this.multiSigFactory,
+      this.pggY = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -375,11 +375,11 @@ contract('SpaceRA', accounts => {
         {},
         bob
       );
-      const abMultiSigY = this.abY.multiSig;
+      const pggMultiSigY = this.pggY.multiSig;
 
       // MultiSigZ
-      this.abZ = await buildArbitration(
-        this.multiSigFactory,
+      this.pggZ = await buildPGG(
+        this.pggFactory,
         [a1, a2, a3],
         2,
         3,
@@ -390,7 +390,7 @@ contract('SpaceRA', accounts => {
         {},
         charlie
       );
-      const abMultiSigZ = this.abZ.multiSig;
+      const pggMultiSigZ = this.pggZ.multiSig;
 
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
@@ -400,9 +400,9 @@ contract('SpaceRA', accounts => {
       const token3 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.splitMerge.setTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -452,9 +452,9 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 450);
 
       // Bob stakes reputation in multiSigA
-      await this.spaceRA.lockReputation(abMultiSigX.address, 100, { from: bob });
-      await this.spaceRA.lockReputation(abMultiSigY.address, 30, { from: bob });
-      await this.spaceRA.lockReputation(abMultiSigZ.address, 70, { from: bob });
+      await this.spaceRA.lockReputation(pggMultiSigX.address, 100, { from: bob });
+      await this.spaceRA.lockReputation(pggMultiSigY.address, 30, { from: bob });
+      await this.spaceRA.lockReputation(pggMultiSigZ.address, 70, { from: bob });
 
       // Alice can revoke only 50 unlocked reputation tokens
       await assertRevert(this.spaceRA.revoke(bob, 51, { from: alice }));
@@ -462,7 +462,7 @@ contract('SpaceRA', accounts => {
 
       // To revoke locked reputation Alice uses #revokeLocked() and explicitly
       // specifies multiSig to revoke reputation from
-      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
 
       res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -470,11 +470,11 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 200);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
-      await this.spaceRA.revokeLocked(bob, abMultiSigX.address, 100, { from: bob });
+      await this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 100, { from: bob });
 
       res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -482,10 +482,10 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 200);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
 
       // The above doesn't affect on Alice ability to revoke delegated to Bob balance
       await this.spaceRA.revoke(bob, 100, { from: alice });
@@ -496,12 +496,12 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 100);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceRA.lockedMultiSigBalanceOf(bob, abMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceRA.revokeLocked(bob, abMultiSigZ.address, 71, { from: alice }));
-      await this.spaceRA.revokeLocked(bob, abMultiSigZ.address, 70, { from: alice });
-      await this.spaceRA.revokeLocked(bob, abMultiSigY.address, 30, { from: alice });
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigZ.address, 71, { from: alice }));
+      await this.spaceRA.revokeLocked(bob, pggMultiSigZ.address, 70, { from: alice });
+      await this.spaceRA.revokeLocked(bob, pggMultiSigY.address, 30, { from: alice });
       await this.spaceRA.revoke(charlie, 50, { from: alice });
 
       // ATTEMPT TO BURN
@@ -527,14 +527,14 @@ contract('SpaceRA', accounts => {
 
   describe('SpaceLocker burn', () => {
     it('should deny minting reputation', async function() {
-      this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
-      await this.galtToken.approve(this.multiSigFactory.address, ether(30), { from: alice });
+      this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
+      await this.galtToken.approve(this.pggFactory.address, ether(30), { from: alice });
 
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.splitMerge.setTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setTokenArea(token1, 800, '0', { from: geoDateManagement });
 
       // CREATE LOCKER
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });

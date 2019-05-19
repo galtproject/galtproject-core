@@ -1,12 +1,12 @@
-const MultiSigFactory = artifacts.require('./MultiSigFactory.sol');
-const ArbitratorsMultiSigFactory = artifacts.require('./ArbitratorsMultiSigFactory.sol');
-const ArbitrationCandidateTopFactory = artifacts.require('./ArbitrationCandidateTopFactory.sol');
-const ArbitratorStakeAccountingFactory = artifacts.require('./ArbitratorStakeAccountingFactory.sol');
-const OracleStakesAccountingFactory = artifacts.require('./OracleStakesAccountingFactory.sol');
-const ArbitrationConfigFactory = artifacts.require('./ArbitrationConfigFactory.sol');
-const ArbitrationOracleFactory = artifacts.require('./ArbitrationOracleFactory.sol');
-const DelegateReputationVotingFactory = artifacts.require('./DelegateReputationVotingFactory.sol');
-const OracleStakeVotingFactory = artifacts.require('./OracleStakeVotingFactory.sol');
+const PGGFactory = artifacts.require('./PGGFactory.sol');
+const PGGMultiSigFactory = artifacts.require('./PGGMultiSigFactory.sol');
+const PGGMultiSigCandidateTopFactory = artifacts.require('./PGGMultiSigCandidateTopFactory.sol');
+const PGGArbitratorStakeAccountingFactory = artifacts.require('./PGGArbitratorStakeAccountingFactory.sol');
+const PGGOracleStakeAccountingFactory = artifacts.require('./PGGOracleStakeAccountingFactory.sol');
+const PGGConfigFactory = artifacts.require('./PGGConfigFactory.sol');
+const PGGOracleFactory = artifacts.require('./PGGOracleFactory.sol');
+const PGGDelegateReputationVotingFactory = artifacts.require('./PGGDelegateReputationVotingFactory.sol');
+const PGGOracleStakeVotingFactory = artifacts.require('./PGGOracleStakeVotingFactory.sol');
 
 const ArbitrationModifyThresholdProposalFactory = artifacts.require('./ArbitrationModifyThresholdProposalFactory.sol');
 const ArbitrationModifyApplicationConfigProposalFactory = artifacts.require(
@@ -29,14 +29,14 @@ const ArbitrationSupportGlobalProposalProposalManagerFactory = artifacts.require
   './ArbitrationSupportGlobalProposalProposalManagerFactory.sol'
 );
 
-const ArbitratorStakeAccounting = artifacts.require('./ArbitratorStakeAccounting.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
-const ArbitratorsMultiSig = artifacts.require('./ArbitratorsMultiSig.sol');
-const ArbitrationCandidateTop = artifacts.require('./ArbitrationCandidateTop.sol');
-const ArbitrationConfig = artifacts.require('./ArbitrationConfig.sol');
-const ArbitrationOracles = artifacts.require('./ArbitrationOracles.sol');
-const DelegateReputationVoting = artifacts.require('./DelegateReputationVoting.sol');
-const OracleStakeVoting = artifacts.require('./OracleStakeVoting.sol');
+const PGGArbitratorStakeAccounting = artifacts.require('./PGGArbitratorStakeAccounting.sol');
+const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
+const PGGMultiSig = artifacts.require('./PGGMultiSig.sol');
+const PGGMultiSigCandidateTop = artifacts.require('./PGGMultiSigCandidateTop.sol');
+const PGGConfig = artifacts.require('./PGGConfig.sol');
+const PGGOracles = artifacts.require('./PGGOracles.sol');
+const PGGDelegateReputationVoting = artifacts.require('./PGGDelegateReputationVoting.sol');
+const PGGOracleStakeVoting = artifacts.require('./PGGOracleStakeVoting.sol');
 const ModifyThresholdProposalManager = artifacts.require('./ModifyThresholdProposalManager.sol');
 const ModifyApplicationConfigProposalManager = artifacts.require('./ModifyApplicationConfigProposalManager.sol');
 const ModifyMofNProposalManager = artifacts.require('./ModifyMofNProposalManager.sol');
@@ -48,19 +48,18 @@ const SupportGlobalProposalProposalManager = artifacts.require('./SupportGlobalP
 const ModifyContractAddressProposalManager = artifacts.require('./ModifyContractAddressProposalManager.sol');
 const RevokeArbitratorsProposalManager = artifacts.require('./RevokeArbitratorsProposalManager.sol');
 
-ArbitrationCandidateTop.numberFormat = 'String';
+PGGMultiSigCandidateTop.numberFormat = 'String';
 
 const Helpers = {
-  async deployMultiSigFactory(ggr, owner) {
-    const multiSig = await ArbitratorsMultiSigFactory.new({ from: owner });
-
-    const candidateTop = await ArbitrationCandidateTopFactory.new({ from: owner });
-    const oracleStakes = await OracleStakesAccountingFactory.new({ from: owner });
-    const arbitratorStakes = await ArbitratorStakeAccountingFactory.new({ from: owner });
-    const arbitrationConfig = await ArbitrationConfigFactory.new({ from: owner });
-    const arbitrationOracleFactory = await ArbitrationOracleFactory.new({ from: owner });
-    const delegateReputationVotingFactory = await DelegateReputationVotingFactory.new({ from: owner });
-    const oracleStakeVotingFactory = await OracleStakeVotingFactory.new({ from: owner });
+  async deployPGGFactory(ggr, owner) {
+    const pggMultiSigFactory = await PGGMultiSigFactory.new({ from: owner });
+    const pggMultiSigCandidateTopFactory = await PGGMultiSigCandidateTopFactory.new({ from: owner });
+    const pggOracleStakeFactory = await PGGOracleStakeAccountingFactory.new({ from: owner });
+    const pggArbitratorStakeFactory = await PGGArbitratorStakeAccountingFactory.new({ from: owner });
+    const pggConfigFactory = await PGGConfigFactory.new({ from: owner });
+    const pggOracleFactory = await PGGOracleFactory.new({ from: owner });
+    const pggDelegateReputationVotingFactory = await PGGDelegateReputationVotingFactory.new({ from: owner });
+    const pggOracleStakeVotingFactory = await PGGOracleStakeVotingFactory.new({ from: owner });
 
     const arbitrationModifyThresholdProposalFactory = await ArbitrationModifyThresholdProposalFactory.new({
       from: owner
@@ -94,20 +93,20 @@ const Helpers = {
       }
     );
 
-    const multiSigFactory = await MultiSigFactory.new(
+    const pggFactory = await PGGFactory.new(
       ggr.address,
-      multiSig.address,
-      candidateTop.address,
-      arbitratorStakes.address,
-      oracleStakes.address,
-      arbitrationConfig.address,
-      arbitrationOracleFactory.address,
-      delegateReputationVotingFactory.address,
-      oracleStakeVotingFactory.address,
+      pggMultiSigFactory.address,
+      pggMultiSigCandidateTopFactory.address,
+      pggArbitratorStakeFactory.address,
+      pggOracleStakeFactory.address,
+      pggConfigFactory.address,
+      pggOracleFactory.address,
+      pggDelegateReputationVotingFactory.address,
+      pggOracleStakeVotingFactory.address,
       { from: owner }
     );
 
-    await multiSigFactory.initialize(
+    await pggFactory.initialize(
       arbitrationModifyThresholdProposalFactory.address,
       arbitrationModifyMofNProposalFactory.address,
       arbitrationModifyArbitratorStakeProposalFactory.address,
@@ -118,9 +117,9 @@ const Helpers = {
       arbitrationSupportGlobalProposalProposalManagerFactory.address
     );
 
-    return multiSigFactory;
+    return pggFactory;
   },
-  async buildArbitration(
+  async buildPGG(
     factory,
     initialOwners,
     initialRequired,
@@ -137,14 +136,16 @@ const Helpers = {
       from: owner,
       value: ethValue
     });
-    const multiSig = await ArbitratorsMultiSig.at(res.logs[0].args.arbitratorMultiSig);
-    const config = await ArbitrationConfig.at(res.logs[0].args.arbitrationConfig);
-    const oracleStakeAccounting = await OracleStakesAccounting.at(res.logs[0].args.oracleStakesAccounting);
+    const multiSig = await PGGMultiSig.at(res.logs[0].args.pggMultiSig);
+    const config = await PGGConfig.at(res.logs[0].args.pggConfig);
+    const oracleStakeAccounting = await PGGOracleStakeAccounting.at(res.logs[0].args.pggOracleStakeAccounting);
     const { groupId } = res.logs[0].args;
 
     res = await factory.buildSecondStep(groupId, periodLength, { from: owner });
-    const candidateTop = await ArbitrationCandidateTop.at(res.logs[0].args.arbitrationCandidateTop);
-    const arbitratorStakeAccounting = await ArbitratorStakeAccounting.at(res.logs[0].args.arbitratorStakeAccounting);
+    const candidateTop = await PGGMultiSigCandidateTop.at(res.logs[0].args.pggMultiSigCandidateTop);
+    const arbitratorStakeAccounting = await PGGArbitratorStakeAccounting.at(
+      res.logs[0].args.pggArbitratorStakeAccounting
+    );
 
     res = await factory.buildThirdStep(groupId, { from: owner });
     const modifyThresholdProposalManager = await ModifyThresholdProposalManager.at(
@@ -179,9 +180,9 @@ const Helpers = {
     await factory.buildSixthStepDone(groupId, { from: owner });
 
     res = await factory.buildSeventhStep(groupId, { from: owner });
-    const delegateSpaceVoting = await DelegateReputationVoting.at(res.logs[0].args.delegateSpaceVoting);
-    const delegateGaltVoting = await DelegateReputationVoting.at(res.logs[0].args.delegateGaltVoting);
-    const oracleStakeVoting = await OracleStakeVoting.at(res.logs[0].args.oracleStakeVoting);
+    const delegateSpaceVoting = await PGGDelegateReputationVoting.at(res.logs[0].args.pggDelegateSpaceVoting);
+    const delegateGaltVoting = await PGGDelegateReputationVoting.at(res.logs[0].args.pggDelegateGaltVoting);
+    const oracleStakeVoting = await PGGOracleStakeVoting.at(res.logs[0].args.pggOracleStakeVoting);
 
     res = await factory.buildEighthStep(groupId, { from: owner });
     const createGlobalProposalProposalManager = await CreateGlobalProposalProposalManager.at(
@@ -192,7 +193,7 @@ const Helpers = {
     );
 
     res = await factory.buildNinthStep(groupId, { from: owner });
-    const oracles = await ArbitrationOracles.at(res.logs[0].args.oracles);
+    const oracles = await PGGOracles.at(res.logs[0].args.pggOracles);
 
     return {
       groupId,

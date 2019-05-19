@@ -2,9 +2,9 @@ const ClaimManager = artifacts.require('./ClaimManager.sol');
 const ACL = artifacts.require('./ACL.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
-const MultiSigRegistry = artifacts.require('./MultiSigRegistry.sol');
+const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
-const OracleStakesAccounting = artifacts.require('./OracleStakesAccounting.sol');
+const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 
 const Web3 = require('web3');
@@ -20,7 +20,7 @@ const {
   paymentMethods,
   assertRevert
 } = require('../../helpers');
-const { deployMultiSigFactory, buildArbitration } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 GaltToken.numberFormat = 'String';
 
@@ -92,14 +92,14 @@ contract("ClaimManager", (accounts) => {
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
-    this.multiSigRegistry = await MultiSigRegistry.new({ from: coreTeam });
+    this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
-    this.myOracleStakesAccounting = await OracleStakesAccounting.new(alice, { from: coreTeam });
+    this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.MULTI_SIG_REGISTRY(), this.multiSigRegistry.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
@@ -113,27 +113,27 @@ contract("ClaimManager", (accounts) => {
 
     await this.acl.initialize();
     await this.ggr.initialize();
-    await this.multiSigRegistry.initialize(this.ggr.address);
+    await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
     await this.claimManager.initialize(this.ggr.address);
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
 
-    this.multiSigFactory = await deployMultiSigFactory(this.ggr, coreTeam);
+    this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
 
-    await this.feeRegistry.setGaltFee(await this.multiSigFactory.FEE_KEY(), ether(10), { from: coreTeam });
-    await this.feeRegistry.setEthFee(await this.multiSigFactory.FEE_KEY(), ether(5), { from: coreTeam });
-    await this.feeRegistry.setPaymentMethod(await this.multiSigFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
+    await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
+    await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });
+    await this.feeRegistry.setPaymentMethod(await this.pggFactory.FEE_KEY(), paymentMethods.ETH_AND_GALT, {
       from: coreTeam
     });
 
-    await this.acl.setRole(bytes32('MULTI_SIG_REGISTRAR'), this.multiSigFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
 
-    await this.galtToken.approve(this.multiSigFactory.address, ether(20), { from: alice });
+    await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
     const applicationConfig = {};
     applicationConfig[bytes32('CM_MINIMAL_FEE_ETH')] = numberToEvmWord(ether(6));
@@ -142,14 +142,14 @@ contract("ClaimManager", (accounts) => {
     applicationConfig[bytes32('CM_N')] = numberToEvmWord(5);
     applicationConfig[bytes32('CM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
-    const pcCustodianKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
-    const pcAuditorKey = await this.myOracleStakesAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
+    const pcCustodianKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_CUSTODIAN_ORACLE_TYPE);
+    const pcAuditorKey = await this.myPGGOracleStakeAccounting.oracleTypeMinimalStakeKey(PC_AUDITOR_ORACLE_TYPE);
 
     applicationConfig[pcCustodianKey] = numberToEvmWord(ether(200));
     applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
 
-    this.abX = await buildArbitration(
-      this.multiSigFactory,
+    this.pggX = await buildPGG(
+      this.pggFactory,
       [bob, charlie, dan, eve, frank],
       3,
       7,
@@ -161,12 +161,12 @@ contract("ClaimManager", (accounts) => {
       alice
     );
 
-    this.mX = this.abX.multiSig.address;
-    this.abMultiSigX = this.abX.multiSig;
-    this.oracleStakesAccountingX = this.abX.oracleStakeAccounting;
-    this.arbitratorStakeAccountingX = this.abX.arbitratorStakeAccounting;
-    this.mX = this.abMultiSigX.address;
-    this.oraclesX = this.abX.oracles;
+    this.mX = this.pggX.multiSig.address;
+    this.pggMultiSigX = this.pggX.multiSig;
+    this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
+    this.arbitratorStakeAccountingX = this.pggX.arbitratorStakeAccounting;
+    this.mX = this.pggMultiSigX.address;
+    this.oraclesX = this.pggX.oracles;
 
     await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: alice });
     await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: bob });
@@ -885,18 +885,18 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should create transfer claim value to a beneficiary', async function() {
-        const txCount = await this.abMultiSigX.getTransactionCount(true, false);
+        const txCount = await this.pggMultiSigX.getTransactionCount(true, false);
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
         let res = await this.claimManager.claim(this.cId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        res = await this.abMultiSigX.getTransactionCount(true, false);
+        res = await this.pggMultiSigX.getTransactionCount(true, false);
         assert.equal(res, parseInt(txCount, 10) + 1);
 
-        const txId = (await this.abMultiSigX.transactionCount()).toNumber(10) - 1;
-        res = await this.abMultiSigX.transactions(txId);
+        const txId = (await this.pggMultiSigX.transactionCount()).toNumber(10) - 1;
+        res = await this.pggMultiSigX.transactions(txId);
         assert.equal(res.destination, this.galtToken.address);
         assert.equal(res.value, 0);
         assert.equal(
@@ -906,20 +906,20 @@ contract("ClaimManager", (accounts) => {
             .toLowerCase()}000000000000000000000000000000000000000000000001a055690d9db80000`
         );
 
-        const multiSigBalance = await this.galtToken.balanceOf(this.abMultiSigX.address);
+        const multiSigBalance = await this.galtToken.balanceOf(this.pggMultiSigX.address);
         assert(multiSigBalance > ether(20));
-        res = await this.abMultiSigX.required();
+        res = await this.pggMultiSigX.required();
         assert.equal(res, 3);
-        res = await this.abMultiSigX.getConfirmationCount(txId);
+        res = await this.pggMultiSigX.getConfirmationCount(txId);
         assert.equal(res, 0);
-        res = await this.abMultiSigX.getOwners();
+        res = await this.pggMultiSigX.getOwners();
         assert.sameMembers(res, [bob, charlie, dan, eve, frank]);
 
         const aliceInitialBalance = (await this.galtToken.balanceOf(alice)).toString(10);
 
-        await this.abMultiSigX.confirmTransaction(txId, { from: bob });
-        await this.abMultiSigX.confirmTransaction(txId, { from: dan });
-        await this.abMultiSigX.confirmTransaction(txId, { from: frank });
+        await this.pggMultiSigX.confirmTransaction(txId, { from: bob });
+        await this.pggMultiSigX.confirmTransaction(txId, { from: dan });
+        await this.pggMultiSigX.confirmTransaction(txId, { from: frank });
 
         const aliceFinalBalance = (await this.galtToken.balanceOf(alice)).toString(10);
 
@@ -1035,11 +1035,11 @@ contract("ClaimManager", (accounts) => {
 
           describe('after transaction was executed', () => {
             beforeEach(async function() {
-              const txId = (await this.abMultiSigX.transactionCount()).toNumber(10) - 1;
+              const txId = (await this.pggMultiSigX.transactionCount()).toNumber(10) - 1;
 
-              await this.abMultiSigX.confirmTransaction(txId, { from: bob });
-              await this.abMultiSigX.confirmTransaction(txId, { from: dan });
-              await this.abMultiSigX.confirmTransaction(txId, { from: frank });
+              await this.pggMultiSigX.confirmTransaction(txId, { from: bob });
+              await this.pggMultiSigX.confirmTransaction(txId, { from: dan });
+              await this.pggMultiSigX.confirmTransaction(txId, { from: frank });
             });
 
             it('should allow galt space withdrawal only once', async function() {
@@ -1098,11 +1098,11 @@ contract("ClaimManager", (accounts) => {
             await this.claimManager.vote(this.cId, this.pId2, { from: bob });
             await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-            const txId = (await this.abMultiSigX.transactionCount()).toNumber(10) - 1;
+            const txId = (await this.pggMultiSigX.transactionCount()).toNumber(10) - 1;
 
-            await this.abMultiSigX.confirmTransaction(txId, { from: bob });
-            await this.abMultiSigX.confirmTransaction(txId, { from: dan });
-            await this.abMultiSigX.confirmTransaction(txId, { from: frank });
+            await this.pggMultiSigX.confirmTransaction(txId, { from: bob });
+            await this.pggMultiSigX.confirmTransaction(txId, { from: dan });
+            await this.pggMultiSigX.confirmTransaction(txId, { from: frank });
           });
 
           it('should calculate and assign rewards for arbitrators and galt space', async function() {
@@ -1268,11 +1268,11 @@ contract("ClaimManager", (accounts) => {
           await this.claimManager.vote(this.cId, this.pId3, { from: charlie });
           await this.claimManager.vote(this.cId, this.pId2, { from: bob });
 
-          const txId = (await this.abMultiSigX.transactionCount()).toNumber(10) - 1;
+          const txId = (await this.pggMultiSigX.transactionCount()).toNumber(10) - 1;
 
-          await this.abMultiSigX.confirmTransaction(txId, { from: bob });
-          await this.abMultiSigX.confirmTransaction(txId, { from: dan });
-          await this.abMultiSigX.confirmTransaction(txId, { from: frank });
+          await this.pggMultiSigX.confirmTransaction(txId, { from: bob });
+          await this.pggMultiSigX.confirmTransaction(txId, { from: dan });
+          await this.pggMultiSigX.confirmTransaction(txId, { from: frank });
         });
 
         it('should calculate and assign rewards for arbitrators and galt space', async function() {

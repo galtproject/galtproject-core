@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../registries/interfaces/IMultiSigRegistry.sol";
+import "../../registries/interfaces/IPGGRegistry.sol";
 import "../interfaces/ILockableRA.sol";
 import "./LiquidRA.sol";
 
@@ -34,12 +34,12 @@ contract LockableRA is ILockableRA, LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  // Delegate => (MultiSig => locked amount)
+  // Delegate => (PGG => locked amount)
   mapping(address => mapping(address => uint256)) private _locks;
   // Delegate => lockedAmount
   mapping(address => uint256) private _totalLocked;
-  // MultiSig => lockedAmount
-  mapping(address => uint256) private _multiSigLocks;
+  // PGG => lockedAmount
+  mapping(address => uint256) private _pggLocks;
 
   function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal;
 
@@ -56,7 +56,7 @@ contract LockableRA is ILockableRA, LiquidRA {
 
     _totalLocked[_delegate] -= _amount;
     _locks[_delegate][_multiSig] -= _amount;
-    _multiSigLocks[_multiSig] -= _amount;
+    _pggLocks[_multiSig] -= _amount;
     _revokeDelegated(_delegate, _amount);
 
     onDelegateReputationChanged(_multiSig, _delegate, _locks[_delegate][_multiSig]);
@@ -68,7 +68,7 @@ contract LockableRA is ILockableRA, LiquidRA {
 
     _totalLocked[msg.sender] += _amount;
     _locks[msg.sender][_multiSig] += _amount;
-    _multiSigLocks[_multiSig] += _amount;
+    _pggLocks[_multiSig] += _amount;
 
     onDelegateReputationChanged(_multiSig, msg.sender, _locks[msg.sender][_multiSig]);
   }
@@ -85,14 +85,14 @@ contract LockableRA is ILockableRA, LiquidRA {
 
     _locks[msg.sender][_multiSig] -= _amount;
     _totalLocked[msg.sender] -= _amount;
-    _multiSigLocks[_multiSig] -= _amount;
+    _pggLocks[_multiSig] -= _amount;
 
     onDelegateReputationChanged(_multiSig, msg.sender, afterUnlock);
   }
 
-  function arbitrationConfig(address _multiSig) internal returns (IArbitrationConfig) {
-    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress())
-      .getArbitrationConfig(_multiSig);
+  function pggConfig(address _multiSig) internal returns (IPGGConfig) {
+    return IPGGRegistry(ggr.getPggRegistryAddress())
+      .getPggConfig(_multiSig);
   }
 
   // GETTERS
@@ -100,20 +100,20 @@ contract LockableRA is ILockableRA, LiquidRA {
     return _totalLocked[_owner];
   }
 
-  function lockedMultiSigBalance(address _multiSig) public view returns (uint256) {
-    return _multiSigLocks[_multiSig];
+  function lockedPggBalance(address _multiSig) public view returns (uint256) {
+    return _pggLocks[_multiSig];
   }
 
-  function lockedMultiSigBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
+  function lockedPggBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
     return _locks[_owner][_multiSig];
   }
 
-  function lockedMultiSigBalances(address[] calldata _multiSigs) external view returns (uint256) {
+  function lockedPggBalances(address[] calldata _multiSigs) external view returns (uint256) {
     uint256 len = _multiSigs.length;
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _multiSigLocks[_multiSigs[i]];
+      total += _pggLocks[_multiSigs[i]];
     }
 
     return total;

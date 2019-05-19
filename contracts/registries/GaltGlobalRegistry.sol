@@ -40,7 +40,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
 
   // Registries
   bytes32 public constant APPLICATION_REGISTRY = bytes32("application_registry");
-  bytes32 public constant MULTI_SIG_REGISTRY = bytes32("multi_sig_registry");
+  bytes32 public constant PGG_REGISTRY = bytes32("pgg_registry");
   bytes32 public constant FEE_REGISTRY = bytes32("fee_registry");
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
@@ -55,7 +55,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
-  bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
+  bytes32 public constant SPACE_GEO_DATA = bytes32("space_geo_data");
 
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
@@ -95,9 +95,9 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[FEE_REGISTRY];
   }
 
-  function getMultiSigRegistryAddress() external view returns (address) {
-    require(contracts[MULTI_SIG_REGISTRY] != ZERO_ADDRESS, "GGR: MULTI_SIG_REGISTRY not set");
-    return contracts[MULTI_SIG_REGISTRY];
+  function getPggRegistryAddress() external view returns (address) {
+    require(contracts[PGG_REGISTRY] != ZERO_ADDRESS, "GGR: PGG_REGISTRY not set");
+    return contracts[PGG_REGISTRY];
   }
 
   function getSpaceCustodianRegistryAddress() external view returns (address) {
@@ -141,9 +141,9 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[STAKE_TRACKER];
   }
 
-  function getSplitMergeAddress() external view returns (address) {
-    require(contracts[SPLIT_MERGE] != ZERO_ADDRESS, "GGR: SPLIT_MERGE not set");
-    return contracts[SPLIT_MERGE];
+  function getSpaceGeoDataAddress() external view returns (address) {
+    require(contracts[SPACE_GEO_DATA] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA not set");
+    return contracts[SPACE_GEO_DATA];
   }
 
   function getSpaceSplitOperationFactoryAddress() external view returns (address) {
