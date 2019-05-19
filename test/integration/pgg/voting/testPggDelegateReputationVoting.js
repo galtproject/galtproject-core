@@ -39,7 +39,7 @@ const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('ArbitrationDelegateReputationVoting', accounts => {
+contract('PGGDelegateReputationVoting', accounts => {
   const [
     coreTeam,
     oracleModifier,

@@ -41,7 +41,7 @@ const GEORGE = bytes32('George');
 const FRANK = bytes32('Frank');
 
 // NOTICE: we don't wrap MockToken with a proxy on production
-contract('Arbitration Voting Full Cycle', accounts => {
+contract('PGG Voting Full Cycle', accounts => {
   const [
     coreTeam,
     oracleManager,

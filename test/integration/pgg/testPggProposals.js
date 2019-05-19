@@ -27,7 +27,7 @@ const ProposalStatus = {
   REJECTED: 3
 };
 
-contract('Proposals', accounts => {
+contract('PGG Proposals', accounts => {
   const [
     coreTeam,
     claimManagerAddress,

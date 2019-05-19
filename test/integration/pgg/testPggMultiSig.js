@@ -4,7 +4,7 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
 
 const Web3 = require('web3');
-const { initHelperWeb3 } = require('../helpers');
+const { initHelperWeb3 } = require('../../helpers');
 
 const web3 = new Web3(PGGMultiSig.web3.currentProvider);
 
