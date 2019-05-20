@@ -124,7 +124,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
     oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
-    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onStake(multiSig, _amount);
+    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onStake(address(pggConfig), _amount);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
   }

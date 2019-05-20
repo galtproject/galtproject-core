@@ -36,8 +36,8 @@ contract SpaceRA is IRA, LiquidRA, LockableRA, SpaceInputRA {
     ggr = _ggr;
   }
 
-  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
-    pggConfig(_multiSig)
+  function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal {
+    pggConfig(_pgg)
       .getDelegateSpaceVoting()
       .onDelegateReputationChanged(_delegate, _amount);
   }

@@ -63,7 +63,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
   struct Application {
     bytes32 id;
-    address multiSig;
+    address pgg;
     address applicant;
     address operator;
     uint256 spaceTokenId;
@@ -133,16 +133,16 @@ contract NewPropertyManager is AbstractOracleApplication {
     _;
   }
 
-  function feeCalculator(address _multiSig) public view returns (IPropertyManagerFeeCalculator) {
-    return IPropertyManagerFeeCalculator(address(uint160(uint256(pggConfigValue(_multiSig, CONFIG_FEE_CALCULATOR)))));
+  function feeCalculator(address _pgg) public view returns (IPropertyManagerFeeCalculator) {
+    return IPropertyManagerFeeCalculator(address(uint160(uint256(pggConfigValue(_pgg, CONFIG_FEE_CALCULATOR)))));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+  function paymentMethod(address _pgg) public view returns (PaymentMethod) {
+    return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
   function approveOperator(bytes32 _aId, address _to) external {
@@ -158,7 +158,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function submitApplication(
-    address _multiSig,
+    address _pgg,
     uint256[] calldata _packageContour,
     int256[] calldata _heights,
     int256 _level,
@@ -177,11 +177,11 @@ contract NewPropertyManager is AbstractOracleApplication {
       "Number of contour elements should be between 3 and 50"
     );
 
-    pggRegistry().requireValidPggMultiSig(_multiSig);
+    pggRegistry().requireValidPgg(_pgg);
 
     bytes32 _id = keccak256(
       abi.encodePacked(
-        _multiSig,
+        _pgg,
         _packageContour,
         _credentialsHash,
         msg.sender,
@@ -204,7 +204,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     // GALT
     if (_submissionFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(_multiSig, Currency.GALT, a.details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= getSubmissionFeeByArea(_pgg, Currency.GALT, a.details.area), "Incorrect fee passed in");
 
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
@@ -217,13 +217,13 @@ contract NewPropertyManager is AbstractOracleApplication {
       // Default a.currency is Currency.ETH
 
       require(
-        msg.value >= getSubmissionFeeByArea(_multiSig, Currency.ETH, a.details.area),
+        msg.value >= getSubmissionFeeByArea(_pgg, Currency.ETH, a.details.area),
         "Incorrect msg.value passed in");
     }
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
-    a.multiSig = _multiSig;
+    a.pgg = _pgg;
     a.applicant = msg.sender;
 
     calculateAndStoreFee(a, a.fees.totalPaidFee);
@@ -319,7 +319,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     }
 
     uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newSpaceTokenContour);
-    uint256 newMinimalFee = getSubmissionFeeByArea(a.multiSig, a.currency, area);
+    uint256 newMinimalFee = getSubmissionFeeByArea(a.pgg, a.currency, area);
     uint256 alreadyPaid = a.fees.latestCommittedFee;
 
     if (newMinimalFee > alreadyPaid) {
@@ -334,7 +334,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, _oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
 
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
@@ -376,7 +376,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
     changeValidationStatus(a, oracleType, ValidationStatus.APPROVED);
 
@@ -431,7 +431,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
     // TODO: merge into the contract
     NewPropertyManagerLib.rejectApplicationHelper(a, _message);
@@ -452,7 +452,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256 len = a.assignedOracleTypes.length;
 
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, senderOracleType);
     require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
 
     for (uint8 i = 0; i < len; i++) {
@@ -491,7 +491,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     require(
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
       "Application status should be APPROVED, REJECTED or CLOSED");
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, senderOracleType);
 
     require(reward > 0, "Reward is 0");
     require(a.oracleTypeRewardPaidOut[senderOracleType] == false, "Reward is already paid");
@@ -555,8 +555,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256 totalReward = 0;
 
     a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
-    uint256 surveyorShare = oracleTypeShare(a.multiSig, PM_SURVEYOR_ORACLE_TYPE);
-    uint256 lawyerShare = oracleTypeShare(a.multiSig, PM_LAWYER_ORACLE_TYPE);
+    uint256 surveyorShare = oracleTypeShare(a.pgg, PM_SURVEYOR_ORACLE_TYPE);
+    uint256 lawyerShare = oracleTypeShare(a.pgg, PM_LAWYER_ORACLE_TYPE);
     uint256[2] memory shares = [surveyorShare, lawyerShare];
 
     require(surveyorShare + lawyerShare == 100);
@@ -626,7 +626,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     view
     returns (
       address applicant,
-      address multiSig,
+      address pgg,
       uint256 spaceTokenId,
       bytes32 credentialsHash,
       ApplicationStatus status,
@@ -642,7 +642,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     return (
       m.applicant,
-      m.multiSig,
+      m.pgg,
       m.spaceTokenId,
       m.details.credentialsHash,
       m.status,
@@ -725,11 +725,11 @@ contract NewPropertyManager is AbstractOracleApplication {
   /**
    * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
    */
-  function getSubmissionFeeByArea(address _multiSig, Currency _currency, uint256 _area) public view returns (uint256) {
+  function getSubmissionFeeByArea(address _pgg, Currency _currency, uint256 _area) public view returns (uint256) {
     if (_currency == Currency.GALT) {
-      return feeCalculator(_multiSig).calculateGaltFee(_area);
+      return feeCalculator(_pgg).calculateGaltFee(_area);
     } else {
-      return feeCalculator(_multiSig).calculateEthFee(_area);
+      return feeCalculator(_pgg).calculateEthFee(_area);
     }
   }
 
@@ -738,7 +738,7 @@ contract NewPropertyManager is AbstractOracleApplication {
    */
   function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
     Application storage a = applications[_aId];
-    uint256 newTotalFee = getSubmissionFeeByArea(a.multiSig, a.currency, _area);
+    uint256 newTotalFee = getSubmissionFeeByArea(a.pgg, a.currency, _area);
     uint256 latest = a.fees.latestCommittedFee;
 
     if (newTotalFee <= latest) {

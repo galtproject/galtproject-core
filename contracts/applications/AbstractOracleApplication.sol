@@ -30,8 +30,8 @@ contract AbstractOracleApplication is AbstractApplication {
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
 
-  function oracleTypeShare(address _multiSig, bytes32 _oracleType) internal view returns (uint256) {
-    uint256 val = uint256(pggConfigValue(_multiSig, getOracleTypeShareKey(_oracleType)));
+  function oracleTypeShare(address _pgg, bytes32 _oracleType) internal view returns (uint256) {
+    uint256 val = uint256(pggConfigValue(_pgg, getOracleTypeShareKey(_oracleType)));
 
     assert(val <= 100);
 
@@ -39,13 +39,13 @@ contract AbstractOracleApplication is AbstractApplication {
   }
 
   function requireOracleActiveWithAssignedActiveOracleType(
-    address _multiSig,
+    address _pgg,
     address _oracle,
     bytes32 _role
   )
     internal
   {
-    pggConfig(_multiSig)
+    pggConfig(_pgg)
       .getOracles()
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }

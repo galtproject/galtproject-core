@@ -41,7 +41,7 @@ contract LockableRA is ILockableRA, LiquidRA {
   // PGG => lockedAmount
   mapping(address => uint256) private _pggLocks;
 
-  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal;
+  function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal;
 
   function revoke(address _from, uint256 _amount) public {
     require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");
@@ -51,48 +51,48 @@ contract LockableRA is ILockableRA, LiquidRA {
   }
 
   // PermissionED
-  function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external {
-    require(_locks[_delegate][_multiSig] >= _amount, "Not enough funds");
+  function revokeLocked(address _delegate, address _pgg, uint256 _amount) external {
+    require(_locks[_delegate][_pgg] >= _amount, "Not enough funds");
 
     _totalLocked[_delegate] -= _amount;
-    _locks[_delegate][_multiSig] -= _amount;
-    _pggLocks[_multiSig] -= _amount;
+    _locks[_delegate][_pgg] -= _amount;
+    _pggLocks[_pgg] -= _amount;
     _revokeDelegated(_delegate, _amount);
 
-    onDelegateReputationChanged(_multiSig, _delegate, _locks[_delegate][_multiSig]);
+    onDelegateReputationChanged(_pgg, _delegate, _locks[_delegate][_pgg]);
   }
 
   // PermissionED
-  function lockReputation(address _multiSig, uint256 _amount) external {
+  function lockReputation(address _pgg, uint256 _amount) external {
     require((balanceOf(msg.sender) - _totalLocked[msg.sender]) >= _amount, "Insufficient amount to lock");
 
     _totalLocked[msg.sender] += _amount;
-    _locks[msg.sender][_multiSig] += _amount;
-    _pggLocks[_multiSig] += _amount;
+    _locks[msg.sender][_pgg] += _amount;
+    _pggLocks[_pgg] += _amount;
 
-    onDelegateReputationChanged(_multiSig, msg.sender, _locks[msg.sender][_multiSig]);
+    onDelegateReputationChanged(_pgg, msg.sender, _locks[msg.sender][_pgg]);
   }
 
   // PermissionED
-  function unlockReputation(address _multiSig, uint256 _amount) external {
-    uint256 beforeUnlock = _locks[msg.sender][_multiSig];
-    uint256 afterUnlock = _locks[msg.sender][_multiSig] - _amount;
+  function unlockReputation(address _pgg, uint256 _amount) external {
+    uint256 beforeUnlock = _locks[msg.sender][_pgg];
+    uint256 afterUnlock = _locks[msg.sender][_pgg] - _amount;
 
     require(beforeUnlock >= _amount, "Insufficient amount to lock");
     require(afterUnlock >= 0, "Insufficient amount to lock");
-    require(afterUnlock < _locks[msg.sender][_multiSig], "Insufficient amount to lock");
+    require(afterUnlock < _locks[msg.sender][_pgg], "Insufficient amount to lock");
     assert(_totalLocked[msg.sender] > _amount);
 
-    _locks[msg.sender][_multiSig] -= _amount;
+    _locks[msg.sender][_pgg] -= _amount;
     _totalLocked[msg.sender] -= _amount;
-    _pggLocks[_multiSig] -= _amount;
+    _pggLocks[_pgg] -= _amount;
 
-    onDelegateReputationChanged(_multiSig, msg.sender, afterUnlock);
+    onDelegateReputationChanged(_pgg, msg.sender, afterUnlock);
   }
 
-  function pggConfig(address _multiSig) internal returns (IPGGConfig) {
+  function pggConfig(address _pgg) internal returns (IPGGConfig) {
     return IPGGRegistry(ggr.getPggRegistryAddress())
-      .getPggConfig(_multiSig);
+      .getPggConfig(_pgg);
   }
 
   // GETTERS
@@ -100,20 +100,20 @@ contract LockableRA is ILockableRA, LiquidRA {
     return _totalLocked[_owner];
   }
 
-  function lockedPggBalance(address _multiSig) public view returns (uint256) {
-    return _pggLocks[_multiSig];
+  function lockedPggBalance(address _pgg) public view returns (uint256) {
+    return _pggLocks[_pgg];
   }
 
-  function lockedPggBalanceOf(address _owner, address _multiSig) public view returns (uint256) {
-    return _locks[_owner][_multiSig];
+  function lockedPggBalanceOf(address _owner, address _pgg) public view returns (uint256) {
+    return _locks[_owner][_pgg];
   }
 
-  function lockedPggBalances(address[] calldata _multiSigs) external view returns (uint256) {
-    uint256 len = _multiSigs.length;
+  function lockedPggBalances(address[] calldata _pggs) external view returns (uint256) {
+    uint256 len = _pggs.length;
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _pggLocks[_multiSigs[i]];
+      total += _pggLocks[_pggs[i]];
     }
 
     return total;

@@ -15,9 +15,11 @@ pragma solidity 0.5.7;
 
 
 interface IPGGMultiSig {
-  function proposeTransaction(address destination, uint value, bytes calldata data) external returns (uint transactionId);
+  function proposeTransaction(address destination, uint value, bytes calldata data) external returns (uint256 transactionId);
   function setArbitrators(address[] calldata descArbitrators) external;
   function revokeArbitrators() external;
+  function isOwner(address _owner) external view returns(bool);
+  function transactions(uint256) external view returns(address destination, uint value, bytes memory data, bool executed);
   function checkGaltLimitsExternal(bytes calldata data) external;
   function getArbitrators() external view returns (address[] memory);
 }

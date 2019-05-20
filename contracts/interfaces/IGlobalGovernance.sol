@@ -16,7 +16,7 @@ pragma solidity 0.5.7;
 
 interface IGlobalGovernance {
   function propose(
-    address _multiSig,
+    address _pgg,
     address _destination,
     uint256 _value,
     bytes calldata _data

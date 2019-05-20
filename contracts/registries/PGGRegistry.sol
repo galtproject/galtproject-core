@@ -25,11 +25,9 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
 
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
 
-  // MultiSig address => Details
   // TODO: need to be a private?
-  mapping(address => ProtocolGovernanceGroup) public groups;
-  ArraySet.AddressSet private multiSigArray;
-  ArraySet.AddressSet private configArray;
+  mapping(address => ProtocolGovernanceGroup) public pggDetails;
+  ArraySet.AddressSet internal _pggs;
 
   struct ProtocolGovernanceGroup {
     bool active;
@@ -43,7 +41,7 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
     ggr = _ggr;
   }
 
-  modifier onlyMultiSigRegistrar() {
+  modifier onlyPggRegistrar() {
     require(
       ggr.getACL().hasRole(msg.sender, ROLE_PGG_REGISTRAR),
       "Only PGG_REGISTRAR role allowed"
@@ -53,49 +51,44 @@ contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
   }
 
   function addPgg(
-    IPGGMultiSig _pggMultiSig,
     IPGGConfig _pggConfig
   )
     external
-    onlyMultiSigRegistrar
+    onlyPggRegistrar
   {
-    ProtocolGovernanceGroup storage pgg = groups[address(_pggMultiSig)];
+    ProtocolGovernanceGroup storage pgg = pggDetails[address(_pggConfig)];
 
     pgg.active = true;
     pgg.pggConfig = _pggConfig;
     pgg.factoryAddress = msg.sender;
 
-    multiSigArray.add(address(_pggMultiSig));
-    configArray.add(address(_pggConfig));
+    _pggs.add(address(_pggConfig));
   }
 
   // REQUIRES
 
-  function requireValidPggMultiSig(address _multiSig) external view {
-    require(groups[_multiSig].active == true, "MultiSig address is invalid");
+  function requireValidPgg(address _pgg) public view {
+    require(pggDetails[_pgg].active == true, "PGG address is invalid");
   }
 
   // GETTERS
 
-  function isPggMultiSigValid(address _multiSig) external view returns(bool) {
-    return (groups[_multiSig].active == true);
+  function isPggValid(address _pgg) external view returns(bool) {
+    return (pggDetails[_pgg].active == true);
   }
 
-  function getPggConfig(address _multiSig) external view returns (IPGGConfig) {
-    require(groups[_multiSig].active == true, "MultiSig address is invalid");
-    return groups[_multiSig].pggConfig;
+  function getPggConfig(address _pgg) external view returns(IPGGConfig) {
+    requireValidPgg(_pgg);
+
+    return IPGGConfig(_pgg);
   }
 
-  function getPggMultiSigList() external view returns (address[] memory) {
-    return multiSigArray.elements();
-  }
-
-  function getPggConfigList() external view returns (address[] memory) {
-    return configArray.elements();
+  function getPggList() external view returns (address[] memory) {
+    return _pggs.elements();
   }
 
   function getPggCount() external view returns (uint256) {
-    return multiSigArray.size();
+    return _pggs.size();
   }
   // TODO: how to update Factory Address?
   // TODO: how to deactivate multiSig?

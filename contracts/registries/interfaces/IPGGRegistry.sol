@@ -18,14 +18,10 @@ import "../../pgg/interfaces/IPGGMultiSig.sol";
 
 
 interface IPGGRegistry {
-  function addPgg(
-    IPGGMultiSig _pggMultiSig,
-    IPGGConfig _pggConfig
-  ) external;
-  function requireValidPggMultiSig(address _multiSig) external view;
-  function isPggMultiSigValid(address _multiSig) external view returns(bool);
-  function getPggConfig(address _multiSig) external view returns (IPGGConfig);
-  function getPggMultiSigList() external view returns (address[] memory);
-  function getPggConfigList() external view returns (address[] memory);
+  function addPgg(IPGGConfig _pggConfig) external;
+  function requireValidPgg(address _pgg) external view;
+  function isPggValid(address _pgg) external view returns(bool);
+  function getPggConfig(address _pgg) external view returns(IPGGConfig);
+  function getPggList() external view returns (address[] memory);
   function getPggCount() external view returns (uint256);
 }

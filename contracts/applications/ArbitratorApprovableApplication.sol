@@ -32,7 +32,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   event Nay(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
 
   struct Application {
-    address payable multiSig;
+    address pgg;
     address applicant;
 
     // votes required
@@ -78,10 +78,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   constructor() public {}
 
   function _execute(bytes32) internal;
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256);
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256);
-  function m(address _multiSig) public view returns (uint256);
-  function n(address _multiSig) public view returns (uint256);
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256);
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256);
+  function m(address _pgg) public view returns (uint256);
+  function n(address _pgg) public view returns (uint256);
 
   /**
    * @dev Any arbitrator locks an application if an empty slots available
@@ -90,16 +90,16 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   function lock(bytes32 _aId) external {
     Application storage a = applications[_aId];
 
-    pggRegistry().requireValidPggMultiSig(a.multiSig);
-    require(PGGMultiSig(a.multiSig).isOwner(msg.sender), "Not active arbitrator");
+    pggRegistry().requireValidPgg(a.pgg);
+    require(pggConfig(a.pgg).getMultiSig().isOwner(msg.sender), "Not active arbitrator");
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!a.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(a.arbitrators.size() < n(a.multiSig), "All arbitrator slots are locked");
+    require(a.arbitrators.size() < n(a.pgg), "All arbitrator slots are locked");
 
     a.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n(a.multiSig));
+    emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n(a.pgg));
   }
 
   function aye(bytes32 _aId) external {
@@ -193,12 +193,12 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   function _submit(
     bytes32 _id,
-    address payable _multiSig,
+    address _pgg,
     uint256 _applicationFeeInGalt
   )
     internal
   {
-    pggRegistry().requireValidPggMultiSig(_multiSig);
+    pggRegistry().requireValidPgg(_pgg);
 
     // Default is ETH
     Currency currency;
@@ -207,12 +207,12 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     // ETH
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Incorrect fee passed in");
+      require(msg.value >= minimalApplicationFeeEth(_pgg), "Incorrect fee passed in");
       fee = msg.value;
       // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Incorrect fee passed in");
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Incorrect fee passed in");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
@@ -221,10 +221,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     Application memory a;
 
     a.status = ApplicationStatus.SUBMITTED;
-    a.multiSig = _multiSig;
+    a.pgg = _pgg;
     a.applicant = msg.sender;
-    a.m = m(_multiSig);
-    a.n = n(_multiSig);
+    a.m = m(_pgg);
+    a.n = n(_pgg);
 
     a.fees.currency = currency;
 

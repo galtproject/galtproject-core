@@ -51,30 +51,30 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     _initialize(_ggr);
   }
 
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
-  function m(address _multiSig) public view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_M));
+  function m(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
-  function n(address _multiSig) public view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_N));
+  function n(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_N));
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+  function paymentMethod(address _pgg) public view returns (PaymentMethod) {
+    return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
-    address payable _multiSig,
+    address _pgg,
     address _oracleAddress,
     string calldata _name,
     bytes32 _position,
@@ -88,7 +88,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   {
     bytes32 id = _generateId(_oracleTypes, _descriptionHashes, _name);
 
-    _submit(id, _multiSig, _applicationFeeInGalt);
+    _submit(id, _pgg, _applicationFeeInGalt);
 
     OracleDetails storage o = oracleDetails[id];
     o.oracleTypes = _oracleTypes;
@@ -117,7 +117,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
 
-    pggConfig(a.multiSig)
+    pggConfig(a.pgg)
       .getOracles()
       .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }
@@ -130,7 +130,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     external
     view
     returns (
-      address multiSig,
+      address pgg,
       address addr,
       bytes32 position,
       string memory name,
@@ -143,7 +143,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     Application storage a = applications[_id];
 
     return (
-      a.multiSig,
+      a.pgg,
       o.addr,
       o.position,
       o.name,
