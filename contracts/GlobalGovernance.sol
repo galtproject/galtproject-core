@@ -88,7 +88,7 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
       IPGGRegistry(ggr.getPggRegistryAddress())
         .getPggConfig(_pgg)
         .hasExternalRole(GLOBAL_PROPOSAL_CREATOR_ROLE, msg.sender) == true,
-      "Invalid PGG"
+      "No permission for this action"
     );
 
     _;

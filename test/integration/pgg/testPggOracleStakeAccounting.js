@@ -95,11 +95,9 @@ contract('PGGOracleStakeAccounting', accounts => {
       this.oracleStakeVotingX.address
     );
 
-    await this.pggRegistry.addPgg(multiSig, this.config.address, { from: pggRegistrar });
+    await this.pggRegistry.addPgg(this.config.address, { from: pggRegistrar });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
-
-    this.mX = multiSig;
 
     // assign oracles
     await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, FOO], {

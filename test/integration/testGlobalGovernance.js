@@ -231,7 +231,7 @@ contract('GlobalGovernance', accounts => {
         200
       );
 
-      log('M weight', (await globalGovernance.getPggWeight(this.pggM.multiSig.address)).weight);
+      log('M weight', (await globalGovernance.getPggWeight(this.pggM.config.address)).weight);
 
       // Step #1. Create proposal for an increased threshold for add2ggr change to 95% instead of default 75%
       const globalGovernanceV2 = await MockGlobalGovernance_V2.new({ from: coreTeam });
@@ -330,8 +330,8 @@ contract('GlobalGovernance', accounts => {
         30,
         0
       );
-      log('M weight', (await this.globalGovernance.getPggWeight(this.pggM.multiSig.address)).weight);
-      log('N weight', (await this.globalGovernance.getPggWeight(this.pggN.multiSig.address)).weight);
+      log('M weight', (await this.globalGovernance.getPggWeight(this.pggM.config.address)).weight);
+      log('N weight', (await this.globalGovernance.getPggWeight(this.pggN.config.address)).weight);
 
       // Step #1. Create proposal for an increased threshold for add2ggr change to 95% instead of default 75%
       const signatureHash = await this.ggr.contract.methods
@@ -481,7 +481,7 @@ contract('GlobalGovernance', accounts => {
         log
       );
 
-      // Step #1. Create several multiSigs
+      // Step #1. Create several configs
       await (async () => {
         await this.galtToken.approve(this.pggFactory.address, ether(100), { from: alice });
 
@@ -629,8 +629,8 @@ contract('GlobalGovernance', accounts => {
 
         await this.pggN.supportGlobalProposalProposalManager.triggerApprove(proposalId);
 
-        res = await this.globalGovernance.getSupportedMultiSigs(globalProposalId);
-        assert.sameMembers(res, [this.pggM.multiSig.address, this.pggN.multiSig.address]);
+        res = await this.globalGovernance.getSupportedPggs(globalProposalId);
+        assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
 
         res = await this.pggN.config.globalProposalSupport(globalProposalId);
         assert.equal(res, true);
@@ -660,8 +660,8 @@ contract('GlobalGovernance', accounts => {
 
         await assertRevert(this.pggX.supportGlobalProposalProposalManager.triggerApprove(proposalId));
 
-        res = await this.globalGovernance.getSupportedMultiSigs(globalProposalId);
-        assert.sameMembers(res, [this.pggM.multiSig.address, this.pggN.multiSig.address]);
+        res = await this.globalGovernance.getSupportedPggs(globalProposalId);
+        assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
 
         res = await this.pggX.config.globalProposalSupport(globalProposalId);
         assert.equal(res, false);
@@ -697,8 +697,8 @@ contract('GlobalGovernance', accounts => {
 
         await this.pggY.supportGlobalProposalProposalManager.triggerReject(proposalId);
 
-        res = await this.globalGovernance.getSupportedMultiSigs(globalProposalId);
-        assert.sameMembers(res, [this.pggM.multiSig.address, this.pggN.multiSig.address]);
+        res = await this.globalGovernance.getSupportedPggs(globalProposalId);
+        assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
 
         res = await this.pggY.config.globalProposalSupport(globalProposalId);
         assert.equal(res, false);
@@ -740,8 +740,8 @@ contract('GlobalGovernance', accounts => {
 
         await this.pggZ.supportGlobalProposalProposalManager.triggerApprove(proposalId);
 
-        res = await this.globalGovernance.getSupportedMultiSigs(globalProposalId);
-        assert.sameMembers(res, [this.pggM.multiSig.address, this.pggN.multiSig.address, this.pggZ.multiSig.address]);
+        res = await this.globalGovernance.getSupportedPggs(globalProposalId);
+        assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address, this.pggZ.config.address]);
 
         res = await this.pggZ.config.globalProposalSupport(globalProposalId);
         assert.equal(res, true);
@@ -760,37 +760,37 @@ contract('GlobalGovernance', accounts => {
 
       log(
         'M',
-        await this.spaceRA.lockedPggBalance(this.pggM.multiSig.address),
-        await this.galtRA.lockedPggBalance(this.pggM.multiSig.address),
-        await this.stakeTracker.balanceOf(this.pggM.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggM.config.address),
+        await this.galtRA.lockedPggBalance(this.pggM.config.address),
+        await this.stakeTracker.balanceOf(this.pggM.config.address)
       );
 
       log(
         'N',
-        await this.spaceRA.lockedPggBalance(this.pggN.multiSig.address),
-        await this.galtRA.lockedPggBalance(this.pggN.multiSig.address),
-        await this.stakeTracker.balanceOf(this.pggN.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggN.config.address),
+        await this.galtRA.lockedPggBalance(this.pggN.config.address),
+        await this.stakeTracker.balanceOf(this.pggN.config.address)
       );
 
       log(
         'X',
-        await this.spaceRA.lockedPggBalance(this.pggX.multiSig.address),
-        await this.galtRA.lockedPggBalance(this.pggX.multiSig.address),
-        await this.stakeTracker.balanceOf(this.pggX.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggX.config.address),
+        await this.galtRA.lockedPggBalance(this.pggX.config.address),
+        await this.stakeTracker.balanceOf(this.pggX.config.address)
       );
 
       log(
         'Y',
-        await this.spaceRA.lockedPggBalance(this.pggY.multiSig.address),
-        await this.galtRA.lockedPggBalance(this.pggY.multiSig.address),
-        await this.stakeTracker.balanceOf(this.pggY.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggY.config.address),
+        await this.galtRA.lockedPggBalance(this.pggY.config.address),
+        await this.stakeTracker.balanceOf(this.pggY.config.address)
       );
 
       log(
         'Z',
-        await this.spaceRA.lockedPggBalance(this.pggZ.multiSig.address),
-        await this.galtRA.lockedPggBalance(this.pggZ.multiSig.address),
-        await this.stakeTracker.balanceOf(this.pggZ.multiSig.address)
+        await this.spaceRA.lockedPggBalance(this.pggZ.config.address),
+        await this.galtRA.lockedPggBalance(this.pggZ.config.address),
+        await this.stakeTracker.balanceOf(this.pggZ.config.address)
       );
 
       log(

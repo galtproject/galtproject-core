@@ -70,7 +70,7 @@ contract CreateGlobalProposalProposalManager is IProposalManager, AbstractArbitr
     Proposal storage p = _proposals[_proposalId];
 
     p.globalId = IGlobalGovernance(pggConfig.ggr().getGlobalGovernanceAddress()).propose(
-      address(pggConfig.getMultiSig()),
+      address(pggConfig),
       p.destination,
       p.value,
       p.data

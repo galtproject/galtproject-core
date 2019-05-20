@@ -190,7 +190,7 @@ contract('ArbitratorSlashing', accounts => {
       this.delegateSpaceVotingX = this.pggX.delegateSpaceVoting;
       this.oraclesX = this.pggX.oracles;
 
-      this.mX = this.pggMultiSigX.address;
+      this.mX = this.pggX.config.address;
     })();
 
     // Mint and distribute SRA reputation using mock
