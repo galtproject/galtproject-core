@@ -55,7 +55,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
   bytes32 public constant ORACLES_CONTRACT = bytes32("oracles_contract");
   bytes32 public constant ORACLE_STAKES_CONTRACT = bytes32("oracle_stakes_contract");
   bytes32 public constant ARBITRATOR_STAKES_CONTRACT = bytes32("arbitrator_stakes_contract");
-  bytes32 public constant ARBITRATION_CANDIDATE_TOP_CONTRACT = bytes32("candidate_top_contract");
+  bytes32 public constant MULTI_SIG_CANDIDATE_TOP_CONTRACT = bytes32("candidate_top_contract");
   bytes32 public constant DELEGATE_SPACE_VOTING_CONTRACT = bytes32("delegate_space_voting_contract");
   bytes32 public constant DELEGATE_GALT_VOTING_CONTRACT = bytes32("delegate_galt_voting_contract");
   bytes32 public constant ORACLE_STAKE_VOTING_CONTRACT = bytes32("oracle_stake_voting_contract");
@@ -114,10 +114,10 @@ contract PGGConfig is IPGGConfig, Permissionable {
 
   function initialize(
     IPGGMultiSig _pggMultiSig,
-    IPGGMultiSigCandidateTop _arbitratorVoting,
+    IPGGMultiSigCandidateTop _candidateVoting,
     IPGGArbitratorStakeAccounting _arbitratorStakeAccounting,
     IPGGOracleStakeAccounting _oracleStakeAccounting,
-    IPGGOracles _arbitrationOracles,
+    IPGGOracles _oracles,
     IPGGDelegateReputationVoting _delegateSpaceVoting,
     IPGGDelegateReputationVoting _delegateGaltVoting,
     IPGGOracleStakeVoting _oracleStakeVoting
@@ -128,10 +128,10 @@ contract PGGConfig is IPGGConfig, Permissionable {
     assert(hasRole(msg.sender, "role_manager"));
 
     contracts[MULTI_SIG_CONTRACT] = address(_pggMultiSig);
-    contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT] = address(_arbitratorVoting);
+    contracts[MULTI_SIG_CANDIDATE_TOP_CONTRACT] = address(_candidateVoting);
     contracts[ARBITRATOR_STAKES_CONTRACT] = address(_arbitratorStakeAccounting);
     contracts[ORACLE_STAKES_CONTRACT] = address(_oracleStakeAccounting);
-    contracts[ORACLES_CONTRACT] = address(_arbitrationOracles);
+    contracts[ORACLES_CONTRACT] = address(_oracles);
     contracts[DELEGATE_SPACE_VOTING_CONTRACT] = address(_delegateSpaceVoting);
     contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);
     contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);
@@ -189,8 +189,8 @@ contract PGGConfig is IPGGConfig, Permissionable {
     return IPGGMultiSig(ms);
   }
 
-  function getArbitrationCandidateTop() external view returns (IPGGMultiSigCandidateTop) {
-    return IPGGMultiSigCandidateTop(contracts[ARBITRATION_CANDIDATE_TOP_CONTRACT]);
+  function getMultiSigCandidateTop() external view returns (IPGGMultiSigCandidateTop) {
+    return IPGGMultiSigCandidateTop(contracts[MULTI_SIG_CANDIDATE_TOP_CONTRACT]);
   }
 
   function getArbitratorStakes() external view returns (IPGGArbitratorStakeAccounting) {

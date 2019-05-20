@@ -252,11 +252,11 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
 
     if (allApproved) {
-      ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
-      splitMerge.setSpaceTokenContour(a.spaceTokenId, a.newContour);
-      splitMerge.setSpaceTokenHeights(a.spaceTokenId, a.newHeights);
-      splitMerge.setSpaceTokenLevel(a.spaceTokenId, a.newLevel);
-      splitMerge.setTokenInfo(a.spaceTokenId, a.ledgerIdentifier, a.description);
+      ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
+      spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.newContour);
+      spaceGeoData.setSpaceTokenHeights(a.spaceTokenId, a.newHeights);
+      spaceGeoData.setSpaceTokenLevel(a.spaceTokenId, a.newLevel);
+      spaceGeoData.setSpaceToken(a.spaceTokenId, a.ledgerIdentifier, a.description);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }

@@ -405,19 +405,19 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function mintToken(Application storage a) internal {
-    ISpaceGeoData splitMerge = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
+    ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
 
-    uint256 tokenId = splitMerge.initSpaceToken(address(this));
+    uint256 spaceTokenId = spaceGeoData.initSpaceToken(address(this));
 
-    a.spaceTokenId = tokenId;
+    a.spaceTokenId = spaceTokenId;
 
-    splitMerge.setSpaceTokenContour(tokenId, a.details.packageContour);
-    splitMerge.setSpaceTokenHeights(tokenId, a.details.heights);
-    splitMerge.setSpaceTokenLevel(tokenId, a.details.level);
-    splitMerge.setTokenArea(tokenId, a.details.area, a.details.areaSource);
-    splitMerge.setTokenInfo(tokenId, a.details.ledgerIdentifier, a.details.description);
+    spaceGeoData.setSpaceTokenContour(spaceTokenId, a.details.packageContour);
+    spaceGeoData.setSpaceTokenHeights(spaceTokenId, a.details.heights);
+    spaceGeoData.setSpaceTokenLevel(spaceTokenId, a.details.level);
+    spaceGeoData.setTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
+    spaceGeoData.setSpaceToken(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
 
-    emit TokenMinted(a.id, tokenId, a.applicant);
+    emit TokenMinted(a.id, spaceTokenId, a.applicant);
   }
 
   function rejectApplication(

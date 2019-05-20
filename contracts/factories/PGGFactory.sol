@@ -110,7 +110,7 @@ contract PGGFactory is Ownable, Initializable {
     DONE
   }
 
-  bytes32 public constant FEE_KEY = bytes32("MULTI_SIG_FACTORY");
+  bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
 
   struct PGGContractGroup {
     address creator;

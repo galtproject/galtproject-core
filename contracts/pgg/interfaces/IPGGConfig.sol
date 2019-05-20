@@ -37,7 +37,7 @@ interface IPGGConfig {
   function getArbitratorStakes() external view returns (IPGGArbitratorStakeAccounting);
   function getOracleStakes() external view returns (IPGGOracleStakeAccounting);
   function getOracles() external view returns (IPGGOracles);
-  function getArbitrationCandidateTop() external view returns (IPGGMultiSigCandidateTop);
+  function getMultiSigCandidateTop() external view returns (IPGGMultiSigCandidateTop);
   function getDelegateSpaceVoting() external view returns (IPGGDelegateReputationVoting);
   function getDelegateGaltVoting() external view returns (IPGGDelegateReputationVoting);
   function getOracleStakeVoting() external view returns (IPGGOracleStakeVoting);
