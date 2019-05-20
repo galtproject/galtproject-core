@@ -29,8 +29,8 @@ contract GaltRA is IRA, LiquidRA, LockableRA, GaltInputRA {
     ggr = _ggr;
   }
 
-  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
-    pggConfig(_multiSig)
+  function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal {
+    pggConfig(_pgg)
       .getDelegateGaltVoting()
       .onDelegateReputationChanged(_delegate, _amount);
   }

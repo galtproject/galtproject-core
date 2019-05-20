@@ -164,7 +164,7 @@ contract('UpdateOracleManager', (accounts) => {
       alice
     );
 
-    this.mX = this.pggX.multiSig.address;
+    this.mX = this.pggX.config.address;
     this.pggMultiSigX = this.pggX.multiSig;
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.oraclesX = this.pggX.oracles;

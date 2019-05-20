@@ -16,11 +16,11 @@ pragma solidity 0.5.7;
 
 contract ILockableRA {
   function revoke(address _from, uint256 _amount) external;
-  function revokeLocked(address _delegate, address _multiSig, uint256 _amount) external;
-  function lockReputation(address _multiSig, uint256 _amount) external;
-  function unlockReputation(address _multiSig, uint256 _amount) external;
+  function revokeLocked(address _delegate, address _pgg, uint256 _amount) external;
+  function lockReputation(address _pgg, uint256 _amount) external;
+  function unlockReputation(address _pgg, uint256 _amount) external;
   function lockedBalanceOf(address _owner) external view returns (uint256);
-  function lockedPggBalance(address _multiSig) external view returns (uint256);
-  function lockedPggBalanceOf(address _owner, address _multiSig) external view returns (uint256);
-  function lockedPggBalances(address[] calldata _multiSigs) external view returns (uint256);
+  function lockedPggBalance(address _pgg) external view returns (uint256);
+  function lockedPggBalanceOf(address _owner, address _pgg) external view returns (uint256);
+  function lockedPggBalances(address[] calldata _pggs) external view returns (uint256);
 }

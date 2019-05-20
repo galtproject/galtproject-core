@@ -20,9 +20,8 @@ import "./AbstractApplication.sol";
 contract AbstractArbitratorApplication is AbstractApplication {
   mapping(address => bytes32[]) public applicationsByArbitrator;
 
-  modifier anyArbitrator(address payable _multiSig) {
-    pggRegistry().requireValidPggMultiSig(_multiSig);
-    require(PGGMultiSig(_multiSig).isOwner(msg.sender), "Not active arbitrator");
+  modifier anyArbitrator(address _pgg) {
+    require(pggConfig(_pgg).getMultiSig().isOwner(msg.sender), "Not active arbitrator");
     _;
   }
 

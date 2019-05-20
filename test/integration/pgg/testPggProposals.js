@@ -142,7 +142,7 @@ contract('PGG Proposals', accounts => {
         alice
       );
 
-      this.mX = this.pgg.multiSig.address;
+      this.mX = this.pgg.config.address;
     })();
 
     // Mint and distribute SRA reputation using mock

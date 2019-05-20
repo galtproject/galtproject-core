@@ -360,7 +360,7 @@ contract('SpaceRA', accounts => {
         {},
         alice
       );
-      const pggMultiSigX = this.pggX.multiSig;
+      const pggConfigX = this.pggX.config;
 
       // MultiSigY
       this.pggY = await buildPGG(
@@ -375,7 +375,7 @@ contract('SpaceRA', accounts => {
         {},
         bob
       );
-      const pggMultiSigY = this.pggY.multiSig;
+      const pggConfigY = this.pggY.config;
 
       // MultiSigZ
       this.pggZ = await buildPGG(
@@ -390,7 +390,7 @@ contract('SpaceRA', accounts => {
         {},
         charlie
       );
-      const pggMultiSigZ = this.pggZ.multiSig;
+      const pggConfigZ = this.pggZ.config;
 
       let res = await this.spaceToken.mint(alice, { from: minter });
       const token1 = res.logs[0].args.tokenId.toNumber();
@@ -452,9 +452,9 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 450);
 
       // Bob stakes reputation in multiSigA
-      await this.spaceRA.lockReputation(pggMultiSigX.address, 100, { from: bob });
-      await this.spaceRA.lockReputation(pggMultiSigY.address, 30, { from: bob });
-      await this.spaceRA.lockReputation(pggMultiSigZ.address, 70, { from: bob });
+      await this.spaceRA.lockReputation(pggConfigX.address, 100, { from: bob });
+      await this.spaceRA.lockReputation(pggConfigY.address, 30, { from: bob });
+      await this.spaceRA.lockReputation(pggConfigZ.address, 70, { from: bob });
 
       // Alice can revoke only 50 unlocked reputation tokens
       await assertRevert(this.spaceRA.revoke(bob, 51, { from: alice }));
@@ -462,7 +462,7 @@ contract('SpaceRA', accounts => {
 
       // To revoke locked reputation Alice uses #revokeLocked() and explicitly
       // specifies multiSig to revoke reputation from
-      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggConfigX.address, 101, { from: alice }));
 
       res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -470,11 +470,11 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 200);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
-      await this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 100, { from: bob });
+      await this.spaceRA.revokeLocked(bob, pggConfigX.address, 100, { from: bob });
 
       res = await this.spaceRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -482,10 +482,10 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 200);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggConfigX.address, 101, { from: alice }));
 
       // The above doesn't affect on Alice ability to revoke delegated to Bob balance
       await this.spaceRA.revoke(bob, 100, { from: alice });
@@ -496,12 +496,12 @@ contract('SpaceRA', accounts => {
       assert.equal(res, 100);
       res = await this.spaceRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.spaceRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.spaceRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.spaceRA.revokeLocked(bob, pggMultiSigZ.address, 71, { from: alice }));
-      await this.spaceRA.revokeLocked(bob, pggMultiSigZ.address, 70, { from: alice });
-      await this.spaceRA.revokeLocked(bob, pggMultiSigY.address, 30, { from: alice });
+      await assertRevert(this.spaceRA.revokeLocked(bob, pggConfigZ.address, 71, { from: alice }));
+      await this.spaceRA.revokeLocked(bob, pggConfigZ.address, 70, { from: alice });
+      await this.spaceRA.revokeLocked(bob, pggConfigY.address, 30, { from: alice });
       await this.spaceRA.revoke(charlie, 50, { from: alice });
 
       // ATTEMPT TO BURN

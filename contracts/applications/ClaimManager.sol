@@ -58,7 +58,7 @@ contract ClaimManager is AbstractApplication {
 
   struct Claim {
     bytes32 id;
-    address payable multiSig;
+    address payable pgg;
     address applicant;
     address beneficiary;
     uint256 amount;
@@ -134,32 +134,32 @@ contract ClaimManager is AbstractApplication {
     ggr = _ggr;
   }
 
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
-  function m(address _multiSig) public view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_M));
+  function m(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
-  function n(address _multiSig) public view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_N));
+  function n(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_N));
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+  function paymentMethod(address _pgg) public view returns (PaymentMethod) {
+    return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
   /**
    * @dev Submit a new claim.
    *
-   * @param _multiSig to submit a claim
+   * @param _pgg to submit a claim
    * @param _beneficiary for refund
    * @param _amount of claim
    * @param _documents with details
@@ -167,7 +167,7 @@ contract ClaimManager is AbstractApplication {
    * @return new claim id
    */
   function submit(
-    address payable _multiSig,
+    address payable _pgg,
     address _beneficiary,
     uint256 _amount,
     bytes32[] calldata _documents,
@@ -177,7 +177,7 @@ contract ClaimManager is AbstractApplication {
     payable
     returns (bytes32)
   {
-    pggRegistry().requireValidPggMultiSig(_multiSig);
+    pggRegistry().requireValidPgg(_pgg);
 
     // Default is ETH
     Currency currency;
@@ -186,12 +186,12 @@ contract ClaimManager is AbstractApplication {
     // ETH
     if (msg.value > 0) {
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
-      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Incorrect fee passed in");
+      require(msg.value >= minimalApplicationFeeEth(_pgg), "Incorrect fee passed in");
       fee = msg.value;
     // GALT
     } else {
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Incorrect fee passed in");
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Incorrect fee passed in");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
       fee = _applicationFeeInGalt;
       currency = Currency.GALT;
@@ -212,14 +212,14 @@ contract ClaimManager is AbstractApplication {
 
     c.status = ApplicationStatus.SUBMITTED;
     c.id = id;
-    c.multiSig = _multiSig;
+    c.pgg = _pgg;
     c.amount = _amount;
     c.beneficiary = _beneficiary;
     c.applicant = msg.sender;
     c.attachedDocuments = _documents;
     c.fees.currency = currency;
-    c.n = n(_multiSig);
-    c.m = m(_multiSig);
+    c.n = n(_pgg);
+    c.m = m(_pgg);
 
     calculateAndStoreFee(c, fee);
 
@@ -241,15 +241,15 @@ contract ClaimManager is AbstractApplication {
   function lock(bytes32 _cId) external {
     Claim storage c = claims[_cId];
 
-    require(PGGMultiSig(c.multiSig).isOwner(msg.sender), "Invalid arbitrator");
+    require(pggConfig(c.pgg).getMultiSig().isOwner(msg.sender), "Invalid arbitrator");
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(!c.arbitrators.has(msg.sender), "Arbitrator has already locked the application");
-    require(c.arbitrators.size() < n(c.multiSig), "All arbitrator slots are locked");
+    require(c.arbitrators.size() < n(c.pgg), "All arbitrator slots are locked");
 
     c.arbitrators.add(msg.sender);
 
-    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n(c.multiSig));
+    emit ArbitratorSlotTaken(_cId, c.arbitrators.size(), n(c.pgg));
   }
 
   /**
@@ -291,8 +291,7 @@ contract ClaimManager is AbstractApplication {
     Claim storage c = claims[_cId];
 
     require(
-      pggRegistry()
-        .getPggConfig(c.multiSig)
+      pggConfig(c.pgg)
         .getOracles()
         .oraclesHasTypesAssigned(_oracles, _oracleTypes),
       "Some oracle types are invalid"
@@ -372,17 +371,17 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        pggRegistry()
-          .getPggConfig(c.multiSig)
+        IPGGConfig cfg = pggConfig(c.pgg);
+
+        cfg
           .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        pggRegistry()
-          .getPggConfig(c.multiSig)
+        cfg
           .getArbitratorStakes()
           .slashMultiple(p.arbitrators, p.arbitratorFines);
 
-        c.multiSigTransactionId = PGGMultiSig(c.multiSig).proposeTransaction(
+        c.multiSigTransactionId = cfg.getMultiSig().proposeTransaction(
           address(ggr.getGaltToken()),
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
@@ -488,7 +487,7 @@ contract ClaimManager is AbstractApplication {
   }
 
   function _checkMultiSigTransactionExecuted(Claim storage c) internal returns (bool) {
-    (, , , bool executed) = PGGMultiSig(c.multiSig).transactions(c.multiSigTransactionId);
+    (, , , bool executed) = pggConfig(c.pgg).getMultiSig().transactions(c.multiSigTransactionId);
     return executed;
   }
 
@@ -512,7 +511,7 @@ contract ClaimManager is AbstractApplication {
     returns (
       address applicant,
       address beneficiary,
-      address multiSig,
+      address pgg,
       uint256 amount,
       bytes32[] memory attachedDocuments,
       address[] memory arbitrators,
@@ -529,7 +528,7 @@ contract ClaimManager is AbstractApplication {
     return (
       c.applicant,
       c.beneficiary,
-      c.multiSig,
+      c.pgg,
       c.amount,
       c.attachedDocuments,
       c.arbitrators.elements(),

@@ -132,13 +132,13 @@ function globalGovernanceHelpers(
 
       if (spaceReputationToLock > 0) {
         await pIteration.forEach(spaceReputationDelegates, async function(delegate) {
-          await Helpers.addSpaceReputationDelegate(delegate, pgg.multiSig.address, spaceReputationToLock);
+          await Helpers.addSpaceReputationDelegate(delegate, pgg.config.address, spaceReputationToLock);
         });
       }
 
       if (galtReputationToLock > 0) {
         await pIteration.forEach(galtReputationDelegates, async function(delegate) {
-          await Helpers.addGaltReputationDelegate(delegate, pgg.multiSig.address, galtReputationToLock);
+          await Helpers.addGaltReputationDelegate(delegate, pgg.config.address, galtReputationToLock);
         });
       }
 

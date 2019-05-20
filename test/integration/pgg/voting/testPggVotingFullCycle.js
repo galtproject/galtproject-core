@@ -181,7 +181,7 @@ contract('PGG Voting Full Cycle', accounts => {
     this.oraclesX = this.pggX.oracles;
 
     // CONFIGURING
-    this.X = this.pggMultiSigX.address;
+    this.X = this.pggX.config.address;
   });
 
   afterEach(async function() {

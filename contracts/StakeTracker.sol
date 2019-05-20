@@ -24,7 +24,7 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
   GaltGlobalRegistry internal ggr;
   uint256 internal _totalSupply;
 
-  // MultiSig => totalStaked
+  // PGG => totalStaked
   mapping(address => uint256) internal _pggStakes;
 
   bytes32 public constant MULTI_SIG_ROLE = bytes32("stake_tracker_notifier");
@@ -38,39 +38,39 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     ggr = _ggr;
   }
 
-  modifier onlyValidOracleStakeAccounting(address _multiSig) {
+  modifier onlyValidOracleStakeAccounting(address _pgg) {
     IPGGRegistry(ggr.getPggRegistryAddress())
-      .getPggConfig(_multiSig)
+      .getPggConfig(_pgg)
       .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
 
     _;
   }
 
-  function onStake(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
+  function onStake(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
     _totalSupply += _amount;
-    _pggStakes[_multiSig] += _amount;
+    _pggStakes[_pgg] += _amount;
   }
 
-  function onSlash(address _multiSig, uint256 _amount) external onlyValidOracleStakeAccounting(_multiSig) {
+  function onSlash(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
     _totalSupply -= _amount;
-    _pggStakes[_multiSig] -= _amount;
+    _pggStakes[_pgg] -= _amount;
   }
 
   // GETTERS
 
-  function balancesOf(address[] calldata _multiSigs) external view returns(uint256) {
-    uint256 len = _multiSigs.length;
+  function balancesOf(address[] calldata _pggs) external view returns(uint256) {
+    uint256 len = _pggs.length;
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _pggStakes[_multiSigs[i]];
+      total += _pggStakes[_pggs[i]];
     }
 
     return total;
   }
 
-  function balanceOf(address _multiSig) external view returns(uint256) {
-    return _pggStakes[_multiSig];
+  function balanceOf(address _pgg) external view returns(uint256) {
+    return _pggStakes[_pgg];
   }
 
   function totalSupply() external view returns(uint256) {

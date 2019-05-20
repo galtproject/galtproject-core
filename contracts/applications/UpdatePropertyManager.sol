@@ -59,7 +59,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
   struct Application {
     bytes32 id;
-    address multiSig;
+    address pgg;
     address applicant;
     bytes32 ledgerIdentifier;
     string description;
@@ -116,24 +116,24 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     ggr = _ggr;
   }
 
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(pggConfigValue(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
     return keccak256(abi.encode(CONFIG_PREFIX, "share", _oracleType));
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(pggConfigValue(_multiSig, CONFIG_PAYMENT_METHOD)));
+  function paymentMethod(address _pgg) public view returns (PaymentMethod) {
+    return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
   function submitApplication(
-    address _multiSig,
+    address _pgg,
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
     string calldata _description,
@@ -150,13 +150,13 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
     require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
 
-    pggRegistry().requireValidPggMultiSig(_multiSig);
+    pggRegistry().requireValidPgg(_pgg);
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
 
     // TODO: use storage instead
     bytes32 _id = keccak256(
       abi.encodePacked(
-        _multiSig,
+        _pgg,
         _spaceTokenId,
         blockhash(block.number - 1)
       )
@@ -170,7 +170,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     // GALT
     if (_applicationFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both GALT and ETH");
-      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_multiSig), "Insufficient payment");
+      require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Insufficient payment");
 
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _applicationFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
@@ -179,7 +179,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       a.currency = Currency.GALT;
       // ETH
     } else {
-      require(msg.value >= minimalApplicationFeeEth(_multiSig), "Insufficient payment");
+      require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
 
       fee = msg.value;
     }
@@ -190,7 +190,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     a.newContour = _newContour;
     a.newHeights = _newHeights;
     a.newLevel = _newLevel;
-    a.multiSig = _multiSig;
+    a.pgg = _pgg;
 
     a.spaceTokenId = _spaceTokenId;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -211,7 +211,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, _oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
     require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock a oracle type not in PENDING status");
@@ -235,7 +235,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
     require(a.validationStatus[oracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
@@ -273,7 +273,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.SUBMITTED, "ApplicationStatus should be SUBMITTED");
 
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, senderOracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, senderOracleType);
 
     require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
     require(a.oracleTypeAddresses[senderOracleType] == msg.sender, "Sender not assigned to this application");
@@ -345,7 +345,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     require(a.tokenWithdrawn == true, "Token should be withdrawn first");
     require(a.oracleTypeRewardPaidOut[oracleType] == false, "Reward is already withdrawn");
-    requireOracleActiveWithAssignedActiveOracleType(a.multiSig, msg.sender, oracleType);
+    requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
     _assignGaltProtocolFee(a);
 
@@ -380,7 +380,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       ApplicationStatus status,
       Currency currency,
       address applicant,
-      address multiSig,
+      address pgg,
       uint256 spaceTokenId,
       bool tokenWithdrawn,
       bool galtProtocolFeePaidOut,
@@ -397,7 +397,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       m.status,
       m.currency,
       m.applicant,
-      m.multiSig,
+      m.pgg,
       m.spaceTokenId,
       m.tokenWithdrawn,
       m.galtProtocolFeePaidOut,
@@ -519,7 +519,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
         .oraclesReward
-        .mul(oracleTypeShare(a.multiSig, oracleType))
+        .mul(oracleTypeShare(a.pgg, oracleType))
         .div(100);
 
       a.assignedRewards[oracleType] = rewardShare;

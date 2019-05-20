@@ -514,7 +514,7 @@ contract PGGFactory is Ownable, Initializable {
     g.proposalContracts.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
     g.proposalContracts.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
-    IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggMultiSig, g.pggConfig);
+    IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggConfig);
 
     g.nextStep = Step.DONE;
 

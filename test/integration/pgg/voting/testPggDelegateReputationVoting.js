@@ -221,9 +221,9 @@ contract('PGGDelegateReputationVoting', accounts => {
         from: oracleModifier
       });
 
-      this.X = this.pggMultiSigX.address;
-      this.Y = this.pggMultiSigY.address;
-      this.Z = this.pggMultiSigZ.address;
+      this.X = this.pggX.config.address;
+      this.Y = this.pggY.config.address;
+      this.Z = this.pggZ.config.address;
     });
 
     afterEach(async function() {
@@ -593,7 +593,6 @@ contract('PGGDelegateReputationVoting', accounts => {
         {},
         alice
       );
-      this.pggMultiSigF = this.pggF.multiSig;
       this.delegateSpaceVotingF = this.pggF.delegateSpaceVoting;
     });
 

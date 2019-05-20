@@ -50,7 +50,7 @@ contract AbstractApplication is Initializable, Permissionable {
     _;
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod);
+  function paymentMethod(address _pgg) public view returns (PaymentMethod);
 
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
@@ -72,12 +72,14 @@ contract AbstractApplication is Initializable, Permissionable {
     return IPGGRegistry(ggr.getPggRegistryAddress());
   }
 
-  function pggConfig(address _multiSig) internal view returns (IPGGConfig) {
-    return pggRegistry().getPggConfig(_multiSig);
+  function pggConfig(address _pgg) internal view returns (IPGGConfig) {
+    pggRegistry().requireValidPgg(_pgg);
+
+    return IPGGConfig(_pgg);
   }
 
-  function pggConfigValue(address _multiSig, bytes32 _key) internal view returns (bytes32) {
-    return pggConfig(_multiSig).applicationConfig(_key);
+  function pggConfigValue(address _pgg, bytes32 _key) internal view returns (bytes32) {
+    return pggConfig(_pgg).applicationConfig(_key);
   }
 
   function getAllApplications() external view returns (bytes32[] memory) {
