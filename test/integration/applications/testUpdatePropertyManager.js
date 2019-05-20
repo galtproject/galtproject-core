@@ -255,7 +255,7 @@ contract('UpdatePropertyManager', (accounts) => {
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -279,7 +279,7 @@ contract('UpdatePropertyManager', (accounts) => {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.pggMultiSigX.address,
+              this.pggConfigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.description,
@@ -297,7 +297,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -322,7 +322,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate oracle rewards according to their roles share', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -361,7 +361,7 @@ contract('UpdatePropertyManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(57), { from: alice });
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -556,7 +556,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#submitApplication()', () => {
       it('should create a new application', async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -587,7 +587,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.pggMultiSigX.address,
+              this.pggConfigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
               this.description,
@@ -605,7 +605,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should allow applications with payment greater than required', async function() {
           await this.updatePropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -622,7 +622,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -646,7 +646,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
             this.description,
@@ -684,7 +684,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -738,7 +738,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#approveApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -797,7 +797,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#revertApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -867,7 +867,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#resubmitApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -917,7 +917,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#withdrawSpaceToken()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,
@@ -952,7 +952,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('claim reward', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
           this.description,

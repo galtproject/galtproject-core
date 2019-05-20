@@ -193,7 +193,7 @@ contract('NewPropertyManager', accounts => {
       alice
     );
 
-    this.mX = this.pggX.multiSig.address;
+    this.mX = this.pggX.config.address;
     this.pggMultiSigX = this.pggX.multiSig;
     this.pggConfigX = this.pggX.config;
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
@@ -235,14 +235,14 @@ contract('NewPropertyManager', accounts => {
       await this.geodesicMock.calculateContourArea(this.contour);
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
-      this.fee = await this.newPropertyManager.getSubmissionFeeByArea(this.pggMultiSigX.address, Currency.GALT, area);
+      this.fee = await this.newPropertyManager.getSubmissionFeeByArea(this.pggConfigX.address, Currency.GALT, area);
       assert.equal(this.fee, ether(15));
     });
 
     beforeEach(async function() {
       await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
       const res = await this.newPropertyManager.submitApplication(
-        this.pggMultiSigX.address,
+        this.pggConfigX.address,
         this.contour,
         this.heights,
         0,
@@ -287,7 +287,7 @@ contract('NewPropertyManager', accounts => {
 
       it('should submit applications in galt', async function() {
         await this.newPropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.contour,
           this.heights,
           0,
@@ -303,7 +303,7 @@ contract('NewPropertyManager', accounts => {
       describe('payable', () => {
         it('should split fee between GaltSpace and Oracle', async function() {
           const res = await this.newPropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.contour,
             this.heights,
             0,
@@ -324,7 +324,7 @@ contract('NewPropertyManager', accounts => {
         it('should reject fees less than returned from getter', async function() {
           await assertRevert(
             this.newPropertyManager.submitApplication(
-              this.pggMultiSigX.address,
+              this.pggConfigX.address,
               this.contour,
               this.heights,
               0,
@@ -343,7 +343,7 @@ contract('NewPropertyManager', accounts => {
           const expectedFee = ether(26);
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
           let res = await this.newPropertyManager.submitApplication(
-            this.pggMultiSigX.address,
+            this.pggConfigX.address,
             this.contour,
             this.heights,
             0,
@@ -378,7 +378,7 @@ contract('NewPropertyManager', accounts => {
     describe('#submitApplication() with area provided by the applicant', () => {
       beforeEach(async function() {
         this.fee = await this.newPropertyManager.getSubmissionFeeByArea(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           Currency.GALT,
           ether(600)
         );
@@ -389,7 +389,7 @@ contract('NewPropertyManager', accounts => {
 
       it('should submit applications in galt', async function() {
         await this.newPropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.contour,
           this.heights,
           0,
@@ -545,7 +545,7 @@ contract('NewPropertyManager', accounts => {
         this.fee = ether(20);
         await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
         res = await this.newPropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.contour,
           this.heights,
           0,
@@ -659,7 +659,7 @@ contract('NewPropertyManager', accounts => {
       const area = await this.geodesicMock.getContourArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
-        this.pggMultiSigX.address,
+        this.pggConfigX.address,
         Currency.ETH,
         area
       );
@@ -671,7 +671,7 @@ contract('NewPropertyManager', accounts => {
       await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
 
       let res = await this.newPropertyManager.submitApplication(
-        this.pggMultiSigX.address,
+        this.pggConfigX.address,
         this.contour,
         this.heights,
         0,
@@ -706,7 +706,7 @@ contract('NewPropertyManager', accounts => {
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.newPropertyManager.submitApplication(
-              this.pggMultiSigX.address,
+              this.pggConfigX.address,
               this.contour,
               this.heights,
               0,
@@ -726,7 +726,7 @@ contract('NewPropertyManager', accounts => {
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
             this.newPropertyManager.submitApplication(
-              this.pggMultiSigX.address,
+              this.pggConfigX.address,
               this.contour,
               this.heights,
               0,
@@ -942,7 +942,7 @@ contract('NewPropertyManager', accounts => {
 
       it('should push an application id to the oracles list for caching', async function() {
         let res = await this.newPropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.contour,
           this.heights,
           0,
@@ -963,7 +963,7 @@ contract('NewPropertyManager', accounts => {
 
         // submit second
         res = await this.newPropertyManager.submitApplication(
-          this.pggMultiSigX.address,
+          this.pggConfigX.address,
           this.contour,
           this.heights,
           0,

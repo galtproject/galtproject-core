@@ -98,7 +98,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
     IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onSlash(
-      address(pggConfig.getMultiSig()),
+      address(pggConfig),
       _amount
     );
 

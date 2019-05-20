@@ -161,11 +161,10 @@ contract("ClaimManager", (accounts) => {
       alice
     );
 
-    this.mX = this.pggX.multiSig.address;
     this.pggMultiSigX = this.pggX.multiSig;
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.arbitratorStakeAccountingX = this.pggX.arbitratorStakeAccounting;
-    this.mX = this.pggMultiSigX.address;
+    this.mX = this.pggX.config.address;
     this.oraclesX = this.pggX.oracles;
 
     await this.galtToken.approve(this.arbitratorStakeAccountingX.address, ether(1000000), { from: alice });

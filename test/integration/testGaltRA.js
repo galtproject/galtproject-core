@@ -319,7 +319,7 @@ contract('GaltRA', accounts => {
         {},
         alice
       );
-      const pggMultiSigX = this.pggX.multiSig;
+      const pggConfigX = this.pggX.config;
 
       // MultiSigY
       this.pggY = await buildPGG(
@@ -334,7 +334,7 @@ contract('GaltRA', accounts => {
         {},
         bob
       );
-      const pggMultiSigY = this.pggY.multiSig;
+      const pggConfigY = this.pggY.config;
 
       // MultiSigZ
       this.pggZ = await buildPGG(
@@ -349,7 +349,7 @@ contract('GaltRA', accounts => {
         {},
         charlie
       );
-      const pggMultiSigZ = this.pggZ.multiSig;
+      const pggConfigZ = this.pggZ.config;
 
       await this.galtToken.approve(this.galtLockerFactory.address, ether(10), { from: alice });
       let res = await this.galtLockerFactory.build({ from: alice });
@@ -399,9 +399,9 @@ contract('GaltRA', accounts => {
       assert.equal(res, 450);
 
       // Bob stakes reputation in multiSigA
-      await this.galtRA.lockReputation(pggMultiSigX.address, 100, { from: bob });
-      await this.galtRA.lockReputation(pggMultiSigY.address, 30, { from: bob });
-      await this.galtRA.lockReputation(pggMultiSigZ.address, 70, { from: bob });
+      await this.galtRA.lockReputation(pggConfigX.address, 100, { from: bob });
+      await this.galtRA.lockReputation(pggConfigY.address, 30, { from: bob });
+      await this.galtRA.lockReputation(pggConfigZ.address, 70, { from: bob });
 
       // Alice can revoke only 50 unlocked reputation tokens
       await assertRevert(this.galtRA.revoke(bob, 51, { from: alice }));
@@ -409,7 +409,7 @@ contract('GaltRA', accounts => {
 
       // To revoke locked reputation Alice uses #revokeLocked() and explicitly
       // specifies multiSig to revoke reputation from
-      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.galtRA.revokeLocked(bob, pggConfigX.address, 101, { from: alice }));
 
       res = await this.galtRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -417,11 +417,11 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 200);
-      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 100);
 
       // Bob performs self-revokeLocked()
-      await this.galtRA.revokeLocked(bob, pggMultiSigX.address, 100, { from: bob });
+      await this.galtRA.revokeLocked(bob, pggConfigX.address, 100, { from: bob });
 
       res = await this.galtRA.balanceOf(bob);
       assert.equal(res, 800);
@@ -429,10 +429,10 @@ contract('GaltRA', accounts => {
       assert.equal(res, 200);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigX.address, 101, { from: alice }));
+      await assertRevert(this.galtRA.revokeLocked(bob, pggConfigX.address, 101, { from: alice }));
 
       // The above doesn't affect on Alice ability to revoke delegated to Bob balance
       await this.galtRA.revoke(bob, 100, { from: alice });
@@ -443,12 +443,12 @@ contract('GaltRA', accounts => {
       assert.equal(res, 100);
       res = await this.galtRA.lockedBalanceOf(bob);
       assert.equal(res, 100);
-      res = await this.galtRA.lockedPggBalanceOf(bob, pggMultiSigX.address);
+      res = await this.galtRA.lockedPggBalanceOf(bob, pggConfigX.address);
       assert.equal(res, 0);
 
-      await assertRevert(this.galtRA.revokeLocked(bob, pggMultiSigZ.address, 71, { from: alice }));
-      await this.galtRA.revokeLocked(bob, pggMultiSigZ.address, 70, { from: alice });
-      await this.galtRA.revokeLocked(bob, pggMultiSigY.address, 30, { from: alice });
+      await assertRevert(this.galtRA.revokeLocked(bob, pggConfigZ.address, 71, { from: alice }));
+      await this.galtRA.revokeLocked(bob, pggConfigZ.address, 70, { from: alice });
+      await this.galtRA.revokeLocked(bob, pggConfigY.address, 30, { from: alice });
       await this.galtRA.revoke(charlie, 50, { from: alice });
 
       // ATTEMPT TO BURN

@@ -371,15 +371,17 @@ contract ClaimManager is AbstractApplication {
 
       if (p.action == Action.APPROVE) {
         changeSaleOrderStatus(c, ApplicationStatus.APPROVED);
-        pggConfig(c.pgg)
+        IPGGConfig cfg = pggConfig(c.pgg);
+
+        cfg
           .getOracleStakes()
           .slashMultiple(p.oracles, p.oracleTypes, p.fines);
 
-        pggConfig(c.pgg)
+        cfg
           .getArbitratorStakes()
           .slashMultiple(p.arbitrators, p.arbitratorFines);
 
-        c.multiSigTransactionId = PGGMultiSig(c.pgg).proposeTransaction(
+        c.multiSigTransactionId = cfg.getMultiSig().proposeTransaction(
           address(ggr.getGaltToken()),
           0x0,
           abi.encodeWithSelector(ERC20_TRANSFER_SIGNATURE, c.beneficiary, p.amount)
