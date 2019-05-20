@@ -56,12 +56,12 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
   mapping(uint256 => address[]) public tokenIdToSplitOperations;
   address[] public allSplitOperations;
 
-  struct TokenInfo {
+  struct SpaceTokenInfo {
     bytes32 ledgerIdentifier;
     string description;
   }
 
-  mapping(uint256 => TokenInfo) public tokenInfo;
+  mapping(uint256 => SpaceTokenInfo) public spaceTokenInfo;
   
   function initialize(GaltGlobalRegistry _ggr) public isInitializer {
     ggr = _ggr;
@@ -204,7 +204,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
       spaceTokenContour[newSpaceTokenId] = splitOperation.getResultContour(j);
       emit SpaceTokenContourChange(bytes32(newSpaceTokenId), spaceTokenContour[newSpaceTokenId]);
 
-      spaceTokenArea[newSpaceTokenId] = calculateTokenArea(newSpaceTokenId);
+      spaceTokenArea[newSpaceTokenId] = calculateSpaceTokenArea(newSpaceTokenId);
       emit SpaceTokenAreaChange(bytes32(newSpaceTokenId), spaceTokenArea[newSpaceTokenId]);
       spaceTokenAreaSource[newSpaceTokenId] = AreaSource.CONTRACT;
 
@@ -219,7 +219,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
       emit NewSplitSpaceToken(newSpaceTokenId);
     }
 
-    spaceTokenArea[_spaceTokenId] = calculateTokenArea(_spaceTokenId);
+    spaceTokenArea[_spaceTokenId] = calculateSpaceTokenArea(_spaceTokenId);
     spaceTokenAreaSource[_spaceTokenId] = AreaSource.CONTRACT;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), spaceTokenArea[_spaceTokenId]);
 
@@ -274,7 +274,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     spaceTokenHeight[_destinationSpaceTokenId] = newSpaceTokenHeights;
     emit SpaceTokenHeightsChange(bytes32(_destinationSpaceTokenId), spaceTokenHeight[_destinationSpaceTokenId]);
 
-    spaceTokenArea[_destinationSpaceTokenId] = calculateTokenArea(_destinationSpaceTokenId);
+    spaceTokenArea[_destinationSpaceTokenId] = calculateSpaceTokenArea(_destinationSpaceTokenId);
     emit SpaceTokenAreaChange(bytes32(_destinationSpaceTokenId), spaceTokenArea[_destinationSpaceTokenId]);
     spaceTokenAreaSource[_destinationSpaceTokenId] = AreaSource.CONTRACT;
     
@@ -320,7 +320,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     return spaceTokenLevel[_spaceTokenId];
   }
   
-  function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
+  function calculateSpaceTokenArea(uint256 _spaceTokenId) public returns (uint256) {
     return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(spaceTokenContour[_spaceTokenId]);
   }
 
@@ -334,8 +334,8 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     return spaceTokenArea[_spaceTokenId];
   }
 
-  function setTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
-    TokenInfo storage ti = tokenInfo[_spaceTokenId];
+  function setSpaceToken(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
+    SpaceTokenInfo storage ti = spaceTokenInfo[_spaceTokenId];
     ti.ledgerIdentifier = _ledgerIdentifier;
     ti.description = _description;
   }
@@ -350,7 +350,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     string memory description
   )
   {
-    TokenInfo storage ti = tokenInfo[_spaceTokenId];
+    SpaceTokenInfo storage ti = spaceTokenInfo[_spaceTokenId];
     return (
       spaceTokenContour[_spaceTokenId],
       spaceTokenHeight[_spaceTokenId],
