@@ -28,13 +28,13 @@ contract AbstractArbitrationProposalManager is AbstractProposalManager {
 
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
     return pggConfig
-      .getArbitrationCandidateTop()
+      .getMultiSigCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].ayes.elements());
   }
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
     return pggConfig
-      .getArbitrationCandidateTop()
+      .getMultiSigCandidateTop()
       .getHolderWeights(_proposalVotings[_proposalId].nays.elements());
   }
 }
