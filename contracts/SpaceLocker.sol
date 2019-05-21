@@ -60,7 +60,7 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).setSpaceTokenArea(_spaceTokenId);
+    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).getSpaceTokenArea(_spaceTokenId);
     tokenDeposited = true;
 
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
