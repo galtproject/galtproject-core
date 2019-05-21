@@ -233,7 +233,7 @@ contract('NewPropertyManager', accounts => {
   describe('application pipeline for GALT payment method', () => {
     before(async function() {
       await this.geodesicMock.calculateContourArea(this.contour);
-      const area = await this.geodesicMock.getContourArea(this.contour);
+      const area = await this.geodesicMock.setSpaceTokenArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       this.fee = await this.newPropertyManager.getSubmissionFeeByArea(this.pggConfigX.address, Currency.GALT, area);
       assert.equal(this.fee, ether(15));
@@ -429,7 +429,7 @@ contract('NewPropertyManager', accounts => {
         beforeEach(async function() {
           this.newContour = ['sezu112c', 'sezu113b1', 'sezu114', 'sezu116'].map(galt.geohashToGeohash5);
           await this.geodesicMock.calculateContourArea(this.newContour);
-          const area = await this.geodesicMock.getContourArea(this.newContour);
+          const area = await this.geodesicMock.setSpaceTokenArea(this.newContour);
           assert.equal(area.toString(10), ether(4000).toString(10));
           this.fee = await this.newPropertyManager.getResubmissionFeeByArea(this.aId, area);
 
@@ -478,7 +478,7 @@ contract('NewPropertyManager', accounts => {
         it('should not require additional payment when fee is less than previous onw', async function() {
           const smallerContour = ['sezu112c', 'sezu113b1'].map(galt.geohashToGeohash5);
           await this.geodesicMock.calculateContourArea(smallerContour);
-          const area = await this.geodesicMock.getContourArea(smallerContour);
+          const area = await this.geodesicMock.setSpaceTokenArea(smallerContour);
           assert.equal(area.toString(10), ether(2000).toString(10));
           const fee = await this.newPropertyManager.getResubmissionFeeByArea(this.aId, area);
           assert.equal(fee, 0);
@@ -656,7 +656,7 @@ contract('NewPropertyManager', accounts => {
   describe('application pipeline for ETH', () => {
     before(async function() {
       await this.geodesicMock.calculateContourArea(this.contour);
-      const area = await this.geodesicMock.getContourArea(this.contour);
+      const area = await this.geodesicMock.setSpaceTokenArea(this.contour);
       assert.equal(area.toString(10), ether(3000).toString(10));
       const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
         this.pggConfigX.address,
@@ -839,7 +839,7 @@ contract('NewPropertyManager', accounts => {
         const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
 
         await this.geodesicMock.calculateContourArea(newContour);
-        const area = await this.geodesicMock.getContourArea(newContour);
+        const area = await this.geodesicMock.setSpaceTokenArea(newContour);
         assert.equal(area.toString(10), ether(5000).toString(10));
         const fee = await this.newPropertyManager.getResubmissionFeeByArea(this.aId, area);
         assert.equal(fee, ether(0.5));

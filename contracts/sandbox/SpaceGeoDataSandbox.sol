@@ -42,7 +42,7 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
   }
 
-  function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
+  function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
     spaceTokenArea[_spaceTokenId] = _area;
     spaceTokenAreaSource[_spaceTokenId] = _areaSource;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
@@ -52,7 +52,7 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
     uint256 _spaceTokenId = initSpaceToken(spaceTokenOwner);
     setSpaceTokenContour(_spaceTokenId, _geohashesContour);
     setSpaceTokenHeights(_spaceTokenId, _heightsList);
-    setTokenArea(_spaceTokenId, _area, _areaSource);
+    setSpaceTokenArea(_spaceTokenId, _area, _areaSource);
     return _spaceTokenId;
   }
 }

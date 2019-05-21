@@ -79,7 +79,7 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
 
       await this.spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
       await this.spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
-      await this.spaceGeoData.setTokenArea(
+      await this.spaceGeoData.setSpaceTokenArea(
         tokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
         '1'
@@ -142,7 +142,7 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.spaceGeoData.getContourArea(spaceTokenId);
+      const solArea = await this.spaceGeoData.getSpaceTokenArea(spaceTokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };
