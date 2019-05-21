@@ -8,7 +8,7 @@ contract MockGeodesic {
     return contour.length * 1000 ether;
   }
 
-  function getContourArea(uint256[] calldata contour) external view returns (uint256 area) {
+  function setSpaceTokenArea(uint256[] calldata contour) external view returns (uint256 area) {
     return contour.length * 1000 ether;
   }
 }

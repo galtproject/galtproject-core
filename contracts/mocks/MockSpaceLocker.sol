@@ -24,7 +24,7 @@ contract MockSpaceLocker is SpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).getContourArea(_spaceTokenId);
+    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).setSpaceTokenArea(_spaceTokenId);
     tokenDeposited = true;
   }
 

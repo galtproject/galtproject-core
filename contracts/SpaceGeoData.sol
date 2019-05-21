@@ -324,13 +324,13 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(spaceTokenContour[_spaceTokenId]);
   }
 
-  function setTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
+  function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     spaceTokenArea[_spaceTokenId] = _area;
     spaceTokenAreaSource[_spaceTokenId] = _areaSource;
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
   }
 
-  function getContourArea(uint256 _spaceTokenId) external view returns (uint256) {
+  function setSpaceTokenArea(uint256 _spaceTokenId) external view returns (uint256) {
     return spaceTokenArea[_spaceTokenId];
   }
 

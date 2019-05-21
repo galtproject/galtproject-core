@@ -250,13 +250,13 @@ contract('PGGDelegateReputationVoting', accounts => {
 
       // SET AREAS
       let p = [
-        this.spaceGeoData.setTokenArea(x1, '300', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x2, '500', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x3, '400', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x4, '700', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x5, '100', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x6, '1000', '0', { from: geoDateManagement }),
-        this.spaceGeoData.setTokenArea(x7, '0', '0', { from: geoDateManagement })
+        this.spaceGeoData.setSpaceTokenArea(x1, '300', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x2, '500', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x3, '400', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x4, '700', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x5, '100', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x6, '1000', '0', { from: geoDateManagement }),
+        this.spaceGeoData.setSpaceTokenArea(x7, '0', '0', { from: geoDateManagement })
       ];
 
       await Promise.all(p);
