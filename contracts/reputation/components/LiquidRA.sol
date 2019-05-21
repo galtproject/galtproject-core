@@ -16,7 +16,6 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../interfaces/ISpaceToken.sol";
@@ -25,7 +24,7 @@ import "../../registries/interfaces/ILockerRegistry.sol";
 import "../../registries/GaltGlobalRegistry.sol";
 
 
-contract LiquidRA is Permissionable, Initializable {
+contract LiquidRA is Initializable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
