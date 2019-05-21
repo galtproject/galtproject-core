@@ -21,7 +21,7 @@ import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGOracleStakeVoting.sol";
 
 
-contract PGGOracleStakeVoting is IPGGOracleStakeVoting, Permissionable {
+contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 

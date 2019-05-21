@@ -13,14 +13,14 @@
 
 pragma solidity 0.5.7;
 
-import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IPGGRegistry.sol";
 import "../pgg/interfaces/IPGGConfig.sol";
 import "../pgg/interfaces/IPGGMultiSig.sol";
 
 
-contract PGGRegistry is IPGGRegistry, OwnableAndInitializable {
+contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
 
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");

@@ -31,9 +31,6 @@ contract PGGOracleFactory is Ownable {
       pggConfig
     );
 
-    voting.addRoleTo(msg.sender, "role_manager");
-    voting.removeRoleFrom(address(this), "role_manager");
-
     return voting;
   }
 }

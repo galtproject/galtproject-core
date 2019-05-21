@@ -26,7 +26,7 @@ import "./registries/GaltGlobalRegistry.sol";
 import "./SpaceGeoDataLib.sol";
 
 
-contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable {
+contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12

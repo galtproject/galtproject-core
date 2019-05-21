@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
-contract AbstractProposalManager is Permissionable {
+contract AbstractProposalManager {
   using Counters for Counters.Counter;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;

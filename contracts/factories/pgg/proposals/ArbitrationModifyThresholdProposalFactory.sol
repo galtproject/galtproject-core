@@ -29,8 +29,5 @@ contract ArbitrationModifyThresholdProposalFactory is Ownable {
     returns (IProposalManager proposalManager)
   {
     proposalManager = new ModifyThresholdProposalManager(_config);
-
-    proposalManager.addRoleTo(msg.sender, "role_manager");
-    proposalManager.removeRoleFrom(address(this), "role_manager");
   }
 }

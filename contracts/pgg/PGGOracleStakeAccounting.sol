@@ -22,7 +22,7 @@ import "./interfaces/IPGGOracleStakeAccounting.sol";
 import "../interfaces/IStakeTracker.sol";
 
 
-contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Permissionable {
+contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 

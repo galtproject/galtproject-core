@@ -30,8 +30,5 @@ contract PGGOracleStakeAccountingFactory is Ownable {
     returns (PGGOracleStakeAccounting oracleStakes)
   {
     oracleStakes = new PGGOracleStakeAccounting(_pggConfig);
-
-    oracleStakes.addRoleTo(msg.sender, "role_manager");
-    oracleStakes.removeRoleFrom(address(this), "role_manager");
   }
 }

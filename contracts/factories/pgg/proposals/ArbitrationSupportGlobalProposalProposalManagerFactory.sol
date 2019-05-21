@@ -29,8 +29,5 @@ contract ArbitrationSupportGlobalProposalProposalManagerFactory is Ownable {
     returns (IProposalManager proposalManager)
   {
     proposalManager = new SupportGlobalProposalProposalManager(_config);
-
-    proposalManager.addRoleTo(msg.sender, "role_manager");
-    proposalManager.removeRoleFrom(address(this), "role_manager");
   }
 }

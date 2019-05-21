@@ -23,7 +23,7 @@ import "../../collections/VotingLinkedList.sol";
 import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
-contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
+contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 

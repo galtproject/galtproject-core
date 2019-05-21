@@ -20,7 +20,7 @@ import "./interfaces/IPGGOracles.sol";
 import "./interfaces/IPGGConfig.sol";
 
 
-contract PGGOracles is IPGGOracles, Permissionable {
+contract PGGOracles is IPGGOracles {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Bytes32Set;

@@ -22,7 +22,8 @@ import "../registries/GaltGlobalRegistry.sol";
 import "../pgg/interfaces/IPGGConfig.sol";
 
 
-contract AbstractApplication is Initializable, Permissionable {
+
+contract AbstractApplication is Initializable {
   GaltGlobalRegistry internal ggr;
 
   uint256 public protocolFeesEth;
