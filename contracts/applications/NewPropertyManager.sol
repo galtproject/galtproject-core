@@ -415,7 +415,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     spaceGeoData.setSpaceTokenHeights(spaceTokenId, a.details.heights);
     spaceGeoData.setSpaceTokenLevel(spaceTokenId, a.details.level);
     spaceGeoData.setTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
-    spaceGeoData.setSpaceToken(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
+    spaceGeoData.setSpaceTokenInfo(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
 
     emit TokenMinted(a.id, spaceTokenId, a.applicant);
   }

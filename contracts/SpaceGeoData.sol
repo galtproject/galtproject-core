@@ -334,7 +334,7 @@ contract SpaceGeoData is ISpaceGeoData, OwnableAndInitializable, Permissionable 
     return spaceTokenArea[_spaceTokenId];
   }
 
-  function setSpaceToken(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
+  function setSpaceTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
     SpaceTokenInfo storage ti = spaceTokenInfo[_spaceTokenId];
     ti.ledgerIdentifier = _ledgerIdentifier;
     ti.description = _description;

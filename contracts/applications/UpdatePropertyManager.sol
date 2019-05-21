@@ -256,7 +256,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.newContour);
       spaceGeoData.setSpaceTokenHeights(a.spaceTokenId, a.newHeights);
       spaceGeoData.setSpaceTokenLevel(a.spaceTokenId, a.newLevel);
-      spaceGeoData.setSpaceToken(a.spaceTokenId, a.ledgerIdentifier, a.description);
+      spaceGeoData.setSpaceTokenInfo(a.spaceTokenId, a.ledgerIdentifier, a.description);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
