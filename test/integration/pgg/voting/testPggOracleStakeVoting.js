@@ -78,9 +78,6 @@ contract('PGGOracleStakeVoting', accounts => {
     await this.spaceToken.addRoleTo(minter, 'minter', {
       from: coreTeam
     });
-    await this.spaceGeoData.addRoleTo(geoDateManagement, 'geo_data_manager', {
-      from: coreTeam
-    });
     this.spaceRA = await SpaceRA.new({ from: coreTeam });
 
     await this.acl.initialize();
