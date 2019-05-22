@@ -36,16 +36,16 @@ contract LiquidRA is Initializable {
   GaltGlobalRegistry public ggr;
 
   // Delegate => balance
-  mapping(address => uint256) private _balances;
+  mapping(address => uint256) internal _balances;
 
   // Owner => totalMinted
-  mapping(address => uint256) private _ownedBalances;
+  mapping(address => uint256) internal _ownedBalances;
 
   // Reputation Owner => (Delegate => balance))
-  mapping(address => mapping(address => uint256)) private _delegatedBalances;
+  mapping(address => mapping(address => uint256)) internal _delegatedBalances;
 
-  mapping(address => ArraySet.AddressSet) private _delegations;
-  mapping(address => ArraySet.AddressSet) private _delegatedBy;
+  mapping(address => ArraySet.AddressSet) internal _delegations;
+  mapping(address => ArraySet.AddressSet) internal _delegatedBy;
 
   // L0
   uint256 internal totalStakedSpace;

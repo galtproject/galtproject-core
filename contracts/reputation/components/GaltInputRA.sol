@@ -20,7 +20,7 @@ import "./LiquidRA.sol";
 
 
 contract GaltInputRA is LiquidRA {
-  ArraySet.AddressSet private _members;
+  ArraySet.AddressSet internal _members;
 
   // locker => isMinted
   mapping(address => bool) public _reputationMinted;

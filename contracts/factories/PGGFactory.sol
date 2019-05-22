@@ -156,7 +156,7 @@ contract PGGFactory is Ownable, Initializable {
   ArbitrationCreateGlobalProposalProposalManagerFactory arbitrationCreateGlobalProposalProposalManagerFactory;
   ArbitrationSupportGlobalProposalProposalManagerFactory arbitrationSupportGlobalProposalProposalManagerFactory;
 
-  mapping(bytes32 => PGGContractGroup) private pggs;
+  mapping(bytes32 => PGGContractGroup) internal pggs;
 
   constructor (
     GaltGlobalRegistry _ggr,

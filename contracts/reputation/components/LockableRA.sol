@@ -35,11 +35,11 @@ contract LockableRA is ILockableRA, LiquidRA {
   using ArraySet for ArraySet.AddressSet;
 
   // Delegate => (PGG => locked amount)
-  mapping(address => mapping(address => uint256)) private _locks;
+  mapping(address => mapping(address => uint256)) internal _locks;
   // Delegate => lockedAmount
-  mapping(address => uint256) private _totalLocked;
+  mapping(address => uint256) internal _totalLocked;
   // PGG => lockedAmount
-  mapping(address => uint256) private _pggLocks;
+  mapping(address => uint256) internal _pggLocks;
 
   function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal;
 

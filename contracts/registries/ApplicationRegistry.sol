@@ -35,8 +35,8 @@ contract ApplicationRegistry is OwnableAndInitializable {
   bytes32 public constant UPDATE_ORACLE_MANAGER = bytes32("update_oracle_manager");
   bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
 
-  mapping(bytes32 => address) private _currentApplications;
-  mapping(bytes32 => ArraySet.AddressSet) private _validApplications;
+  mapping(bytes32 => address) internal _currentApplications;
+  mapping(bytes32 => ArraySet.AddressSet) internal _validApplications;
 
   function setActiveApplication(bytes32 _key, address _current) external onlyOwner {
     _currentApplications[_key] = _current;
