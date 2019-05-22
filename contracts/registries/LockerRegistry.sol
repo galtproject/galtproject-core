@@ -26,7 +26,7 @@ contract LockerRegistry is ILockerRegistry {
   mapping(address => Details) public lockers;
 
   // Locker address => Details
-  mapping(address => ArraySet.AddressSet) private lockersByOwner;
+  mapping(address => ArraySet.AddressSet) internal lockersByOwner;
 
   struct Details {
     bool active;
@@ -35,7 +35,7 @@ contract LockerRegistry is ILockerRegistry {
 
   event LockerAdded(address indexed locker, address indexed owner, address factory);
 
-  GaltGlobalRegistry private ggr;
+  GaltGlobalRegistry internal ggr;
   bytes32 public roleFactory;
 
   constructor (GaltGlobalRegistry _ggr, bytes32 _roleFactory) public {

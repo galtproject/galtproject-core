@@ -102,7 +102,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     int256[] heights;
   }
 
-  mapping(bytes32 => Application) private applications;
+  mapping(bytes32 => Application) internal applications;
 
   constructor () public {}
 

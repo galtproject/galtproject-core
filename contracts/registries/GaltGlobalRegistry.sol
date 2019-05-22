@@ -26,7 +26,7 @@ import "../interfaces/IACL.sol";
  * the rest of them return just an `address` primitive.
  */
 contract GaltGlobalRegistry is OwnableAndInitializable {
-  address private ZERO_ADDRESS = address(0);
+  address internal ZERO_ADDRESS = address(0);
 
   bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
 
@@ -60,7 +60,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
 
-  mapping(bytes32 => address) private contracts;
+  mapping(bytes32 => address) internal contracts;
 
   function initialize() public isInitializer {
   }
