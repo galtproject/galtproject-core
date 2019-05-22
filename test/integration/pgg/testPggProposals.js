@@ -439,12 +439,12 @@ contract('PGG Proposals', accounts => {
   describe('Create/Support Global Proposal Proposals', () => {
     it('should change a corresponding application config value', async function() {
       // when PGGRegistry is transferred to globalGovernance
-      await this.pggRegistry.transferOwnership(this.globalGovernance.address);
-      const transferBackBytecode = this.pggRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
+      await this.feeRegistry.transferOwnership(this.globalGovernance.address);
+      const transferBackBytecode = this.feeRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
 
       // we want to vote to transfer it back to the coreTeam
       let res = await this.pgg.createGlobalProposalProposalManager.propose(
-        this.pggRegistry.address,
+        this.feeRegistry.address,
         '0',
         transferBackBytecode,
         'back to centralization',
@@ -462,7 +462,7 @@ contract('PGG Proposals', accounts => {
       res = await this.pgg.createGlobalProposalProposalManager.getProposal(proposalId);
       const globalProposalId = res.globalId;
 
-      assert.equal(res.destination, this.pggRegistry.address);
+      assert.equal(res.destination, this.feeRegistry.address);
       assert.equal(res.value, 0);
       assert.equal(res.globalId, 1);
       assert.equal(res.data, transferBackBytecode);
@@ -471,7 +471,7 @@ contract('PGG Proposals', accounts => {
       res = await this.globalGovernance.proposals(globalProposalId);
       assert.equal(res.creator, this.pgg.createGlobalProposalProposalManager.address);
       assert.equal(res.value, 0);
-      assert.equal(res.destination, this.pggRegistry.address);
+      assert.equal(res.destination, this.feeRegistry.address);
       assert.equal(res.data, transferBackBytecode);
 
       // support

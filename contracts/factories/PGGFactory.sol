@@ -498,21 +498,9 @@ contract PGGFactory is Ownable, Initializable {
       g.pggOracleStakeVoting
     );
 
-    // TODO: initialize proposal contracts too
-
     // Revoke role management permissions from this factory address
-    g.pggMultiSigCandidateTop.removeRoleFrom(address(this), "role_manager");
     g.pggMultiSig.removeRoleFrom(address(this), "role_manager");
-    g.pggOracleStakeAccounting.removeRoleFrom(address(this), "role_manager");
     g.pggConfig.removeRoleFrom(address(this), "role_manager");
-    oracles.removeRoleFrom(address(this), "role_manager");
-
-    g.proposalContracts.modifyThresholdProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.proposalContracts.modifyMofNProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.proposalContracts.modifyArbitratorStakeProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.proposalContracts.modifyContractAddressProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.proposalContracts.revokeArbitratorsProposalManager.removeRoleFrom(address(this), "role_manager");
-    g.proposalContracts.modifyApplicationConfigProposalManager.removeRoleFrom(address(this), "role_manager");
 
     IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggConfig);
 

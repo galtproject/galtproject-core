@@ -14,13 +14,12 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IPGGOracles.sol";
 import "./interfaces/IPGGConfig.sol";
 
 
-contract PGGOracles is IPGGOracles, Permissionable {
+contract PGGOracles is IPGGOracles {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Bytes32Set;

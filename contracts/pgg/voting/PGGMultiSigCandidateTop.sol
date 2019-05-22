@@ -13,7 +13,6 @@
 
 pragma solidity 0.5.7;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../PGGMultiSig.sol";
 import "../PGGOracleStakeAccounting.sol";
@@ -23,7 +22,7 @@ import "../../collections/VotingLinkedList.sol";
 import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
-contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop, Permissionable {
+contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 

@@ -15,14 +15,14 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "../registries/interfaces/IPGGRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../pgg/interfaces/IPGGConfig.sol";
 
 
-contract AbstractApplication is Initializable, Permissionable {
+
+contract AbstractApplication is Initializable {
   GaltGlobalRegistry internal ggr;
 
   uint256 public protocolFeesEth;

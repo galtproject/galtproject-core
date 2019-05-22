@@ -14,6 +14,4 @@
 pragma solidity 0.5.7;
 
 interface IProposalManager {
-  function addRoleTo(address, string calldata) external;
-  function removeRoleFrom(address, string calldata) external;
 }

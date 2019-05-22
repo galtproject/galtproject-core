@@ -29,8 +29,5 @@ contract ArbitrationRevokeArbitratorsProposalFactory is Ownable {
     returns (IProposalManager proposalManager)
   {
     proposalManager = new RevokeArbitratorsProposalManager(_config);
-
-    proposalManager.addRoleTo(msg.sender, "role_manager");
-    proposalManager.removeRoleFrom(address(this), "role_manager");
   }
 }

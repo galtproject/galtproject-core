@@ -532,14 +532,14 @@ contract('GlobalGovernance', accounts => {
       })();
 
       // Step #2. Transfer PGGRegistry to the Governance contract
-      await this.pggRegistry.transferOwnership(this.globalGovernance.address);
+      await this.feeRegistry.transferOwnership(this.globalGovernance.address);
 
       // Step #3. Transfer PGGRegistry to the Governance contract
-      const transferBackBytecode = this.pggRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
+      const transferBackBytecode = this.feeRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
 
       // we want to vote to transfer it back to the coreTeam
       let res = await this.pggM.createGlobalProposalProposalManager.propose(
-        this.pggRegistry.address,
+        this.feeRegistry.address,
         '0',
         transferBackBytecode,
         'back to centralization',
@@ -564,7 +564,7 @@ contract('GlobalGovernance', accounts => {
       res = await this.pggM.createGlobalProposalProposalManager.getProposal(proposalId);
       const globalProposalId = res.globalId;
 
-      assert.equal(res.destination, this.pggRegistry.address);
+      assert.equal(res.destination, this.feeRegistry.address);
       assert.equal(res.value, 0);
       assert.equal(res.globalId, 1);
       assert.equal(res.data, transferBackBytecode);
@@ -573,7 +573,7 @@ contract('GlobalGovernance', accounts => {
       res = await this.globalGovernance.proposals(globalProposalId);
       assert.equal(res.creator, this.pggM.createGlobalProposalProposalManager.address);
       assert.equal(res.value, 0);
-      assert.equal(res.destination, this.pggRegistry.address);
+      assert.equal(res.destination, this.feeRegistry.address);
       assert.equal(res.data, transferBackBytecode);
 
       res = await this.globalGovernance.getSupport(globalProposalId);
@@ -717,7 +717,7 @@ contract('GlobalGovernance', accounts => {
       // not available to be executed yet
       await assertRevert(this.globalGovernance.trigger(globalProposalId));
 
-      res = await this.pggRegistry.owner();
+      res = await this.feeRegistry.owner();
       assert.equal(res, this.globalGovernance.address);
 
       // MultiSig Z votes NAY
@@ -755,7 +755,7 @@ contract('GlobalGovernance', accounts => {
 
       await this.globalGovernance.trigger(globalProposalId);
 
-      res = await this.pggRegistry.owner();
+      res = await this.feeRegistry.owner();
       assert.equal(res, coreTeam);
 
       log(

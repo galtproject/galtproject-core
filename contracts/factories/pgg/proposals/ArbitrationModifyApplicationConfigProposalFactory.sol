@@ -29,8 +29,5 @@ contract ArbitrationModifyApplicationConfigProposalFactory is Ownable {
     returns (IProposalManager proposalManager)
   {
     proposalManager = new ModifyApplicationConfigProposalManager(_config);
-
-    proposalManager.addRoleTo(msg.sender, "role_manager");
-    proposalManager.removeRoleFrom(address(this), "role_manager");
   }
 }
