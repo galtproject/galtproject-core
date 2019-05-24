@@ -68,7 +68,7 @@ contract LiquidRA is Initializable {
   // INTERNAL
 
   function _mint(address _beneficiary, uint256 _amount) internal {
-    totalStakedSpace += _amount;
+    totalStakedSpace = totalStakedSpace.add(_amount);
 
     _creditAccount(_beneficiary, _beneficiary, _amount);
 
@@ -105,7 +105,7 @@ contract LiquidRA is Initializable {
     // _balances[_account] += _amount;
     _balances[_account] = _balances[_account].add(_amount);
     // _delegatedBalances[_owner][_account] += _amount;
-    _delegatedBalances[_owner][_account] += _amount;
+    _delegatedBalances[_owner][_account] = _amount;
 
     if (_account != _owner) {
       _delegations[_owner].addSilent(_account);
