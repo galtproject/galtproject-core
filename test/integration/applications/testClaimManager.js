@@ -188,6 +188,12 @@ contract("ClaimManager", (accounts) => {
 
     const res = await this.arbitratorStakeAccountingX.totalStakes();
     assert.equal(res, ether(2000000));
+
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
+
+    await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
+    await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+    await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
   });
 
   describe('#claim()', () => {
@@ -764,14 +770,6 @@ contract("ClaimManager", (accounts) => {
     });
 
     describe('on threshold reach', () => {
-      before(async function() {
-        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
-
-        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
-      });
-
       beforeEach(async function() {
         let res = await this.claimManager.claim(this.cId);
 
