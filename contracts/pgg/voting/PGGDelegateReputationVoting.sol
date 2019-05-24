@@ -139,7 +139,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
       // reputationBalance[_delegate] += diff;
       reputationBalance[_delegate] = reputationBalance[_delegate].add(diff);
       // totalReputation += diff;
-      totalReputation += totalReputation.add(diff);
+      totalReputation = totalReputation.add(diff);
 
       emit ReputationMint(_delegate, diff);
     // burn
