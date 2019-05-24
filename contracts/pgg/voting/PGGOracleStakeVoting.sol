@@ -14,6 +14,7 @@
 pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
@@ -21,12 +22,13 @@ import "./interfaces/IPGGOracleStakeVoting.sol";
 
 
 contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
-  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
+  event ReputationChanged(address delegate, uint256 prevReputation, uint256 newReputation);
 
   event OracleStakeChanged(
     address oracle,
@@ -79,13 +81,15 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
     // If already voted
     if (previousCandidate != address(0)) {
-      _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
+      // _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
+      _candidateReputation[previousCandidate] = _candidateReputation[previousCandidate].sub(oracles[msg.sender].reputation);
     }
     // TODO: what about total oracle stakes?
 
     oracles[msg.sender].reputation = newReputation;
     oracles[msg.sender].candidate = _candidate;
-    _candidateReputation[_candidate] += newReputation;
+    // _candidateReputation[_candidate] += newReputation;
+    _candidateReputation[_candidate] = _candidateReputation[_candidate].add(newReputation);
   }
 
   // TODO: fix oracle stake change logic
@@ -100,7 +104,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 reputationBefore = oracles[_oracle].reputation;
 
-    _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
+    // _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
+    _totalReputation = _totalReputation.add(_reputationAfter).sub(reputationBefore);
 
     emit OracleStakeChanged(
       _oracle,
@@ -120,7 +125,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     }
 
     // Change candidate reputation
-    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
+    // _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
+    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].sub(reputationBefore).add(_reputationAfter);
   }
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
@@ -148,7 +154,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+    // return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+    return _candidateReputation[_candidate].mul(_decimals).div(_totalReputation);
   }
 
   function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256) {
@@ -157,6 +164,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (reputation * _decimals) / _totalReputation;
+    // return (reputation * _decimals) / _totalReputation;
+    return reputation.mul(_decimals).div(_totalReputation);
   }
 }

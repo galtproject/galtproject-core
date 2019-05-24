@@ -18,6 +18,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 
 library PropertyManagerFeeCalculator {
+  using SafeMath for uint256;
+
   uint256 public constant ETH_MULTIPLIER = 1;
   uint256 public constant ETH_DIVISOR = 2000;
   uint256 public constant GALT_MULTIPLIER = 1;
@@ -25,10 +27,11 @@ library PropertyManagerFeeCalculator {
   uint256 public constant DECIMALS = 10**18;
 
   function calculateEthFee(uint256 _area) external view returns (uint256 fee) {
+
     uint256 area = _area;
 
-    if (area < 1000 * DECIMALS) {
-      area = 1000 * DECIMALS;
+    if (area < DECIMALS.mul(1000)) {
+      area = DECIMALS.mul(1000);
     }
 
     return area * ETH_MULTIPLIER / ETH_DIVISOR;
@@ -37,10 +40,10 @@ library PropertyManagerFeeCalculator {
   function calculateGaltFee(uint256 _area) external view returns (uint256 fee) {
     uint256 area = _area;
 
-    if (area < 1000 * DECIMALS) {
-      area = 1000 * DECIMALS;
+    if (area < DECIMALS.mul(1000)) {
+      area = DECIMALS.mul(1000);
     }
 
-    return area * GALT_MULTIPLIER / GALT_DIVISOR;
+    return area.mul(GALT_MULTIPLIER).div(GALT_DIVISOR);
   }
 }

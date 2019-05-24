@@ -23,6 +23,7 @@ import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
 contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -99,9 +100,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     );
 
     if (candidateWeightBefore > candidateWeightAfter) {
-      totalWeight -= (candidateWeightBefore - candidateWeightAfter);
+      totalWeight = totalWeight - (candidateWeightBefore - candidateWeightAfter);
     } else {
-      totalWeight += (candidateWeightAfter - candidateWeightBefore);
+      totalWeight = totalWeight + (candidateWeightAfter - candidateWeightBefore);
     }
 
     VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, candidateWeightAfter);
@@ -260,10 +261,12 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     uint256 total = 0;
 
     for (uint256 i = 0; i < _holders.length; i++) {
-      total += getHolderWeight(_holders[i]);
+      //total += getHolderWeight(_holders[i]);
+      total = total.add(getHolderWeight(_holders[i]));
     }
 
-    return total * 100 / DECIMALS;
+    // return total * 100 / DECIMALS;
+    return total.mul(100).div(DECIMALS);
   }
 
   function getTopCandidateWeight(address _candidate) public view returns (uint256) {

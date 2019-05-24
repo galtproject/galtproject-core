@@ -160,7 +160,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
   }
 
   function getCurrentSplitOperation(uint256 _spaceTokenId) external returns (address) {
-    return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+    return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length.sub(1)];
   }
 
   function getSplitOperationsCount(uint256 _spaceTokenId) external returns (uint256) {
@@ -169,7 +169,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
 
   function finishSplitOperation(uint256 _spaceTokenId) external {
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
-    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length.sub(1)];
     require(activeSplitOperations[splitOperationAddress], "Method should be called for active SpaceSplitOperation contract");
     ISpaceSplitOperation splitOperation = ISpaceSplitOperation(splitOperationAddress);
 
@@ -226,7 +226,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
   }
 
   function cancelSplitSpaceToken(uint256 _spaceTokenId) external {
-    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
+    address splitOperationAddress = tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length.sub(1)];
     require(activeSplitOperations[splitOperationAddress], "Method should be called from active SpaceSplitOperation contract");
     require(tokenIdToSplitOperations[_spaceTokenId].length > 0, "Split operations for this token not exists");
 
@@ -265,7 +265,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
     int256[] memory newSpaceTokenHeights = new int256[](_destinationSpaceContour.length);
     for (uint i = 0; i < _destinationSpaceContour.length; i++) {
       if (i + 1 > sourceSpaceTokenHeights.length) {
-        newSpaceTokenHeights[i] = spaceTokenHeight[_destinationSpaceTokenId][i - sourceSpaceTokenHeights.length];
+        newSpaceTokenHeights[i] = spaceTokenHeight[_destinationSpaceTokenId][i.sub(sourceSpaceTokenHeights.length)];
       } else {
         newSpaceTokenHeights[i] = sourceSpaceTokenHeights[i];
       }

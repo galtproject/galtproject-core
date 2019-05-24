@@ -13,6 +13,7 @@
 
 pragma solidity 0.5.7;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./registries/interfaces/IPGGRegistry.sol";
@@ -20,6 +21,7 @@ import "./interfaces/IStakeTracker.sol";
 
 
 contract StakeTracker is IStakeTracker, OwnableAndInitializable {
+  using SafeMath for uint256;
 
   GaltGlobalRegistry internal ggr;
   uint256 internal _totalSupply;
@@ -47,13 +49,17 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
   }
 
   function onStake(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
-    _totalSupply += _amount;
-    _pggStakes[_pgg] += _amount;
+    // _totalSupply += _amount
+    _totalSupply = _totalSupply.add(_amount);
+    // _pggStakes[_pgg] += _amount;
+    _pggStakes[_pgg] = _pggStakes[_pgg].add(_amount);
   }
 
   function onSlash(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
-    _totalSupply -= _amount;
-    _pggStakes[_pgg] -= _amount;
+    // _totalSupply -= _amount;
+    _totalSupply = _totalSupply.sub(_amount);
+    // _pggStakes[_pgg] -= _amount;
+    _pggStakes[_pgg] = _pggStakes[_pgg].sub(_amount);
   }
 
   // GETTERS
@@ -63,7 +69,8 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _pggStakes[_pggs[i]];
+      // total += _pggStakes[_pggs[i]];
+      total = total.add(_pggStakes[_pggs[i]]);
     }
 
     return total;

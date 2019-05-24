@@ -72,7 +72,8 @@ contract LiquidRA is Initializable {
 
     _creditAccount(_beneficiary, _beneficiary, _amount);
 
-    _ownedBalances[_beneficiary] += _amount;
+    // _ownedBalances[_beneficiary] += _amount;
+    _ownedBalances[_beneficiary] = _ownedBalances[_beneficiary].add(_amount);
 
     emit Mint(_beneficiary, _amount);
   }
@@ -82,11 +83,13 @@ contract LiquidRA is Initializable {
     require(_delegatedBalances[_benefactor][_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
     require(_ownedBalances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
 
-    totalStakedSpace -= _amount;
+    // totalStakedSpace -= _amount;
+    totalStakedSpace -= totalStakedSpace.sub(_amount);
 
     _debitAccount(_benefactor, _benefactor, _amount);
 
-    _ownedBalances[_benefactor] -= _amount;
+    // _ownedBalances[_benefactor] -= _amount;
+    _ownedBalances[_benefactor] = _ownedBalances[_benefactor].sub(_amount);
 
     emit Burn(_benefactor, _amount);
   }
@@ -99,7 +102,9 @@ contract LiquidRA is Initializable {
   }
 
   function _creditAccount(address _account, address _owner, uint256 _amount) internal {
-    _balances[_account] += _amount;
+    // _balances[_account] += _amount;
+    _balances[_account] = _balances[_account].add(_amount);
+    // _delegatedBalances[_owner][_account] += _amount;
     _delegatedBalances[_owner][_account] += _amount;
 
     if (_account != _owner) {
@@ -112,8 +117,10 @@ contract LiquidRA is Initializable {
     require(_balances[_account] >= _amount, "LiquidRA: Not enough funds");
     require(_delegatedBalances[_owner][_account] >= _amount, "LiquidRA: Not enough funds");
 
-    _balances[_account] -= _amount;
-    _delegatedBalances[_owner][_account] -= _amount;
+    // _balances[_account] -= _amount;
+    _balances[_account] = _balances[_account].sub(_amount);
+    // _delegatedBalances[_owner][_account] -= _amount;
+    _delegatedBalances[_owner][_account] = _delegatedBalances[_owner][_account].add(_amount);
 
     if (_delegatedBalances[_owner][_account] == 0) {
       if (_account != _owner) {
@@ -126,8 +133,10 @@ contract LiquidRA is Initializable {
   function _revokeDelegated(address _account, uint _amount) internal {
     require(_delegatedBalances[msg.sender][_account] >= _amount, "Not enough funds");
 
-    _balances[_account] -= _amount;
-    _delegatedBalances[msg.sender][_account] -= _amount;
+    // _balances[_account] -= _amount;
+    _balances[_account] = _balances[_account].sub(_amount);
+    // _delegatedBalances[msg.sender][_account] -= _amount;
+    _delegatedBalances[msg.sender][_account] = _delegatedBalances[msg.sender][_account].sub(_amount);
 
     if (_delegatedBalances[msg.sender][_account] == 0) {
       _delegations[msg.sender].remove(_account);

@@ -54,9 +54,13 @@ contract LockableRA is ILockableRA, LiquidRA {
   function revokeLocked(address _delegate, address _pgg, uint256 _amount) external {
     require(_locks[_delegate][_pgg] >= _amount, "Not enough funds");
 
-    _totalLocked[_delegate] -= _amount;
-    _locks[_delegate][_pgg] -= _amount;
-    _pggLocks[_pgg] -= _amount;
+    // _totalLocked[_delegate] -= _amount;
+    _totalLocked[_delegate] = _totalLocked[_delegate].sub(_amount);
+    // _locks[_delegate][_pgg] -= _amount;
+    _locks[_delegate][_pgg] = _locks[_delegate][_pgg].sub(_amount);
+    // _pggLocks[_pgg] -= _amount;
+    _pggLocks[_pgg] = _pggLocks[_pgg].sub(_amount);
+
     _revokeDelegated(_delegate, _amount);
 
     onDelegateReputationChanged(_pgg, _delegate, _locks[_delegate][_pgg]);
@@ -66,9 +70,12 @@ contract LockableRA is ILockableRA, LiquidRA {
   function lockReputation(address _pgg, uint256 _amount) external {
     require((balanceOf(msg.sender) - _totalLocked[msg.sender]) >= _amount, "Insufficient amount to lock");
 
-    _totalLocked[msg.sender] += _amount;
-    _locks[msg.sender][_pgg] += _amount;
-    _pggLocks[_pgg] += _amount;
+    // _totalLocked[msg.sender] += _amount;
+    _totalLocked[msg.sender] = _totalLocked[msg.sender].add(_amount);
+    // _locks[msg.sender][_pgg] += _amount;
+    _locks[msg.sender][_pgg] = _locks[msg.sender][_pgg].add(_amount);
+    // _pggLocks[_pgg] += _amount;
+    _pggLocks[_pgg] = _pggLocks[_pgg].add(_amount);
 
     onDelegateReputationChanged(_pgg, msg.sender, _locks[msg.sender][_pgg]);
   }
@@ -83,9 +90,12 @@ contract LockableRA is ILockableRA, LiquidRA {
     require(afterUnlock < _locks[msg.sender][_pgg], "Insufficient amount to lock");
     assert(_totalLocked[msg.sender] > _amount);
 
-    _locks[msg.sender][_pgg] -= _amount;
-    _totalLocked[msg.sender] -= _amount;
-    _pggLocks[_pgg] -= _amount;
+    // _locks[msg.sender][_pgg] -= _amount;
+    _locks[msg.sender][_pgg] = _locks[msg.sender][_pgg].sub(_amount);
+    // _totalLocked[msg.sender] -= _amount;
+    _totalLocked[msg.sender] = _totalLocked[msg.sender].sub(_amount);
+    // _pggLocks[_pgg] -= _amount;
+    _pggLocks[_pgg] = _pggLocks[_pgg].sub(_amount);
 
     onDelegateReputationChanged(_pgg, msg.sender, afterUnlock);
   }
@@ -113,7 +123,8 @@ contract LockableRA is ILockableRA, LiquidRA {
     uint256 total = 0;
 
     for (uint256 i = 0; i < len; i++) {
-      total += _pggLocks[_pggs[i]];
+      // total += _pggLocks[_pggs[i]];
+      total = total.add(_pggLocks[_pggs[i]]);
     }
 
     return total;
