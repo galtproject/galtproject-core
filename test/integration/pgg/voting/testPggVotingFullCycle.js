@@ -418,11 +418,11 @@ contract('PGG Voting Full Cycle', accounts => {
     await this.oracleStakeVotingX.vote(bob, { from: george });
     await this.oracleStakeVotingX.vote(alice, { from: frank });
 
-    res = await this.oracleStakeVotingX.balanceOf(alice);
+    res = await this.oracleStakeVotingX.candidateBalanceOf(alice);
     assert.equal(res, ether(4000));
-    res = await this.oracleStakeVotingX.balanceOf(bob);
+    res = await this.oracleStakeVotingX.candidateBalanceOf(bob);
     assert.equal(res, ether(7000));
-    res = await this.oracleStakeVotingX.balanceOf(dan);
+    res = await this.oracleStakeVotingX.candidateBalanceOf(dan);
     assert.equal(res, 0);
     res = await this.oracleStakeVotingX.totalSupply();
     assert.equal(res, ether(11000));
