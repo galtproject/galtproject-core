@@ -48,18 +48,14 @@ contract StakeTracker is IStakeTracker, OwnableAndInitializable {
     _;
   }
 
-  function onStake(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
-    // _totalSupply += _amount
-    _totalSupply = _totalSupply.add(_amount);
-    // _pggStakes[_pgg] += _amount;
-    _pggStakes[_pgg] = _pggStakes[_pgg].add(_amount);
-  }
+  function onChange(address _pgg, uint256 _pggStakesAfter) external onlyValidOracleStakeAccounting(_pgg) {
+    uint256 totalSupplyBefore = _totalSupply;
+    uint256 pggStakesBefore = _pggStakes[_pgg];
 
-  function onSlash(address _pgg, uint256 _amount) external onlyValidOracleStakeAccounting(_pgg) {
-    // _totalSupply -= _amount;
-    _totalSupply = _totalSupply.sub(_amount);
-    // _pggStakes[_pgg] -= _amount;
-    _pggStakes[_pgg] = _pggStakes[_pgg].sub(_amount);
+    // _totalSupply = _totalSupply + _pggStakesAfter - totalSupplyBefore;
+    _totalSupply = _totalSupply.add(_pggStakesAfter).sub(totalSupplyBefore);
+    // _pggStakes[_pgg] = _pggStakes[_pgg] + _pggStakesAfter - pggStakesBefore;
+    _pggStakes[_pgg] = _pggStakes[_pgg].add(_pggStakesAfter).sub(pggStakesBefore);
   }
 
   // GETTERS

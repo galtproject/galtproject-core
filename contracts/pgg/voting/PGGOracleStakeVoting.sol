@@ -95,6 +95,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
   //    onlyRole(ORACLE_STAKES_NOTIFIER)
+  // reputationAfter is already casted to uint256 positive
   function onOracleStakeChanged(
     address _oracle,
     uint256 _reputationAfter
@@ -103,9 +104,10 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 reputationBefore = oracles[_oracle].reputation;
+    uint256 totalReputationBefore = _totalReputation;
+    uint256 totalReputationAfter = _totalReputation + _reputationAfter - reputationBefore;
 
-    // _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
-    _totalReputation = _totalReputation.add(_reputationAfter).sub(reputationBefore);
+    _totalReputation = totalReputationAfter;
 
     emit OracleStakeChanged(
       _oracle,
@@ -138,17 +140,17 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     return _totalReputation;
   }
 
-  // TODO: rename to balanceOfCandidate
-  function balanceOf(address _candidate) external view returns (uint256) {
+  // function balanceOf(address _candidate) external view returns (uint256) {
+  function candidateBalanceOf(address _candidate) external view returns (uint256) {
     return _candidateReputation[_candidate];
   }
 
-  function balanceOfOracle(address _oracle) external view returns (uint256) {
+  function oracleBalanceOf(address _oracle) external view returns (uint256) {
     return oracles[_oracle].reputation;
   }
 
-  // TODO: rename to shareOfCandidate
-  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+  // function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+  function candidateShareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = _candidateReputation[_candidate];
 
     if (reputation == 0) { return 0; }
@@ -158,7 +160,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     return _candidateReputation[_candidate].mul(_decimals).div(_totalReputation);
   }
 
-  function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256) {
+  function oracleShareOf(address _oracle, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = oracles[_oracle].reputation;
 
     if (reputation == 0) { return 0; }

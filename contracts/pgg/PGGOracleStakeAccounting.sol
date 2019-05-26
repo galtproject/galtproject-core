@@ -42,13 +42,20 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   );
 
   bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
+  // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+  int256 public constant INT256_UPPER_LIMIT = 7237005577332262213973186563042994240829374041602535252466099000494570602495;
 
   IPGGConfig pggConfig;
-  mapping(address => OracleTypes) oracleTypes;
+  mapping(address => OracleTypes) oracleDetails;
+
+  int256 internal totalStake;
+  uint256 internal totalStakePositive;
 
   struct OracleTypes {
     int256 totalStakes;
+    uint256 totalStakesPositive;
     mapping(bytes32 => int256) oracleTypeStakes;
+    mapping(bytes32 => uint256) oracleTypeStakesPositive;
   }
 
   modifier onlySlashManager {
@@ -84,22 +91,26 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   function _slash(address _oracle, bytes32 _oracleType, uint256 _amount) internal {
     require(oracles().isOracleTypeAssigned(_oracle, _oracleType), "Some oracle types doesn't match");
 
-    int256 initialOracleTypeStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
-    int256 initialOracleTotalStake = oracleTypes[_oracle].totalStakes;
-    int256 finalOracleTypeStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType] - int256(_amount);
-    int256 finalOracleTotalStake = oracleTypes[_oracle].totalStakes - int256(_amount);
+    int256 initialOracleTypeStake = oracleDetails[_oracle].oracleTypeStakes[_oracleType];
+    int256 initialOracleTotalStake = oracleDetails[_oracle].totalStakes;
+    int256 totalStakeBefore = totalStake;
 
-    assert(finalOracleTotalStake < initialOracleTotalStake);
-    assert(finalOracleTypeStake < initialOracleTypeStake);
+    int256 finalOracleTypeStake = oracleDetails[_oracle].oracleTypeStakes[_oracleType] - int256(_amount);
+    int256 finalOracleTotalStake = oracleDetails[_oracle].totalStakes - int256(_amount);
+    int256 totalStakeAfter = totalStakeBefore - int256(_amount);
 
-    oracleTypes[_oracle].totalStakes = finalOracleTotalStake;
-    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
+    assert(finalOracleTotalStake <= initialOracleTotalStake);
+    assert(finalOracleTypeStake <= initialOracleTypeStake);
+    assert(totalStakeAfter <= totalStakeBefore);
 
-    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalOracleTotalStake));
-    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onSlash(
-      address(pggConfig),
-      _amount
-    );
+    oracleDetails[_oracle].totalStakes = finalOracleTotalStake;
+    oracleDetails[_oracle].oracleTypeStakes[_oracleType] = finalOracleTypeStake;
+    totalStake = totalStakeAfter;
+
+    _updatePositiveValues(oracleDetails[_oracle], _oracleType, finalOracleTypeStake, finalOracleTotalStake, totalStakeAfter);
+
+    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
+    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
 
     emit OracleStakeSlash(_oracle, _oracleType, _amount, finalOracleTypeStake, finalOracleTotalStake);
   }
@@ -111,21 +122,60 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
 
     require(_amount > 0, "Expect positive amount");
 
-    int256 initialTotalStakes = oracleTypes[_oracle].totalStakes;
-    int256 initialRoleStake = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
-    int256 finalRoleStake = initialRoleStake + int256(_amount);
-    int256 finalTotalStakes = initialTotalStakes + int256(_amount);
+    int256 oracleTypeStakeBefore = oracleDetails[_oracle].oracleTypeStakes[_oracleType];
+    int256 oracleStakeBefore = oracleDetails[_oracle].totalStakes;
+    int256 totalStakeBefore = totalStake;
 
-    assert(finalTotalStakes > initialTotalStakes);
-    assert(finalRoleStake > initialRoleStake);
+    int256 oracleTypeStakeAfter = oracleTypeStakeBefore + int256(_amount);
+    int256 oracleStakeAfter = oracleStakeBefore + int256(_amount);
+    int256 totalStakeAfter = totalStakeBefore + int256(_amount);
 
-    oracleTypes[_oracle].totalStakes = finalTotalStakes;
-    oracleTypes[_oracle].oracleTypeStakes[_oracleType] = finalRoleStake;
+    assert(oracleTypeStakeAfter >= oracleTypeStakeBefore);
+    assert(oracleStakeAfter >= oracleStakeBefore);
+    assert(totalStakeAfter >= totalStakeBefore);
 
-    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, uint256(finalTotalStakes));
-    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onStake(address(pggConfig), _amount);
+    oracleDetails[_oracle].totalStakes = oracleStakeAfter;
+    oracleDetails[_oracle].oracleTypeStakes[_oracleType] = oracleTypeStakeAfter;
+    totalStake = totalStakeAfter;
 
-    emit OracleStakeDeposit(_oracle, _oracleType, _amount, finalRoleStake, finalTotalStakes);
+    _updatePositiveValues(oracleDetails[_oracle], _oracleType, oracleTypeStakeAfter, oracleStakeAfter, totalStakeAfter);
+
+    pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
+    IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
+
+    emit OracleStakeDeposit(_oracle, _oracleType, _amount, oracleTypeStakeAfter, oracleStakeAfter);
+  }
+
+  function _updatePositiveValues(
+    OracleTypes storage _oracle,
+    bytes32 _oracleType,
+    int256 _oracleTypeStakeAfter,
+    int256 _oracleStakeAfter,
+    int256 _totalStakeAfter
+  )
+    internal
+  {
+    require(_oracleTypeStakeAfter <= INT256_UPPER_LIMIT);
+    require(_oracleStakeAfter <= INT256_UPPER_LIMIT);
+    require(_totalStakeAfter <= INT256_UPPER_LIMIT);
+
+    if (_oracleTypeStakeAfter >= 0) {
+      _oracle.oracleTypeStakesPositive[_oracleType] = uint256(bytes32(_oracleTypeStakeAfter));
+    } else {
+      _oracle.oracleTypeStakesPositive[_oracleType] = 0;
+    }
+
+    if (_oracleStakeAfter >= 0) {
+      _oracle.totalStakesPositive = uint256(bytes32(_oracleStakeAfter));
+    } else {
+      _oracle.totalStakesPositive = 0;
+    }
+
+    if (_totalStakeAfter >= 0) {
+      totalStakePositive = uint256(bytes32(_totalStakeAfter));
+    } else {
+      totalStakePositive = 0;
+    }
   }
 
   function oracles() internal view returns (IPGGOracles) {
@@ -154,16 +204,32 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
       return false;
     }
 
-    int256 current = oracleTypes[_oracle].oracleTypeStakes[_oracleType];
+    int256 current = oracleDetails[_oracle].oracleTypeStakes[_oracleType];
 
     return current >= required;
   }
 
   function balanceOf(address _oracle) external view returns (int256) {
-    return oracleTypes[_oracle].totalStakes;
+    return oracleDetails[_oracle].totalStakes;
   }
 
-  function stakeOf(address _oracle, bytes32 _oracleType) external view returns (int256) {
-    return oracleTypes[_oracle].oracleTypeStakes[_oracleType];
+  function typeStakeOf(address _oracle, bytes32 _oracleType) external view returns (int256) {
+    return oracleDetails[_oracle].oracleTypeStakes[_oracleType];
+  }
+
+  function totalSupply() external view returns (int256) {
+    return totalStake;
+  }
+
+  function positiveTotalSupply() external view returns (uint256) {
+    return totalStakePositive;
+  }
+
+  function positiveBalanceOf(address _oracle) external view returns (uint256) {
+    return oracleDetails[_oracle].totalStakesPositive;
+  }
+
+  function positiveTypeStakeOf(address _oracle, bytes32 _oracleType) external view returns (uint256) {
+    return oracleDetails[_oracle].oracleTypeStakesPositive[_oracleType];
   }
 }
