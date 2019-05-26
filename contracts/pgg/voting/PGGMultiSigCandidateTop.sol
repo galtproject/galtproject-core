@@ -100,9 +100,11 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     );
 
     if (candidateWeightBefore > candidateWeightAfter) {
-      totalWeight = totalWeight - (candidateWeightBefore - candidateWeightAfter);
+      // totalWeight -= (candidateWeightBefore - candidateWeightAfter);
+      totalWeight = totalWeight.sub(candidateWeightBefore).sub(candidateWeightAfter);
     } else {
-      totalWeight = totalWeight + (candidateWeightAfter - candidateWeightBefore);
+      // totalWeight += (candidateWeightBefore - candidateWeightAfter);
+      totalWeight = totalWeight.add(candidateWeightAfter).sub(candidateWeightBefore);
     }
 
     VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, candidateWeightAfter);
