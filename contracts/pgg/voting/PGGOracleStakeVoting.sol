@@ -98,28 +98,28 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   // reputationAfter is already casted to uint256 positive
   function onOracleStakeChanged(
     address _oracle,
-    uint256 _reputationAfter
+    uint256 _oracleReputationAfter
   )
     external
   {
     address currentCandidate = oracles[_oracle].candidate;
-    uint256 reputationBefore = oracles[_oracle].reputation;
-    uint256 totalReputationBefore = _totalReputation;
-    uint256 totalReputationAfter = _totalReputation + _reputationAfter - reputationBefore;
+    uint256 oracleReputationBefore = oracles[_oracle].reputation;
+    // uint256 totalReputationAfter = _totalReputation + _oracleReputationAfter - oracleReputationBefore;
+    uint256 totalReputationAfter = _totalReputation.add(_oracleReputationAfter).sub(oracleReputationBefore);
 
     _totalReputation = totalReputationAfter;
 
     emit OracleStakeChanged(
       _oracle,
       currentCandidate,
-      reputationBefore,
-      _reputationAfter,
+      oracleReputationBefore,
+      _oracleReputationAfter,
       _candidateReputation[currentCandidate],
       _totalReputation
     );
 
     // Change oracle weight
-    oracles[_oracle].reputation = _reputationAfter;
+    oracles[_oracle].reputation = _oracleReputationAfter;
 
     // The oracle hadn't vote or revoked his vote
     if (currentCandidate == address(0)) {
@@ -128,7 +128,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
     // Change candidate reputation
     // _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
-    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].sub(reputationBefore).add(_reputationAfter);
+    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].add(_oracleReputationAfter).sub(oracleReputationBefore);
   }
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
