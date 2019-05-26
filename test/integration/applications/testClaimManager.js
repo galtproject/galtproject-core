@@ -811,9 +811,9 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should apply proposed slashes', async function() {
-        let res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        let res = await this.oracleStakesAccountingX.typeStakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, ether(200));
-        res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(200));
 
         res = await this.oraclesX.isOracleActive(bob);
@@ -836,9 +836,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-        res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, ether(190));
-        res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(180));
 
         res = await this.oraclesX.isOracleActive(bob);

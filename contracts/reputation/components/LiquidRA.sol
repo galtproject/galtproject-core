@@ -84,7 +84,7 @@ contract LiquidRA is Initializable {
     require(_ownedBalances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
 
     // totalStakedSpace -= _amount;
-    totalStakedSpace -= totalStakedSpace.sub(_amount);
+    totalStakedSpace = totalStakedSpace.sub(_amount);
 
     _debitAccount(_benefactor, _benefactor, _amount);
 
@@ -105,7 +105,7 @@ contract LiquidRA is Initializable {
     // _balances[_account] += _amount;
     _balances[_account] = _balances[_account].add(_amount);
     // _delegatedBalances[_owner][_account] += _amount;
-    _delegatedBalances[_owner][_account] = _amount;
+    _delegatedBalances[_owner][_account] = _delegatedBalances[_owner][_account].add(_amount);
 
     if (_account != _owner) {
       _delegations[_owner].addSilent(_account);
@@ -120,7 +120,7 @@ contract LiquidRA is Initializable {
     // _balances[_account] -= _amount;
     _balances[_account] = _balances[_account].sub(_amount);
     // _delegatedBalances[_owner][_account] -= _amount;
-    _delegatedBalances[_owner][_account] = _delegatedBalances[_owner][_account].add(_amount);
+    _delegatedBalances[_owner][_account] = _delegatedBalances[_owner][_account].sub(_amount);
 
     if (_delegatedBalances[_owner][_account] == 0) {
       if (_account != _owner) {
