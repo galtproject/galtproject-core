@@ -14,12 +14,14 @@
 pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGDelegateReputationVoting.sol";
 
 contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -79,11 +81,15 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     require(delegatedReputation[msg.sender].distributedReputation[msg.sender] >= _amount, "Not enough reputation");
     require(delegatedReputation[msg.sender].candidates.size() <= 5, "Delegate reputation limit is 5 candidates");
 
-    delegatedReputation[msg.sender].distributedReputation[msg.sender] -= _amount;
-    delegatedReputation[msg.sender].distributedReputation[_candidate] += _amount;
+    // delegatedReputation[msg.sender].distributedReputation[msg.sender] -= _amount;
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender].distributedReputation[msg.sender].sub(_amount);
+    // delegatedReputation[msg.sender].distributedReputation[_candidate] += _amount;
+    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender].distributedReputation[_candidate].add(_amount);
 
-    reputationBalance[msg.sender] -= _amount;
-    reputationBalance[_candidate] += _amount;
+    // reputationBalance[msg.sender] -= _amount;
+    reputationBalance[msg.sender] = reputationBalance[msg.sender].sub(_amount);
+    // reputationBalance[_candidate] += _amount;
+    reputationBalance[_candidate] = reputationBalance[_candidate].add(_amount);
 
     delegatedReputation[msg.sender].candidates.addSilent(_candidate);
   }
@@ -92,11 +98,15 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     require(lockedReputation[_candidate] >= _amount, "Not enough reputation");
     require(delegatedReputation[msg.sender].distributedReputation[_candidate] >= _amount, "Not enough reputation");
 
-    delegatedReputation[msg.sender].distributedReputation[_candidate] -= _amount;
-    delegatedReputation[msg.sender].distributedReputation[msg.sender] += _amount;
+    // delegatedReputation[msg.sender].distributedReputation[_candidate] -= _amount;
+    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender].distributedReputation[_candidate].sub(_amount);
+    // delegatedReputation[msg.sender].distributedReputation[msg.sender] += _amount;
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender].distributedReputation[msg.sender].add(_amount);
 
-    reputationBalance[_candidate] -= _amount;
-    reputationBalance[msg.sender] += _amount;
+    // reputationBalance[_candidate] -= _amount;
+    reputationBalance[_candidate] = reputationBalance[_candidate].sub(_amount);
+    // reputationBalance[msg.sender] += _amount;
+    reputationBalance[msg.sender] = reputationBalance[msg.sender].add(_amount);
 
     if (delegatedReputation[msg.sender].distributedReputation[_candidate] == 0) {
       delegatedReputation[msg.sender].candidates.remove(_candidate);
@@ -122,10 +132,14 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     if (_newLocked >= currentLocked) {
       uint256 diff = _newLocked - currentLocked;
 
-      lockedReputation[_delegate] += diff;
-      delegatedReputation[_delegate].distributedReputation[_delegate] += diff;
-      reputationBalance[_delegate] += diff;
-      totalReputation += diff;
+      // lockedReputation[_delegate] += diff;
+      lockedReputation[_delegate] = lockedReputation[_delegate].add(diff);
+      // delegatedReputation[_delegate].distributedReputation[_delegate] += diff;
+      delegatedReputation[_delegate].distributedReputation[_delegate] = delegatedReputation[_delegate].distributedReputation[_delegate].add(diff);
+      // reputationBalance[_delegate] += diff;
+      reputationBalance[_delegate] = reputationBalance[_delegate].add(diff);
+      // totalReputation += diff;
+      totalReputation = totalReputation.add(diff);
 
       emit ReputationMint(_delegate, diff);
     // burn
@@ -135,13 +149,16 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
       assert(diff <= currentLocked);
       assert(diff > 0);
 
-      lockedReputation[_delegate] -= diff;
-      totalReputation -= diff;
+      // lockedReputation[_delegate] -= diff;
+      lockedReputation[_delegate] = lockedReputation[_delegate].sub(diff);
+      totalReputation = totalReputation.sub(diff);
 
       // delegate has enough reputation on his own delegated account, no need to iterate over his candidates
       if (diff <= selfDelegated) {
-        delegatedReputation[_delegate].distributedReputation[_delegate] -= diff;
-        reputationBalance[_delegate] -= diff;
+        // delegatedReputation[_delegate].distributedReputation[_delegate] -= diff;
+        delegatedReputation[_delegate].distributedReputation[_delegate] = delegatedReputation[_delegate].distributedReputation[_delegate].sub(diff);
+        // reputationBalance[_delegate] -= diff;
+        reputationBalance[_delegate] = reputationBalance[_delegate].sub(diff);
 
         emit ReputationBurn(_delegate, diff);
 
@@ -151,9 +168,11 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
       uint256 ownedDelegatedBalance = selfDelegated;
 
       delegatedReputation[_delegate].distributedReputation[_delegate] = 0;
-      reputationBalance[_delegate] -= ownedDelegatedBalance;
+      // reputationBalance[_delegate] -= ownedDelegatedBalance;
+      reputationBalance[_delegate] = reputationBalance[_delegate].sub(ownedDelegatedBalance);
 
-      uint256 remainder = diff - ownedDelegatedBalance;
+      // uint256 remainder = diff - ownedDelegatedBalance;
+      uint256 remainder = diff.sub(ownedDelegatedBalance);
       assert(remainder > 0);
 
       _revokeDelegatedReputation(_delegate, remainder);
@@ -177,15 +196,19 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
       if (candidateReputation <= remainder) {
         assert(reputationBalance[candidate] >= candidateReputation);
 
-        reputationBalance[candidate] -= candidateReputation;
+        // reputationBalance[candidate] -= candidateReputation;
+        reputationBalance[candidate] = reputationBalance[candidate].sub(candidateReputation);
         delegatedReputation[_delegate].distributedReputation[candidate] = 0;
 
-        remainder -= candidateReputation;
+        // remainder -= candidateReputation;
+        remainder = remainder.sub(candidateReputation);
       } else {
         assert(reputationBalance[candidate] >= remainder);
 
-        reputationBalance[candidate] -= remainder;
-        delegatedReputation[_delegate].distributedReputation[candidate] -= remainder;
+        // reputationBalance[candidate] -= remainder;
+        reputationBalance[candidate] = reputationBalance[candidate].sub(remainder);
+        // delegatedReputation[_delegate].distributedReputation[candidate] -= remainder;
+        delegatedReputation[_delegate].distributedReputation[candidate] = delegatedReputation[_delegate].distributedReputation[candidate].sub(remainder);
         return;
       }
     }
@@ -205,7 +228,8 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (reputationBalance[_candidate] * _decimals) / totalReputation;
+    // return (reputationBalance[_candidate] * _decimals) / totalReputation;
+    return reputationBalance[_candidate].mul(_decimals).div(totalReputation);
   }
 
   function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256) {
@@ -214,6 +238,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (lockedReputation[_delegate] * _decimals) / totalReputation;
+    // return (lockedReputation[_delegate] * _decimals) / totalReputation;
+    return lockedReputation[_delegate].mul(_decimals).div(totalReputation);
   }
 }

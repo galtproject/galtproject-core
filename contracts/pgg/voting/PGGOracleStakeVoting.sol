@@ -14,6 +14,7 @@
 pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
@@ -21,12 +22,13 @@ import "./interfaces/IPGGOracleStakeVoting.sol";
 
 
 contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
-  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
+  event ReputationChanged(address delegate, uint256 prevReputation, uint256 newReputation);
 
   event OracleStakeChanged(
     address oracle,
@@ -79,40 +81,45 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
     // If already voted
     if (previousCandidate != address(0)) {
-      _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
+      // _candidateReputation[previousCandidate] -= oracles[msg.sender].reputation;
+      _candidateReputation[previousCandidate] = _candidateReputation[previousCandidate].sub(oracles[msg.sender].reputation);
     }
     // TODO: what about total oracle stakes?
 
     oracles[msg.sender].reputation = newReputation;
     oracles[msg.sender].candidate = _candidate;
-    _candidateReputation[_candidate] += newReputation;
+    // _candidateReputation[_candidate] += newReputation;
+    _candidateReputation[_candidate] = _candidateReputation[_candidate].add(newReputation);
   }
 
   // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
   //    onlyRole(ORACLE_STAKES_NOTIFIER)
+  // reputationAfter is already casted to uint256 positive
   function onOracleStakeChanged(
     address _oracle,
-    uint256 _reputationAfter
+    uint256 _oracleReputationAfter
   )
     external
   {
     address currentCandidate = oracles[_oracle].candidate;
-    uint256 reputationBefore = oracles[_oracle].reputation;
+    uint256 oracleReputationBefore = oracles[_oracle].reputation;
+    // uint256 totalReputationAfter = _totalReputation + _oracleReputationAfter - oracleReputationBefore;
+    uint256 totalReputationAfter = _totalReputation.add(_oracleReputationAfter).sub(oracleReputationBefore);
 
-    _totalReputation = _totalReputation + _reputationAfter - reputationBefore;
+    _totalReputation = totalReputationAfter;
 
     emit OracleStakeChanged(
       _oracle,
       currentCandidate,
-      reputationBefore,
-      _reputationAfter,
+      oracleReputationBefore,
+      _oracleReputationAfter,
       _candidateReputation[currentCandidate],
       _totalReputation
     );
 
     // Change oracle weight
-    oracles[_oracle].reputation = _reputationAfter;
+    oracles[_oracle].reputation = _oracleReputationAfter;
 
     // The oracle hadn't vote or revoked his vote
     if (currentCandidate == address(0)) {
@@ -120,7 +127,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     }
 
     // Change candidate reputation
-    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
+    // _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
+    _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].add(_oracleReputationAfter).sub(oracleReputationBefore);
   }
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
@@ -132,31 +140,33 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     return _totalReputation;
   }
 
-  // TODO: rename to balanceOfCandidate
-  function balanceOf(address _candidate) external view returns (uint256) {
+  // function balanceOf(address _candidate) external view returns (uint256) {
+  function candidateBalanceOf(address _candidate) external view returns (uint256) {
     return _candidateReputation[_candidate];
   }
 
-  function balanceOfOracle(address _oracle) external view returns (uint256) {
+  function oracleBalanceOf(address _oracle) external view returns (uint256) {
     return oracles[_oracle].reputation;
   }
 
-  // TODO: rename to shareOfCandidate
-  function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+  // function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
+  function candidateShareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = _candidateReputation[_candidate];
 
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+    // return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
+    return _candidateReputation[_candidate].mul(_decimals).div(_totalReputation);
   }
 
-  function shareOfOracle(address _oracle, uint256 _decimals) external view returns(uint256) {
+  function oracleShareOf(address _oracle, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = oracles[_oracle].reputation;
 
     if (reputation == 0) { return 0; }
     if (_decimals == 0) { return 0; }
 
-    return (reputation * _decimals) / _totalReputation;
+    // return (reputation * _decimals) / _totalReputation;
+    return reputation.mul(_decimals).div(_totalReputation);
   }
 }

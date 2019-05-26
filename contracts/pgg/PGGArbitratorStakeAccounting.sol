@@ -85,7 +85,8 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.sub(_amount);
 
     _balances[_arbitrator] = arbitratorStakeAfter;
-    totalStakes -= _amount;
+    // totalStakes -= _amount;
+    totalStakes = totalStakes.sub(_amount);
 
     emit ArbitratorStakeSlash(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
@@ -101,17 +102,20 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
     uint256 arbitratorStakeAfter = arbitratorStakeBefore.add(_amount);
 
     _balances[_arbitrator] = arbitratorStakeAfter;
-    totalStakes += _amount;
+    // totalStakes += _amount;
+    totalStakes = totalStakes.add(_amount);
 
     emit ArbitratorStakeDeposit(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
 
   function getCurrentPeriodAndTotalSupply() external view returns (uint256, uint256) {
-    return (((block.timestamp - _initialTimestamp) / periodLengthInSeconds), totalStakes);
+    // return (((block.timestamp - _initialTimestamp) / periodLengthInSeconds), totalStakes);
+    return (((block.timestamp.sub(_initialTimestamp)) / periodLengthInSeconds), totalStakes);
   }
 
   function getCurrentPeriod() external view returns (uint256) {
-    return (block.timestamp - _initialTimestamp) / periodLengthInSeconds;
+    // return (block.timestamp - _initialTimestamp) / periodLengthInSeconds;
+    return (block.timestamp.sub(_initialTimestamp)) / periodLengthInSeconds;
   }
 
   function balanceOf(address _arbitrator) external view returns (uint256) {

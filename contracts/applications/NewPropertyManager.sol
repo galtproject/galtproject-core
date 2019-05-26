@@ -578,7 +578,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     // TODO: 🙊 handle such cases more precisely
     assert(totalReward <= a.fees.oraclesReward);
     uint256 diff = a.fees.oraclesReward - totalReward;
-    a.assignedRewards[a.assignedOracleTypes[0]] += diff;
+    a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);
   }
 
   function changeValidationStatus(

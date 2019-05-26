@@ -14,6 +14,7 @@
 pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./reputation/interfaces/IRA.sol";
 import "./interfaces/IGaltLocker.sol";
 import "./interfaces/ILocker.sol";
@@ -21,6 +22,7 @@ import "./registries/GaltGlobalRegistry.sol";
 
 
 contract GaltLocker is ILocker, IGaltLocker {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
   event ReputationMinted(address gra);
@@ -52,7 +54,7 @@ contract GaltLocker is ILocker, IGaltLocker {
   function deposit(uint256 _amount) external onlyOwner reputationAndBalanceEqual {
     require(gras.size() == 0, "GRAs counter not 0");
 
-    reputation += _amount;
+    reputation = reputation.add(_amount);
     ggr.getGaltToken().transferFrom(msg.sender, address(this), _amount);
   }
 
@@ -60,7 +62,7 @@ contract GaltLocker is ILocker, IGaltLocker {
     require(gras.size() == 0, "GRAs counter not 0");
     require(reputation >= _amount, "Reputation is less than withdrawal amount");
 
-    reputation -= _amount;
+    reputation = reputation.sub(_amount);
 
     ggr.getGaltToken().transfer(msg.sender, _amount);
   }
@@ -68,7 +70,7 @@ contract GaltLocker is ILocker, IGaltLocker {
   // for cases when reputation and balance are not equal
   function transferExtraGalt(address _to) external onlyOwner {
     uint256 balance = ggr.getGaltToken().balanceOf(msg.sender);
-    uint256 diff = balance - reputation;
+    uint256 diff = balance.sub(reputation);
 
     assert(balance >= reputation);
     require(diff > 0, "Diff is 0");

@@ -339,9 +339,9 @@ contract('ArbitratorSlashing', accounts => {
       assert.equal(res.status, ClaimApplicationStatus.APPROVED);
 
       // > Check that oracles were punished
-      res = await this.oracleStakesAccountingX.stakeOf(mike, PC_AUDITOR_ORACLE_TYPE);
+      res = await this.oracleStakesAccountingX.typeStakeOf(mike, PC_AUDITOR_ORACLE_TYPE);
       assert.equal(res, ether(350));
-      res = await this.oracleStakesAccountingX.stakeOf(mike, PC_CUSTODIAN_ORACLE_TYPE);
+      res = await this.oracleStakesAccountingX.typeStakeOf(mike, PC_CUSTODIAN_ORACLE_TYPE);
       assert.equal(res, ether(150));
 
       res = await this.oraclesX.getOracle(mike);

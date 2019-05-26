@@ -188,6 +188,12 @@ contract("ClaimManager", (accounts) => {
 
     const res = await this.arbitratorStakeAccountingX.totalStakes();
     assert.equal(res, ether(2000000));
+
+    await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
+
+    await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
+    await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
+    await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
   });
 
   describe('#claim()', () => {
@@ -764,14 +770,6 @@ contract("ClaimManager", (accounts) => {
     });
 
     describe('on threshold reach', () => {
-      before(async function() {
-        await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(600), { from: alice });
-
-        await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakesAccountingX.stake(eve, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
-        await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
-      });
-
       beforeEach(async function() {
         let res = await this.claimManager.claim(this.cId);
 
@@ -813,9 +811,9 @@ contract("ClaimManager", (accounts) => {
       });
 
       it('should apply proposed slashes', async function() {
-        let res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        let res = await this.oracleStakesAccountingX.typeStakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, ether(200));
-        res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(200));
 
         res = await this.oraclesX.isOracleActive(bob);
@@ -838,9 +836,9 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-        res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
         assert.equal(res, ether(190));
-        res = await this.oracleStakesAccountingX.stakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
+        res = await this.oracleStakesAccountingX.typeStakeOf(eve, PC_AUDITOR_ORACLE_TYPE);
         assert.equal(res, ether(180));
 
         res = await this.oraclesX.isOracleActive(bob);

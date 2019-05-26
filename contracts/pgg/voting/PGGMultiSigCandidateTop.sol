@@ -23,6 +23,7 @@ import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
 contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
@@ -99,9 +100,11 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     );
 
     if (candidateWeightBefore > candidateWeightAfter) {
-      totalWeight -= (candidateWeightBefore - candidateWeightAfter);
+      // totalWeight -= (candidateWeightBefore - candidateWeightAfter);
+      totalWeight = totalWeight.sub(candidateWeightBefore).sub(candidateWeightAfter);
     } else {
-      totalWeight += (candidateWeightAfter - candidateWeightBefore);
+      // totalWeight += (candidateWeightBefore - candidateWeightAfter);
+      totalWeight = totalWeight.add(candidateWeightAfter).sub(candidateWeightBefore);
     }
 
     VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, candidateWeightAfter);
@@ -110,7 +113,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   function _calculateWeight(address _candidate) internal returns (uint256) {
     uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().candidateShareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -156,7 +159,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   function getCandidateWeight(address _candidate) public view returns (uint256) {
     uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
     uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOf(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOf(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().candidateShareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -180,7 +183,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   function getHolderWeight(address _candidate) public view returns (uint256) {
     uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOfDelegate(_candidate, DECIMALS);
     uint256 candidateGaltReputationShare = pggConfig.getDelegateGaltVoting().shareOfDelegate(_candidate, DECIMALS);
-    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().shareOfOracle(_candidate, DECIMALS);
+    uint256 candidateStakeReputationShare = pggConfig.getOracleStakeVoting().oracleShareOf(_candidate, DECIMALS);
 
     uint256 spaceReputationRatio = 0;
     uint256 galtReputationRatio = 0;
@@ -260,10 +263,12 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     uint256 total = 0;
 
     for (uint256 i = 0; i < _holders.length; i++) {
-      total += getHolderWeight(_holders[i]);
+      //total += getHolderWeight(_holders[i]);
+      total = total.add(getHolderWeight(_holders[i]));
     }
 
-    return total * 100 / DECIMALS;
+    // return total * 100 / DECIMALS;
+    return total.mul(100).div(DECIMALS);
   }
 
   function getTopCandidateWeight(address _candidate) public view returns (uint256) {

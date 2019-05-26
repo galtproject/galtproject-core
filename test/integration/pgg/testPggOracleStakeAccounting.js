@@ -33,6 +33,9 @@ const CHARLIE = bytes32('Charlie');
 const DAN = bytes32('Dan');
 const EVE = bytes32('Eve');
 
+PGGOracleStakeVoting.numberFormat = 'String';
+PGGOracleStakeAccounting.numberFormat = 'String';
+
 // NOTICE: we don't wrap MockToken with a proxy on production
 contract('PGGOracleStakeAccounting', accounts => {
   const [
@@ -80,7 +83,7 @@ contract('PGGOracleStakeAccounting', accounts => {
       from: coreTeam
     });
     this.candidateTop = await PGGMultiSigCandidateTop.new(this.config.address, { from: coreTeam });
-    this.oracleStakesAccountingX = await PGGOracleStakeAccounting.new(this.config.address, { from: coreTeam });
+    this.oracleStakeAccountingX = await PGGOracleStakeAccounting.new(this.config.address, { from: coreTeam });
     this.oracleStakeVotingX = await PGGOracleStakeVoting.new(this.config.address, { from: coreTeam });
     this.oraclesX = await PGGOracles.new(this.config.address, { from: coreTeam });
 
@@ -88,7 +91,7 @@ contract('PGGOracleStakeAccounting', accounts => {
       multiSig,
       this.candidateTop.address,
       zeroAddress,
-      this.oracleStakesAccountingX.address,
+      this.oracleStakeAccountingX.address,
       this.oraclesX.address,
       delegateSpaceVoting,
       delegateGaltVoting,
@@ -124,29 +127,29 @@ contract('PGGOracleStakeAccounting', accounts => {
 
   describe('#stake()', () => {
     it('should allow any user stake for oracle', async function() {
-      await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
-      await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
-      let res = await this.oracleStakesAccountingX.stakeOf(bob, NON_EXISTENT_ROLE);
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(35), { from: alice });
+      await this.oracleStakeAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
+      let res = await this.oracleStakeAccountingX.typeStakeOf(bob, NON_EXISTENT_ROLE);
       assert.equal(res, 0);
-      res = await this.oracleStakesAccountingX.stakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
+      res = await this.oracleStakeAccountingX.typeStakeOf(bob, PC_CUSTODIAN_ORACLE_TYPE);
       assert.equal(res, ether(35));
     });
 
     it('should deny staking for non-existing role', async function() {
-      await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(35), { from: alice });
       await assertRevert(
-        this.oracleStakesAccountingX.stake(bob, bytes32('non-exisitng-role'), ether(35), { from: alice })
+        this.oracleStakeAccountingX.stake(bob, bytes32('non-exisitng-role'), ether(35), { from: alice })
       );
 
-      const res = await this.oracleStakesAccountingX.stakeOf(bob, NON_EXISTENT_ROLE);
+      const res = await this.oracleStakeAccountingX.typeStakeOf(bob, NON_EXISTENT_ROLE);
       assert.equal(res, 0);
     });
 
     it('should deny staking for non-existing oracle', async function() {
-      await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(35), { from: alice });
-      await assertRevert(this.oracleStakesAccountingX.stake(alice, NON_EXISTENT_ROLE, ether(35), { from: alice }));
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(35), { from: alice });
+      await assertRevert(this.oracleStakeAccountingX.stake(alice, NON_EXISTENT_ROLE, ether(35), { from: alice }));
 
-      const res = await this.oracleStakesAccountingX.stakeOf(alice, NON_EXISTENT_ROLE);
+      const res = await this.oracleStakeAccountingX.typeStakeOf(alice, NON_EXISTENT_ROLE);
       assert.equal(res, 0);
     });
   });
@@ -156,41 +159,98 @@ contract('PGGOracleStakeAccounting', accounts => {
       await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PC_CUSTODIAN_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE, FOO], {
         from: oracleModifier
       });
-      await this.galtToken.approve(this.oracleStakesAccountingX.address, ether(1000), { from: alice });
-      await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
-      await this.oracleStakesAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(55), { from: alice });
-      await this.oracleStakesAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(25), { from: alice });
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(1000), { from: alice });
+      await this.oracleStakeAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(35), { from: alice });
+      await this.oracleStakeAccountingX.stake(bob, PC_AUDITOR_ORACLE_TYPE, ether(55), { from: alice });
+      await this.oracleStakeAccountingX.stake(bob, PC_CUSTODIAN_ORACLE_TYPE, ether(25), { from: alice });
     });
 
     it('should allow slash manager slashing oracle stake', async function() {
-      await this.oracleStakesAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(18), { from: slashManager });
+      await this.oracleStakeAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(18), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingX.stakeOf(bob, PC_AUDITOR_ORACLE_TYPE);
+      const res = await this.oracleStakeAccountingX.typeStakeOf(bob, PC_AUDITOR_ORACLE_TYPE);
       assert.equal(res, ether(37));
     });
 
     it('should allow slash a stake to a negative value', async function() {
-      await this.oracleStakesAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
+      await this.oracleStakeAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingX.stakeOf(bob, PC_AUDITOR_ORACLE_TYPE);
+      const res = await this.oracleStakeAccountingX.typeStakeOf(bob, PC_AUDITOR_ORACLE_TYPE);
       assert.equal(res, ether(-45));
     });
 
     it('should deny non-slashing manager slashing stake', async function() {
-      await assertRevert(this.oracleStakesAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(100), { from: bob }));
+      await assertRevert(this.oracleStakeAccountingX.slash(bob, PC_AUDITOR_ORACLE_TYPE, ether(100), { from: bob }));
     });
 
     it('should deny slashing non-existent role', async function() {
       await assertRevert(
-        this.oracleStakesAccountingX.slash(bob, PE_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager })
+        this.oracleStakeAccountingX.slash(bob, PE_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager })
       );
     });
 
     it('should allow slashing existent role with 0 balance', async function() {
-      await this.oracleStakesAccountingX.slash(dan, PE_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
+      await this.oracleStakeAccountingX.slash(dan, PE_AUDITOR_ORACLE_TYPE, ether(100), { from: slashManager });
 
-      const res = await this.oracleStakesAccountingX.stakeOf(dan, PE_AUDITOR_ORACLE_TYPE);
+      const res = await this.oracleStakeAccountingX.typeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE);
       assert.equal(res, ether(-100));
+    });
+  });
+
+  describe('notifications', async function() {
+    it('should send notifications with positive values', async function() {
+      // stake 120
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(120), { from: alice });
+      await this.oracleStakeAccountingX.stake(dan, PE_AUDITOR_ORACLE_TYPE, ether(120), { from: alice });
+
+      assert.equal(await this.oracleStakeAccountingX.typeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(120));
+      assert.equal(await this.oracleStakeAccountingX.balanceOf(dan), ether(120));
+      assert.equal(await this.oracleStakeAccountingX.totalSupply(), ether(120));
+
+      assert.equal(await this.oracleStakeAccountingX.positiveTypeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(120));
+      assert.equal(await this.oracleStakeAccountingX.positiveBalanceOf(dan), ether(120));
+      assert.equal(await this.oracleStakeAccountingX.positiveTotalSupply(), ether(120));
+
+      assert.equal(await this.oracleStakeVotingX.oracleBalanceOf(dan), ether(120));
+      assert.equal(await this.oracleStakeVotingX.totalSupply(), ether(120));
+
+      assert.equal(await this.stakeTracker.totalSupply(), ether(120));
+      assert.equal(await this.stakeTracker.balanceOf(this.config.address), ether(120));
+
+      // slash 200 (-80)
+      await this.oracleStakeAccountingX.slash(dan, PE_AUDITOR_ORACLE_TYPE, ether(200), { from: slashManager });
+
+      assert.equal(await this.oracleStakeAccountingX.typeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(-80));
+      assert.equal(await this.oracleStakeAccountingX.balanceOf(dan), ether(-80));
+      assert.equal(await this.oracleStakeAccountingX.totalSupply(), ether(-80));
+
+      assert.equal(await this.oracleStakeAccountingX.positiveTypeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(0));
+      assert.equal(await this.oracleStakeAccountingX.positiveBalanceOf(dan), ether(0));
+      assert.equal(await this.oracleStakeAccountingX.positiveTotalSupply(), ether(0));
+
+      assert.equal(await this.oracleStakeVotingX.oracleBalanceOf(dan), ether(0));
+      assert.equal(await this.oracleStakeVotingX.totalSupply(), ether(0));
+
+      assert.equal(await this.stakeTracker.totalSupply(), ether(0));
+      assert.equal(await this.stakeTracker.balanceOf(this.config.address), ether(0));
+
+      // stake 300 (220)
+      await this.galtToken.approve(this.oracleStakeAccountingX.address, ether(300), { from: alice });
+      await this.oracleStakeAccountingX.stake(dan, PE_AUDITOR_ORACLE_TYPE, ether(300), { from: alice });
+
+      assert.equal(await this.oracleStakeAccountingX.typeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(220));
+      assert.equal(await this.oracleStakeAccountingX.balanceOf(dan), ether(220));
+      assert.equal(await this.oracleStakeAccountingX.totalSupply(), ether(220));
+
+      assert.equal(await this.oracleStakeAccountingX.positiveTypeStakeOf(dan, PE_AUDITOR_ORACLE_TYPE), ether(220));
+      assert.equal(await this.oracleStakeAccountingX.positiveBalanceOf(dan), ether(220));
+      assert.equal(await this.oracleStakeAccountingX.positiveTotalSupply(), ether(220));
+
+      assert.equal(await this.oracleStakeVotingX.oracleBalanceOf(dan), ether(220));
+      assert.equal(await this.oracleStakeVotingX.totalSupply(), ether(220));
+
+      assert.equal(await this.stakeTracker.totalSupply(), ether(220));
+      assert.equal(await this.stakeTracker.balanceOf(this.config.address), ether(220));
     });
   });
 });

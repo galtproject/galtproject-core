@@ -15,8 +15,7 @@ pragma solidity 0.5.7;
 
 
 contract IStakeTracker {
-  function onStake(address _pgg, uint256 _amount) external;
-  function onSlash(address _pgg, uint256 _amount) external;
+  function onChange(address _pgg, uint256 _amount) external;
   function balancesOf(address[] calldata _pggs) external view returns(uint256);
   function balanceOf(address _pgg) external view returns(uint256);
   function totalSupply() external view returns(uint256);

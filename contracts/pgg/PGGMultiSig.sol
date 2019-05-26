@@ -170,10 +170,11 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
     }
 
     (uint256 currentPeriodId, uint256 totalStakes) = pggConfig.getArbitratorStakes().getCurrentPeriodAndTotalSupply();
+
     uint256 runningTotalBefore = _periodRunningTotal[currentPeriodId];
     uint256 runningTotalAfter = _periodRunningTotal[currentPeriodId] + galtValue;
-
     assert(runningTotalAfter > runningTotalBefore);
+
     require(runningTotalAfter <= totalStakes, "Arbitrator expenses running total exceeds their total stakes");
 
     _periodRunningTotal[currentPeriodId] = runningTotalAfter;

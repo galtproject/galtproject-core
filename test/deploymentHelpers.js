@@ -49,6 +49,8 @@ const ModifyContractAddressProposalManager = artifacts.require('./ModifyContract
 const RevokeArbitratorsProposalManager = artifacts.require('./RevokeArbitratorsProposalManager.sol');
 
 PGGMultiSigCandidateTop.numberFormat = 'String';
+PGGOracleStakeVoting.numberFormat = 'String';
+PGGOracleStakeAccounting.numberFormat = 'String';
 
 const Helpers = {
   async deployPGGFactory(ggr, owner) {
