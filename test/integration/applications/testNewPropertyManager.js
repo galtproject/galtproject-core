@@ -1008,7 +1008,7 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe.skip('#resetApplicationRole()', () => {
+    describe('#unlock()', () => {
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1017,7 +1017,7 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should should allow a contract owner to unlock an application under consideration', async function() {
-        await this.newPropertyManager.resetApplicationRole(this.aId, PM_SURVEYOR, { from: coreTeam });
+        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1028,7 +1028,7 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should deny non-owner to unlock an application under consideration', async function() {
-        await assertRevert(this.newPropertyManager.resetApplicationRole(this.aId, PM_SURVEYOR, { from: charlie }));
+        await assertRevert(this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: charlie }));
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);

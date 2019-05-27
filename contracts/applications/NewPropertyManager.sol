@@ -349,15 +349,12 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function resetApplicationOracleType(bytes32 _aId, bytes32 _oracleType) external {
-    // TODO: move permissions to an applicant
-    assert(false);
+  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
-    require(a.validationStatus[_oracleType] != ValidationStatus.PENDING, "Validation status not set");
+    require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");
     require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
-    // Do not affect on application state
     a.oracleTypeAddresses[_oracleType] = address(0);
     changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
