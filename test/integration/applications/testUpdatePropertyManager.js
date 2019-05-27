@@ -735,6 +735,53 @@ contract('UpdatePropertyManager', (accounts) => {
       });
     });
 
+    describe('#unlock()', () => {
+      beforeEach(async function() {
+        let res = await this.updatePropertyManager.submitApplication(
+          this.pggConfigX.address,
+          this.spaceTokenId,
+          this.ledgerIdentifier,
+          this.description,
+          this.newContour,
+          this.newHeights,
+          this.newLevel,
+          0,
+          {
+            from: alice,
+            value: ether(13)
+          }
+        );
+        this.aId = res.logs[0].args.id;
+
+        res = await this.updatePropertyManager.getApplicationById(this.aId);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        await this.updatePropertyManager.lockApplicationForReview(this.aId, PL_SURVEYOR, { from: bob });
+      });
+
+      it('should should allow a contract owner to unlock an application under consideration', async function() {
+        await this.updatePropertyManager.unlock(this.aId, PL_SURVEYOR, { from: alice });
+
+        let res = await this.updatePropertyManager.getApplicationById(this.aId);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+        assert.equal(res.oracle, zeroAddress);
+        assert.equal(res.status, ValidationStatus.PENDING);
+      });
+
+      it('should deny non-owner to unlock an application under consideration', async function() {
+        await assertRevert(this.updatePropertyManager.unlock(this.aId, PL_SURVEYOR, { from: charlie }));
+
+        let res = await this.updatePropertyManager.getApplicationById(this.aId);
+        assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+        res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_SURVEYOR);
+        assert.equal(res.oracle, bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+      });
+    });
+
     describe('#approveApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
