@@ -21,6 +21,7 @@ const {
 const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 GaltToken.numberFormat = 'String';
+NewOracleManager.numberFormat = 'String';
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
 const { hexToUtf8, utf8ToHex } = Web3.utils;
@@ -200,6 +201,7 @@ contract('NewOracleManager', (accounts) => {
         this.aId = res.logs[0].args.applicationId;
         res = await this.newOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(parseInt(res.createdAt, 10) > 0, true);
       });
 
       describe('payable', () => {

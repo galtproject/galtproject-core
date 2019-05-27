@@ -64,6 +64,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     bytes32 ledgerIdentifier;
     string description;
     uint256 spaceTokenId;
+    uint256 createdAt;
     
     uint256 oraclesReward;
     uint256 galtProtocolFee;
@@ -191,6 +192,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     a.newHeights = _newHeights;
     a.newLevel = _newLevel;
     a.pgg = _pgg;
+    a.createdAt = block.timestamp;
 
     a.spaceTokenId = _spaceTokenId;
     a.ledgerIdentifier = _ledgerIdentifier;
@@ -379,6 +381,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     returns (
       ApplicationStatus status,
       Currency currency,
+      uint256 createdAt,
       address applicant,
       address pgg,
       uint256 spaceTokenId,
@@ -396,6 +399,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     return (
       m.status,
       m.currency,
+      m.createdAt,
       m.applicant,
       m.pgg,
       m.spaceTokenId,

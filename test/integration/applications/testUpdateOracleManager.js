@@ -18,6 +18,7 @@ const { hexToUtf8, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 GaltToken.numberFormat = 'String';
+UpdateOracleManager.numberFormat = 'String';
 
 const MN = bytes32('MN');
 const BOB = bytes32('BOB');
@@ -202,6 +203,7 @@ contract('UpdateOracleManager', (accounts) => {
         this.aId = res.logs[0].args.applicationId;
         res = await this.updateOracle.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(parseInt(res.createdAt, 10) > 0, true);
       });
 
       it('should deny applying for non-oracle', async function() {

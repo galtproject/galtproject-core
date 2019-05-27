@@ -273,6 +273,7 @@ contract("ClaimManager", (accounts) => {
 
           res = await this.claimManager.claim(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
+          assert.equal(parseInt(res.createdAt, 10) > 0, true);
 
           res = await this.claimManager.getClaimFees(this.aId);
           assert.equal(res.currency, Currency.GALT);

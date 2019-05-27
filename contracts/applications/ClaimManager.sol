@@ -65,6 +65,7 @@ contract ClaimManager is AbstractApplication {
     bytes32 chosenProposal;
     uint256 messageCount;
     uint256 multiSigTransactionId;
+    uint256 createdAt;
     uint256 m;
     uint256 n;
 
@@ -220,6 +221,7 @@ contract ClaimManager is AbstractApplication {
     c.fees.currency = currency;
     c.n = n(_pgg);
     c.m = m(_pgg);
+    c.createdAt = block.timestamp;
 
     calculateAndStoreFee(c, fee);
 
@@ -519,7 +521,7 @@ contract ClaimManager is AbstractApplication {
       uint256 slotsThreshold,
       uint256 totalSlots,
       uint256 multiSigTransactionId,
-      uint256 messageCount,
+      uint256 createdAt,
       ApplicationStatus status
     )
   {
@@ -536,7 +538,7 @@ contract ClaimManager is AbstractApplication {
       c.m,
       c.n,
       c.multiSigTransactionId,
-      c.messageCount,
+      c.createdAt,
       c.status
     );
   }
