@@ -421,15 +421,14 @@ contract("ClaimManager", (accounts) => {
 
         let res = await this.claimManager.claim(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(res.messageCount, 0);
+        assert.equal(await this.claimManager.getMessageCount(this.cId), 0);
 
         await this.claimManager.pushMessage(this.cId, 'hi', { from: bob });
         await this.claimManager.pushMessage(this.cId, 'hey', { from: bob });
         await this.claimManager.pushMessage(this.cId, 'hello', { from: alice });
         await this.claimManager.pushMessage(this.cId, 'you', { from: charlie });
 
-        res = await this.claimManager.claim(this.cId);
-        assert.equal(res.messageCount, 4);
+        assert.equal(await this.claimManager.getMessageCount(this.cId), 4);
 
         res = await this.claimManager.getMessage(this.cId, 0);
         assert(res.timestamp > 0);

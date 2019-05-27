@@ -565,6 +565,10 @@ contract ClaimManager is AbstractApplication {
     );
   }
 
+  function getMessageCount(bytes32 _cId) external view returns (uint256) {
+    return claims[_cId].messageCount;
+  }
+
   function getProposals(bytes32 _cId) external view returns (bytes32[] memory) {
     return claims[_cId].proposals;
   }
