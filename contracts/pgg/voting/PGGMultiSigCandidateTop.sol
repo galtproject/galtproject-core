@@ -85,7 +85,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
 
   function recalculate(address _candidate) external {
     uint256 candidateWeightAfter = 0;
-    uint256 candidateWeightBefore = getCandidateWeight(_candidate);
+    uint256 candidateWeightBefore = getTopCandidateWeight(_candidate);
     bool ignore = (ignoredCandidates[_candidate] == true);
 
     if (!ignore) {
@@ -101,10 +101,10 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
 
     if (candidateWeightBefore > candidateWeightAfter) {
       // totalWeight -= (candidateWeightBefore - candidateWeightAfter);
-      totalWeight = totalWeight.sub(candidateWeightBefore).sub(candidateWeightAfter);
+      totalWeight = totalWeight.sub(candidateWeightBefore.sub(candidateWeightAfter));
     } else {
-      // totalWeight += (candidateWeightBefore - candidateWeightAfter);
-      totalWeight = totalWeight.add(candidateWeightAfter).sub(candidateWeightBefore);
+      // totalWeight += (candidateWeightAfter - candidateWeightBefore);
+      totalWeight = totalWeight.add(candidateWeightAfter.sub(candidateWeightBefore));
     }
 
     VotingLinkedList.insertOrUpdate(votingList, votingData, _candidate, candidateWeightAfter);
