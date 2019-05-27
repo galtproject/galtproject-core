@@ -43,6 +43,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     uint256 ayeCount;
     uint256 nayCount;
 
+    uint256 createdAt;
 
     ApplicationStatus status;
     FeeDetails fees;
@@ -218,11 +219,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       currency = Currency.GALT;
     }
 
+    // TODO: use storage instead
     Application memory a;
 
     a.status = ApplicationStatus.SUBMITTED;
     a.pgg = _pgg;
     a.applicant = msg.sender;
+    a.createdAt = block.timestamp;
     a.m = m(_pgg);
     a.n = n(_pgg);
 
@@ -289,7 +292,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       uint256 m,
       uint256 n,
       uint256 ayeCount,
-      uint256 nayCount
+      uint256 nayCount,
+      uint256 createdAt
     )
   {
     Application storage m = applications[_id];
@@ -301,7 +305,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       m.m,
       m.n,
       m.ayeCount,
-      m.nayCount
+      m.nayCount,
+      m.createdAt
     );
   }
 

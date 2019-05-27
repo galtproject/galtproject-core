@@ -67,6 +67,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     address applicant;
     address operator;
     uint256 spaceTokenId;
+    uint256 createdAt;
     // TODO: should depend on plot area, but now it is fixed
     ApplicationDetails details;
     ApplicationFees fees;
@@ -225,6 +226,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     a.id = _id;
     a.pgg = _pgg;
     a.applicant = msg.sender;
+    a.createdAt = block.timestamp;
 
     calculateAndStoreFee(a, a.fees.totalPaidFee);
 
@@ -622,6 +624,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     external
     view
     returns (
+      uint256 createdAt,
       address applicant,
       address pgg,
       uint256 spaceTokenId,
@@ -638,6 +641,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     Application storage m = applications[_id];
 
     return (
+      m.createdAt,
       m.applicant,
       m.pgg,
       m.spaceTokenId,

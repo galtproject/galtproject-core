@@ -276,6 +276,7 @@ contract('NewPropertyManager', accounts => {
         assert.equal(res2.applicant, alice);
         assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
         assert.equal(res2.description, this.description);
+        assert.equal(parseInt(res2.createdAt, 10) > 0, true);
       });
     });
 

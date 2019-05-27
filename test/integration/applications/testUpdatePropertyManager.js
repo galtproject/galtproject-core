@@ -272,6 +272,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+        assert.equal(parseInt(res.createdAt, 10) > 0, true);
       });
 
       describe('payable', () => {
