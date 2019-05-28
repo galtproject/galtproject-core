@@ -99,7 +99,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     int256 level;
     uint256 area;
     ISpaceGeoData.AreaSource areaSource;
-    uint256[] packageContour;
+    uint256[] contour;
     int256[] heights;
   }
 
@@ -160,7 +160,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
   function submitApplication(
     address _pgg,
-    uint256[] calldata _packageContour,
+    uint256[] calldata _contour,
     int256[] calldata _heights,
     int256 _level,
     uint256 _customArea,
@@ -174,7 +174,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     returns (bytes32)
   {
     require(
-      _packageContour.length >= 3 && _packageContour.length <= 50,
+      _contour.length >= 3 && _contour.length <= 50,
       "Number of contour elements should be between 3 and 50"
     );
 
@@ -183,7 +183,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     bytes32 _id = keccak256(
       abi.encodePacked(
         _pgg,
-        _packageContour,
+        _contour,
         _credentialsHash,
         msg.sender,
         applicationsArray.length
@@ -196,7 +196,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     if (_customArea == 0) {
       a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
-      a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_packageContour);
+      a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
     } else {
       a.details.area = _customArea;
       // Default a.areaSource is AreaSource.USER_INPUT
@@ -234,7 +234,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     a.details.description = _description;
     a.details.credentialsHash = _credentialsHash;
     a.details.level = _level;
-    a.details.packageContour = _packageContour;
+    a.details.contour = _contour;
     a.details.heights = _heights;
 
     applicationsArray.push(_id);
@@ -252,46 +252,58 @@ contract NewPropertyManager is AbstractOracleApplication {
    * @dev Resubmit application after it was reverted
    *
    * @param _aId application id
-   * @param _credentialsHash keccak256 of user credentials
-   * @param _ledgerIdentifier of a plot
-   * @param _newSpaceTokenContour array, empty if not changed
+   * @param _newCredentialsHash keccak256 of user credentials
+   * @param _newLedgerIdentifier of a plot
+   * @param _newDescription of a plot
+   * @param _newContour array, empty if not changed
    * @param _newHeights array, empty if not changed
    * @param _newLevel int
+   * @param _newCustomArea int
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmitApplication(
     bytes32 _aId,
-    bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
-    string calldata _description,
-    uint256[] calldata _newSpaceTokenContour,
+    bytes32 _newCredentialsHash,
+    bytes32 _newLedgerIdentifier,
+    string calldata _newDescription,
+    uint256[] calldata _newContour,
     int256[] calldata _newHeights,
     int256 _newLevel,
-    uint256 _customArea,
+    uint256 _newCustomArea,
     uint256 _resubmissionFeeInGalt
   )
     external
     payable
   {
+    Application storage a = applications[_aId];
+    ApplicationDetails storage d = a.details;
     require(
-      applications[_aId].applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
+      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
       "Applicant invalid");
     require(
-      applications[_aId].status == ApplicationStatus.REVERTED,
+      a.status == ApplicationStatus.REVERTED,
       "Application status should be REVERTED");
 
-    checkResubmissionPayment(applications[_aId], _resubmissionFeeInGalt, _newSpaceTokenContour);
+    checkResubmissionPayment(a, _resubmissionFeeInGalt, _newContour);
 
-    applications[_aId].details.level = _newLevel;
-    applications[_aId].details.heights = _newHeights;
-    applications[_aId].details.packageContour = _newSpaceTokenContour;
-    applications[_aId].details.description = _description;
-    applications[_aId].details.ledgerIdentifier = _ledgerIdentifier;
-    applications[_aId].details.credentialsHash = _credentialsHash;
+    if (_newCustomArea == 0) {
+      d.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
+    } else {
+      d.area = _newCustomArea;
+      d.areaSource = ISpaceGeoData.AreaSource.USER_INPUT;
+    }
+
+    d.level = _newLevel;
+    d.heights = _newHeights;
+    d.contour = _newContour;
+    d.description = _newDescription;
+    d.ledgerIdentifier = _newLedgerIdentifier;
+    d.credentialsHash = _newCredentialsHash;
 
     assignLockedStatus(_aId);
 
-    changeApplicationStatus(applications[_aId], ApplicationStatus.SUBMITTED);
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
   
   function assignLockedStatus(bytes32 _aId) internal {
@@ -410,7 +422,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     a.spaceTokenId = spaceTokenId;
 
-    spaceGeoData.setSpaceTokenContour(spaceTokenId, a.details.packageContour);
+    spaceGeoData.setSpaceTokenContour(spaceTokenId, a.details.contour);
     spaceGeoData.setSpaceTokenHeights(spaceTokenId, a.details.heights);
     spaceGeoData.setSpaceTokenLevel(spaceTokenId, a.details.level);
     spaceGeoData.setSpaceTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
@@ -628,11 +640,8 @@ contract NewPropertyManager is AbstractOracleApplication {
       address applicant,
       address pgg,
       uint256 spaceTokenId,
-      bytes32 credentialsHash,
       ApplicationStatus status,
       Currency currency,
-      bytes32 ledgerIdentifier,
-      string memory description,
       bytes32[] memory assignedOracleTypes
     )
   {
@@ -645,11 +654,8 @@ contract NewPropertyManager is AbstractOracleApplication {
       m.applicant,
       m.pgg,
       m.spaceTokenId,
-      m.details.credentialsHash,
       m.status,
       m.currency,
-      m.details.ledgerIdentifier,
-      m.details.description,
       m.assignedOracleTypes
     );
   }
@@ -700,7 +706,8 @@ contract NewPropertyManager is AbstractOracleApplication {
       int256 level,
       uint256 area,
       ISpaceGeoData.AreaSource areaSource,
-      uint256[] memory packageContour,
+      uint256[] memory contour,
+      string memory description,
       int256[] memory heights
     )
   {
@@ -714,7 +721,8 @@ contract NewPropertyManager is AbstractOracleApplication {
       m.details.level,
       m.details.area,
       m.details.areaSource,
-      m.details.packageContour,
+      m.details.contour,
+      m.details.description,
       m.details.heights
     );
   }

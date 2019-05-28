@@ -8,6 +8,8 @@ const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 
+UpdatePropertyManager.numberFormat = 'String';
+
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 const {
@@ -74,10 +76,16 @@ const Currency = {
   GALT: 1
 };
 
+const AreaSource = {
+  USER_INPUT: 0,
+  CONTRACT: 1
+};
+
 Object.freeze(ApplicationStatus);
 Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
+Object.freeze(AreaSource);
 
 // eslint-disable-next-line
 contract('UpdatePropertyManager', (accounts) => {
@@ -255,13 +263,14 @@ contract('UpdatePropertyManager', (accounts) => {
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           ether(45),
           {
             from: alice
@@ -280,13 +289,14 @@ contract('UpdatePropertyManager', (accounts) => {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.pggConfigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
+              this.newLevel,
+              0,
               this.description,
               this.newContour,
               this.newHeights,
-              this.newLevel,
+              this.pggConfigX.address,
               ether(42),
               {
                 from: alice
@@ -298,13 +308,14 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newLevel,
+            0,
             this.description,
             this.newContour,
             this.newHeights,
-            this.newLevel,
+            this.pggConfigX.address,
             ether(47),
             {
               from: alice
@@ -323,13 +334,14 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate oracle rewards according to their roles share', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newLevel,
+            0,
             this.description,
             this.newContour,
             this.newHeights,
-            this.newLevel,
+            this.pggConfigX.address,
             ether(47),
             {
               from: alice
@@ -362,13 +374,14 @@ contract('UpdatePropertyManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(57), { from: alice });
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           ether(57),
           {
             from: alice
@@ -557,13 +570,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#submitApplication()', () => {
       it('should create a new application', async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -576,25 +590,27 @@ contract('UpdatePropertyManager', (accounts) => {
         assert.equal(res, this.updatePropertyManager.address);
 
         res = await this.updatePropertyManager.getApplicationById(this.aId);
-        const res2 = await this.updatePropertyManager.getApplicationPayloadById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.spaceTokenId, this.spaceTokenId);
         assert.equal(res.applicant, alice);
         assert.equal(res.currency, Currency.ETH);
-        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+
+        res = await this.updatePropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), this.initLedgerIdentifier);
       });
 
       describe('payable', () => {
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
             this.updatePropertyManager.submitApplication(
-              this.pggConfigX.address,
               this.spaceTokenId,
               this.ledgerIdentifier,
+              this.newLevel,
+              0,
               this.description,
               this.newContour,
               this.newHeights,
-              this.newLevel,
+              this.pggConfigX.address,
               0,
               {
                 from: alice,
@@ -606,13 +622,14 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should allow applications with payment greater than required', async function() {
           await this.updatePropertyManager.submitApplication(
-            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newLevel,
+            0,
             this.description,
             this.newContour,
             this.newHeights,
-            this.newLevel,
+            this.pggConfigX.address,
             0,
             {
               from: alice,
@@ -623,13 +640,14 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newLevel,
+            0,
             this.description,
             this.newContour,
             this.newHeights,
-            this.newLevel,
+            this.pggConfigX.address,
             0,
             {
               from: alice,
@@ -647,13 +665,14 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.updatePropertyManager.submitApplication(
-            this.pggConfigX.address,
             this.spaceTokenId,
             this.ledgerIdentifier,
+            this.newLevel,
+            0,
             this.description,
             this.newContour,
             this.newHeights,
-            this.newLevel,
+            this.pggConfigX.address,
             0,
             {
               from: alice,
@@ -685,13 +704,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#lockApplicationForReview()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -786,13 +806,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#approveApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -845,13 +866,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#revertApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -915,13 +937,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#resubmitApplication', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -939,7 +962,22 @@ contract('UpdatePropertyManager', (accounts) => {
       });
 
       it('should allow an applicant resubmit application', async function() {
-        await this.updatePropertyManager.resubmitApplication(this.aId, { from: alice });
+        const newLedgerIdentifier = bytes32('foo-123');
+        const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
+
+        await this.updatePropertyManager.resubmitApplication(
+          this.aId,
+          newLedgerIdentifier,
+          this.description,
+          newContour,
+          [],
+          9,
+          0,
+          0,
+          {
+            from: alice
+          }
+        );
 
         let res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -952,10 +990,61 @@ contract('UpdatePropertyManager', (accounts) => {
 
         res = await this.updatePropertyManager.getApplicationOracle(this.aId, PL_AUDITOR);
         assert.equal(res.status, ValidationStatus.LOCKED);
+
+        res = await this.updatePropertyManager.getApplicationDetailsById(this.aId);
+        assert.sameMembers(res.contour, newContour.map(a => a.toString(10)));
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(newLedgerIdentifier));
+      });
+
+      it('should change old details data with a new if fee area used', async function() {
+        let res = await this.updatePropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
+        assert.equal(parseInt(res.area, 10) > 0, true);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+
+        const newLedgerIdentifier = bytes32('foo-123');
+        const newDescripton = 'new-test-description';
+
+        await this.updatePropertyManager.resubmitApplication(
+          this.aId,
+          newLedgerIdentifier,
+          newDescripton,
+          [],
+          [],
+          9,
+          3000,
+          0,
+          {
+            from: alice
+          }
+        );
+
+        res = await this.updatePropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(res.area, 3000);
+        assert.equal(res.areaSource, AreaSource.USER_INPUT);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(newLedgerIdentifier));
+        assert.equal(res.description, newDescripton);
       });
 
       it('should deny non-applicant resubmit application', async function() {
-        await assertRevert(this.updatePropertyManager.resubmitApplication(this.aId, { from: bob }));
+        const newLedgerIdentifier = bytes32('foo-123');
+        const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
+
+        await assertRevert(
+          this.updatePropertyManager.resubmitApplication(
+            this.aId,
+            newLedgerIdentifier,
+            this.description,
+            newContour,
+            [],
+            9,
+            0,
+            0,
+            {
+              from: bob
+            }
+          )
+        );
 
         const res = await this.updatePropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
@@ -965,13 +1054,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#withdrawSpaceToken()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
@@ -1000,13 +1090,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('claim reward', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,

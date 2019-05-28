@@ -75,10 +75,16 @@ const Currency = {
   GALT: 1
 };
 
+const AreaSource = {
+  USER_INPUT: 0,
+  CONTRACT: 1
+};
+
 Object.freeze(ApplicationStatus);
 Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
+Object.freeze(AreaSource);
 
 contract('NewPropertyManager', accounts => {
   const [
@@ -262,7 +268,17 @@ contract('NewPropertyManager', accounts => {
 
     describe('#submitApplication() Galt', () => {
       it('should provide methods to create and read an application', async function() {
-        const res2 = await this.newPropertyManager.getApplicationById(this.aId);
+        const res1 = await this.newPropertyManager.getApplicationById(this.aId);
+        assert.equal(res1.status, 1);
+        assert.equal(res1.applicant, alice);
+        assert.equal(parseInt(res1.createdAt, 10) > 0, true);
+
+        const res2 = await this.newPropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+        assert.equal(res2.description, this.description);
+        assert.equal(res2.areaSource, AreaSource.CONTRACT);
+        assert.equal(parseInt(res2.area, 10) > 0, true);
+
         const res3 = await this.spaceGeoData.getSpaceTokenContour(
           '0x0000000000000000000000000000000000000000000000000000000000000000'
         );
@@ -271,12 +287,6 @@ contract('NewPropertyManager', accounts => {
         for (let i = 0; i < res3.length; i++) {
           assert.equal(res3[i].toString(10), this.initContour[i]);
         }
-
-        assert.equal(res2.status, 1);
-        assert.equal(res2.applicant, alice);
-        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
-        assert.equal(res2.description, this.description);
-        assert.equal(parseInt(res2.createdAt, 10) > 0, true);
       });
     });
 
@@ -503,8 +513,9 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should change old details data with a new', async function() {
-        let res = await this.newPropertyManager.getApplicationById(this.aId);
+        let res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
         assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
@@ -526,8 +537,42 @@ contract('NewPropertyManager', accounts => {
           }
         );
 
-        res = await this.newPropertyManager.getApplicationById(this.aId);
+        res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
         assert.equal(res.credentialsHash, newCredentiasHash);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
+        assert.equal(res.description, newDescripton);
+      });
+
+      it('should change old details data with a new if fee area used', async function() {
+        let res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(res.credentialsHash, this.credentials);
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
+        assert.equal(parseInt(res.area, 10) > 0, true);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+
+        const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
+        const newLedgerIdentifier = bytes32('foo-123');
+        const newDescripton = 'new-test-description';
+
+        await this.newPropertyManager.resubmitApplication(
+          this.aId,
+          newCredentiasHash,
+          newLedgerIdentifier,
+          newDescripton,
+          [],
+          [],
+          9,
+          3000,
+          0,
+          {
+            from: alice
+          }
+        );
+
+        res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(res.area, 3000);
+        assert.equal(res.areaSource, AreaSource.USER_INPUT);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
         assert.equal(res.description, newDescripton);
       });
@@ -696,11 +741,12 @@ contract('NewPropertyManager', accounts => {
 
     describe('#submitApplication()', () => {
       it('should provide methods to create and read an application', async function() {
-        const res2 = await this.newPropertyManager.getApplicationById(this.aId);
+        let res = await this.newPropertyManager.getApplicationById(this.aId);
+        assert.equal(res.status, 1);
+        assert.equal(res.applicant, alice);
 
-        assert.equal(res2.status, 1);
-        assert.equal(res2.applicant, alice);
-        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+        res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
+        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), this.initLedgerIdentifier);
       });
 
       describe('payable', () => {
@@ -803,7 +849,7 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should change old details data with a new', async function() {
-        let res = await this.newPropertyManager.getApplicationById(this.aId);
+        let res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
         assert.equal(res.credentialsHash, this.credentials);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
@@ -825,7 +871,7 @@ contract('NewPropertyManager', accounts => {
           }
         );
 
-        res = await this.newPropertyManager.getApplicationById(this.aId);
+        res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
         assert.equal(res.credentialsHash, newCredentiasHash);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
       });
@@ -878,7 +924,7 @@ contract('NewPropertyManager', accounts => {
           }
         );
 
-        res = await this.newPropertyManager.getApplicationById(this.aId);
+        res = await this.newPropertyManager.getApplicationDetailsById(this.aId);
         assert.equal(res.credentialsHash, newCredentiasHash);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
       });
