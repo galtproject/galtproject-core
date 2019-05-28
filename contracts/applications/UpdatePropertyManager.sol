@@ -15,6 +15,7 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceGeoData.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./AbstractOracleApplication.sol";
@@ -61,8 +62,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     bytes32 id;
     address pgg;
     address applicant;
-    bytes32 ledgerIdentifier;
-    string description;
     uint256 spaceTokenId;
     uint256 createdAt;
     
@@ -74,10 +73,8 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     // Default is ETH
     Currency currency;
     ApplicationStatus status;
+    ApplicationDetails details;
 
-    uint256[] newContour;
-    int256[] newHeights;
-    int256 newLevel;
     bytes32[] assignedOracleTypes;
 
     mapping(bytes32 => uint256) assignedRewards;
@@ -88,7 +85,17 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
-  mapping(bytes32 => Application) public applications;
+  struct ApplicationDetails {
+    bytes32 ledgerIdentifier;
+    string description;
+    int256 level;
+    uint256 area;
+    ISpaceGeoData.AreaSource areaSource;
+    uint256[] contour;
+    int256[] heights;
+  }
+
+  mapping(bytes32 => Application) internal applications;
 
   constructor () public {}
 
@@ -133,29 +140,16 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
-  function submitApplication(
+  function _performSubmissionChecks(
     address _pgg,
     uint256 _spaceTokenId,
-    bytes32 _ledgerIdentifier,
-    string calldata _description,
-    uint256[] calldata _newContour,
-    int256[] calldata _newHeights,
-    int256 _newLevel,
-    uint256 _applicationFeeInGalt
+    uint256[] memory _newContour,
+    int256[] memory _newHeights
   )
-    external
-    payable
-    returns (bytes32)
+    internal
+    returns(bytes32 _id)
   {
-    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
-    require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
-    require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
-
-    pggRegistry().requireValidPgg(_pgg);
-    ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
-
-    // TODO: use storage instead
-    bytes32 _id = keccak256(
+    _id = keccak256(
       abi.encodePacked(
         _pgg,
         _spaceTokenId,
@@ -163,11 +157,21 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       )
     );
 
-    Application storage a = applications[_id];
-    require(applications[_id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
+    require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
+    require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
+    pggRegistry().requireValidPgg(_pgg);
+    ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
+  }
 
-    uint256 fee;
-
+  function _acceptPayment(
+    Application storage _a,
+    address _pgg,
+    uint256 _applicationFeeInGalt
+  )
+    internal
+    returns (uint256 fee)
+  {
     // GALT
     if (_applicationFeeInGalt > 0) {
       require(msg.value == 0, "Could not accept both GALT and ETH");
@@ -177,26 +181,59 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
 
       fee = _applicationFeeInGalt;
-      a.currency = Currency.GALT;
+      _a.currency = Currency.GALT;
       // ETH
     } else {
       require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
 
       fee = msg.value;
     }
+  }
+
+  function submitApplication(
+    uint256 _spaceTokenId,
+    bytes32 _ledgerIdentifier,
+    int256 _level,
+    uint256 _customArea,
+    string calldata _description,
+    uint256[] calldata _contour,
+    int256[] calldata _heights,
+    address _pgg,
+    uint256 _applicationFeeInGalt
+  )
+    external
+    payable
+    returns (bytes32)
+  {
+    bytes32 _id = _performSubmissionChecks(_pgg, _spaceTokenId, _contour, _heights);
+
+    Application storage a = applications[_id];
+    require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
+
+    uint256 fee = _acceptPayment(a, _pgg, _applicationFeeInGalt);
+
+    if (_customArea == 0) {
+      a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
+    } else {
+      a.details.area = _customArea;
+      // Default a.areaSource is AreaSource.USER_INPUT
+    }
 
     a.status = ApplicationStatus.SUBMITTED;
     a.id = _id;
     a.applicant = msg.sender;
-    a.newContour = _newContour;
-    a.newHeights = _newHeights;
-    a.newLevel = _newLevel;
+
+    a.details.ledgerIdentifier = _ledgerIdentifier;
+    a.details.description = _description;
+    a.details.level = _level;
+    a.details.contour = _contour;
+    a.details.heights = _heights;
+
     a.pgg = _pgg;
     a.createdAt = block.timestamp;
 
     a.spaceTokenId = _spaceTokenId;
-    a.ledgerIdentifier = _ledgerIdentifier;
-    a.description = _description;
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -255,10 +292,11 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     if (allApproved) {
       ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
-      spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.newContour);
-      spaceGeoData.setSpaceTokenHeights(a.spaceTokenId, a.newHeights);
-      spaceGeoData.setSpaceTokenLevel(a.spaceTokenId, a.newLevel);
-      spaceGeoData.setSpaceTokenInfo(a.spaceTokenId, a.ledgerIdentifier, a.description);
+      spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.details.contour);
+      spaceGeoData.setSpaceTokenHeights(a.spaceTokenId, a.details.heights);
+      spaceGeoData.setSpaceTokenLevel(a.spaceTokenId, a.details.level);
+      spaceGeoData.setSpaceTokenArea(a.spaceTokenId, a.details.area, a.details.areaSource);
+      spaceGeoData.setSpaceTokenInfo(a.spaceTokenId, a.details.ledgerIdentifier, a.details.description);
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
     }
   }
@@ -293,6 +331,53 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     changeValidationStatus(a, senderOracleType, ValidationStatus.REVERTED);
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
+
+  function resubmitApplication(
+    bytes32 _aId,
+    bytes32 _newLedgerIdentifier,
+    string calldata _newDescription,
+    uint256[] calldata _newContour,
+    int256[] calldata _newHeights,
+    int256 _newLevel,
+    uint256 _newCustomArea,
+    uint256 _resubmissionFeeInGalt
+  )
+    external
+    payable
+  {
+    Application storage a = applications[_aId];
+    ApplicationDetails storage d = a.details;
+
+    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
+
+    if (_newCustomArea == 0) {
+      d.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
+    } else {
+      d.area = _newCustomArea;
+      d.areaSource = ISpaceGeoData.AreaSource.USER_INPUT;
+    }
+
+    d.level = _newLevel;
+    d.heights = _newHeights;
+    d.contour = _newContour;
+    d.description = _newDescription;
+    d.ledgerIdentifier = _newLedgerIdentifier;
+    d.area = _newCustomArea;
+
+    assignLockedStatus(_aId);
+
+    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+  }
+
+  function assignLockedStatus(bytes32 _aId) internal {
+    for (uint8 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
+      if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
+        changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
+      }
+    }
   }
 
   function resubmitApplication(
@@ -411,24 +496,34 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     );
   }
 
-  function getApplicationPayloadById(
+  function getApplicationDetailsById(
     bytes32 _id
   )
     external
     view
     returns(
-      uint256[] memory newContour,
-      int256[] memory newHeights,
-      int256 newLevel,
+      uint256[] memory contour,
+      int256[] memory heights,
+      int256 level,
+      uint256 area,
+      ISpaceGeoData.AreaSource areaSource,
       bytes32 ledgerIdentifier,
       string memory description
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
-    Application storage m = applications[_id];
+    ApplicationDetails storage d = applications[_id].details;
 
-    return (m.newContour, m.newHeights, m.newLevel, m.ledgerIdentifier, m.description);
+    return (
+      d.contour,
+      d.heights,
+      d.level,
+      d.area,
+      d.areaSource,
+      d.ledgerIdentifier,
+      d.description
+    );
   }
 
   function getApplicationOracle(
