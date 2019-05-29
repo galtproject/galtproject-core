@@ -376,7 +376,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     d.contour = _newContour;
     d.description = _newDescription;
     d.ledgerIdentifier = _newLedgerIdentifier;
-    d.area = _newCustomArea;
 
     assignLockedStatus(_aId);
 
