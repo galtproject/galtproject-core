@@ -759,13 +759,14 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#unlock()', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submitApplication(
-          this.pggConfigX.address,
           this.spaceTokenId,
           this.ledgerIdentifier,
+          this.newLevel,
+          0,
           this.description,
           this.newContour,
           this.newHeights,
-          this.newLevel,
+          this.pggConfigX.address,
           0,
           {
             from: alice,
