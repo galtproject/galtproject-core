@@ -32,7 +32,6 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
   bytes32 public constant PGG_ROLE_MULTI_SIG_PROPOSER = bytes32("PGG_MULTI_SIG_PROPOSER");
 
-  string public constant ROLE_PROPOSER = "proposer";
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
   string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
