@@ -70,19 +70,7 @@ const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 
 // eslint-disable-next-line
 contract('NewOracleManager', (accounts) => {
-  const [
-    coreTeam,
-    feeMixerAddress,
-    spaceRA,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve,
-    frank,
-    george,
-    henrey
-  ] = accounts;
+  const [coreTeam, feeMixerAddress, spaceRA, alice, bob, charlie, dan, eve, frank, george, henrey] = accounts;
 
   before(async function() {
     this.attachedDocuments = [
