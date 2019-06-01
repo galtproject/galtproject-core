@@ -45,7 +45,6 @@ contract('PGG Voting Full Cycle', accounts => {
   const [
     coreTeam,
     oracleManager,
-    claimManager,
     geoDateManagement,
     zeroOwner,
     alice,

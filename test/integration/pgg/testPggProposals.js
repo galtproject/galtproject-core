@@ -30,7 +30,6 @@ const ProposalStatus = {
 contract('PGG Proposals', accounts => {
   const [
     coreTeam,
-    claimManagerAddress,
 
     // initial arbitrators
     a1,

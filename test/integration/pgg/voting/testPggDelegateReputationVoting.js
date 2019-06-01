@@ -43,7 +43,6 @@ contract('PGGDelegateReputationVoting', accounts => {
   const [
     coreTeam,
     oracleModifier,
-    claimManager,
     fakeSRA,
     geoDateManagement,
     zeroOwner,

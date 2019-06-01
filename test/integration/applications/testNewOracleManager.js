@@ -73,7 +73,6 @@ contract('NewOracleManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
-    claimManagerAddress,
     spaceRA,
     alice,
     bob,

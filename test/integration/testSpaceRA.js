@@ -30,7 +30,7 @@ initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
 contract('SpaceRA', accounts => {
-  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement, claimManager] = accounts;
+  const [coreTeam, minter, alice, bob, charlie, a1, a2, a3, geoDateManagement] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });

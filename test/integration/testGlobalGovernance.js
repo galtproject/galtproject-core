@@ -45,7 +45,6 @@ contract('GlobalGovernance', accounts => {
     minter,
     oracleModifier,
     geoDataManager,
-    claimManagerAddress,
 
     // initial arbitrators
     a1,

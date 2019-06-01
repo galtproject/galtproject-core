@@ -94,7 +94,6 @@ contract('UpdatePropertyManager', (accounts) => {
     feeMixerAddress,
     minter,
     oracleModifier,
-    claimManagerAddress,
     spaceReputationAccountingAddress,
     alice,
     bob,

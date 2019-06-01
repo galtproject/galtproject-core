@@ -18,7 +18,7 @@ initHelperWeb3(web3);
 
 // eslint-disable-next-line
 contract("PGGFactory", (accounts) => {
-  const [coreTeam, alice, feeCollector, claimManagerAddress, a1, a2, a3] = accounts;
+  const [coreTeam, alice, feeCollector, a1, a2, a3] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });

@@ -33,7 +33,6 @@ initHelperArtifacts(artifacts);
 contract('PGGMultiSigCandidateTop', accounts => {
   const [
     coreTeam,
-    claimManager,
     fakeSRA,
     alice,
     bob,

@@ -65,7 +65,6 @@ contract('UpdateOracleManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
-    claimManagerAddress,
     spaceRA,
     oracleModifier,
     unauthorized,

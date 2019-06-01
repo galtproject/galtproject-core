@@ -91,7 +91,6 @@ contract('NewPropertyManager', accounts => {
     coreTeam,
     feeMixerAddress,
     oracleModifier,
-    claimManagerAddress,
     spaceReputationAccountingAddress,
     alice,
     bob,
