@@ -257,7 +257,6 @@ contract PGGFactory is Ownable, Initializable {
     PGGOracleStakeAccounting pggOracleStakeAccounting = pggOracleStakeAccountingFactory.build(pggConfig);
 
     address claimManager = ggr.getClaimManagerAddress();
-    pggMultiSig.addRoleTo(claimManager, pggMultiSig.ROLE_PROPOSER());
 
     g.creator = msg.sender;
     g.pggMultiSig = pggMultiSig;
