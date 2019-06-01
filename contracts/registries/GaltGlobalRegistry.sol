@@ -46,9 +46,6 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
 
-  // TODO: move to the application level
-  bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
-
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
   bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
@@ -118,12 +115,6 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   function getGeodesicAddress() external view returns (address) {
     require(contracts[GEODESIC] != ZERO_ADDRESS, "GGR: GEODESIC not set");
     return contracts[GEODESIC];
-  }
-
-  // TODO: should be moved to the application level registry
-  function getClaimManagerAddress() external view returns (address) {
-    require(contracts[CLAIM_MANAGER] != ZERO_ADDRESS, "GGR: CLAIM_MANAGER not set");
-    return contracts[CLAIM_MANAGER];
   }
 
   function getSpaceRAAddress() external view returns (address) {
