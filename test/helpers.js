@@ -198,7 +198,7 @@ const Helpers = {
       .add(adjust); // <- 0.01 ether
 
     assert(
-      diff.lt(max), // diff < 0.01 ether
+      diff.lte(max), // diff < 0.01 ether
       `Expected ${web3.utils.fromWei(diff.toString(10))} (${diff.toString(10)} wei) to be less than 0.01 ether`
     );
 

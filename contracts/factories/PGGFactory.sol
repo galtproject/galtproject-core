@@ -111,6 +111,7 @@ contract PGGFactory is Ownable, Initializable {
   }
 
   bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
 
   struct PGGContractGroup {
     address creator;
@@ -183,7 +184,10 @@ contract PGGFactory is Ownable, Initializable {
   }
 
   modifier onlyFeeCollector() {
-    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
     _;
   }
 

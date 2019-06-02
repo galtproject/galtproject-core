@@ -25,11 +25,16 @@ import "../pgg/interfaces/IPGGConfig.sol";
 contract AbstractApplication is Initializable {
   GaltGlobalRegistry internal ggr;
 
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+  bytes32 public constant ROLE_APPLICATION_BYTECODE_EXECUTOR = bytes32("APPLICATION_BYTECODE_EXECUTOR");
+
   uint256 public protocolFeesEth;
   uint256 public protocolFeesGalt;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
+
+  event ExecuteBytecode(bool success, address destination);
 
   enum Currency {
     ETH,
@@ -46,11 +51,37 @@ contract AbstractApplication is Initializable {
   constructor() public {}
 
   modifier onlyFeeCollector() {
-    require(msg.sender == ggr.getFeeCollectorAddress(), "Only FeeMixer allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
+    _;
+  }
+
+  modifier onlyApplicationBytecodeExecutor() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_APPLICATION_BYTECODE_EXECUTOR),
+      "Only APPLICATION_BYTECODE_EXECUTOR role allowed"
+    );
     _;
   }
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod);
+
+  function executeBytecode(
+    address _destination,
+    uint256 _value,
+    bytes calldata _data
+  )
+    external
+    onlyApplicationBytecodeExecutor
+  {
+    (bool success,) = address(_destination).call.value(_value)(_data);
+
+    assert(success == true);
+
+    emit ExecuteBytecode(success, _destination);
+  }
 
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
