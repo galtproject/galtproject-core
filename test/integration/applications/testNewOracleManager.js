@@ -24,7 +24,7 @@ GaltToken.numberFormat = 'String';
 NewOracleManager.numberFormat = 'String';
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
-const { hexToUtf8, utf8ToHex } = Web3.utils;
+const { hexToUtf8, utf8ToHex, fromWei } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 // eslint-disable-next-line no-underscore-dangle
@@ -179,6 +179,83 @@ contract('NewOracleManager', (accounts) => {
       from: coreTeam
     });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), this.newOracle.address, true, { from: coreTeam });
+  });
+
+  describe('#executeBytecode()', async function() {
+    before(async function() {
+      await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
+      await this.acl.setRole(bytes32('APPLICATION_BYTECODE_EXECUTOR'), charlie, true, { from: coreTeam });
+    });
+
+    describe('ETH', () => {
+      beforeEach(async function() {
+        await this.newOracle.submit(
+          this.mX,
+          bob,
+          BOB,
+          MN,
+          '',
+          this.attachedDocumentsBytes32,
+          [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+          0,
+          {
+            from: alice,
+            value: ether(7)
+          }
+        );
+      });
+
+      it('should allow APPLICATION_BYTECODE_EXECUTOR withdrawing ETHs', async function() {
+        const bytecode = '0x0';
+
+        const aliceBalanceBefore = await web3.eth.getBalance(alice);
+        await this.newOracle.executeBytecode(alice, ether(4), bytecode, { from: charlie });
+        const aliceBalanceAfter = await web3.eth.getBalance(alice);
+
+        assertEthBalanceChanged(aliceBalanceBefore, aliceBalanceAfter, ether(4));
+      });
+
+      it('should deny non-APPLICATION_BYTECODE_EXECUTOR withdrawing ETHs', async function() {
+        const bytecode = '0x0';
+
+        await assertRevert(this.newOracle.executeBytecode(alice, ether(4), bytecode, { from: bob }));
+      });
+    });
+
+    describe('GALT', () => {
+      beforeEach(async function() {
+        await this.galtToken.approve(this.newOracle.address, ether(45), { from: alice });
+        await this.newOracle.submit(
+          this.mX,
+          bob,
+          BOB,
+          MN,
+          '',
+          this.attachedDocumentsBytes32,
+          [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+          ether(45),
+          {
+            from: alice
+          }
+        );
+      });
+
+      it('should allow APPLICATION_BYTECODE_EXECUTOR withdrawing GALTs', async function() {
+        const bytecode = this.galtToken.contract.methods.transfer(alice, ether(12)).encodeABI();
+
+        const aliceBalanceBefore = await this.galtToken.balanceOf(alice);
+        await this.newOracle.executeBytecode(this.galtToken.address, 0, bytecode, { from: charlie });
+        const aliceBalanceAfter = await this.galtToken.balanceOf(alice);
+
+        assertGaltBalanceChanged(aliceBalanceBefore, aliceBalanceAfter, ether(12));
+      });
+
+      it('should deny non-APPLICATION_BYTECODE_EXECUTOR withdrawing GALTs', async function() {
+        const bytecode = this.galtToken.contract.methods.transfer(alice, ether(12)).encodeABI();
+
+        await assertRevert(this.newOracle.executeBytecode(this.galtToken.address, 0, bytecode, { from: bob }));
+      });
+    });
   });
 
   describe('#submit()', () => {
