@@ -24,7 +24,7 @@ GaltToken.numberFormat = 'String';
 NewOracleManager.numberFormat = 'String';
 
 const web3 = new Web3(GaltToken.web3.currentProvider);
-const { hexToUtf8, utf8ToHex, fromWei } = Web3.utils;
+const { hexToUtf8, utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 // eslint-disable-next-line no-underscore-dangle

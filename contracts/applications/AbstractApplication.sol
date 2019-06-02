@@ -76,7 +76,7 @@ contract AbstractApplication is Initializable {
     external
     onlyApplicationBytecodeExecutor
   {
-    (bool success, bytes memory response) = address(_destination).call.value(_value)(_data);
+    (bool success,) = address(_destination).call.value(_value)(_data);
 
     assert(success == true);
 
