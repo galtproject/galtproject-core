@@ -14,13 +14,13 @@
 pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./registries/interfaces/IPGGRegistry.sol";
 import "./interfaces/IStakeTracker.sol";
 
 
-contract StakeTracker is IStakeTracker, OwnableAndInitializable {
+contract StakeTracker is IStakeTracker, Initializable {
   using SafeMath for uint256;
 
   GaltGlobalRegistry internal ggr;
