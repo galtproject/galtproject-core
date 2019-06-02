@@ -387,15 +387,13 @@ contract('GlobalGovernance', accounts => {
       await this.globalGovernance.trigger(globalProposalId);
 
       // Step #3. Crate proposal to add a record
-      const addRecordBytecode = this.ggr.contract.methods
-        .setContract(await this.ggr.FEE_COLLECTOR(), charlie)
-        .encodeABI();
+      const addRecordBytecode = this.ggr.contract.methods.setContract(await this.ggr.GEODESIC(), charlie).encodeABI();
 
       res = await this.pggM.createGlobalProposalProposalManager.propose(
         this.ggr.address,
         '0',
         addRecordBytecode,
-        'charlie is a new fee manager',
+        'charlie is a new geodesic',
         { from: alice }
       );
       proposalId = res.logs[0].args.proposalId;
@@ -457,7 +455,7 @@ contract('GlobalGovernance', accounts => {
       // Step #6. Trigger the proposal and check the new key
       await this.globalGovernance.trigger(globalProposalId);
 
-      res = await this.ggr.getContract(await this.ggr.FEE_COLLECTOR());
+      res = await this.ggr.getContract(await this.ggr.GEODESIC());
       assert.equal(res, charlie);
     });
   });
