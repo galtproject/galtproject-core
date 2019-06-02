@@ -43,7 +43,6 @@ contract('PGGDelegateReputationVoting', accounts => {
   const [
     coreTeam,
     oracleModifier,
-    claimManager,
     fakeSRA,
     geoDateManagement,
     zeroOwner,
@@ -95,7 +94,6 @@ contract('PGGDelegateReputationVoting', accounts => {
     await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address, {
       from: coreTeam
     });

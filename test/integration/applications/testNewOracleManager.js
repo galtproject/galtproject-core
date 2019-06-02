@@ -70,20 +70,7 @@ const PC_CUSTODIAN_ORACLE_TYPE = bytes32('PC_CUSTODIAN_ORACLE_TYPE');
 
 // eslint-disable-next-line
 contract('NewOracleManager', (accounts) => {
-  const [
-    coreTeam,
-    feeMixerAddress,
-    claimManagerAddress,
-    spaceRA,
-    alice,
-    bob,
-    charlie,
-    dan,
-    eve,
-    frank,
-    george,
-    henrey
-  ] = accounts;
+  const [coreTeam, feeMixerAddress, spaceRA, alice, bob, charlie, dan, eve, frank, george, henrey] = accounts;
 
   before(async function() {
     this.attachedDocuments = [
@@ -120,7 +107,6 @@ contract('NewOracleManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeMixerAddress, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
       from: coreTeam

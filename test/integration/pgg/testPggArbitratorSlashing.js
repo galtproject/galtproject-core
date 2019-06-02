@@ -131,7 +131,6 @@ contract('ArbitratorSlashing', accounts => {
         from: coreTeam
       });
       await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-      await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), this.claimManager.address, { from: coreTeam });
       await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, {
         from: coreTeam
       });
@@ -140,6 +139,7 @@ contract('ArbitratorSlashing', accounts => {
       this.pggFactory = await deployPGGFactory(this.ggr, coreTeam);
 
       await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('PGG_MULTI_SIG_PROPOSER'), this.claimManager.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), this.claimManager.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.sra.address, true, { from: coreTeam });
