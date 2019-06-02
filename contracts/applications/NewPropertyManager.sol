@@ -158,7 +158,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     a.operator = _to;
   }
 
-  function submitApplication(
+  function submit(
     address _pgg,
     uint256[] calldata _contour,
     int256[] calldata _heights,
@@ -261,7 +261,7 @@ contract NewPropertyManager is AbstractOracleApplication {
    * @param _newCustomArea int
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
-  function resubmitApplication(
+  function resubmit(
     bytes32 _aId,
     bytes32 _newCredentialsHash,
     bytes32 _newLedgerIdentifier,
@@ -345,7 +345,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   // Application can be locked by an oracle type only once.
-  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
+  function lock(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
@@ -371,7 +371,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
-  function approveApplication(
+  function approve(
     bytes32 _aId,
     bytes32 _credentialsHash
   )
@@ -431,7 +431,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     emit TokenMinted(a.id, spaceTokenId, a.applicant);
   }
 
-  function rejectApplication(
+  function reject(
     bytes32 _aId,
     string calldata _message
   )
@@ -451,7 +451,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
-  function revertApplication(
+  function revert(
     bytes32 _aId,
     string calldata _message
   )
@@ -478,7 +478,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function closeApplication(bytes32 _aId) external onlyApplicant(_aId) {
+  function close(bytes32 _aId) external onlyApplicant(_aId) {
     Application storage a = applications[_aId];
 
     require(

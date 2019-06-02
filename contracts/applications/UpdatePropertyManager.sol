@@ -190,7 +190,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
   }
 
-  function submitApplication(
+  function submit(
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
     int256 _level,
@@ -247,7 +247,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     return _id;
   }
 
-  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
+  function lock(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
@@ -273,7 +273,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   }
 
 
-  function approveApplication(
+  function approve(
     bytes32 _aId
   )
     external
@@ -312,7 +312,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
   }
 
-  function revertApplication(
+  function revert(
     bytes32 _aId,
     string calldata _message
   )
@@ -344,7 +344,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function resubmitApplication(
+  function resubmit(
     bytes32 _aId,
     bytes32 _newLedgerIdentifier,
     string calldata _newDescription,
@@ -388,28 +388,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
         changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
       }
     }
-  }
-
-  function resubmitApplication(
-    bytes32 _aId
-  )
-    external
-    onlyApplicant(_aId)
-  {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.REVERTED, "ApplicationStatus should be REVERTED");
-
-    uint256 len = a.assignedOracleTypes.length;
-
-    for (uint8 i = 0; i < len; i++) {
-      bytes32 currentOracleType = a.assignedOracleTypes[i];
-      if (a.validationStatus[currentOracleType] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, currentOracleType, ValidationStatus.LOCKED);
-      }
-    }
-
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   function withdrawSpaceToken(bytes32 _aId) external onlyApplicant(_aId) {

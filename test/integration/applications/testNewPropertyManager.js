@@ -245,7 +245,7 @@ contract('NewPropertyManager', accounts => {
 
     beforeEach(async function() {
       await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
-      const res = await this.newPropertyManager.submitApplication(
+      const res = await this.newPropertyManager.submit(
         this.pggConfigX.address,
         this.contour,
         this.heights,
@@ -264,7 +264,7 @@ contract('NewPropertyManager', accounts => {
       assert.notEqual(this.aId, undefined);
     });
 
-    describe('#submitApplication() Galt', () => {
+    describe('#submit() Galt', () => {
       it('should provide methods to create and read an application', async function() {
         const res1 = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res1.status, 1);
@@ -288,14 +288,14 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#submitApplication() with area calculated by geodesic contract', () => {
+    describe('#submit() with area calculated by geodesic contract', () => {
       beforeEach(async function() {
         this.fee = ether(26);
         await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
       });
 
       it('should submit applications in galt', async function() {
-        await this.newPropertyManager.submitApplication(
+        await this.newPropertyManager.submit(
           this.pggConfigX.address,
           this.contour,
           this.heights,
@@ -311,7 +311,7 @@ contract('NewPropertyManager', accounts => {
 
       describe('payable', () => {
         it('should split fee between GaltSpace and Oracle', async function() {
-          const res = await this.newPropertyManager.submitApplication(
+          const res = await this.newPropertyManager.submit(
             this.pggConfigX.address,
             this.contour,
             this.heights,
@@ -332,7 +332,7 @@ contract('NewPropertyManager', accounts => {
 
         it('should reject fees less than returned from getter', async function() {
           await assertRevert(
-            this.newPropertyManager.submitApplication(
+            this.newPropertyManager.submit(
               this.pggConfigX.address,
               this.contour,
               this.heights,
@@ -351,7 +351,7 @@ contract('NewPropertyManager', accounts => {
         it('should calculate oracle rewards according to their roles share', async function() {
           const expectedFee = ether(26);
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
-          let res = await this.newPropertyManager.submitApplication(
+          let res = await this.newPropertyManager.submit(
             this.pggConfigX.address,
             this.contour,
             this.heights,
@@ -384,7 +384,7 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#submitApplication() with area provided by the applicant', () => {
+    describe('#submit() with area provided by the applicant', () => {
       beforeEach(async function() {
         this.fee = await this.newPropertyManager.getSubmissionFeeByArea(
           this.pggConfigX.address,
@@ -397,7 +397,7 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should submit applications in galt', async function() {
-        await this.newPropertyManager.submitApplication(
+        await this.newPropertyManager.submit(
           this.pggConfigX.address,
           this.contour,
           this.heights,
@@ -412,13 +412,13 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#closeApplication()', () => {
+    describe('#close()', () => {
       describe('with status REVERTED', () => {
         it('should change status to CLOSED', async function() {
-          await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-          await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
-          await this.newPropertyManager.revertApplication(this.aId, 'dont like it', { from: bob });
-          await this.newPropertyManager.closeApplication(this.aId, { from: alice });
+          await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+          await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+          await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
+          await this.newPropertyManager.close(this.aId, { from: alice });
 
           const res = await this.newPropertyManager.getApplicationById(this.aId);
           assert.equal(res.status, ApplicationStatus.CLOSED);
@@ -426,12 +426,12 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#resubmitApplication()', () => {
+    describe('#resubmit()', () => {
       beforeEach(async function() {
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
-        await this.newPropertyManager.revertApplication(this.aId, 'blah', { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.revert(this.aId, 'blah', { from: bob });
       });
 
       describe('contour changed', () => {
@@ -447,7 +447,7 @@ contract('NewPropertyManager', accounts => {
 
         it('should require another payment', async function() {
           assert.equal(this.fee, ether(5));
-          await this.newPropertyManager.resubmitApplication(
+          await this.newPropertyManager.resubmit(
             this.aId,
             this.credentials,
             this.ledgerIdentifier,
@@ -466,7 +466,7 @@ contract('NewPropertyManager', accounts => {
 
         it('should reject on payment both in ETH and GALT', async function() {
           await assertRevert(
-            this.newPropertyManager.resubmitApplication(
+            this.newPropertyManager.resubmit(
               this.aId,
               this.credentials,
               this.ledgerIdentifier,
@@ -492,7 +492,7 @@ contract('NewPropertyManager', accounts => {
           const fee = await this.newPropertyManager.getResubmissionFeeByArea(this.aId, area);
           assert.equal(fee, 0);
 
-          await this.newPropertyManager.resubmitApplication(
+          await this.newPropertyManager.resubmit(
             this.aId,
             this.credentials,
             this.ledgerIdentifier,
@@ -520,7 +520,7 @@ contract('NewPropertyManager', accounts => {
         const newLedgerIdentifier = bytes32('foo-123');
         const newDescripton = 'new-test-description';
 
-        await this.newPropertyManager.resubmitApplication(
+        await this.newPropertyManager.resubmit(
           this.aId,
           newCredentiasHash,
           newLedgerIdentifier,
@@ -553,7 +553,7 @@ contract('NewPropertyManager', accounts => {
         const newLedgerIdentifier = bytes32('foo-123');
         const newDescripton = 'new-test-description';
 
-        await this.newPropertyManager.resubmitApplication(
+        await this.newPropertyManager.resubmit(
           this.aId,
           newCredentiasHash,
           newLedgerIdentifier,
@@ -588,7 +588,7 @@ contract('NewPropertyManager', accounts => {
 
         this.fee = ether(20);
         await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
-        res = await this.newPropertyManager.submitApplication(
+        res = await this.newPropertyManager.submit(
           this.pggConfigX.address,
           this.contour,
           this.heights,
@@ -607,14 +607,14 @@ contract('NewPropertyManager', accounts => {
         res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
       describe('on approve', () => {
         beforeEach(async function() {
-          await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
-          await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+          await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+          await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
           // TODO: add plotmanager as minter role to geodatamanager
         });
 
@@ -644,7 +644,7 @@ contract('NewPropertyManager', accounts => {
 
       describe('on reject', () => {
         beforeEach(async function() {
-          await this.newPropertyManager.rejectApplication(this.aId, 'malicious', { from: bob });
+          await this.newPropertyManager.reject(this.aId, 'malicious', { from: bob });
         });
 
         it('should allow shareholders claim reward', async function() {
@@ -671,8 +671,8 @@ contract('NewPropertyManager', accounts => {
 
       describe('on close', () => {
         it('should allow oracles claim reward after reject', async function() {
-          await this.newPropertyManager.revertApplication(this.aId, this.credentials, { from: bob });
-          await this.newPropertyManager.closeApplication(this.aId, { from: alice });
+          await this.newPropertyManager.revert(this.aId, this.credentials, { from: bob });
+          await this.newPropertyManager.close(this.aId, { from: alice });
 
           const bobsInitialBalance = new BN((await this.galtToken.balanceOf(bob)).toString(10));
           const dansInitialBalance = new BN((await this.galtToken.balanceOf(dan)).toString(10));
@@ -714,7 +714,7 @@ contract('NewPropertyManager', accounts => {
     beforeEach(async function() {
       await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
 
-      let res = await this.newPropertyManager.submitApplication(
+      let res = await this.newPropertyManager.submit(
         this.pggConfigX.address,
         this.contour,
         this.heights,
@@ -737,7 +737,7 @@ contract('NewPropertyManager', accounts => {
       assert.equal(res.status, ApplicationStatus.SUBMITTED);
     });
 
-    describe('#submitApplication()', () => {
+    describe('#submit()', () => {
       it('should provide methods to create and read an application', async function() {
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, 1);
@@ -750,7 +750,7 @@ contract('NewPropertyManager', accounts => {
       describe('payable', () => {
         it('should reject applications without payment', async function() {
           await assertRevert(
-            this.newPropertyManager.submitApplication(
+            this.newPropertyManager.submit(
               this.pggConfigX.address,
               this.contour,
               this.heights,
@@ -770,7 +770,7 @@ contract('NewPropertyManager', accounts => {
 
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
-            this.newPropertyManager.submitApplication(
+            this.newPropertyManager.submit(
               this.pggConfigX.address,
               this.contour,
               this.heights,
@@ -815,18 +815,18 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#closeApplication()', () => {
+    describe('#close()', () => {
       describe('for applications paid by ETH', () => {
         describe('with status REVERTED', () => {
           it('should change status to CLOSED', async function() {
-            await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-            await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
-            await this.newPropertyManager.revertApplication(this.aId, 'dont like it', { from: bob });
+            await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+            await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+            await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
 
             let res = await this.newPropertyManager.getApplicationById(this.aId);
             assert.equal(res.status, ApplicationStatus.REVERTED);
 
-            await this.newPropertyManager.closeApplication(this.aId, { from: alice });
+            await this.newPropertyManager.close(this.aId, { from: alice });
 
             res = await this.newPropertyManager.getApplicationById(this.aId);
             assert.equal(res.status, ApplicationStatus.CLOSED);
@@ -835,15 +835,15 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#resubmitApplication()', () => {
+    describe('#resubmit()', () => {
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
-        await this.newPropertyManager.revertApplication(this.aId, 'blah', { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.revert(this.aId, 'blah', { from: bob });
       });
 
       it('should change old details data with a new', async function() {
@@ -854,7 +854,7 @@ contract('NewPropertyManager', accounts => {
         const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
         const newLedgerIdentifier = bytes32('foo-123');
 
-        await this.newPropertyManager.resubmitApplication(
+        await this.newPropertyManager.resubmit(
           this.aId,
           newCredentiasHash,
           newLedgerIdentifier,
@@ -890,7 +890,7 @@ contract('NewPropertyManager', accounts => {
         assert.equal(fee, ether(0.5));
 
         await assertRevert(
-          this.newPropertyManager.resubmitApplication(
+          this.newPropertyManager.resubmit(
             this.aId,
             newCredentiasHash,
             newLedgerIdentifier,
@@ -906,7 +906,7 @@ contract('NewPropertyManager', accounts => {
           )
         );
 
-        await this.newPropertyManager.resubmitApplication(
+        await this.newPropertyManager.resubmit(
           this.aId,
           newCredentiasHash,
           newLedgerIdentifier,
@@ -928,7 +928,7 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should allow submit reverted application to the same oracle who reverted it', async function() {
-        await this.newPropertyManager.resubmitApplication(
+        await this.newPropertyManager.resubmit(
           this.aId,
           this.credentials,
           this.ledgerIdentifier,
@@ -962,10 +962,10 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#lockApplicationForReview()', () => {
+    describe('#lock()', () => {
       it('should allow multiple oracles of different roles to lock a submitted application', async function() {
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -981,12 +981,12 @@ contract('NewPropertyManager', accounts => {
 
       // eslint-disable-next-line
       it("should deny a oracle with the same role to lock an application which is already on consideration", async function() {
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await assertRevert(this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: charlie }));
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await assertRevert(this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: charlie }));
       });
 
       it('should push an application id to the oracles list for caching', async function() {
-        let res = await this.newPropertyManager.submitApplication(
+        let res = await this.newPropertyManager.submit(
           this.pggConfigX.address,
           this.contour,
           this.heights,
@@ -1004,10 +1004,10 @@ contract('NewPropertyManager', accounts => {
         const a1Id = res.logs[0].args.id;
 
         // lock first
-        await this.newPropertyManager.lockApplicationForReview(a1Id, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(a1Id, PM_SURVEYOR, { from: bob });
 
         // submit second
-        res = await this.newPropertyManager.submitApplication(
+        res = await this.newPropertyManager.submit(
           this.pggConfigX.address,
           this.contour,
           this.heights,
@@ -1025,7 +1025,7 @@ contract('NewPropertyManager', accounts => {
         const a2Id = res.logs[0].args.id;
 
         // lock second
-        await this.newPropertyManager.lockApplicationForReview(a2Id, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(a2Id, PM_SURVEYOR, { from: bob });
 
         res = await this.newPropertyManager.getApplicationsByOracle(bob);
         assert.equal(res.length, 2);
@@ -1034,19 +1034,19 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should deny oracle to lock an application which is already approved', async function() {
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
 
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
 
-        await assertRevert(this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: charlie }));
+        await assertRevert(this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: charlie }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
       it.skip('should deny non-oracle to lock an application', async function() {
-        await assertRevert(this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: coreTeam }));
+        await assertRevert(this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: coreTeam }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
@@ -1057,7 +1057,7 @@ contract('NewPropertyManager', accounts => {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
       });
 
       it('should should allow a contract owner to unlock an application under consideration', async function() {
@@ -1083,22 +1083,22 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe('#approveApplication()', () => {
+    describe('#approve()', () => {
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
       it('should allow a oracle approve application', async function() {
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
 
         res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
@@ -1106,8 +1106,8 @@ contract('NewPropertyManager', accounts => {
 
       // eslint-disable-next-line
       it("should mint a pack, geohash, swap the geohash into the pack and keep it at NewPropertyManager address", async function() {
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
-        let res = await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+        let res = await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
         const { tokenId } = res.logs[2].args;
 
         res = await this.spaceToken.balanceOf(this.newPropertyManager.address);
@@ -1117,56 +1117,56 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should deny a oracle approve application if hash doesnt match', async function() {
-        await assertRevert(this.newPropertyManager.approveApplication(this.aId, web3.utils.sha3(`foo`), { from: bob }));
+        await assertRevert(this.newPropertyManager.approve(this.aId, web3.utils.sha3(`foo`), { from: bob }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should deny non-oracle approve application', async function() {
-        await assertRevert(this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: alice }));
+        await assertRevert(this.newPropertyManager.approve(this.aId, this.credentials, { from: alice }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       // eslint-disable-next-line
       it("should deny oracle approve application with other than consideration or partially locked status", async function() {
-        await this.newPropertyManager.rejectApplication(this.aId, 'suspicious', { from: bob });
+        await this.newPropertyManager.reject(this.aId, 'suspicious', { from: bob });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
 
-        await assertRevert(this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob }));
+        await assertRevert(this.newPropertyManager.approve(this.aId, this.credentials, { from: bob }));
         res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
 
-    describe('#revertApplication()', () => {
+    describe('#revert()', () => {
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
       it('should allow a oracle revert application', async function() {
-        await this.newPropertyManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
+        await this.newPropertyManager.revert(this.aId, 'it looks suspicious', { from: bob });
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
       // eslint-disable-next-line
       it("should deny another assigned oracle revert application after it was already reverted", async function() {
-        await this.newPropertyManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
-        await assertRevert(this.newPropertyManager.revertApplication(this.aId, 'blah', { from: dan }));
+        await this.newPropertyManager.revert(this.aId, 'it looks suspicious', { from: bob });
+        await assertRevert(this.newPropertyManager.revert(this.aId, 'blah', { from: dan }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
 
       it('should not reset validation statuses of another oracles', async function() {
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
-        await this.newPropertyManager.revertApplication(this.aId, 'it looks suspicious', { from: bob });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.revert(this.aId, 'it looks suspicious', { from: bob });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
@@ -1181,34 +1181,34 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should deny non-oracle revert application', async function() {
-        await assertRevert(this.newPropertyManager.revertApplication(this.aId, 'blah', { from: alice }));
+        await assertRevert(this.newPropertyManager.revert(this.aId, 'blah', { from: alice }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should deny oracle revert an application with non-consideration status', async function() {
-        await this.newPropertyManager.rejectApplication(this.aId, 'suspicious', { from: bob });
+        await this.newPropertyManager.reject(this.aId, 'suspicious', { from: bob });
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
 
-        await assertRevert(this.newPropertyManager.revertApplication(this.aId, 'blah', { from: bob }));
+        await assertRevert(this.newPropertyManager.revert(this.aId, 'blah', { from: bob }));
         res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
 
-    describe('#rejectApplication()', () => {
+    describe('#reject()', () => {
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
       it('should allow a oracle reject application', async function() {
-        await this.newPropertyManager.rejectApplication(this.aId, 'my reason', { from: bob });
+        await this.newPropertyManager.reject(this.aId, 'my reason', { from: bob });
         // TODO: check the message
 
         let res = await this.newPropertyManager.getApplicationById(this.aId);
@@ -1226,14 +1226,14 @@ contract('NewPropertyManager', accounts => {
       });
 
       it('should deny non-oracle reject application', async function() {
-        await assertRevert(this.newPropertyManager.rejectApplication(this.aId, 'hey', { from: alice }));
+        await assertRevert(this.newPropertyManager.reject(this.aId, 'hey', { from: alice }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
       it('should deny oracle revert an application with non-submitted status', async function() {
-        await this.newPropertyManager.revertApplication(this.aId, 'some reason', { from: bob });
-        await assertRevert(this.newPropertyManager.rejectApplication(this.aId, 'another reason', { from: bob }));
+        await this.newPropertyManager.revert(this.aId, 'some reason', { from: bob });
+        await assertRevert(this.newPropertyManager.reject(this.aId, 'another reason', { from: bob }));
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.REVERTED);
       });
@@ -1244,11 +1244,11 @@ contract('NewPropertyManager', accounts => {
         let res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
 
-        await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
-        res = await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+        await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+        res = await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
         this.tokenId = res.logs[2].args.tokenId;
       });
 
@@ -1274,14 +1274,14 @@ contract('NewPropertyManager', accounts => {
         const res = await this.newPropertyManager.getApplicationById(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_SURVEYOR, { from: bob });
-        await this.newPropertyManager.lockApplicationForReview(this.aId, PM_LAWYER, { from: dan });
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
       describe('on approve', () => {
         beforeEach(async function() {
-          await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: bob });
-          await this.newPropertyManager.approveApplication(this.aId, this.credentials, { from: dan });
+          await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+          await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
         });
 
         it('should allow shareholders claim reward', async function() {
@@ -1316,7 +1316,7 @@ contract('NewPropertyManager', accounts => {
 
       describe('on reject', () => {
         it('should allow oracles claim reward after reject', async function() {
-          await this.newPropertyManager.rejectApplication(this.aId, this.credentials, { from: bob });
+          await this.newPropertyManager.reject(this.aId, this.credentials, { from: bob });
 
           const bobsInitialBalance = await web3.eth.getBalance(bob);
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
@@ -1346,8 +1346,8 @@ contract('NewPropertyManager', accounts => {
 
       describe('on reject', () => {
         it('should allow oracles claim reward after reject', async function() {
-          await this.newPropertyManager.revertApplication(this.aId, 'dont like it', { from: bob });
-          await this.newPropertyManager.closeApplication(this.aId, { from: alice });
+          await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
+          await this.newPropertyManager.close(this.aId, { from: alice });
 
           const bobsInitialBalance = await web3.eth.getBalance(bob);
           const dansInitialBalance = new BN(await web3.eth.getBalance(dan));
