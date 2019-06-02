@@ -28,7 +28,7 @@ initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
 contract('GaltRA', accounts => {
-  const [coreTeam, alice, bob, charlie, a1, a2, a3, claimManager, spaceRA] = accounts;
+  const [coreTeam, alice, bob, charlie, a1, a2, a3, spaceRA] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -57,7 +57,6 @@ contract('GaltRA', accounts => {
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManager, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceRA, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_LOCKER_REGISTRY(), this.galtLockerRegistry.address, {
       from: coreTeam

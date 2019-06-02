@@ -30,7 +30,8 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
     uint256 amount
   );
 
-  string public constant ROLE_PROPOSER = "proposer";
+  bytes32 public constant PGG_ROLE_MULTI_SIG_PROPOSER = bytes32("PGG_MULTI_SIG_PROPOSER");
+
   string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
   string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
 
@@ -42,6 +43,15 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
   modifier forbidden() {
     assert(false);
+    _;
+  }
+
+  modifier onlyPggMultiSigProposer() {
+    require(
+      pggConfig.ggr().getACL().hasRole(msg.sender, PGG_ROLE_MULTI_SIG_PROPOSER),
+      "Only PGG_MULTI_SIG_PROPOSER global ACL role allowed"
+    );
+
     _;
   }
 
@@ -72,7 +82,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
    */
   function proposeTransaction(address destination, uint value, bytes calldata data)
     external
-    onlyRole(ROLE_PROPOSER)
+    onlyPggMultiSigProposer
     returns (uint transactionId)
   {
     transactionId = addTransaction(destination, value, data);

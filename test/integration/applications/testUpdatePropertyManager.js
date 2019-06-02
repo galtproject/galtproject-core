@@ -94,7 +94,6 @@ contract('UpdatePropertyManager', (accounts) => {
     feeMixerAddress,
     minter,
     oracleModifier,
-    claimManagerAddress,
     spaceReputationAccountingAddress,
     alice,
     bob,
@@ -145,7 +144,6 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.CLAIM_MANAGER(), claimManagerAddress, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.STAKE_TRACKER(), this.stakeTracker.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_RA(), spaceReputationAccountingAddress, {
       from: coreTeam
