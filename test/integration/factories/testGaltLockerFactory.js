@@ -50,7 +50,6 @@ contract('GaltLockerFactory', accounts => {
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.FEE_COLLECTOR(), feeCollector, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.GALT_LOCKER_REGISTRY(), this.galtLockerRegistry.address, {
       from: coreTeam
     });
@@ -62,6 +61,7 @@ contract('GaltLockerFactory', accounts => {
     });
 
     await this.acl.setRole(bytes32('GALT_LOCKER_REGISTRAR'), this.galtLockerFactory.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('FEE_COLLECTOR'), feeCollector, true, { from: coreTeam });
   });
 
   describe('protocol fee', () => {

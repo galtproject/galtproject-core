@@ -26,6 +26,7 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   event SpaceLockerCreated(address owner, address locker);
 
   bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
 
   GaltGlobalRegistry ggr;
 
@@ -36,7 +37,10 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   }
 
   modifier onlyFeeCollector() {
-    require(ggr.getFeeCollectorAddress() == msg.sender, "Only fee collector allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
     _;
   }
 

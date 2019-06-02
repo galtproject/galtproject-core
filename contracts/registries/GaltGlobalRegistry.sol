@@ -28,8 +28,6 @@ import "../interfaces/IACL.sol";
 contract GaltGlobalRegistry is OwnableAndInitializable {
   address internal ZERO_ADDRESS = address(0);
 
-  bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
-
   bytes32 public constant ACL = bytes32("ACL");
 
   bytes32 public constant GLOBAL_GOVERNANCE = bytes32("global_governance");
@@ -72,11 +70,6 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   // GETTERS
   function getContract(bytes32 _key) external view returns (address) {
     return contracts[_key];
-  }
-
-  function getFeeCollectorAddress() external view returns (address) {
-    require(contracts[FEE_COLLECTOR] != ZERO_ADDRESS, "GGR: FEE_COLLECTOR not set");
-    return contracts[FEE_COLLECTOR];
   }
 
   // TODO: add Address suffix
