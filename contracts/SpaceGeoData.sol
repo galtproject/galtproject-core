@@ -61,7 +61,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
   }
 
   mapping(uint256 => SpaceTokenInfo) public spaceTokenInfo;
-  
+
   function initialize(GaltGlobalRegistry _ggr) public isInitializer {
     ggr = _ggr;
   }
@@ -142,7 +142,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
     returns (address)
   {
     require(spaceTokenAreaSource[_spaceTokenId] == AreaSource.CONTRACT, "Split available only for contract calculated token's area");
-    
+
     address spaceTokenOwner = spaceToken().ownerOf(_spaceTokenId);
 
     address newSplitOperationAddress = ISpaceSplitOperationFactory(
@@ -199,7 +199,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
 
     for (uint j = 0; j < resultContoursLength; j++) {
       uint256 newSpaceTokenId = spaceToken().mint(subjectTokenOwner);
-      
+
       spaceTokenContour[newSpaceTokenId] = splitOperation.getResultContour(j);
       emit SpaceTokenContourChange(bytes32(newSpaceTokenId), spaceTokenContour[newSpaceTokenId]);
 
@@ -211,10 +211,10 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
         spaceTokenHeight[newSpaceTokenId].push(minHeight);
       }
       emit SpaceTokenHeightsChange(bytes32(newSpaceTokenId), spaceTokenHeight[newSpaceTokenId]);
-      
+
       spaceTokenLevel[newSpaceTokenId] = getSpaceTokenLevel(_spaceTokenId);
       emit SpaceTokenLevelChange(bytes32(newSpaceTokenId), spaceTokenLevel[newSpaceTokenId]);
-      
+
       emit NewSplitSpaceToken(newSpaceTokenId);
     }
 
@@ -246,7 +246,10 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
     onlySpaceTokenOwner(_destinationSpaceTokenId)
   {
     require(spaceTokenAreaSource[_sourceSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
-    require(spaceTokenAreaSource[_destinationSpaceTokenId] == AreaSource.CONTRACT, "Merge available only for contract calculated token's area");
+    require(
+      spaceTokenAreaSource[_destinationSpaceTokenId] == AreaSource.CONTRACT,
+      "Merge available only for contract calculated token's area"
+    );
     require(
       getSpaceTokenLevel(_sourceSpaceTokenId) == getSpaceTokenLevel(_destinationSpaceTokenId),
       "Space tokens levels should be equal"
@@ -276,10 +279,10 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
     spaceTokenArea[_destinationSpaceTokenId] = calculateSpaceTokenArea(_destinationSpaceTokenId);
     emit SpaceTokenAreaChange(bytes32(_destinationSpaceTokenId), spaceTokenArea[_destinationSpaceTokenId]);
     spaceTokenAreaSource[_destinationSpaceTokenId] = AreaSource.CONTRACT;
-    
+
     delete spaceTokenContour[_sourceSpaceTokenId];
     emit SpaceTokenContourChange(bytes32(_sourceSpaceTokenId), spaceTokenContour[_sourceSpaceTokenId]);
-    
+
     delete spaceTokenHeight[_sourceSpaceTokenId];
     emit SpaceTokenHeightsChange(bytes32(_sourceSpaceTokenId), spaceTokenHeight[_sourceSpaceTokenId]);
 
@@ -289,7 +292,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
     spaceTokenArea[_sourceSpaceTokenId] = 0;
     emit SpaceTokenAreaChange(bytes32(_sourceSpaceTokenId), spaceTokenArea[_sourceSpaceTokenId]);
     spaceTokenAreaSource[_sourceSpaceTokenId] = AreaSource.CONTRACT;
-    
+
     spaceToken().burn(_sourceSpaceTokenId);
   }
 
@@ -318,7 +321,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
   function getSpaceTokenLevel(uint256 _spaceTokenId) public view returns (int256) {
     return spaceTokenLevel[_spaceTokenId];
   }
-  
+
   function calculateSpaceTokenArea(uint256 _spaceTokenId) public returns (uint256) {
     return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(spaceTokenContour[_spaceTokenId]);
   }

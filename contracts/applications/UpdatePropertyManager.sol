@@ -276,7 +276,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
-
   function approve(
     bytes32 _aId
   )

@@ -47,12 +47,12 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   }
 
   modifier onlyOwner() {
-    require(isOwner());
+    require(isOwner(), "Not the locker owner");
     _;
   }
 
   modifier notBurned() {
-    require(tokenBurned == false);
+    require(tokenBurned == false, "Token has already burned");
     _;
   }
 
@@ -122,14 +122,16 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     return msg.sender == owner;
   }
 
-  function getTokenInfo() public view returns 
-  (
-    address _owner,
-    uint256 _spaceTokenId,
-    uint256 _reputation,
-    bool _tokenDeposited,
-    bool _tokenBurned
-  ) 
+  function getTokenInfo()
+    public
+    view
+    returns (
+      address _owner,
+      uint256 _spaceTokenId,
+      uint256 _reputation,
+      bool _tokenDeposited,
+      bool _tokenBurned
+    )
   {
     return (
       owner,

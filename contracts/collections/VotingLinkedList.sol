@@ -60,8 +60,9 @@ library VotingLinkedList {
       AddressLinkedList.remove(votingList, votingList.tail);
     }
   }
-  
+
   function isExists(AddressLinkedList.Data storage votingList, address addr) internal view returns (bool) {
+    /* solium-disable-next-line */
     return votingList.head == addr || votingList.tail == addr || votingList.nodes[addr].next != address(0) || votingList.nodes[addr].prev != address(0);
   }
 

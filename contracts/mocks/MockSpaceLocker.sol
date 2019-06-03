@@ -16,6 +16,7 @@ pragma solidity 0.5.7;
 import "../SpaceLocker.sol";
 import "../interfaces/ISpaceGeoData.sol";
 
+
 contract MockSpaceLocker is SpaceLocker {
 
   constructor(GaltGlobalRegistry _ggr, address _owner) public SpaceLocker(_ggr, _owner) { }

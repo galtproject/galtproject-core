@@ -79,7 +79,14 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     _slash(_oracle, _oracleType, _amount);
   }
 
-  function slashMultiple(address[] calldata _oracles, bytes32[] calldata _oracleTypes, uint256[] calldata _amounts) external onlySlashManager {
+  function slashMultiple(
+    address[] calldata _oracles,
+    bytes32[] calldata _oracleTypes,
+    uint256[] calldata _amounts
+  )
+    external
+    onlySlashManager
+  {
     assert(_oracles.length == _oracleTypes.length);
     assert(_oracleTypes.length == _amounts.length);
 
@@ -155,9 +162,9 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   )
     internal
   {
-    require(_oracleTypeStakeAfter <= INT256_UPPER_LIMIT);
-    require(_oracleStakeAfter <= INT256_UPPER_LIMIT);
-    require(_totalStakeAfter <= INT256_UPPER_LIMIT);
+    require(_oracleTypeStakeAfter <= INT256_UPPER_LIMIT, "INT256_UPPER_LIMIT overflow/underflow");
+    require(_oracleStakeAfter <= INT256_UPPER_LIMIT, "INT256_UPPER_LIMIT overflow/underflow");
+    require(_totalStakeAfter <= INT256_UPPER_LIMIT, "INT256_UPPER_LIMIT overflow/underflow");
 
     if (_oracleTypeStakeAfter >= 0) {
       _oracle.oracleTypeStakesPositive[_oracleType] = uint256(bytes32(_oracleTypeStakeAfter));

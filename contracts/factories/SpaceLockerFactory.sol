@@ -22,6 +22,7 @@ import "../interfaces/ISpaceGeoData.sol";
 import "./interfaces/ISpaceLockerFactory.sol";
 import "../SpaceLocker.sol";
 
+
 contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   event SpaceLockerCreated(address owner, address locker);
 

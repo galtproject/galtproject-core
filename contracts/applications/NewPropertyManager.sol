@@ -305,7 +305,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
-  
+
   function assignLockedStatus(bytes32 _aId) internal {
     for (uint8 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
       if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
@@ -491,7 +491,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   function claimOracleReward(
     bytes32 _aId
   )
-    external 
+    external
     onlyOracleOfApplication(_aId)
   {
     Application storage a = applications[_aId];
@@ -570,7 +570,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256 lawyerShare = oracleTypeShare(a.pgg, PM_LAWYER_ORACLE_TYPE);
     uint256[2] memory shares = [surveyorShare, lawyerShare];
 
-    require(surveyorShare + lawyerShare == 100);
+    require(surveyorShare + lawyerShare == 100, "PM shares invalid setup");
 
     uint256 len = a.assignedOracleTypes.length;
     for (uint256 i = 0; i < len; i++) {
@@ -690,7 +690,6 @@ contract NewPropertyManager is AbstractOracleApplication {
       m.rewards.galtProtocolFeePaidOut
     );
   }
-
 
   /**
    * @dev Get application details

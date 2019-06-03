@@ -21,7 +21,6 @@ import "../registries/GaltGlobalRegistry.sol";
 import "../pgg/interfaces/IPGGConfig.sol";
 
 
-
 contract AbstractApplication is Initializable {
   GaltGlobalRegistry internal ggr;
 

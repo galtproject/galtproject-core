@@ -21,6 +21,7 @@ import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 import "./AbstractArbitratorApplication.sol";
 
+
 contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statusable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
@@ -157,7 +158,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
     require(a.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
-    require(a.rewards.arbitratorRewardPaidOut[msg.sender] == false);
+    require(a.rewards.arbitratorRewardPaidOut[msg.sender] == false, "Reward already paid out");
 
     a.rewards.arbitratorRewardPaidOut[msg.sender] = true;
 

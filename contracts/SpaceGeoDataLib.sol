@@ -15,14 +15,14 @@ pragma solidity 0.5.7;
 
 import "./utils/ArrayUtils.sol";
 
+
 library SpaceGeoDataLib {
-  
   function checkMergeContours(
     uint256[] memory sourceContour,
     uint256[] memory mergeContour,
     uint256[] memory resultContour
   )
-  public
+    public
   {
     for (uint i = 0; i < sourceContour.length; i++) {
       for (uint j = 0; j < mergeContour.length; j++) {

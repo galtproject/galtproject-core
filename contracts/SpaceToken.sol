@@ -17,9 +17,7 @@ import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceToken.sol";
 
-/*
- * SpaceToken contract
- */
+
 contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
   string public constant ROLE_MINTER = "minter";
   string public constant ROLE_BURNER = "burner";

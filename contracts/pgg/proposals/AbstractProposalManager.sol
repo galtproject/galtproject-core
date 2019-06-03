@@ -17,6 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
+
 contract AbstractProposalManager {
   using Counters for Counters.Counter;
   using ArraySet for ArraySet.AddressSet;
@@ -159,7 +160,7 @@ contract AbstractProposalManager {
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare);
 
   function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare);
-  
+
   function getActiveProposals() public view returns (uint256[] memory) {
     return _activeProposals.elements();
   }

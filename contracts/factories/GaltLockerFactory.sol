@@ -19,6 +19,7 @@ import "../registries/interfaces/ILockerRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../GaltLocker.sol";
 
+
 contract GaltLockerFactory is Ownable {
   event GaltLockerCreated(address owner, address locker);
 
