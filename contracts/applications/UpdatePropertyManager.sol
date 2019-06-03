@@ -298,7 +298,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     uint256 len = a.assignedOracleTypes.length;
     bool allApproved = true;
 
-    for (uint8 i = 0; i < len; i++) {
+    for (uint256 i = 0; i < len; i++) {
       if (a.validationStatus[a.assignedOracleTypes[i]] != ValidationStatus.APPROVED) {
         allApproved = false;
       }
@@ -334,7 +334,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     uint256 len = a.assignedOracleTypes.length;
 
-    for (uint8 i = 0; i < len; i++) {
+    for (uint256 i = 0; i < len; i++) {
       bytes32 currentOracleType = a.assignedOracleTypes[i];
       if (a.validationStatus[currentOracleType] == ValidationStatus.PENDING) {
         revert("All oracle types should lock the application first");
@@ -386,7 +386,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   }
 
   function assignLockedStatus(bytes32 _aId) internal {
-    for (uint8 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
+    for (uint256 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
       if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
         changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
       }
@@ -632,7 +632,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     uint256 len = a.assignedOracleTypes.length;
 
-    for (uint8 i = 0; i < len; i++) {
+    for (uint256 i = 0; i < len; i++) {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
         .rewards

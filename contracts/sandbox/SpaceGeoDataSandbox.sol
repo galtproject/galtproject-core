@@ -23,7 +23,7 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
       "Number of contour elements should be equal or less than MAX_CONTOUR_GEOHASH_COUNT"
     );
 
-    for (uint8 i = 0; i < _geohashesContour.length; i++) {
+    for (uint256 i = 0; i < _geohashesContour.length; i++) {
       require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
       require(
         GeohashUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION,
