@@ -3,6 +3,7 @@
   "plugins": ["security"],
   "rules": {
     "imports-on-top": 0,
+    "function-order": 0,
     "variable-declarations": "error",
     "arg-overflow": ["warning", 5],
     "indentation": ["error", 2],
