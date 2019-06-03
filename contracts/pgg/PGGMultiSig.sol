@@ -19,6 +19,7 @@ import "./PGGArbitratorStakeAccounting.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGMultiSig.sol";
 
+
 contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
@@ -133,6 +134,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
     emit RevokeOwners();
   }
 
+  /* solium-disable-next-line */
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
     if (destination == pggConfig.ggr().getGaltTokenAddress()) {
       checkGaltLimits(data);

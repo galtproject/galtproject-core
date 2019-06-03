@@ -69,7 +69,6 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     pggConfig = _pggConfig;
   }
 
-
   // 'Oracle Stake Locking' accounting only inside this contract
   function vote(address _candidate) external {
     // TODO: check oracle is activev
@@ -153,8 +152,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   function candidateShareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = _candidateReputation[_candidate];
 
-    if (reputation == 0) { return 0; }
-    if (_decimals == 0) { return 0; }
+    if (reputation == 0) {return 0;}
+    if (_decimals == 0) {return 0;}
 
     // return (_candidateReputation[_candidate] * _decimals) / _totalReputation;
     return _candidateReputation[_candidate].mul(_decimals).div(_totalReputation);
@@ -163,8 +162,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   function oracleShareOf(address _oracle, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = oracles[_oracle].reputation;
 
-    if (reputation == 0) { return 0; }
-    if (_decimals == 0) { return 0; }
+    if (reputation == 0) {return 0;}
+    if (_decimals == 0) {return 0;}
 
     // return (reputation * _decimals) / _totalReputation;
     return reputation.mul(_decimals).div(_totalReputation);

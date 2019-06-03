@@ -36,7 +36,10 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
   }
 
   function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
-    require(_heightsList.length == getSpaceTokenContour(_packageTokenId).length, "Number of height elements should be equal contour length");
+    require(
+      _heightsList.length == getSpaceTokenContour(_packageTokenId).length,
+      "Number of height elements should be equal contour length"
+    );
 
     spaceTokenHeight[_packageTokenId] = _heightsList;
     emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
@@ -48,7 +51,16 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
     emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
   }
 
-  function createSpaceToken(address spaceTokenOwner, uint256[] memory _geohashesContour, int256[] memory _heightsList, uint256 _area, AreaSource _areaSource) public returns (uint256) {
+  function createSpaceToken(
+    address spaceTokenOwner,
+    uint256[] memory _geohashesContour,
+    int256[] memory _heightsList,
+    uint256 _area,
+    AreaSource _areaSource
+  )
+    public
+    returns (uint256)
+  {
     uint256 _spaceTokenId = initSpaceToken(spaceTokenOwner);
     setSpaceTokenContour(_spaceTokenId, _geohashesContour);
     setSpaceTokenHeights(_spaceTokenId, _heightsList);

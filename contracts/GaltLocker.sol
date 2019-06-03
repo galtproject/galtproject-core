@@ -46,7 +46,7 @@ contract GaltLocker is ILocker, IGaltLocker {
   }
 
   modifier onlyOwner() {
-    require(isOwner());
+    require(isOwner(), "Not the locker owner");
     _;
   }
 

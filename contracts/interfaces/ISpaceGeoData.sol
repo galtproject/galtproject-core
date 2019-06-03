@@ -13,12 +13,13 @@
 
 pragma solidity 0.5.7;
 
+
 interface ISpaceGeoData {
   enum AreaSource {
     USER_INPUT,
     CONTRACT
   }
-  
+
   function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] calldata _geohashesContour) external;
   function setSpaceTokenHeights(uint256 _spaceTokenId, int256[] calldata _heightsList) external;
   function setSpaceTokenLevel(uint256 _spaceTokenId, int256 _level) external;

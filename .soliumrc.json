@@ -4,8 +4,12 @@
   "rules": {
     "imports-on-top": 0,
     "function-order": 0,
+    "no-empty-blocks": 0,
+    "no-trailing-whitespace": "error",
+    "blank-lines": "error",
+    "max-len": ["error", 140],
     "variable-declarations": "error",
-    "arg-overflow": ["warning", 5],
+    "arg-overflow": ["warning", 8],
     "indentation": ["error", 2],
     "quotes": ["error", "double"],
     "security/no-inline-assembly": 0,

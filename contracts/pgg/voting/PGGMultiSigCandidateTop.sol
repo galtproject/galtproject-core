@@ -22,6 +22,7 @@ import "../../collections/VotingLinkedList.sol";
 import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
+
 contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;

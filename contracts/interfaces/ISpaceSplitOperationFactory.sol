@@ -12,7 +12,7 @@
  */
 
 pragma solidity 0.5.7;
-//pragma experimental ABIEncoderV2;
+
 
 contract ISpaceSplitOperationFactory {
   function build(uint256 _spaceTokenId, uint256[] calldata _clippingContour) external returns (address);

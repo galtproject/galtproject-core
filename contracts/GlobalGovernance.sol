@@ -283,7 +283,14 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     supportByGalt = ILockableRA(galtRA).lockedPggBalances(supportPggs);
     supportByStake = stakeTracker.balancesOf(supportPggs);
 
-    (spaceShare, galtShare, stakeShare, totalSupport) = calculateSupport(supportBySpace, supportByGalt, supportByStake, totalSpace, totalGalt, totalStake);
+    (spaceShare, galtShare, stakeShare, totalSupport) = calculateSupport(
+      supportBySpace,
+      supportByGalt,
+      supportByStake,
+      totalSpace,
+      totalGalt,
+      totalStake
+    );
   }
 
   function getPggWeight(

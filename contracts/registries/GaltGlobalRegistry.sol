@@ -26,6 +26,7 @@ import "../interfaces/IACL.sol";
  * the rest of them return just an `address` primitive.
  */
 contract GaltGlobalRegistry is OwnableAndInitializable {
+  // solium-disable-next-line mixedcase
   address internal ZERO_ADDRESS = address(0);
 
   bytes32 public constant ACL = bytes32("ACL");

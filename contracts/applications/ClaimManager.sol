@@ -401,7 +401,7 @@ contract ClaimManager is AbstractApplication {
       c.status == ApplicationStatus.APPROVED || c.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
     require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
-    require(c.fees.arbitratorRewardPaidOut[msg.sender] == false);
+    require(c.fees.arbitratorRewardPaidOut[msg.sender] == false, "Reward already paid out");
     if (c.status == ApplicationStatus.APPROVED) {
       require(_checkMultiSigTransactionExecuted(c), "Transaction hasn't executed by multiSig yet");
     }

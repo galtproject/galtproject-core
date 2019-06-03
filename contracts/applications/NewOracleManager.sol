@@ -21,6 +21,7 @@ import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 import "./ArbitratorApprovableApplication.sol";
 
+
 contract NewOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("NO_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("NO_MINIMAL_FEE_GALT");

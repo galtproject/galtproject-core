@@ -20,6 +20,7 @@ import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGDelegateReputationVoting.sol";
 
+
 contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
@@ -82,9 +83,13 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     require(delegatedReputation[msg.sender].candidates.size() <= 5, "Delegate reputation limit is 5 candidates");
 
     // delegatedReputation[msg.sender].distributedReputation[msg.sender] -= _amount;
-    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender].distributedReputation[msg.sender].sub(_amount);
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender]
+      .distributedReputation[msg.sender]
+      .sub(_amount);
     // delegatedReputation[msg.sender].distributedReputation[_candidate] += _amount;
-    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender].distributedReputation[_candidate].add(_amount);
+    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender]
+      .distributedReputation[_candidate]
+      .add(_amount);
 
     // reputationBalance[msg.sender] -= _amount;
     reputationBalance[msg.sender] = reputationBalance[msg.sender].sub(_amount);
@@ -99,9 +104,11 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     require(delegatedReputation[msg.sender].distributedReputation[_candidate] >= _amount, "Not enough reputation");
 
     // delegatedReputation[msg.sender].distributedReputation[_candidate] -= _amount;
-    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender].distributedReputation[_candidate].sub(_amount);
+    delegatedReputation[msg.sender].distributedReputation[_candidate] = delegatedReputation[msg.sender]
+      .distributedReputation[_candidate].sub(_amount);
     // delegatedReputation[msg.sender].distributedReputation[msg.sender] += _amount;
-    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender].distributedReputation[msg.sender].add(_amount);
+    delegatedReputation[msg.sender].distributedReputation[msg.sender] = delegatedReputation[msg.sender]
+      .distributedReputation[msg.sender].add(_amount);
 
     // reputationBalance[_candidate] -= _amount;
     reputationBalance[_candidate] = reputationBalance[_candidate].sub(_amount);
@@ -156,7 +163,9 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
       // delegate has enough reputation on his own delegated account, no need to iterate over his candidates
       if (diff <= selfDelegated) {
         // delegatedReputation[_delegate].distributedReputation[_delegate] -= diff;
-        delegatedReputation[_delegate].distributedReputation[_delegate] = delegatedReputation[_delegate].distributedReputation[_delegate].sub(diff);
+        delegatedReputation[_delegate].distributedReputation[_delegate] = delegatedReputation[_delegate]
+          .distributedReputation[_delegate]
+          .sub(diff);
         // reputationBalance[_delegate] -= diff;
         reputationBalance[_delegate] = reputationBalance[_delegate].sub(diff);
 
@@ -208,7 +217,9 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
         // reputationBalance[candidate] -= remainder;
         reputationBalance[candidate] = reputationBalance[candidate].sub(remainder);
         // delegatedReputation[_delegate].distributedReputation[candidate] -= remainder;
-        delegatedReputation[_delegate].distributedReputation[candidate] = delegatedReputation[_delegate].distributedReputation[candidate].sub(remainder);
+        delegatedReputation[_delegate].distributedReputation[candidate] = delegatedReputation[_delegate]
+          .distributedReputation[candidate]
+          .sub(remainder);
         return;
       }
     }
@@ -221,12 +232,12 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
   function balanceOf(address _candidate) external view returns(uint256) {
     return reputationBalance[_candidate];
   }
-  
+
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = reputationBalance[_candidate];
 
-    if (reputation == 0) { return 0; }
-    if (_decimals == 0) { return 0; }
+    if (reputation == 0) {return 0;}
+    if (_decimals == 0) {return 0;}
 
     // return (reputationBalance[_candidate] * _decimals) / totalReputation;
     return reputationBalance[_candidate].mul(_decimals).div(totalReputation);
@@ -235,8 +246,8 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
   function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = lockedReputation[_delegate];
 
-    if (reputation == 0) { return 0; }
-    if (_decimals == 0) { return 0; }
+    if (reputation == 0) {return 0;}
+    if (_decimals == 0) {return 0;}
 
     // return (lockedReputation[_delegate] * _decimals) / totalReputation;
     return lockedReputation[_delegate].mul(_decimals).div(totalReputation);

@@ -12,7 +12,6 @@
  */
 
 pragma solidity 0.5.7;
-//pragma experimental ABIEncoderV2;
 
 import "../interfaces/ISpaceSplitOperationFactory.sol";
 import "../interfaces/ISpaceToken.sol";
@@ -20,10 +19,11 @@ import "../interfaces/ISpaceGeoData.sol";
 import "../SpaceSplitOperation.sol";
 import "../registries/GaltGlobalRegistry.sol";
 
+
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
   GaltGlobalRegistry ggr;
-  
+
   constructor(GaltGlobalRegistry _ggr) public {
     ggr = _ggr;
   }

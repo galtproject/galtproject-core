@@ -64,7 +64,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     address applicant;
     uint256 spaceTokenId;
     uint256 createdAt;
-    
+
     uint256 oraclesReward;
     uint256 galtProtocolFee;
     bool galtProtocolFeePaidOut;
@@ -271,7 +271,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     a.oracleTypeAddresses[_oracleType] = address(0);
     changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
-
 
   function approveApplication(
     bytes32 _aId

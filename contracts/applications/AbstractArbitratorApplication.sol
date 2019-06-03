@@ -17,6 +17,7 @@ import "../pgg/PGGMultiSig.sol";
 import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 
+
 contract AbstractArbitratorApplication is AbstractApplication {
   mapping(address => bytes32[]) public applicationsByArbitrator;
 

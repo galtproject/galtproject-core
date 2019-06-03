@@ -12,7 +12,6 @@
  */
 
 pragma solidity 0.5.7;
-//pragma experimental ABIEncoderV2;
 
 import "@galtproject/geodesic/contracts/utils/WeilerAtherton.sol";
 import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
@@ -22,11 +21,12 @@ import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceGeoData.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
+
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
 
   WeilerAtherton.State private weilerAtherton;
-  
+
   event InitSplitOperation(address subjectTokenOwner, uint256 subjectTokenId, uint256[] subjectContour, uint256[] clippingContour);
 
   // TODO: use stages
@@ -76,7 +76,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     weilerAtherton.initWeilerAtherton();
     ggr.getSpaceToken().approve(ggr.getSpaceGeoDataAddress(), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
-    
+
     emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);
   }
 
@@ -212,7 +212,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     weilerAtherton.buildResultPolygon();
   }
-  
+
   function isBuildResultFinished() external view returns(bool) {
     /* solium-disable-next-line */
     return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
@@ -222,8 +222,14 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   function buildSubjectPolygonOutput() public {
     require(doneStage == Stage.INTERSECT_POINTS_ADD, "doneStage should be SEGMENTS_ADD");
-    require(weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length, "buildResultPolygon not finished");
-    require(weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length, "buildResultPolygon not finished");
+    require(
+      weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length,
+      "buildResultPolygon not finished"
+    );
+    require(
+      weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length,
+      "buildResultPolygon not finished"
+    );
 
     weilerAtherton.buildSubjectPolygonOutput();
 
