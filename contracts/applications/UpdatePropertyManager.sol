@@ -64,16 +64,13 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     address applicant;
     uint256 spaceTokenId;
     uint256 createdAt;
-
-    uint256 oraclesReward;
-    uint256 galtProtocolFee;
-    bool galtProtocolFeePaidOut;
     bool tokenWithdrawn;
 
     // Default is ETH
     Currency currency;
     ApplicationStatus status;
-    ApplicationDetails details;
+    Details details;
+    Rewards rewards;
 
     bytes32[] assignedOracleTypes;
 
@@ -85,7 +82,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
-  struct ApplicationDetails {
+  struct Details {
     bytes32 ledgerIdentifier;
     string description;
     int256 level;
@@ -93,6 +90,14 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     ISpaceGeoData.AreaSource areaSource;
     uint256[] contour;
     int256[] heights;
+  }
+
+  struct Rewards {
+    uint256 totalPaidFee;
+    uint256 oraclesReward;
+    uint256 galtProtocolFee;
+    uint256 latestCommittedFee;
+    bool galtProtocolFeePaidOut;
   }
 
   mapping(bytes32 => Application) internal applications;
@@ -170,7 +175,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     uint256 _applicationFeeInGalt
   )
     internal
-    returns (uint256 fee)
   {
     // GALT
     if (_applicationFeeInGalt > 0) {
@@ -180,17 +184,17 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _applicationFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);
 
-      fee = _applicationFeeInGalt;
+      _a.rewards.totalPaidFee = _applicationFeeInGalt;
       _a.currency = Currency.GALT;
       // ETH
     } else {
       require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
 
-      fee = msg.value;
+      _a.rewards.totalPaidFee = msg.value;
     }
   }
 
-  function submitApplication(
+  function submit(
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
     int256 _level,
@@ -210,7 +214,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     Application storage a = applications[_id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
-    uint256 fee = _acceptPayment(a, _pgg, _applicationFeeInGalt);
+    _acceptPayment(a, _pgg, _applicationFeeInGalt);
 
     if (_customArea == 0) {
       a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
@@ -241,13 +245,13 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     emit LogNewApplication(_id, msg.sender);
     emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
-    calculateAndStoreFee(applications[_id], fee);
+    calculateAndStoreFee(a, a.rewards.totalPaidFee);
     assignRequiredOracleTypesAndRewards(_id);
 
     return _id;
   }
 
-  function lockApplicationForReview(bytes32 _aId, bytes32 _oracleType) external {
+  function lock(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
@@ -272,7 +276,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
-  function approveApplication(
+  function approve(
     bytes32 _aId
   )
     external
@@ -311,7 +315,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
   }
 
-  function revertApplication(
+  function revert(
     bytes32 _aId,
     string calldata _message
   )
@@ -343,7 +347,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function resubmitApplication(
+  function resubmit(
     bytes32 _aId,
     bytes32 _newLedgerIdentifier,
     string calldata _newDescription,
@@ -357,7 +361,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     payable
   {
     Application storage a = applications[_aId];
-    ApplicationDetails storage d = a.details;
+    Details storage d = a.details;
 
     require(a.applicant == msg.sender, "Applicant invalid");
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
@@ -387,28 +391,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
         changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
       }
     }
-  }
-
-  function resubmitApplication(
-    bytes32 _aId
-  )
-    external
-    onlyApplicant(_aId)
-  {
-    Application storage a = applications[_aId];
-
-    require(a.status == ApplicationStatus.REVERTED, "ApplicationStatus should be REVERTED");
-
-    uint256 len = a.assignedOracleTypes.length;
-
-    for (uint8 i = 0; i < len; i++) {
-      bytes32 currentOracleType = a.assignedOracleTypes[i];
-      if (a.validationStatus[currentOracleType] != ValidationStatus.LOCKED) {
-        changeValidationStatus(a, currentOracleType, ValidationStatus.LOCKED);
-      }
-    }
-
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
   }
 
   function withdrawSpaceToken(bytes32 _aId) external onlyApplicant(_aId) {
@@ -456,18 +438,18 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
-    if (_a.galtProtocolFeePaidOut == false) {
+    if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {
-        protocolFeesEth = protocolFeesEth.add(_a.galtProtocolFee);
+        protocolFeesEth = protocolFeesEth.add(_a.rewards.galtProtocolFee);
       } else if (_a.currency == Currency.GALT) {
-        protocolFeesGalt = protocolFeesGalt.add(_a.galtProtocolFee);
+        protocolFeesGalt = protocolFeesGalt.add(_a.rewards.galtProtocolFee);
       }
 
-      _a.galtProtocolFeePaidOut = true;
+      _a.rewards.galtProtocolFeePaidOut = true;
     }
   }
 
-  function getApplicationById(
+  function getApplication(
     bytes32 _id
   )
     external
@@ -480,10 +462,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       address pgg,
       uint256 spaceTokenId,
       bool tokenWithdrawn,
-      bool galtProtocolFeePaidOut,
-      bytes32[] memory assignedOracleTypes,
-      uint256 oraclesReward,
-      uint256 galtProtocolFee
+      bytes32[] memory assignedOracleTypes
     )
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
@@ -498,14 +477,42 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       m.pgg,
       m.spaceTokenId,
       m.tokenWithdrawn,
-      m.galtProtocolFeePaidOut,
-      m.assignedOracleTypes,
-      m.oraclesReward,
-      m.galtProtocolFee
+      m.assignedOracleTypes
     );
   }
 
-  function getApplicationDetailsById(
+  /**
+   * @dev Get application reward-related information
+   */
+  function getApplicationRewards(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      ApplicationStatus status,
+      Currency currency,
+      uint256 oraclesReward,
+      uint256 galtProtocolFee,
+      uint256 latestCommittedFee,
+      bool galtProtocolFeePaidOut
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (
+      m.status,
+      m.currency,
+      m.rewards.oraclesReward,
+      m.rewards.galtProtocolFee,
+      m.rewards.latestCommittedFee,
+      m.rewards.galtProtocolFeePaidOut
+    );
+  }
+
+  function getApplicationDetails(
     bytes32 _id
   )
     external
@@ -522,7 +529,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   {
     require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
 
-    ApplicationDetails storage d = applications[_id].details;
+    Details storage d = applications[_id].details;
 
     return (
       d.contour,
@@ -609,13 +616,15 @@ contract UpdatePropertyManager is AbstractOracleApplication {
 
     assert(oraclesReward.add(galtProtocolFee) == _fee);
 
-    _a.oraclesReward = oraclesReward;
-    _a.galtProtocolFee = galtProtocolFee;
+    _a.rewards.oraclesReward = oraclesReward;
+    _a.rewards.galtProtocolFee = galtProtocolFee;
+
+    _a.rewards.latestCommittedFee = _fee;
   }
 
   function assignRequiredOracleTypesAndRewards(bytes32 _aId) internal {
     Application storage a = applications[_aId];
-    assert(a.oraclesReward > 0);
+    assert(a.rewards.oraclesReward > 0);
 
     uint256 totalReward = 0;
 
@@ -626,6 +635,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     for (uint8 i = 0; i < len; i++) {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
+        .rewards
         .oraclesReward
         .mul(oracleTypeShare(a.pgg, oracleType))
         .div(100);
@@ -635,6 +645,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward == a.oraclesReward);
+    assert(totalReward == a.rewards.oraclesReward);
   }
 }
