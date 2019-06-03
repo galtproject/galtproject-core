@@ -198,7 +198,7 @@ contract('UpdateOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.updateOracle.getApplicationById(this.aId);
+        res = await this.updateOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(parseInt(res.createdAt, 10) > 0, true);
       });
@@ -240,7 +240,7 @@ contract('UpdateOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.updateOracle.getApplicationById(this.aId);
+        res = await this.updateOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 

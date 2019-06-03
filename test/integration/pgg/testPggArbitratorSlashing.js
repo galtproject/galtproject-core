@@ -335,7 +335,7 @@ contract('ArbitratorSlashing', accounts => {
       // > make proposal accepted
       await this.claimManager.vote(this.cId, this.pId2, { from: bob });
 
-      res = await this.claimManager.claim(this.cId);
+      res = await this.claimManager.getApplication(this.cId);
       assert.equal(res.status, ClaimApplicationStatus.APPROVED);
 
       // > Check that oracles were punished

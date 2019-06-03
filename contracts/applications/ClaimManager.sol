@@ -505,7 +505,7 @@ contract ClaimManager is AbstractApplication {
   }
 
   /** GETTERS **/
-  function claim(
+  function getApplication(
     bytes32 _cId
   )
     external
