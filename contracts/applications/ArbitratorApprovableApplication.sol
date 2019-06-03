@@ -46,7 +46,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     uint256 createdAt;
 
     ApplicationStatus status;
-    FeeDetails fees;
+    Rewards rewards;
 
     ArraySet.AddressSet arbitrators;
     mapping(address => Choice) votes;
@@ -58,7 +58,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     NAY
   }
 
-  struct FeeDetails {
+  struct Rewards {
     Currency currency;
 
     uint256 totalReward;
@@ -157,28 +157,28 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED,
       "Application status should be APPROVED or REJECTED");
     require(a.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
-    require(a.fees.arbitratorRewardPaidOut[msg.sender] == false);
+    require(a.rewards.arbitratorRewardPaidOut[msg.sender] == false);
 
-    a.fees.arbitratorRewardPaidOut[msg.sender] = true;
+    a.rewards.arbitratorRewardPaidOut[msg.sender] = true;
 
     _assignGaltProtocolFee(a);
 
-    if (a.fees.currency == Currency.ETH) {
-      msg.sender.transfer(a.fees.arbitratorReward);
-    } else if (a.fees.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, a.fees.arbitratorReward);
+    if (a.rewards.currency == Currency.ETH) {
+      msg.sender.transfer(a.rewards.arbitratorReward);
+    } else if (a.rewards.currency == Currency.GALT) {
+      ggr.getGaltToken().transfer(msg.sender, a.rewards.arbitratorReward);
     }
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
-    if (_a.fees.galtProtocolFeePaidOut == false) {
-      if (_a.fees.currency == Currency.ETH) {
-        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
-      } else if (_a.fees.currency == Currency.GALT) {
-        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+    if (_a.rewards.galtProtocolFeePaidOut == false) {
+      if (_a.rewards.currency == Currency.ETH) {
+        protocolFeesEth = protocolFeesEth.add(_a.rewards.galtProtocolFee);
+      } else if (_a.rewards.currency == Currency.GALT) {
+        protocolFeesGalt = protocolFeesGalt.add(_a.rewards.galtProtocolFee);
       }
 
-      _a.fees.galtProtocolFeePaidOut = true;
+      _a.rewards.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -229,7 +229,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     a.m = m(_pgg);
     a.n = n(_pgg);
 
-    a.fees.currency = currency;
+    a.rewards.currency = currency;
 
     calculateAndStoreFee(a, fee);
 
@@ -252,7 +252,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     (uint256 ethFee, uint256 galtFee) = getProtocolShares();
 
-    if (_a.fees.currency == Currency.ETH) {
+    if (_a.rewards.currency == Currency.ETH) {
       share = ethFee;
     } else {
       share = galtFee;
@@ -266,21 +266,21 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     assert(arbitratorsReward.add(galtProtocolFee) == _fee);
 
-    _a.fees.arbitratorsReward = arbitratorsReward;
-    _a.fees.galtProtocolFee = galtProtocolFee;
+    _a.rewards.arbitratorsReward = arbitratorsReward;
+    _a.rewards.galtProtocolFee = galtProtocolFee;
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
   function calculateAndStoreAuditorRewards (Application storage c) internal {
     uint256 len = c.arbitrators.size();
-    uint256 rewardSize = c.fees.arbitratorsReward.div(len);
+    uint256 rewardSize = c.rewards.arbitratorsReward.div(len);
 
-    c.fees.arbitratorReward = rewardSize;
+    c.rewards.arbitratorReward = rewardSize;
   }
 
   // GETTERS
 
-  function getApplicationById(
+  function getApplication(
     bytes32 _id
   )
     external
@@ -310,7 +310,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     );
   }
 
-  function getApplicationFees(
+  function getApplicationRewards(
     bytes32 _id
   )
     external
@@ -322,7 +322,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       bool galtProtocolFeePaidOut
     )
   {
-    FeeDetails storage f = applications[_id].fees;
+    Rewards storage f = applications[_id].rewards;
 
     return (
       f.currency,

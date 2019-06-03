@@ -196,7 +196,7 @@ contract("ClaimManager", (accounts) => {
     await this.oracleStakesAccountingX.stake(dan, PC_AUDITOR_ORACLE_TYPE, ether(200), { from: alice });
   });
 
-  describe('#claim()', () => {
+  describe('#getApplication()', () => {
     describe('with GALT payments', () => {
       it('should create a new application with SUBMITTED status', async function() {
         await this.galtToken.approve(this.claimManager.address, ether(45), { from: alice });
@@ -211,7 +211,7 @@ contract("ClaimManager", (accounts) => {
 
         this.aId = res.logs[0].args.id;
 
-        res = await this.claimManager.claim(this.aId);
+        res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -271,7 +271,7 @@ contract("ClaimManager", (accounts) => {
 
           this.aId = res.logs[0].args.id;
 
-          res = await this.claimManager.claim(this.aId);
+          res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(parseInt(res.createdAt, 10) > 0, true);
 
@@ -297,7 +297,7 @@ contract("ClaimManager", (accounts) => {
 
         this.aId = res.logs[0].args.id;
 
-        res = await this.claimManager.claim(this.aId);
+        res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
 
@@ -331,7 +331,7 @@ contract("ClaimManager", (accounts) => {
 
           this.aId = res.logs[0].args.id;
 
-          res = await this.claimManager.claim(this.aId);
+          res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
           res = await this.claimManager.getClaimFees(this.aId);
@@ -361,7 +361,7 @@ contract("ClaimManager", (accounts) => {
 
     describe('#lock()', () => {
       it('should allow any super-oracle lock <=m slots', async function() {
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 0);
         assert.equal(res.slotsThreshold, 3);
@@ -375,7 +375,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.lock(this.cId, { from: frank });
         await assertRevert(this.claimManager.lock(this.cId, { from: george }));
 
-        res = await this.claimManager.claim(this.cId);
+        res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 5);
         assert.equal(res.slotsThreshold, 3);
@@ -419,7 +419,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.lock(this.cId, { from: charlie });
         await this.claimManager.lock(this.cId, { from: bob });
 
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(await this.claimManager.getMessageCount(this.cId), 0);
 
@@ -461,7 +461,7 @@ contract("ClaimManager", (accounts) => {
     // and even inactive candidates
     describe('#proposeApproval()', () => {
       beforeEach(async function() {
-        const res = await this.claimManager.claim(this.cId);
+        const res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 0);
         assert.equal(res.slotsThreshold, 3);
@@ -500,7 +500,7 @@ contract("ClaimManager", (accounts) => {
         );
         const pId2 = res.logs[0].args.proposalId;
 
-        res = await this.claimManager.claim(this.cId);
+        res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.slotsTaken, 2);
 
         res = await this.claimManager.getProposals(this.cId);
@@ -574,7 +574,7 @@ contract("ClaimManager", (accounts) => {
 
     describe('#proposeReject()', () => {
       beforeEach(async function() {
-        const res = await this.claimManager.claim(this.cId);
+        const res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 0);
         assert.equal(res.slotsThreshold, 3);
@@ -590,7 +590,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManager.proposeReject(this.cId, 'odd', { from: dan });
         const pId2 = res.logs[0].args.proposalId;
 
-        res = await this.claimManager.claim(this.cId);
+        res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.slotsTaken, 2);
 
         res = await this.claimManager.getProposals(this.cId);
@@ -621,7 +621,7 @@ contract("ClaimManager", (accounts) => {
 
     describe('#vote()', () => {
       beforeEach(async function() {
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 0);
         assert.equal(res.slotsThreshold, 3);
@@ -678,7 +678,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId1, { from: bob });
         await this.claimManager.vote(this.cId, this.pId1, { from: dan });
 
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
         res = await this.claimManager.getProposalVotes(this.cId, this.pId1);
@@ -731,7 +731,7 @@ contract("ClaimManager", (accounts) => {
 
         await assertRevert(this.claimManager.vote(this.cId, this.pId1, { from: eve }));
 
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.slotsTaken, 4);
         assert.equal(res.slotsThreshold, 3);
@@ -771,7 +771,7 @@ contract("ClaimManager", (accounts) => {
 
     describe('on threshold reach', () => {
       beforeEach(async function() {
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
 
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.slotsTaken, 0);
@@ -858,7 +858,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManager.getProposalVotes(this.cId, this.pId2);
         assert.equal(res.votesFor.length, 3);
 
-        res = await this.claimManager.claim(this.cId);
+        res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
         // staking back
@@ -886,7 +886,7 @@ contract("ClaimManager", (accounts) => {
         await this.claimManager.vote(this.cId, this.pId2, { from: bob });
         await this.claimManager.vote(this.cId, this.pId2, { from: eve });
 
-        let res = await this.claimManager.claim(this.cId);
+        let res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
         res = await this.pggMultiSigX.getTransactionCount(true, false);
@@ -931,7 +931,7 @@ contract("ClaimManager", (accounts) => {
 
         res = await this.claimManager.getProposalVotes(this.cId, this.pId3);
         assert.equal(res.votesFor.length, 3);
-        res = await this.claimManager.claim(this.cId);
+        res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
       });
     });
@@ -1017,7 +1017,7 @@ contract("ClaimManager", (accounts) => {
             let res = await this.claimManager.getClaimFees(this.cId);
             assert.equal(res.arbitratorReward, '10222500000000000000');
 
-            res = await this.claimManager.claim(this.cId);
+            res = await this.claimManager.getApplication(this.cId);
             assert.equal(res.slotsTaken, '4');
             assert.equal(res.totalSlots, '5');
           });
@@ -1106,7 +1106,7 @@ contract("ClaimManager", (accounts) => {
             let res = await this.claimManager.getClaimFees(this.cId);
             assert.equal(res.arbitratorReward, '13630000000000000000');
 
-            res = await this.claimManager.claim(this.cId);
+            res = await this.claimManager.getApplication(this.cId);
             assert.equal(res.slotsTaken, '3');
             assert.equal(res.totalSlots, '5');
           });
@@ -1155,7 +1155,7 @@ contract("ClaimManager", (accounts) => {
           let res = await this.claimManager.getClaimFees(this.cId);
           assert.equal(res.arbitratorReward, '13630000000000000000');
 
-          res = await this.claimManager.claim(this.cId);
+          res = await this.claimManager.getApplication(this.cId);
           assert.equal(res.status, ApplicationStatus.REJECTED);
           assert.equal(res.slotsTaken, '3');
           assert.equal(res.totalSlots, '5');
@@ -1279,7 +1279,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.arbitratorsReward, '6030000000000000000');
           assert.equal(res.galtProtocolFee, '2970000000000000000');
 
-          res = await this.claimManager.claim(this.cId);
+          res = await this.claimManager.getApplication(this.cId);
           assert.equal(res.status, ApplicationStatus.APPROVED);
           assert.equal(res.slotsTaken, '5');
           assert.equal(res.totalSlots, '5');
@@ -1351,7 +1351,7 @@ contract("ClaimManager", (accounts) => {
           assert.equal(res.arbitratorsReward, '6030000000000000000');
           assert.equal(res.galtProtocolFee, '2970000000000000000');
 
-          res = await this.claimManager.claim(this.cId);
+          res = await this.claimManager.getApplication(this.cId);
           assert.equal(res.status, ApplicationStatus.REJECTED);
           assert.equal(res.slotsTaken, '3');
           assert.equal(res.totalSlots, '5');

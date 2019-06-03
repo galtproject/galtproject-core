@@ -262,7 +262,7 @@ contract('NewOracleManager', (accounts) => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
-        res = await this.newOracle.getApplicationById(this.aId);
+        res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(parseInt(res.createdAt, 10) > 0, true);
       });
@@ -326,7 +326,7 @@ contract('NewOracleManager', (accounts) => {
           // oracle share - 87%
           // galtspace share - 13%
 
-          res = await this.newOracle.getApplicationFees(this.aId);
+          res = await this.newOracle.getApplicationRewards(this.aId);
           assert.equal(res.arbitratorsReward, ether('46.11'));
           assert.equal(res.galtProtocolFee, ether('6.89'));
           assert.equal(res.currency, Currency.GALT);
@@ -426,7 +426,7 @@ contract('NewOracleManager', (accounts) => {
         );
         this.aId = res.logs[0].args.applicationId;
 
-        res = await this.newOracle.getApplicationById(this.aId);
+        res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.applicant, alice);
         assert.sameMembers(res.arbitrators, []);
@@ -503,7 +503,7 @@ contract('NewOracleManager', (accounts) => {
           // oracle share - 87%
           // galtspace share - 13%
 
-          res = await this.newOracle.getApplicationFees(this.aId);
+          res = await this.newOracle.getApplicationRewards(this.aId);
           assert.equal(res.arbitratorsReward, ether('8.71'));
           assert.equal(res.galtProtocolFee, ether('4.29'));
           assert.equal(res.currency, Currency.ETH);
@@ -616,7 +616,7 @@ contract('NewOracleManager', (accounts) => {
       it('should allow a valid arbitrator locking an application', async function() {
         await this.newOracle.lock(this.aId, { from: bob });
 
-        const res = await this.newOracle.getApplicationById(this.aId);
+        const res = await this.newOracle.getApplication(this.aId);
         assert.sameMembers(res.arbitrators, [bob]);
       });
 
@@ -628,7 +628,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: george });
         await assertRevert(this.newOracle.lock(this.aId, { from: henrey }));
 
-        const res = await this.newOracle.getApplicationById(this.aId);
+        const res = await this.newOracle.getApplication(this.aId);
         assert.sameMembers(res.arbitrators, [bob, charlie, dan, frank, george]);
       });
 
@@ -642,7 +642,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.lock(this.aId, { from: bob });
         await this.newOracle.aye(this.aId, { from: bob });
 
-        const res = await this.newOracle.getApplicationById(this.aId);
+        const res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.ayeCount, 1);
         assert.equal(res.nayCount, 0);
       });
@@ -667,7 +667,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.aye(this.aId, { from: dan });
         await this.newOracle.aye(this.aId, { from: frank });
 
-        const res = await this.newOracle.getApplicationById(this.aId);
+        const res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
         assert.equal(res.ayeCount, 3);
         assert.equal(res.nayCount, 1);
@@ -689,7 +689,7 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.aye(this.aId, { from: frank });
         await this.newOracle.nay(this.aId, { from: george });
 
-        const res = await this.newOracle.getApplicationById(this.aId);
+        const res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
         assert.equal(res.ayeCount, 2);
         assert.equal(res.nayCount, 3);
@@ -708,14 +708,14 @@ contract('NewOracleManager', (accounts) => {
         await this.newOracle.nay(this.aId, { from: charlie });
         await this.newOracle.aye(this.aId, { from: dan });
 
-        let res = await this.newOracle.getApplicationById(this.aId);
+        let res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.ayeCount, 2);
         assert.equal(res.nayCount, 1);
 
         await this.newOracle.nay(this.aId, { from: dan });
 
-        res = await this.newOracle.getApplicationById(this.aId);
+        res = await this.newOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
         assert.equal(res.ayeCount, 1);
         assert.equal(res.nayCount, 2);

@@ -69,8 +69,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256 spaceTokenId;
     uint256 createdAt;
     // TODO: should depend on plot area, but now it is fixed
-    ApplicationDetails details;
-    ApplicationFees fees;
+    Details details;
+    Rewards rewards;
     Currency currency;
     ApplicationStatus status;
 
@@ -84,7 +84,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
-  struct ApplicationFees {
+  struct Rewards {
     uint256 totalPaidFee;
     uint256 oraclesReward;
     uint256 galtProtocolFee;
@@ -92,7 +92,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     bool galtProtocolFeePaidOut;
   }
 
-  struct ApplicationDetails {
+  struct Details {
     bytes32 credentialsHash;
     bytes32 ledgerIdentifier;
     string description;
@@ -210,11 +210,11 @@ contract NewPropertyManager is AbstractOracleApplication {
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
 
-      a.fees.totalPaidFee = _submissionFeeInGalt;
+      a.rewards.totalPaidFee = _submissionFeeInGalt;
       a.currency = Currency.GALT;
     // ETH
     } else {
-      a.fees.totalPaidFee = msg.value;
+      a.rewards.totalPaidFee = msg.value;
       // Default a.currency is Currency.ETH
 
       require(
@@ -228,7 +228,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
 
-    calculateAndStoreFee(a, a.fees.totalPaidFee);
+    calculateAndStoreFee(a, a.rewards.totalPaidFee);
 
     a.details.ledgerIdentifier = _ledgerIdentifier;
     a.details.description = _description;
@@ -276,7 +276,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     payable
   {
     Application storage a = applications[_aId];
-    ApplicationDetails storage d = a.details;
+    Details storage d = a.details;
     require(
       a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
       "Applicant invalid");
@@ -334,14 +334,14 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newSpaceTokenContour);
     uint256 newMinimalFee = getSubmissionFeeByArea(a.pgg, a.currency, area);
-    uint256 alreadyPaid = a.fees.latestCommittedFee;
+    uint256 alreadyPaid = a.rewards.latestCommittedFee;
 
     if (newMinimalFee > alreadyPaid) {
       uint256 requiredPayment = newMinimalFee.sub(alreadyPaid);
       require(fee >= requiredPayment, "Incorrect fee passed in");
     }
 
-    a.fees.latestCommittedFee = alreadyPaid + fee;
+    a.rewards.latestCommittedFee = alreadyPaid + fee;
   }
 
   // Application can be locked by an oracle type only once.
@@ -519,14 +519,14 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
-    if (_a.fees.galtProtocolFeePaidOut == false) {
+    if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {
-        protocolFeesEth = protocolFeesEth.add(_a.fees.galtProtocolFee);
+        protocolFeesEth = protocolFeesEth.add(_a.rewards.galtProtocolFee);
       } else if (_a.currency == Currency.GALT) {
-        protocolFeesGalt = protocolFeesGalt.add(_a.fees.galtProtocolFee);
+        protocolFeesGalt = protocolFeesGalt.add(_a.rewards.galtProtocolFee);
       }
 
-      _a.fees.galtProtocolFeePaidOut = true;
+      _a.rewards.galtProtocolFeePaidOut = true;
     }
   }
 
@@ -554,14 +554,14 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     assert(oraclesReward.add(galtProtocolFee) == _fee);
 
-    _a.fees.oraclesReward = oraclesReward;
-    _a.fees.galtProtocolFee = galtProtocolFee;
+    _a.rewards.oraclesReward = oraclesReward;
+    _a.rewards.galtProtocolFee = galtProtocolFee;
 
-    _a.fees.latestCommittedFee = _fee;
+    _a.rewards.latestCommittedFee = _fee;
   }
 
   function assignRequiredOracleTypesAndRewards(Application storage a) internal {
-    assert(a.fees.oraclesReward > 0);
+    assert(a.rewards.oraclesReward > 0);
 
     uint256 totalReward = 0;
 
@@ -576,7 +576,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     for (uint256 i = 0; i < len; i++) {
       bytes32 oracleType = a.assignedOracleTypes[i];
       uint256 rewardShare = a
-      .fees
+      .rewards
       .oraclesReward
       .mul(shares[i])
       .div(100);
@@ -587,8 +587,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     }
 
     // TODO: 🙊 handle such cases more precisely
-    assert(totalReward <= a.fees.oraclesReward);
-    uint256 diff = a.fees.oraclesReward - totalReward;
+    assert(totalReward <= a.rewards.oraclesReward);
+    uint256 diff = a.rewards.oraclesReward - totalReward;
     a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);
   }
 
@@ -630,7 +630,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   /**
    * @dev Get common application details
    */
-  function getApplicationById(
+  function getApplication(
     bytes32 _id
   )
     external
@@ -661,9 +661,9 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   /**
-   * @dev Get application fees-related information
+   * @dev Get application rewards-related information
    */
-  function getApplicationFees(
+  function getApplicationRewards(
     bytes32 _id
   )
     external
@@ -684,10 +684,10 @@ contract NewPropertyManager is AbstractOracleApplication {
     return (
       m.status,
       m.currency,
-      m.fees.oraclesReward,
-      m.fees.galtProtocolFee,
-      m.fees.latestCommittedFee,
-      m.fees.galtProtocolFeePaidOut
+      m.rewards.oraclesReward,
+      m.rewards.galtProtocolFee,
+      m.rewards.latestCommittedFee,
+      m.rewards.galtProtocolFeePaidOut
     );
   }
 
@@ -695,7 +695,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   /**
    * @dev Get application details
    */
-  function getApplicationDetailsById(
+  function getApplicationDetails(
     bytes32 _id
   )
     external
@@ -748,7 +748,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
     Application storage a = applications[_aId];
     uint256 newTotalFee = getSubmissionFeeByArea(a.pgg, a.currency, _area);
-    uint256 latest = a.fees.latestCommittedFee;
+    uint256 latest = a.rewards.latestCommittedFee;
 
     if (newTotalFee <= latest) {
       return 0;
