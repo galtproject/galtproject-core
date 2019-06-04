@@ -115,7 +115,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
     delete owners;
 
-    for (uint8 i = 0; i < descArbitrators.length; i++) {
+    for (uint256 i = 0; i < descArbitrators.length; i++) {
       address o = descArbitrators[i];
 
       isOwner[o] = true;

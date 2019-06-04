@@ -29,8 +29,8 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
   using SafeMath for uint256;
 
   // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
-  uint8 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
-  uint8 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
+  uint256 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
+  uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
 
@@ -107,7 +107,7 @@ contract SpaceGeoData is ISpaceGeoData, Initializable {
       "Number of contour elements should be equal or less than MAX_CONTOUR_GEOHASH_COUNT"
     );
 
-    for (uint8 i = 0; i < _geohashesContour.length; i++) {
+    for (uint256 i = 0; i < _geohashesContour.length; i++) {
       require(_geohashesContour[i] > 0, "Contour element geohash should not be a zero");
       require(
         GeohashUtils.geohash5Precision(_geohashesContour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION,

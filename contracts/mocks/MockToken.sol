@@ -13,7 +13,7 @@ contract MockToken is Initializable, ERC20Mintable {
   string public constant symbol = "MALT";
 
   // solium-disable-next-line uppercase
-  uint8 public constant decimals = 18;
+  uint256 public constant decimals = 18;
 
   uint256 public constant INITIAL_SUPPLY = 0;
 

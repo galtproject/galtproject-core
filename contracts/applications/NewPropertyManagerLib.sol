@@ -32,7 +32,7 @@ library NewPropertyManagerLib {
 
     uint256 len = _a.assignedOracleTypes.length;
 
-    for (uint8 i = 0; i < len; i++) {
+    for (uint256 i = 0; i < len; i++) {
       bytes32 currentOracleType = _a.assignedOracleTypes[i];
       if (_a.validationStatus[currentOracleType] == NewPropertyManager.ValidationStatus.PENDING) {
         revert("One of the oracle type has PENDING status");
