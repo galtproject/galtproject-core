@@ -161,10 +161,11 @@ contract('NewPropertyManager', accounts => {
     NewPropertyManager.link('NewPropertyManagerLib', this.newPropertyManagerLib.address);
 
     this.newPropertyManager = await NewPropertyManager.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
 
     this.spaceGeoData = await deploySpaceGeoData(this.ggr);
     await this.ggr.setContract(await this.ggr.GEODESIC(), this.geodesicMock.address, { from: coreTeam });
+    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
 
     await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
@@ -203,16 +204,9 @@ contract('NewPropertyManager', accounts => {
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.oraclesX = this.pggX.oracles;
 
-    await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA(), this.spaceGeoData.address, { from: coreTeam });
-
     await this.newPropertyManager.initialize(this.ggr.address, {
       from: coreTeam
     });
-
-    await this.spaceToken.addRoleTo(this.newPropertyManager.address, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
 
     await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR], { from: oracleModifier });
     await this.oraclesX.addOracle(charlie, CHARLIE, MN, '', [], [PM_LAWYER], { from: oracleModifier });
@@ -232,6 +226,7 @@ contract('NewPropertyManager', accounts => {
     });
 
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), this.newPropertyManager.address, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_MINTER'), this.newPropertyManager.address, true, { from: coreTeam });
   });
 
   describe('application pipeline for GALT payment method', () => {

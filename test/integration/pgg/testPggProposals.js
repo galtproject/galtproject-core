@@ -78,11 +78,11 @@ contract('PGG Proposals', accounts => {
 
     // Create and initialize contracts
     await (async () => {
-      this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
 
+      this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
       this.globalGovernance = await GlobalGovernance.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
       this.pggRegistry = await PGGRegistry.new({ from: coreTeam });

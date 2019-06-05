@@ -44,6 +44,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
+  bytes32 public constant SPACE_GEO_DATA_REGISTRY = bytes32("space_geo_data_registry");
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
@@ -51,7 +52,6 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
-  bytes32 public constant SPACE_GEO_DATA = bytes32("space_geo_data");
 
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
@@ -126,9 +126,9 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[STAKE_TRACKER];
   }
 
-  function getSpaceGeoDataAddress() external view returns (address) {
-    require(contracts[SPACE_GEO_DATA] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA not set");
-    return contracts[SPACE_GEO_DATA];
+  function getSpaceGeoDataRegistryAddress() external view returns (address) {
+    require(contracts[SPACE_GEO_DATA_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA_REGISTRY not set");
+    return contracts[SPACE_GEO_DATA_REGISTRY];
   }
 
   function getSpaceSplitOperationFactoryAddress() external view returns (address) {

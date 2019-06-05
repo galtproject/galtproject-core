@@ -58,7 +58,7 @@ contract('PGGOracleStakeVoting', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySpaceGeoDataMock(this.ggr);
     this.spaceGeoData = deployment.spaceGeoData;
 
@@ -75,9 +75,6 @@ contract('PGGOracleStakeVoting', accounts => {
     this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
-    await this.spaceToken.addRoleTo(minter, 'minter', {
-      from: coreTeam
-    });
     this.spaceRA = await SpaceRA.new({ from: coreTeam });
 
     await this.acl.initialize();

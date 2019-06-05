@@ -15,7 +15,7 @@ pragma solidity 0.5.7;
 
 import "../interfaces/ISpaceSplitOperationFactory.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "../SpaceSplitOperation.sol";
 import "../registries/GaltGlobalRegistry.sol";
 

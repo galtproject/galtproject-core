@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./interfaces/IPropertyManagerFeeCalculator.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
@@ -98,7 +98,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     string description;
     int256 level;
     uint256 area;
-    ISpaceGeoData.AreaSource areaSource;
+    ISpaceGeoDataRegistry.AreaSource areaSource;
     uint256[] contour;
     int256[] heights;
   }
@@ -195,7 +195,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
-      a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      a.details.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
     } else {
       a.details.area = _customArea;
@@ -287,11 +287,11 @@ contract NewPropertyManager is AbstractOracleApplication {
     checkResubmissionPayment(a, _resubmissionFeeInGalt, _newContour);
 
     if (_newCustomArea == 0) {
-      d.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
     } else {
       d.area = _newCustomArea;
-      d.areaSource = ISpaceGeoData.AreaSource.USER_INPUT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.USER_INPUT;
     }
 
     d.level = _newLevel;
@@ -416,9 +416,9 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function mintToken(Application storage a) internal {
-    ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
+    ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
-    uint256 spaceTokenId = spaceGeoData.initSpaceToken(address(this));
+    uint256 spaceTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(address(this));
 
     a.spaceTokenId = spaceTokenId;
 
@@ -704,7 +704,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       bytes32 ledgerIdentifier,
       int256 level,
       uint256 area,
-      ISpaceGeoData.AreaSource areaSource,
+      ISpaceGeoDataRegistry.AreaSource areaSource,
       uint256[] memory contour,
       string memory description,
       int256[] memory heights

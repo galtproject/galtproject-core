@@ -61,7 +61,7 @@ contract('PGG Voting Full Cycle', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySpaceGeoDataMock(this.ggr);
     this.spaceGeoData = deployment.spaceGeoData;
 
@@ -78,9 +78,6 @@ contract('PGG Voting Full Cycle', accounts => {
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
 
-    await this.spaceToken.addRoleTo(minter, 'minter', {
-      from: coreTeam
-    });
     this.spaceRA = await SpaceRA.new({ from: coreTeam });
     this.galtRA = await GaltRA.new({ from: coreTeam });
 
@@ -131,6 +128,7 @@ contract('PGG Voting Full Cycle', accounts => {
       from: coreTeam
     });
 
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('GALT_REPUTATION_NOTIFIER'), this.galtRA.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_LOCKER_REGISTRAR'), this.spaceLockerFactory.address, true, {

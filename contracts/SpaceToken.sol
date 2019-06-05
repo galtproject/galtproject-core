@@ -16,23 +16,33 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol";
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "./interfaces/ISpaceToken.sol";
+import "./registries/GaltGlobalRegistry.sol";
 
 
-contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
-  string public constant ROLE_MINTER = "minter";
-  string public constant ROLE_BURNER = "burner";
-
+contract SpaceToken is ISpaceToken, ERC721Full {
   event NewSpaceToken(uint256 tokenId, address owner);
 
-  uint256 packTokenIdCounter;
+  bytes32 public constant ROLE_SPACE_MINTER = bytes32("SPACE_MINTER");
+  bytes32 public constant ROLE_SPACE_BURNER = bytes32("SPACE_BURNER");
+
+  GaltGlobalRegistry internal ggr;
+  uint256 internal packTokenIdCounter;
 
   modifier onlyMinter() {
-    require(hasRole(msg.sender, ROLE_MINTER), "Only minter allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_SPACE_MINTER),
+      "Only SPACE_MINTER role allowed"
+    );
+
     _;
   }
 
   modifier onlyBurner() {
-    require(hasRole(msg.sender, ROLE_BURNER), "Only burner allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
+      "Only SPACE_MINTER role allowed"
+    );
+
     _;
   }
 
@@ -42,12 +52,14 @@ contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
   }
 
   constructor(
-    string memory name,
-    string memory symbol
+    GaltGlobalRegistry _ggr,
+    string memory _name,
+    string memory _symbol
   )
     public
-    ERC721Full(name, symbol)
+    ERC721Full(_name, _symbol)
   {
+    ggr = _ggr;
   }
 
   // MODIFIERS
@@ -68,7 +80,10 @@ contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
   }
 
   function burn(uint256 _tokenId) external {
-    require(ownerOf(_tokenId) == msg.sender || hasRole(msg.sender, ROLE_BURNER), "Either owner or burner role allowed");
+    require(
+      ownerOf(_tokenId) == msg.sender || ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
+      "Either owner or burner role allowed"
+    );
 
     super._burn(ownerOf(_tokenId), _tokenId);
   }
@@ -96,5 +111,4 @@ contract SpaceToken is ISpaceToken, ERC721Full, Permissionable {
   function exists(uint256 _tokenId) external view returns (bool) {
     return _exists(_tokenId);
   }
-
 }
