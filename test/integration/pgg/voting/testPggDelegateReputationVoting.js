@@ -85,7 +85,6 @@ contract('PGGDelegateReputationVoting', accounts => {
     await this.feeRegistry.initialize();
     await this.pggRegistry.initialize(this.ggr.address);
 
-
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.PGG_REGISTRY(), this.pggRegistry.address, { from: coreTeam });

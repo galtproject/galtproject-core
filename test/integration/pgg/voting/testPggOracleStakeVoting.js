@@ -48,7 +48,6 @@ contract('PGGOracleStakeVoting', accounts => {
     charlie,
     dan,
     eve,
-    minter,
     candidateA,
     candidateB,
     candidateC
