@@ -37,6 +37,15 @@ contract ClaimManager is AbstractApplication {
   bytes32 public constant CONFIG_N = bytes32("CM_N");
   bytes32 public constant CONFIG_PREFIX = bytes32("CM");
 
+  event NewApplication(address indexed applicant, bytes32 applicationId);
+  event NewProposal(address indexed arbitrator, bytes32 indexed applicationId, Action action, bytes32 proposalId);
+  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
+  event ArbitratorSlotTaken(bytes32 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
+  event ArbitratorRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  // TODO: cut out messages
+  event NewMessage(bytes32 claimId, uint256 messageId);
+
   enum ApplicationStatus {
     NOT_EXISTS,
     SUBMITTED,
@@ -49,12 +58,6 @@ contract ClaimManager is AbstractApplication {
     APPROVE,
     REJECT
   }
-
-  event ClaimStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event NewClaim(bytes32 id, address applicant);
-  event ArbitratorSlotTaken(bytes32 claimId, uint256 slotsTaken, uint256 totalSlots);
-  event NewProposal(bytes32 claimId, bytes32 proposalId, Action action, address proposer);
-  event NewMessage(bytes32 claimId, uint256 messageId);
 
   struct Claim {
     bytes32 id;
@@ -198,7 +201,7 @@ contract ClaimManager is AbstractApplication {
       currency = Currency.GALT;
     }
 
-    Claim memory c;
+
     bytes32 id = keccak256(
       abi.encodePacked(
         msg.sender,
@@ -209,6 +212,7 @@ contract ClaimManager is AbstractApplication {
       )
     );
 
+    Claim storage c = claims[id];
     require(claims[id].status == ApplicationStatus.NOT_EXISTS, "Claim already exists");
 
     c.status = ApplicationStatus.SUBMITTED;
@@ -225,13 +229,11 @@ contract ClaimManager is AbstractApplication {
 
     calculateAndStoreFee(c, fee);
 
-    claims[id] = c;
-
     applicationsArray.push(id);
     applicationsByApplicant[msg.sender].push(id);
 
-    emit NewClaim(id, msg.sender);
-    emit ClaimStatusChanged(id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, id);
+    emit ApplicationStatusChanged(id, ApplicationStatus.SUBMITTED);
 
     return id;
   }
@@ -310,7 +312,7 @@ contract ClaimManager is AbstractApplication {
 
     require(c.proposalDetails[pId].from == address(0), "Proposal already exists");
 
-    emit NewProposal(_cId, pId, Action.APPROVE, msg.sender);
+    emit NewProposal(msg.sender, _cId, Action.APPROVE, pId);
 
     c.proposals.push(pId);
 
@@ -331,8 +333,8 @@ contract ClaimManager is AbstractApplication {
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
     require(c.arbitrators.has(msg.sender) == true, "Arbitrator not in locked list");
 
-    bytes32 id = keccak256(abi.encode(_cId, _msg, msg.sender));
-    require(c.proposalDetails[id].from == address(0), "Proposal already exists");
+    bytes32 pId = keccak256(abi.encode(_cId, _msg, msg.sender));
+    require(c.proposalDetails[pId].from == address(0), "Proposal already exists");
 
     Proposal memory p;
 
@@ -340,14 +342,14 @@ contract ClaimManager is AbstractApplication {
     p.message = _msg;
     p.action = Action.REJECT;
 
-    c.proposalDetails[id] = p;
-    c.proposals.push(id);
+    c.proposalDetails[pId] = p;
+    c.proposals.push(pId);
 
     // arbitrator immediately votes for the proposal
-    _voteFor(c, id);
+    _voteFor(c, pId);
     // as we have minimum n equal 2, a brand new proposal could not be executed in this step
 
-    emit NewProposal(_cId, id, Action.REJECT, msg.sender);
+    emit NewProposal(msg.sender, _cId, Action.REJECT, pId);
   }
 
   /**
@@ -415,6 +417,8 @@ contract ClaimManager is AbstractApplication {
     } else if (c.fees.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, c.fees.arbitratorReward);
     }
+
+    emit ArbitratorRewardClaim(_cId, msg.sender);
   }
 
   function _assignGaltProtocolFee(Claim storage _a) internal {
@@ -426,6 +430,7 @@ contract ClaimManager is AbstractApplication {
       }
 
       _a.fees.galtProtocolFeePaidOut = true;
+      emit GaltProtocolFeeAssigned(_a.id);
     }
   }
 
@@ -499,7 +504,7 @@ contract ClaimManager is AbstractApplication {
   )
     internal
   {
-    emit ClaimStatusChanged(_claim.id, _status);
+    emit ApplicationStatusChanged(_claim.id, _status);
 
     _claim.status = _status;
   }

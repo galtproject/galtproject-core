@@ -26,9 +26,6 @@ import "../registries/interfaces/IPGGRegistry.sol";
 contract UpdatePropertyManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
-  // 'PlotClarificationManager' hash
-  bytes32 public constant APPLICATION_TYPE = 0x6f7c49efa4ebd19424a5018830e177875fd96b20c1ae22bc5eb7be4ac691e7b7;
-
   bytes32 public constant PL_AUDITOR_ORACLE_TYPE = bytes32("PL_AUDITOR_ORACLE_TYPE");
   bytes32 public constant PL_LAWYER_ORACLE_TYPE = bytes32("PL_LAWYER_ORACLE_TYPE");
   bytes32 public constant PL_SURVEYOR_ORACLE_TYPE = bytes32("PL_SURVEYOR_ORACLE_TYPE");
@@ -37,6 +34,14 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PL_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PL_PAYMENT_METHOD");
   bytes32 public constant CONFIG_PREFIX = bytes32("PL");
+
+  event NewApplication(address indexed applicant, bytes32 applicationId);
+  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
+  event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
+  event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  event SpaceTokenTokenDeposit(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
+  event SpaceTokenTokenWithdrawal(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -52,11 +57,6 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     APPROVED,
     REVERTED
   }
-
-  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
-  event LogSpaceTokenTokenWithdrawn(bytes32 applicationId, uint256 spaceTokenId);
-  event LogNewApplication(bytes32 id, address applicant);
 
   struct Application {
     bytes32 id;
@@ -165,8 +165,11 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
     require(_newContour.length >= 3, "Contour sould have at least 3 vertices");
     require(_newContour.length == _newHeights.length, "Contour length should be equal heights length");
+
     pggRegistry().requireValidPgg(_pgg);
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
+
+    emit SpaceTokenTokenDeposit(_id, _spaceTokenId);
   }
 
   function _acceptPayment(
@@ -242,8 +245,8 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, _id);
+    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
     calculateAndStoreFee(a, a.rewards.totalPaidFee);
     assignRequiredOracleTypesAndRewards(_id);
@@ -408,7 +411,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     ggr.getSpaceToken().transferFrom(address(this), msg.sender, a.spaceTokenId);
 
     a.tokenWithdrawn = true;
-    emit LogSpaceTokenTokenWithdrawn(a.id, a.spaceTokenId);
+    emit SpaceTokenTokenWithdrawal(a.id, a.spaceTokenId);
   }
 
   function claimOracleReward(bytes32 _aId) external {
@@ -435,6 +438,8 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     } else if (a.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, reward);
     }
+
+    emit OracleRewardClaim(_aId, msg.sender);
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
@@ -446,6 +451,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       }
 
       _a.rewards.galtProtocolFeePaidOut = true;
+      emit GaltProtocolFeeAssigned(_a.id);
     }
   }
 
@@ -574,7 +580,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogValidationStatusChanged(_a.id, _oracleType, _status);
+    emit ValidationStatusChanged(_a.id, _oracleType, _status);
 
     _a.validationStatus[_oracleType] = _status;
   }
@@ -585,7 +591,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogApplicationStatusChanged(_a.id, _status);
+    emit ApplicationStatusChanged(_a.id, _status);
 
     _a.status = _status;
   }

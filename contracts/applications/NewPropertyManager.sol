@@ -29,14 +29,19 @@ import "../registries/interfaces/IPGGRegistry.sol";
 contract NewPropertyManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
-  bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
-
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
   bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
+
+  event NewSpaceToken(address indexed applicant, uint256 spaceTokenId, bytes32 applicationId);
+  event NewApplication(address indexed applicant, bytes32 applicationId);
+  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
+  event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
+  event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -55,11 +60,6 @@ contract NewPropertyManager is AbstractOracleApplication {
     REJECTED,
     REVERTED
   }
-
-  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
-  event LogNewApplication(bytes32 id, address applicant);
-  event TokenMinted(bytes32 applicationId, uint256 tokenId, address beneficiary);
 
   struct Application {
     bytes32 id;
@@ -240,8 +240,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, _id);
+    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
     assignRequiredOracleTypesAndRewards(applications[_id]);
 
@@ -428,7 +428,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     spaceGeoData.setSpaceTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
     spaceGeoData.setSpaceTokenInfo(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
 
-    emit TokenMinted(a.id, spaceTokenId, a.applicant);
+    emit NewSpaceToken(a.applicant, spaceTokenId, a.id);
   }
 
   function reject(
@@ -516,6 +516,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     } else if (a.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, reward);
     }
+
+    emit OracleRewardClaim(_aId, msg.sender);
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
@@ -527,6 +529,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       }
 
       _a.rewards.galtProtocolFeePaidOut = true;
+      emit GaltProtocolFeeAssigned(_a.id);
     }
   }
 
@@ -599,7 +602,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogValidationStatusChanged(_a.id, _oracleType, _status);
+    emit ValidationStatusChanged(_a.id, _oracleType, _status);
 
     _a.validationStatus[_oracleType] = _status;
   }
@@ -611,7 +614,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogApplicationStatusChanged(_a.id, _status);
+    emit ApplicationStatusChanged(_a.id, _status);
 
     _a.status = _status;
   }
