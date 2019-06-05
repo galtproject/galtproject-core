@@ -104,7 +104,6 @@ contract('ArbitratorSlashing', accounts => {
 
     // Create and initialize contracts
     await (async () => {
-      this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
 
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -116,6 +115,7 @@ contract('ArbitratorSlashing', accounts => {
       });
       this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
       this.stakeTracker = await StakeTracker.new({ from: coreTeam });
+      this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
 
       await this.acl.initialize();
       await this.ggr.initialize();

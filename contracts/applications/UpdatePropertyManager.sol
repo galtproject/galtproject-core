@@ -16,7 +16,7 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./AbstractOracleApplication.sol";
 import "../registries/GaltGlobalRegistry.sol";
@@ -87,7 +87,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     string description;
     int256 level;
     uint256 area;
-    ISpaceGeoData.AreaSource areaSource;
+    ISpaceGeoDataRegistry.AreaSource areaSource;
     uint256[] contour;
     int256[] heights;
   }
@@ -217,7 +217,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     _acceptPayment(a, _pgg, _applicationFeeInGalt);
 
     if (_customArea == 0) {
-      a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      a.details.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
     } else {
       a.details.area = _customArea;
@@ -305,7 +305,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     }
 
     if (allApproved) {
-      ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
+      ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
       spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.details.contour);
       spaceGeoData.setSpaceTokenHeights(a.spaceTokenId, a.details.heights);
       spaceGeoData.setSpaceTokenLevel(a.spaceTokenId, a.details.level);
@@ -367,11 +367,11 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
 
     if (_newCustomArea == 0) {
-      d.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
     } else {
       d.area = _newCustomArea;
-      d.areaSource = ISpaceGeoData.AreaSource.USER_INPUT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.USER_INPUT;
     }
 
     d.level = _newLevel;
@@ -522,7 +522,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       int256[] memory heights,
       int256 level,
       uint256 area,
-      ISpaceGeoData.AreaSource areaSource,
+      ISpaceGeoDataRegistry.AreaSource areaSource,
       bytes32 ledgerIdentifier,
       string memory description
     )

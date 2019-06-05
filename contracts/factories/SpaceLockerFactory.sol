@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./interfaces/ISpaceLockerFactory.sol";
 import "../SpaceLocker.sol";
 
@@ -29,7 +29,7 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
   bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
   bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry internal ggr;
 
   constructor (
     GaltGlobalRegistry _ggr

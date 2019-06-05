@@ -13,7 +13,7 @@ const Web3 = require('web3');
 
 const {
   ether,
-  deploySpaceGeoData,
+  deploySpaceGeoDataLight,
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
@@ -35,8 +35,12 @@ contract('SpaceRA', accounts => {
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.acl = await ACL.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.spaceGeoData = await deploySpaceGeoData(this.ggr);
+
+    await this.acl.initialize();
+    await this.ggr.initialize();
+
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Name', 'Symbol', { from: coreTeam });
+    this.spaceGeoData = await deploySpaceGeoDataLight(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
@@ -47,12 +51,8 @@ contract('SpaceRA', accounts => {
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
-    await this.acl.initialize();
-    await this.ggr.initialize();
     await this.pggRegistry.initialize(this.ggr.address);
     await this.spaceRA.initialize(this.ggr.address);
-
-    await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });
     await this.galtToken.mint(bob, ether(10000000), { from: coreTeam });
@@ -74,6 +74,7 @@ contract('SpaceRA', accounts => {
       from: coreTeam
     });
 
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_LOCKER_REGISTRAR'), this.spaceLockerFactory.address, true, {
       from: coreTeam

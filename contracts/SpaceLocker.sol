@@ -17,7 +17,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ILocker.sol";
-import "./interfaces/ISpaceGeoData.sol";
+import "./registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./reputation/interfaces/IRA.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
@@ -60,7 +60,7 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).getSpaceTokenArea(_spaceTokenId);
+    reputation = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenArea(_spaceTokenId);
     tokenDeposited = true;
 
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);

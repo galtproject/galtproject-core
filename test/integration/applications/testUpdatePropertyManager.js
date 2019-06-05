@@ -126,7 +126,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
@@ -136,9 +136,7 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
 
-    const deployment = await deploySpaceGeoDataMock(this.ggr);
-    this.spaceGeoData = deployment.spaceGeoData;
-    this.geodesic = deployment.geodesic;
+    await deploySpaceGeoDataMock(this.ggr);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -149,7 +147,6 @@ contract('UpdatePropertyManager', (accounts) => {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA(), this.spaceGeoData.address, { from: coreTeam });
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
@@ -164,6 +161,7 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
     await this.acl.setRole(bytes32('FEE_COLLECTOR'), feeMixerAddress, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -206,10 +204,6 @@ contract('UpdatePropertyManager', (accounts) => {
     this.pggConfigX = this.pggX.config;
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.oraclesX = this.pggX.oracles;
-
-    await this.spaceToken.addRoleTo(minter, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
 
     await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], {
       from: oracleModifier

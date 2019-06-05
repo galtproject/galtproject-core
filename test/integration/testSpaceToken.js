@@ -1,26 +1,24 @@
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const { assertRevert } = require('../helpers');
 
-const web3 = new Web3(SpaceToken.web3.currentProvider);
+const ACL = artifacts.require('./ACL.sol');
+const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
+const { utf8ToHex } = Web3.utils;
+const bytes32 = utf8ToHex;
 
 contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
   beforeEach(async function() {
-    this.spaceToken = await SpaceToken.new('Name', 'Symbol', { from: coreTeam });
-    this.spaceTokenWeb3 = new web3.eth.Contract(this.spaceToken.abi, this.spaceToken.address);
-    await this.spaceToken.addRoleTo(minter, 'minter', { from: coreTeam });
-    await this.spaceToken.addRoleTo(burner, 'burner', { from: coreTeam });
+    this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
+    this.acl = await ACL.new({ from: coreTeam });
+    await this.ggr.initialize();
+    await this.acl.initialize();
+    await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_BURNER'), burner, true, { from: coreTeam });
+
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Name', 'Symbol', { from: coreTeam });
   });
 
   describe('#mint()', () => {
@@ -34,14 +32,14 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
     });
 
     it('should allow mint some tokens to the users in the minters role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_MINTER'), bob, true, { from: coreTeam });
       await this.spaceToken.mint(alice, { from: bob });
       const res = await this.spaceToken.ownerOf('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(res, alice);
     });
 
     it('should deny mint some tokens to users not in the minter role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_BURNER'), bob, true, { from: coreTeam });
       await assertRevert(this.spaceToken.mint(alice, { from: bob }));
     });
 
@@ -70,14 +68,14 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
     });
 
     it('should allow burn tokens to the users in the burners role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'burner', { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_BURNER'), bob, true, { from: coreTeam });
       await this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', { from: bob });
       const res = await this.spaceToken.exists('0x0000000000000000000000000000000000000000000000000000000000000000');
       assert.equal(false, res);
     });
 
     it('should deny burn some tokens to users not in the burner role list', async function() {
-      await this.spaceToken.addRoleTo(bob, 'minter', { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_MINTER'), bob, true, { from: coreTeam });
       await assertRevert(
         this.spaceToken.burn('0x0000000000000000000000000000000000000000000000000000000000000000', {
           from: bob

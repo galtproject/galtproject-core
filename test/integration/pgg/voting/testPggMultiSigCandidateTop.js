@@ -56,7 +56,7 @@ contract('PGGMultiSigCandidateTop', accounts => {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
     const deployment = await deploySpaceGeoDataMock(this.ggr);
     this.spaceGeoData = deployment.spaceGeoData;
 
@@ -70,10 +70,6 @@ contract('PGGMultiSigCandidateTop', accounts => {
 
     this.spaceLockerFactory = await SpaceLockerFactory.new(this.ggr.address, { from: coreTeam });
     this.galtLockerFactory = await GaltLockerFactory.new(this.ggr.address, { from: coreTeam });
-
-    await this.spaceToken.addRoleTo(minter, 'minter', {
-      from: coreTeam
-    });
 
     this.spaceRA = await SpaceRA.new(this.ggr.address, { from: coreTeam });
 
@@ -115,6 +111,7 @@ contract('PGGMultiSigCandidateTop', accounts => {
       from: coreTeam
     });
 
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
     await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactoryF.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), this.spaceRA.address, true, { from: coreTeam });
   });
