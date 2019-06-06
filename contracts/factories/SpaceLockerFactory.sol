@@ -24,7 +24,9 @@ import "../SpaceLocker.sol";
 
 
 contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
-  event SpaceLockerCreated(address owner, address locker);
+  event NewSpaceLocker(address owner, address locker);
+  event EthFeeWithdrawal(address collector, uint256 amount);
+  event GaltFeeWithdrawal(address collector, uint256 amount);
 
   bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
   bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
@@ -62,17 +64,25 @@ contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
 
     ILockerRegistry(ggr.getSpaceLockerRegistryAddress()).addLocker(address(locker));
 
-    emit SpaceLockerCreated(msg.sender, address(locker));
+    emit NewSpaceLocker(msg.sender, address(locker));
 
     return ISpaceLocker(locker);
   }
 
   function withdrawEthFees() external onlyFeeCollector {
-    msg.sender.transfer(address(this).balance);
+    uint256 balance = address(this).balance;
+
+    msg.sender.transfer(balance);
+
+    emit EthFeeWithdrawal(msg.sender, balance);
   }
 
   function withdrawGaltFees() external onlyFeeCollector {
     IERC20 galtToken = ggr.getGaltToken();
-    galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
+    uint256 balance = galtToken.balanceOf(address(this));
+
+    galtToken.transfer(msg.sender, balance);
+
+    emit GaltFeeWithdrawal(msg.sender, balance);
   }
 }

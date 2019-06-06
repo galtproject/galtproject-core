@@ -56,6 +56,8 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
 
+  event SetContract(bytes32 indexed kye, address addr);
+
   mapping(bytes32 => address) internal contracts;
 
   function initialize() public isInitializer {
@@ -63,6 +65,8 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
 
   function setContract(bytes32 _key, address _value) external onlyOwner {
     contracts[_key] = _value;
+
+    emit SetContract(_key, _value);
   }
 
   // GETTERS

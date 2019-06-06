@@ -22,18 +22,18 @@ import "./GaltGlobalRegistry.sol";
 contract LockerRegistry is ILockerRegistry {
   using ArraySet for ArraySet.AddressSet;
 
-  // Locker address => Details
-  mapping(address => Details) public lockers;
-
-  // Locker address => Details
-  mapping(address => ArraySet.AddressSet) internal lockersByOwner;
-
   struct Details {
     bool active;
     address factory;
   }
 
-  event LockerAdded(address indexed locker, address indexed owner, address factory);
+  event AddLocker(address indexed locker, address indexed owner, address factory);
+
+  // Locker address => Details
+  mapping(address => Details) public lockers;
+
+  // Locker address => Details
+  mapping(address => ArraySet.AddressSet) internal lockersByOwner;
 
   GaltGlobalRegistry internal ggr;
   bytes32 public roleFactory;
@@ -60,7 +60,7 @@ contract LockerRegistry is ILockerRegistry {
 
     lockersByOwner[ILocker(_locker).owner()].add(_locker);
 
-    emit LockerAdded(_locker, ILocker(_locker).owner(), locker.factory);
+    emit AddLocker(_locker, ILocker(_locker).owner(), locker.factory);
   }
 
   // REQUIRES

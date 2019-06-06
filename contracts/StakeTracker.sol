@@ -23,13 +23,21 @@ import "./interfaces/IStakeTracker.sol";
 contract StakeTracker is IStakeTracker, Initializable {
   using SafeMath for uint256;
 
+  bytes32 public constant MULTI_SIG_ROLE = bytes32("stake_tracker_notifier");
+
+  event OnChange(
+    address indexed pgg,
+    uint256 stakeBefore,
+    uint256 stakeAfter,
+    uint256 totalSupplyBefore,
+    uint256 totalSupplyAfter
+  );
+
   GaltGlobalRegistry internal ggr;
   uint256 internal _totalSupply;
 
   // PGG => totalStaked
   mapping(address => uint256) internal _pggStakes;
-
-  bytes32 public constant MULTI_SIG_ROLE = bytes32("stake_tracker_notifier");
 
   function initialize(
     GaltGlobalRegistry _ggr
@@ -56,6 +64,8 @@ contract StakeTracker is IStakeTracker, Initializable {
     _totalSupply = _totalSupply.add(_pggStakesAfter).sub(totalSupplyBefore);
     // _pggStakes[_pgg] = _pggStakes[_pgg] + _pggStakesAfter - pggStakesBefore;
     _pggStakes[_pgg] = _pggStakes[_pgg].add(_pggStakesAfter).sub(pggStakesBefore);
+
+    emit OnChange(_pgg, pggStakesBefore, _pggStakesAfter, totalSupplyBefore, _totalSupply);
   }
 
   // GETTERS

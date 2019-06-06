@@ -76,8 +76,8 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       return tokenId;
     };
 
-    this.getSpaceTokenContour = async _spaceTokenId =>
-      (await this.spaceGeoData.getSpaceTokenContour(_spaceTokenId)).map(geohash =>
+    this.getSpaceTokenContour = async _tokenId =>
+      (await this.spaceGeoData.getSpaceTokenContour(_tokenId)).map(geohash =>
         galt.numberToGeohash(geohash.toString(10))
       );
 
@@ -126,12 +126,12 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       return tokensIds;
     };
 
-    this.checkArea = async spaceTokenId => {
-      const geohashContour = await this.getSpaceTokenContour(spaceTokenId);
+    this.checkArea = async tokenId => {
+      const geohashContour = await this.getSpaceTokenContour(tokenId);
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.spaceGeoData.getSpaceTokenArea(spaceTokenId);
+      const solArea = await this.spaceGeoData.getSpaceTokenArea(tokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };

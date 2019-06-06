@@ -25,21 +25,21 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  bytes32 public constant ROLE_ARBITRATION_STAKE_SLASHER = bytes32("ARBITRATION_STAKE_SLASHER");
+
   event ArbitratorStakeDeposit(
-    address arbitrator,
+    address indexed arbitrator,
     uint256 amount,
     uint256 arbitratorStakeBefore,
     uint256 arbitratorStakeAfter
   );
 
   event ArbitratorStakeSlash(
-    address arbitrator,
+    address indexed arbitrator,
     uint256 amount,
     uint256 arbitratorStakeBefore,
     uint256 arbitratorStakeAfter
   );
-
-  bytes32 public constant ROLE_ARBITRATION_STAKE_SLASHER = bytes32("ARBITRATION_STAKE_SLASHER");
 
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;

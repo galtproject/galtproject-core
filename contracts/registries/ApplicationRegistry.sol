@@ -20,8 +20,9 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 contract ApplicationRegistry is OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
 
-  function initialize() public isInitializer {
-  }
+  event SetActiveApplication(bytes32 indexed key, address addr);
+  event AddToValidApplications(bytes32 indexed key, address addr);
+  event RemoveFromValidApplications(bytes32 indexed key, address addr);
 
   // Oracle managed applications
   bytes32 public constant PLOT_MANAGER = bytes32("plot_manager");
@@ -38,15 +39,24 @@ contract ApplicationRegistry is OwnableAndInitializable {
   mapping(bytes32 => address) internal _currentApplications;
   mapping(bytes32 => ArraySet.AddressSet) internal _validApplications;
 
+  function initialize() public isInitializer {
+  }
+
   function setActiveApplication(bytes32 _key, address _current) external onlyOwner {
     _currentApplications[_key] = _current;
+
+    emit SetActiveApplication(_key, _current);
   }
 
   function addToValidApplications(bytes32 _key, address _current) external onlyOwner {
     _validApplications[_key].add(_current);
+
+    emit AddToValidApplications(_key, _current);
   }
 
   function removeFromValidApplications(bytes32 _key, address _current) external onlyOwner {
     _validApplications[_key].remove(_current);
+
+    emit RemoveFromValidApplications(_key, _current);
   }
 }
