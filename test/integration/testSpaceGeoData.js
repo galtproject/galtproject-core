@@ -64,20 +64,20 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
     this.mintSpaceTokenId = async geohashContour => {
       const res = await this.spaceToken.mint(alice);
-      const spaceTokenId = res.logs[1].args.spaceTokenId;
+      const tokenId = res.logs[1].args.tokenId;
 
-      await this.spaceGeoData.setSpaceTokenContour(spaceTokenId, geohashContour.map(galt.geohashToNumber));
-      await this.spaceGeoData.setSpaceTokenHeights(spaceTokenId, geohashContour.map(() => 10));
+      await this.spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
+      await this.spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
       await this.spaceGeoData.setSpaceTokenArea(
-        spaceTokenId,
+        tokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
         '1'
       );
-      return spaceTokenId;
+      return tokenId;
     };
 
-    this.getSpaceTokenContour = async _spaceTokenId =>
-      (await this.spaceGeoData.getSpaceTokenContour(_spaceTokenId)).map(geohash =>
+    this.getSpaceTokenContour = async _tokenId =>
+      (await this.spaceGeoData.getSpaceTokenContour(_tokenId)).map(geohash =>
         galt.numberToGeohash(geohash.toString(10))
       );
 
@@ -126,12 +126,12 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       return tokensIds;
     };
 
-    this.checkArea = async spaceTokenId => {
-      const geohashContour = await this.getSpaceTokenContour(spaceTokenId);
+    this.checkArea = async tokenId => {
+      const geohashContour = await this.getSpaceTokenContour(tokenId);
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.spaceGeoData.getSpaceTokenArea(spaceTokenId);
+      const solArea = await this.spaceGeoData.getSpaceTokenArea(tokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };
@@ -143,7 +143,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
       let res;
       res = await this.spaceToken.mint(alice);
-      const firstSpaceTokenId = res.logs[1].args.spaceTokenId;
+      const firstSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setSpaceTokenContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         firstSpaceTokenId,
@@ -154,7 +154,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       );
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
-      const secondSpaceTokenId = res.logs[1].args.spaceTokenId;
+      const secondSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setSpaceTokenContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         secondSpaceTokenId,
@@ -176,7 +176,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
 
-      const packageId = res.logs[1].args.spaceTokenId;
+      const packageId = res.logs[1].args.tokenId;
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);

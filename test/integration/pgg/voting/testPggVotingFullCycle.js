@@ -194,11 +194,11 @@ contract('PGG Voting Full Cycle', accounts => {
     // *****************************
     await this.spaceToken.mint(zeroOwner, { from: minter });
     let res = await this.spaceToken.mint(alice, { from: minter });
-    const x1 = res.logs[0].args.spaceTokenId;
+    const x1 = res.logs[0].args.tokenId;
     res = await this.spaceToken.mint(bob, { from: minter });
-    const x2 = res.logs[0].args.spaceTokenId;
+    const x2 = res.logs[0].args.tokenId;
     res = await this.spaceToken.mint(charlie, { from: minter });
-    const x3 = res.logs[0].args.spaceTokenId;
+    const x3 = res.logs[0].args.tokenId;
 
     // SET AREAS
     let p = [

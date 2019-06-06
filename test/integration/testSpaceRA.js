@@ -85,11 +85,11 @@ contract('SpaceRA', accounts => {
   describe('transfer', () => {
     it('should handle basic reputation transfer case', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
-      const token1 = res.logs[0].args.spaceTokenId.toNumber();
+      const token1 = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.mint(bob, { from: minter });
-      const token2 = res.logs[0].args.spaceTokenId.toNumber();
+      const token2 = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.mint(charlie, { from: minter });
-      const token3 = res.logs[0].args.spaceTokenId.toNumber();
+      const token3 = res.logs[0].args.tokenId.toNumber();
 
       res = await this.spaceToken.ownerOf(token1);
       assert.equal(res, alice);
@@ -135,7 +135,7 @@ contract('SpaceRA', accounts => {
       res = await aliceLocker.owner();
       assert.equal(res, alice);
 
-      res = await aliceLocker.spaceTokenId();
+      res = await aliceLocker.tokenId();
       assert.equal(res, 0);
 
       res = await aliceLocker.tokenDeposited();
@@ -321,7 +321,7 @@ contract('SpaceRA', accounts => {
       res = await aliceLocker.owner();
       assert.equal(res, alice);
 
-      res = await aliceLocker.spaceTokenId();
+      res = await aliceLocker.tokenId();
       assert.equal(res, 0);
 
       res = await aliceLocker.tokenDeposited();
@@ -393,11 +393,11 @@ contract('SpaceRA', accounts => {
       const pggConfigZ = this.pggZ.config;
 
       let res = await this.spaceToken.mint(alice, { from: minter });
-      const token1 = res.logs[0].args.spaceTokenId.toNumber();
+      const token1 = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.mint(bob, { from: minter });
-      const token2 = res.logs[0].args.spaceTokenId.toNumber();
+      const token2 = res.logs[0].args.tokenId.toNumber();
       res = await this.spaceToken.mint(charlie, { from: minter });
-      const token3 = res.logs[0].args.spaceTokenId.toNumber();
+      const token3 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
       await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
@@ -531,7 +531,7 @@ contract('SpaceRA', accounts => {
       await this.galtToken.approve(this.pggFactory.address, ether(30), { from: alice });
 
       let res = await this.spaceToken.mint(alice, { from: minter });
-      const token1 = res.logs[0].args.spaceTokenId.toNumber();
+      const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
       await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });

@@ -49,9 +49,9 @@ function globalGovernanceHelpers(
 
       // Mint a space token
       let res = await spaceToken.mint(delegateAddress, { from: spaceMinterAddress });
-      const { spaceTokenId } = res.logs[0].args;
+      const { tokenId } = res.logs[0].args;
 
-      await spaceGeoData.setSpaceTokenArea(spaceTokenId, amount, '0', { from: geoDataManagerAddress });
+      await spaceGeoData.setSpaceTokenArea(tokenId, amount, '0', { from: geoDataManagerAddress });
 
       // Build a space locker
       await galtToken.transfer(delegateAddress, ether(10), { from: sponsorAddress });
@@ -62,8 +62,8 @@ function globalGovernanceHelpers(
       const spaceLocker = await SpaceLocker.at(lockerAddress);
 
       // Deposit the space token to a locker
-      await spaceToken.approve(lockerAddress, spaceTokenId, { from: delegateAddress });
-      await spaceLocker.deposit(spaceTokenId, { from: delegateAddress });
+      await spaceToken.approve(lockerAddress, tokenId, { from: delegateAddress });
+      await spaceLocker.deposit(tokenId, { from: delegateAddress });
 
       // Mint reputation at spaceRA
       await spaceLocker.approveMint(spaceRA.address, { from: delegateAddress });
