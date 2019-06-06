@@ -459,7 +459,7 @@ contract ClaimManager is AbstractApplication {
   }
 
   function calculateAndStoreFee(
-    Claim memory _c,
+    Claim storage _c,
     uint256 _fee
   )
     internal
@@ -548,7 +548,7 @@ contract ClaimManager is AbstractApplication {
     );
   }
 
-  function getClaimFees(
+  function getApplicationRewards(
     bytes32 _cId
   )
     external
