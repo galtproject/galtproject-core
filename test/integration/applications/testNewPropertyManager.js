@@ -86,7 +86,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 Object.freeze(AreaSource);
 
-contract.only('NewPropertyManager', accounts => {
+contract('NewPropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
