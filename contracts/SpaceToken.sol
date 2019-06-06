@@ -20,7 +20,9 @@ import "./registries/GaltGlobalRegistry.sol";
 
 
 contract SpaceToken is ISpaceToken, ERC721Full {
-  event NewSpaceToken(uint256 tokenId, address owner);
+  event SpaceTokenMint(uint256 tokenId, address indexed owner);
+  event SpaceTokenBurn(uint256 tokenId, address indexed burner, bool indexed isOwner);
+  event SetTokenURI(uint256 indexed tokenId, string uri);
 
   bytes32 public constant ROLE_SPACE_MINTER = bytes32("SPACE_MINTER");
   bytes32 public constant ROLE_SPACE_BURNER = bytes32("SPACE_BURNER");
@@ -74,18 +76,21 @@ contract SpaceToken is ISpaceToken, ERC721Full {
     uint256 _tokenId = _generateTokenId();
     super._mint(_to, _tokenId);
 
-    emit NewSpaceToken(_tokenId, _to);
+    emit SpaceTokenMint(_tokenId, _to);
 
     return _tokenId;
   }
 
   function burn(uint256 _tokenId) external {
+    bool isOwner = ownerOf(_tokenId) == msg.sender;
     require(
-      ownerOf(_tokenId) == msg.sender || ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
+       isOwner || ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
       "Either owner or burner role allowed"
     );
 
     super._burn(ownerOf(_tokenId), _tokenId);
+
+    emit SpaceTokenBurn(_tokenId, msg.sender, isOwner);
   }
 
   function setTokenURI(
@@ -96,6 +101,8 @@ contract SpaceToken is ISpaceToken, ERC721Full {
     onlyOwnerOf(_tokenId)
   {
     super._setTokenURI(_tokenId, _uri);
+
+    emit SetTokenURI(_tokenId, _uri);
   }
 
   function tokensOfOwner(address _owner) external view returns (uint256[] memory) {

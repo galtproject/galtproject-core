@@ -18,6 +18,8 @@ import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 
 
 contract ACL is IACL, OwnableAndInitializable {
+  event SetRole(bytes32 indexed role, address indexed candidate, bool allowed);
+
   mapping(bytes32 => mapping(address => bool)) _roles;
 
   function initialize() external isInitializer {
@@ -25,6 +27,7 @@ contract ACL is IACL, OwnableAndInitializable {
 
   function setRole(bytes32 _role, address _candidate, bool _allow) external onlyOwner {
     _roles[_role][_candidate] = _allow;
+    emit SetRole(_role, _candidate, _allow);
   }
 
   function hasRole(address _candidate, bytes32 _role) external view returns (bool) {

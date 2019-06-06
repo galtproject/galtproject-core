@@ -25,8 +25,10 @@ import "./registries/GaltGlobalRegistry.sol";
 contract SpaceLocker is ILocker, ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMinted(address sra);
-  event ReputationBurned(address sra);
+  event ReputationMint(address sra);
+  event ReputationBurn(address sra);
+  event Deposit(uint256 reputation);
+  event Withdrawal(uint256 reputation);
   event TokenBurned(uint256 spaceTokenId);
 
   address public owner;
@@ -38,7 +40,7 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   bool public tokenDeposited;
   bool public tokenBurned;
 
-  ArraySet.AddressSet sras;
+  ArraySet.AddressSet internal sras;
 
   constructor(GaltGlobalRegistry _ggr, address _owner) public {
     owner = _owner;
@@ -64,6 +66,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     tokenDeposited = true;
 
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
+
+    emit Deposit(reputation);
   }
 
   function withdraw(uint256 _spaceTokenId) external onlyOwner notBurned {
@@ -75,6 +79,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     tokenDeposited = false;
 
     ggr.getSpaceToken().safeTransferFrom(address(this), msg.sender, _spaceTokenId);
+
+    emit Withdrawal(reputation);
   }
 
   function approveMint(IRA _sra) external onlyOwner notBurned {
@@ -82,6 +88,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(_sra.ping() == bytes32("pong"), "Handshake failed");
 
     sras.add(address(_sra));
+
+    emit ReputationMint(address(_sra));
   }
 
   function burn(IRA _sra) external onlyOwner {
@@ -89,6 +97,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(_sra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
     sras.remove(address(_sra));
+
+    emit ReputationBurn(address(_sra));
   }
 
   /*
