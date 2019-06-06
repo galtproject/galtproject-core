@@ -135,7 +135,7 @@ contract('SpaceRA', accounts => {
       res = await aliceLocker.owner();
       assert.equal(res, alice);
 
-      res = await aliceLocker.tokenId();
+      res = await aliceLocker.spaceTokenId();
       assert.equal(res, 0);
 
       res = await aliceLocker.tokenDeposited();
@@ -321,7 +321,7 @@ contract('SpaceRA', accounts => {
       res = await aliceLocker.owner();
       assert.equal(res, alice);
 
-      res = await aliceLocker.tokenId();
+      res = await aliceLocker.spaceTokenId();
       assert.equal(res, 0);
 
       res = await aliceLocker.tokenDeposited();
