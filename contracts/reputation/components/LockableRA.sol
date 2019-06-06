@@ -34,6 +34,11 @@ contract LockableRA is ILockableRA, LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  event Revoke(address indexed delegate, address indexed owner, uint256 amount);
+  event RevokeLocked(address indexed delegate, address indexed owner, address indexed pgg, uint256 amount);
+  event LockReputation(address indexed delegate, address indexed pgg, uint256 amount);
+  event UnlockReputation(address indexed delegate, address indexed pgg, uint256 amount);
+
   // Delegate => (PGG => locked amount)
   mapping(address => mapping(address => uint256)) internal _locks;
   // Delegate => lockedAmount
@@ -48,6 +53,8 @@ contract LockableRA is ILockableRA, LiquidRA {
 
     _debitAccount(_from, msg.sender, _amount);
     _creditAccount(msg.sender, msg.sender, _amount);
+
+    emit Revoke(_from, msg.sender, _amount);
   }
 
   // PermissionED
@@ -64,6 +71,8 @@ contract LockableRA is ILockableRA, LiquidRA {
     _revokeDelegated(_delegate, _amount);
 
     onDelegateReputationChanged(_pgg, _delegate, _locks[_delegate][_pgg]);
+
+    emit RevokeLocked(_delegate, msg.sender, _pgg, _amount);
   }
 
   // PermissionED
@@ -78,6 +87,8 @@ contract LockableRA is ILockableRA, LiquidRA {
     _pggLocks[_pgg] = _pggLocks[_pgg].add(_amount);
 
     onDelegateReputationChanged(_pgg, msg.sender, _locks[msg.sender][_pgg]);
+
+    emit LockReputation(msg.sender, _pgg, _amount);
   }
 
   // PermissionED
@@ -98,6 +109,8 @@ contract LockableRA is ILockableRA, LiquidRA {
     _pggLocks[_pgg] = _pggLocks[_pgg].sub(_amount);
 
     onDelegateReputationChanged(_pgg, msg.sender, afterUnlock);
+
+    emit UnlockReputation(msg.sender, _pgg, _amount);
   }
 
   function pggConfig(address _pgg) internal returns (IPGGConfig) {

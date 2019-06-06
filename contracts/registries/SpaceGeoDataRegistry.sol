@@ -33,11 +33,11 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   GaltGlobalRegistry internal ggr;
 
-  event SpaceTokenHeightsChange(uint256 id, int256[] heights);
-  event SpaceTokenContourChange(uint256 id, uint256[] contour);
-  event SpaceTokenLevelChange(uint256 id, int256 level);
-  event SpaceTokenAreaChange(uint256 id, uint256 area, AreaSource areaSource);
-  event SpaceTokenInfoChange(uint256 id);
+  event SetSpaceTokenHeights(uint256 id, int256[] heights);
+  event SetSpaceTokenContour(uint256 id, uint256[] contour);
+  event SetSpaceTokenLevel(uint256 id, int256 level);
+  event SetSpaceTokenArea(uint256 id, uint256 area, AreaSource areaSource);
+  event SetSpaceTokenInfo(uint256 id);
 
   struct SpaceToken {
     uint256[] contour;
@@ -93,7 +93,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
     spaceTokens[_spaceTokenId].contour = _geohashesContour;
 
-    emit SpaceTokenContourChange(_spaceTokenId, _geohashesContour);
+    emit SetSpaceTokenContour(_spaceTokenId, _geohashesContour);
   }
 
   function setSpaceTokenHeights(uint256 _spaceTokenId, int256[] memory _heightsList) public onlyGeoDataManager() {
@@ -101,27 +101,27 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
     spaceTokens[_spaceTokenId].heights = _heightsList;
 
-    emit SpaceTokenHeightsChange(_spaceTokenId, _heightsList);
+    emit SetSpaceTokenHeights(_spaceTokenId, _heightsList);
   }
 
   function setSpaceTokenLevel(uint256 _spaceTokenId, int256 _level) public onlyGeoDataManager() {
     spaceTokens[_spaceTokenId].level = _level;
 
-    emit SpaceTokenLevelChange(_spaceTokenId, _level);
+    emit SetSpaceTokenLevel(_spaceTokenId, _level);
   }
 
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].area = _area;
     spaceTokens[_spaceTokenId].areaSource = _areaSource;
 
-    emit SpaceTokenAreaChange(_spaceTokenId, _area, _areaSource);
+    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 
   function setSpaceTokenInfo(uint256 _spaceTokenId, bytes32 _ledgerIdentifier, string calldata _description) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].ledgerIdentifier = _ledgerIdentifier;
     spaceTokens[_spaceTokenId].description = _description;
 
-    emit SpaceTokenInfoChange(_spaceTokenId);
+    emit SetSpaceTokenInfo(_spaceTokenId);
   }
 
   function spaceToken() internal view returns (ISpaceToken) {

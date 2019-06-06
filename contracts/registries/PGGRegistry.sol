@@ -23,6 +23,8 @@ import "../pgg/interfaces/IPGGMultiSig.sol";
 contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
 
+  event AddPgg(address indexed factory, address pggConfig);
+
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
 
   // TODO: need to be a private?
@@ -63,6 +65,8 @@ contract PGGRegistry is IPGGRegistry, Initializable {
     pgg.factoryAddress = msg.sender;
 
     _pggs.add(address(_pggConfig));
+
+    emit AddPgg(msg.sender, address(_pggConfig));
   }
 
   // REQUIRES

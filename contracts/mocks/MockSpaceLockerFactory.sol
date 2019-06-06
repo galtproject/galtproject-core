@@ -12,7 +12,7 @@ contract MockSpaceLockerFactory is SpaceLockerFactory {
 
     ILockerRegistry(ggr.getSpaceLockerRegistryAddress()).addLocker(address(locker));
 
-    emit SpaceLockerCreated(_owner, address(locker));
+    emit NewSpaceLocker(_owner, address(locker));
 
     return ISpaceLocker(locker);
   }

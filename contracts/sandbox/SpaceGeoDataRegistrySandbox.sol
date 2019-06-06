@@ -38,7 +38,7 @@ contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
     }
 
     spaceTokens[_spaceTokenId].contour = _geohashesContour;
-    emit SpaceTokenContourChange(_spaceTokenId, _geohashesContour);
+    emit SetSpaceTokenContour(_spaceTokenId, _geohashesContour);
   }
 
   function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
@@ -48,13 +48,13 @@ contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
     );
 
     spaceTokens[_packageTokenId].heights = _heightsList;
-    emit SpaceTokenHeightsChange(_packageTokenId, _heightsList);
+    emit SetSpaceTokenHeights(_packageTokenId, _heightsList);
   }
 
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
     spaceTokens[_spaceTokenId].area = _area;
     spaceTokens[_spaceTokenId].areaSource = _areaSource;
-    emit SpaceTokenAreaChange(_spaceTokenId, _area, _areaSource);
+    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 
   function setSpaceToken(

@@ -18,6 +18,11 @@ import "./interfaces/IFeeRegistry.sol";
 
 
 contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
+  event SetEthFee(bytes32 indexed key, uint256 amount);
+  event SetGaltFee(bytes32 indexed key, uint256 amount);
+  event SetPaymentMethod(bytes32 indexed key, PaymentMethod paymentMethod);
+  event SetProtocolEthShare(uint256 share);
+  event SetProtocolGaltShare(uint256 share);
 
   uint256 internal protocolApplicationEthShare;
   uint256 internal protocolApplicationGaltShare;
@@ -32,14 +37,20 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
 
   function setEthFee(bytes32 _key, uint256 _amount) external onlyOwner {
     ethFees[_key] = _amount;
+
+    emit SetEthFee(_key, _amount);
   }
 
   function setGaltFee(bytes32 _key, uint256 _amount) external onlyOwner {
     galtFees[_key] = _amount;
+
+    emit SetGaltFee(_key, _amount);
   }
 
   function setPaymentMethod(bytes32 _key, PaymentMethod _paymentMethod) external onlyOwner {
     paymentMethods[_key] = _paymentMethod;
+
+    emit SetPaymentMethod(_key, _paymentMethod);
   }
 
   function setProtocolEthShare(uint256 _ethShare) external onlyOwner {
@@ -47,13 +58,17 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
     require(_ethShare <= 100, "Expect share to be <= 100");
 
     protocolApplicationEthShare = _ethShare;
+
+    emit SetProtocolEthShare(_ethShare);
   }
 
-  function setProtocolGaltShare(uint256 _ethShare) external onlyOwner {
-    require(_ethShare > 0, "Expect share to be > 0");
-    require(_ethShare <= 100, "Expect share to be <= 100");
+  function setProtocolGaltShare(uint256 _galtShare) external onlyOwner {
+    require(_galtShare > 0, "Expect share to be > 0");
+    require(_galtShare <= 100, "Expect share to be <= 100");
 
-    protocolApplicationGaltShare = _ethShare;
+    protocolApplicationGaltShare = _galtShare;
+
+    emit SetProtocolGaltShare(_galtShare);
   }
 
   // GETTERS

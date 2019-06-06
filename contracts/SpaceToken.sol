@@ -84,7 +84,7 @@ contract SpaceToken is ISpaceToken, ERC721Full {
   function burn(uint256 _tokenId) external {
     bool isOwner = ownerOf(_tokenId) == msg.sender;
     require(
-       isOwner || ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
+      isOwner || ggr.getACL().hasRole(msg.sender, ROLE_SPACE_BURNER),
       "Either owner or burner role allowed"
     );
 
