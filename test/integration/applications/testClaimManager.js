@@ -209,7 +209,7 @@ contract("ClaimManager", (accounts) => {
           { from: alice }
         );
 
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -269,7 +269,7 @@ contract("ClaimManager", (accounts) => {
             { from: alice }
           );
 
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -295,7 +295,7 @@ contract("ClaimManager", (accounts) => {
           { from: alice, value: ether(7) }
         );
 
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -329,7 +329,7 @@ contract("ClaimManager", (accounts) => {
             { from: alice, value: ether(13) }
           );
 
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -356,7 +356,7 @@ contract("ClaimManager", (accounts) => {
         { from: alice, value: ether(7) }
       );
 
-      this.cId = res.logs[0].args.id;
+      this.cId = res.logs[0].args.applicationId;
     });
 
     describe('#lock()', () => {
@@ -955,7 +955,7 @@ contract("ClaimManager", (accounts) => {
         );
 
         // override default which paid by ETH
-        this.cId = res.logs[0].args.id;
+        this.cId = res.logs[0].args.applicationId;
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -1214,7 +1214,7 @@ contract("ClaimManager", (accounts) => {
         );
 
         // override default which paid by ETH
-        this.cId = res.logs[0].args.id;
+        this.cId = res.logs[0].args.applicationId;
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });

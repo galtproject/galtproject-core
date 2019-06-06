@@ -64,16 +64,16 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
     this.mintSpaceTokenId = async geohashContour => {
       const res = await this.spaceToken.mint(alice);
-      const tokenId = res.logs[1].args.tokenId;
+      const spaceTokenId = res.logs[1].args.spaceTokenId;
 
-      await this.spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
+      await this.spaceGeoData.setSpaceTokenContour(spaceTokenId, geohashContour.map(galt.geohashToNumber));
+      await this.spaceGeoData.setSpaceTokenHeights(spaceTokenId, geohashContour.map(() => 10));
       await this.spaceGeoData.setSpaceTokenArea(
-        tokenId,
+        spaceTokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
         '1'
       );
-      return tokenId;
+      return spaceTokenId;
     };
 
     this.getSpaceTokenContour = async _spaceTokenId =>
@@ -143,7 +143,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
       let res;
       res = await this.spaceToken.mint(alice);
-      const firstSpaceTokenId = res.logs[1].args.tokenId;
+      const firstSpaceTokenId = res.logs[1].args.spaceTokenId;
       await this.spaceGeoData.setSpaceTokenContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         firstSpaceTokenId,
@@ -154,7 +154,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       );
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
-      const secondSpaceTokenId = res.logs[1].args.tokenId;
+      const secondSpaceTokenId = res.logs[1].args.spaceTokenId;
       await this.spaceGeoData.setSpaceTokenContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         secondSpaceTokenId,
@@ -176,7 +176,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
 
-      const packageId = res.logs[1].args.tokenId;
+      const packageId = res.logs[1].args.spaceTokenId;
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);

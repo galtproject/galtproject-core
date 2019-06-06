@@ -28,7 +28,7 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
       assert.equal(res, alice);
 
       const tokensOfOwner = await this.spaceToken.tokensOfOwner(alice);
-      assert.deepEqual(tokensOfOwner.map(tokenId => tokenId.toString(10)), ['0']);
+      assert.deepEqual(tokensOfOwner.map(spaceTokenId => spaceTokenId.toString(10)), ['0']);
     });
 
     it('should allow mint some tokens to the users in the minters role list', async function() {
@@ -100,28 +100,28 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
 
   describe('#setTokenURI()', () => {
     beforeEach(async function() {
-      this.tokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      this.spaceTokenId = '0x0000000000000000000000000000000000000000000000000000000000000000';
       await this.spaceToken.mint(alice, {
         from: minter
       });
-      let res = await this.spaceToken.ownerOf(this.tokenId);
+      let res = await this.spaceToken.ownerOf(this.spaceTokenId);
       assert.equal(res, alice);
       res = await this.spaceToken.totalSupply();
       assert.equal(res, 1);
     });
 
     it('should deny the contract owner to change token uri', async function() {
-      await assertRevert(this.spaceToken.setTokenURI(this.tokenId, 'foobar', { from: coreTeam }));
+      await assertRevert(this.spaceToken.setTokenURI(this.spaceTokenId, 'foobar', { from: coreTeam }));
     });
 
     it('should allow token owner to set token uri', async function() {
-      await this.spaceToken.setTokenURI(this.tokenId, 'foobar', { from: alice });
-      const res = await this.spaceToken.tokenURI(this.tokenId);
+      await this.spaceToken.setTokenURI(this.spaceTokenId, 'foobar', { from: alice });
+      const res = await this.spaceToken.tokenURI(this.spaceTokenId);
       assert.equal(res, 'foobar');
     });
 
     it('should deny non-owner set token uri', async function() {
-      await assertRevert(this.spaceToken.setTokenURI(this.tokenId, 'foobar', { from: bob }));
+      await assertRevert(this.spaceToken.setTokenURI(this.spaceTokenId, 'foobar', { from: bob }));
     });
   });
 });

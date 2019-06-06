@@ -312,7 +312,7 @@ contract('ArbitratorSlashing', accounts => {
         { from: alice, value: ether(7) }
       );
 
-      this.cId = res.logs[0].args.id;
+      this.cId = res.logs[0].args.applicationId;
 
       await this.claimManager.lock(this.cId, { from: alice });
       await this.claimManager.lock(this.cId, { from: bob });

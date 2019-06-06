@@ -229,19 +229,19 @@ contract('PGGDelegateReputationVoting', accounts => {
       // MINT TOKEN
       await this.spaceToken.mint(zeroOwner, { from: minter });
       let res = await this.spaceToken.mint(alice, { from: minter });
-      const x1 = res.logs[0].args.tokenId;
+      const x1 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(alice, { from: minter });
-      const x2 = res.logs[0].args.tokenId;
+      const x2 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(bob, { from: minter });
-      const x3 = res.logs[0].args.tokenId;
+      const x3 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(bob, { from: minter });
-      const x4 = res.logs[0].args.tokenId;
+      const x4 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(bob, { from: minter });
-      const x5 = res.logs[0].args.tokenId;
+      const x5 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(charlie, { from: minter });
-      const x6 = res.logs[0].args.tokenId;
+      const x6 = res.logs[0].args.spaceTokenId;
       res = await this.spaceToken.mint(dan, { from: minter });
-      const x7 = res.logs[0].args.tokenId;
+      const x7 = res.logs[0].args.spaceTokenId;
 
       // SET AREAS
       let p = [

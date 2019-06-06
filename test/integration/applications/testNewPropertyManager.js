@@ -86,7 +86,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 Object.freeze(AreaSource);
 
-contract('NewPropertyManager', accounts => {
+contract.only('NewPropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -255,7 +255,7 @@ contract('NewPropertyManager', accounts => {
         }
       );
 
-      this.aId = res.logs[0].args.id;
+      this.aId = res.logs[0].args.applicationId;
       assert.notEqual(this.aId, undefined);
     });
 
@@ -318,7 +318,7 @@ contract('NewPropertyManager', accounts => {
             this.fee,
             { from: alice }
           );
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
           const res4 = await this.newPropertyManager.getApplicationRewards(this.aId);
           assert.equal(res4.currency, Currency.GALT);
           assert.equal(res4.oraclesReward, '22620000000000000000');
@@ -358,7 +358,7 @@ contract('NewPropertyManager', accounts => {
             expectedFee,
             { from: alice }
           );
-          const aId = res.logs[0].args.id;
+          const aId = res.logs[0].args.applicationId;
 
           res = await this.newPropertyManager.getApplicationRewards(aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -597,7 +597,7 @@ contract('NewPropertyManager', accounts => {
             from: alice
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -725,7 +725,7 @@ contract('NewPropertyManager', accounts => {
         }
       );
 
-      this.aId = res.logs[0].args.id;
+      this.aId = res.logs[0].args.applicationId;
 
       res = await this.newPropertyManager.getApplication(this.aId);
       this.packageTokenId = res.packageTokenId;
@@ -996,7 +996,7 @@ contract('NewPropertyManager', accounts => {
             value: ether(2)
           }
         );
-        const a1Id = res.logs[0].args.id;
+        const a1Id = res.logs[0].args.applicationId;
 
         // lock first
         await this.newPropertyManager.lock(a1Id, PM_SURVEYOR, { from: bob });
@@ -1017,7 +1017,7 @@ contract('NewPropertyManager', accounts => {
             value: ether(2)
           }
         );
-        const a2Id = res.logs[0].args.id;
+        const a2Id = res.logs[0].args.applicationId;
 
         // lock second
         await this.newPropertyManager.lock(a2Id, PM_SURVEYOR, { from: bob });
@@ -1103,11 +1103,11 @@ contract('NewPropertyManager', accounts => {
       it("should mint a pack, geohash, swap the geohash into the pack and keep it at NewPropertyManager address", async function() {
         await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
         let res = await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
-        const { tokenId } = res.logs[2].args;
+        const { spaceTokenId } = res.logs[2].args;
 
         res = await this.spaceToken.balanceOf(this.newPropertyManager.address);
         assert.equal(res.toString(), 1);
-        res = await this.spaceToken.ownerOf(tokenId);
+        res = await this.spaceToken.ownerOf(spaceTokenId);
         assert.equal(res, this.newPropertyManager.address);
       });
 
@@ -1244,7 +1244,7 @@ contract('NewPropertyManager', accounts => {
 
         await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
         res = await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
-        this.tokenId = res.logs[2].args.tokenId;
+        this.spaceTokenId = res.logs[2].args.spaceTokenId;
       });
 
       // eslint-disable-next-line
@@ -1255,7 +1255,7 @@ contract('NewPropertyManager', accounts => {
         assert.equal(res.toString(), 0);
         res = await this.spaceToken.balanceOf(alice);
         assert.equal(res.toString(), 1);
-        res = await this.spaceToken.ownerOf(this.tokenId);
+        res = await this.spaceToken.ownerOf(this.spaceTokenId);
         assert.equal(res, alice);
       });
 
