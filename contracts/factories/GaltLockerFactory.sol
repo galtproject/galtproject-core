@@ -13,14 +13,13 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../GaltLocker.sol";
 
 
-contract GaltLockerFactory is Ownable {
+contract GaltLockerFactory {
   event NewGaltLocker(address owner, address locker);
   event EthFeeWithdrawal(address collector, uint256 amount);
   event GaltFeeWithdrawal(address collector, uint256 amount);

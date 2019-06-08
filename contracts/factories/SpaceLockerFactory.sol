@@ -13,7 +13,6 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
@@ -23,7 +22,7 @@ import "./interfaces/ISpaceLockerFactory.sol";
 import "../SpaceLocker.sol";
 
 
-contract SpaceLockerFactory is Ownable, ISpaceLockerFactory {
+contract SpaceLockerFactory is ISpaceLockerFactory {
   event NewSpaceLocker(address owner, address locker);
   event EthFeeWithdrawal(address collector, uint256 amount);
   event GaltFeeWithdrawal(address collector, uint256 amount);
