@@ -13,7 +13,6 @@
 
 pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
@@ -47,7 +46,7 @@ import "./pgg/proposals/ArbitrationCreateGlobalProposalProposalManagerFactory.so
 import "./pgg/proposals/ArbitrationSupportGlobalProposalProposalManagerFactory.sol";
 
 
-contract PGGFactory is Ownable, Initializable {
+contract PGGFactory is Initializable {
   event BuildPGGFirstStep(
     bytes32 groupId,
     address pggConfig,
@@ -203,7 +202,6 @@ contract PGGFactory is Ownable, Initializable {
   )
     external
     isInitializer
-    onlyOwner
   {
     arbitrationSupportGlobalProposalProposalManagerFactory = _arbitrationSupportGlobalProposalProposalManagerFactory;
     arbitrationCreateGlobalProposalProposalManagerFactory = _arbitrationCreateGlobalProposalProposalManagerFactory;
