@@ -2,32 +2,23 @@ const SpaceToken = artifacts.require('./SpaceToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceSplitOperation = artifacts.require('./SpaceSplitOperation.sol');
 const Web3 = require('web3');
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
 
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
-const chaiBigNumber = require('chai-bignumber')(Web3.utils.BN);
 const galt = require('@galtproject/utils');
 const pIteration = require('p-iteration');
 
+SpaceToken.numberFormat = 'String';
+
 const web3 = new Web3(SpaceToken.web3.currentProvider);
 
-const { utf8ToHex, BN } = Web3.utils;
+const { utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
 const { assertRevert, deploySpaceGeoData, initHelperArtifacts, clearLibCache } = require('../helpers');
 
 initHelperArtifacts(artifacts);
 
-// TODO: move to helpers
-Web3.utils.BN.prototype.equal = Web3.utils.BN.prototype.eq;
-Web3.utils.BN.prototype.equals = Web3.utils.BN.prototype.eq;
-
-chai.use(chaiAsPromised);
-chai.use(chaiBigNumber);
-chai.should();
-
-contract('SpaceGeoData', ([coreTeam, alice]) => {
+contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
   before(clearLibCache);
   const areaAccurancy = 7;
 
@@ -36,7 +27,7 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
     this.acl = await ACL.new({ from: coreTeam });
     this.subjectContour = ['w9cx6wbuuy', 'w9cx71g9s1', 'w9cwg7dkdr', 'w9cwfqk3f0'].map(galt.geohashToGeohash5);
 
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
@@ -45,10 +36,8 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
 
     this.geodesic = await this.ggr.getGeodesicAddress();
 
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'burner');
-
     await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), coreTeam, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_MINTER'), coreTeam, true, { from: coreTeam });
 
     this.processMartinezRueda = async splitOperation => {
       const doneStage = await splitOperation.doneStage();
@@ -74,8 +63,8 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
     };
 
     this.mintSpaceTokenId = async geohashContour => {
-      const res = await this.spaceGeoData.initSpaceToken(alice);
-      const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
+      const res = await this.spaceToken.mint(alice);
+      const tokenId = res.logs[1].args.tokenId;
 
       await this.spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
       await this.spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
@@ -87,8 +76,8 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
       return tokenId;
     };
 
-    this.getSpaceTokenContour = async _spaceTokenId =>
-      (await this.spaceGeoData.getSpaceTokenContour(_spaceTokenId)).map(geohash =>
+    this.getSpaceTokenContour = async _tokenId =>
+      (await this.spaceGeoData.getSpaceTokenContour(_tokenId)).map(geohash =>
         galt.numberToGeohash(geohash.toString(10))
       );
 
@@ -137,12 +126,12 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
       return tokensIds;
     };
 
-    this.checkArea = async spaceTokenId => {
-      const geohashContour = await this.getSpaceTokenContour(spaceTokenId);
+    this.checkArea = async tokenId => {
+      const geohashContour = await this.getSpaceTokenContour(tokenId);
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.spaceGeoData.getSpaceTokenArea(spaceTokenId);
+      const solArea = await this.spaceGeoData.getSpaceTokenArea(tokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };
@@ -153,8 +142,8 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
       const resultSpaceToken = resultContour.map(galt.geohashToGeohash5);
 
       let res;
-      res = await this.spaceGeoData.initSpaceToken(alice, { from: coreTeam });
-      const firstSpaceTokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
+      res = await this.spaceToken.mint(alice);
+      const firstSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setSpaceTokenContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         firstSpaceTokenId,
@@ -164,8 +153,8 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
         }
       );
 
-      res = await this.spaceGeoData.initSpaceToken(alice, { from: coreTeam });
-      const secondSpaceTokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
+      res = await this.spaceToken.mint(alice, { from: coreTeam });
+      const secondSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setSpaceTokenContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
       await this.spaceGeoData.setSpaceTokenHeights(
         secondSpaceTokenId,
@@ -185,9 +174,9 @@ contract('SpaceGeoData', ([coreTeam, alice]) => {
     it('should creating correctly', async function() {
       let res;
 
-      res = await this.spaceGeoData.initSpaceToken(alice, { from: coreTeam });
+      res = await this.spaceToken.mint(alice, { from: coreTeam });
 
-      const packageId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
+      const packageId = res.logs[1].args.tokenId;
 
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);

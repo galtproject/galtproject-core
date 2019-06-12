@@ -1,21 +1,27 @@
+/*
+ * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka),
+ * [Dima Starodubcev](https://github.com/xhipster),
+ * [Valery Litvin](https://github.com/litvintech) by
+ * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ *
+ * Copyright ©️ 2018 Galt•Core Blockchain Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
+ * Galt•Space Society Construction and Terraforming Company by
+ * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ */
+
 pragma solidity 0.5.7;
 
-import "../SpaceGeoData.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
+import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../interfaces/ISpaceToken.sol";
+import "../registries/SpaceGeoDataRegistry.sol";
 
 
-contract SpaceGeoDataSandbox is SpaceGeoData {
-
-  constructor() public {}
-
-  function initSpaceToken(address spaceTokenOwner) public returns (uint256) {
-    uint256 _packageTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(spaceTokenOwner);
-
-    emit SpaceTokenInit(bytes32(_packageTokenId), spaceTokenOwner);
-
-    return _packageTokenId;
-  }
-
+contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
   function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] memory _geohashesContour) public {
     require(_geohashesContour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -31,8 +37,8 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
       );
     }
 
-    spaceTokenContour[_spaceTokenId] = _geohashesContour;
-    emit SpaceTokenContourChange(bytes32(_spaceTokenId), _geohashesContour);
+    spaceTokens[_spaceTokenId].contour = _geohashesContour;
+    emit SetSpaceTokenContour(_spaceTokenId, _geohashesContour);
   }
 
   function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
@@ -41,30 +47,27 @@ contract SpaceGeoDataSandbox is SpaceGeoData {
       "Number of height elements should be equal contour length"
     );
 
-    spaceTokenHeight[_packageTokenId] = _heightsList;
-    emit SpaceTokenHeightsChange(bytes32(_packageTokenId), _heightsList);
+    spaceTokens[_packageTokenId].heights = _heightsList;
+    emit SetSpaceTokenHeights(_packageTokenId, _heightsList);
   }
 
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
-    spaceTokenArea[_spaceTokenId] = _area;
-    spaceTokenAreaSource[_spaceTokenId] = _areaSource;
-    emit SpaceTokenAreaChange(bytes32(_spaceTokenId), _area);
+    spaceTokens[_spaceTokenId].area = _area;
+    spaceTokens[_spaceTokenId].areaSource = _areaSource;
+    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 
-  function createSpaceToken(
-    address spaceTokenOwner,
+  function setSpaceToken(
+    uint256 _spaceTokenId,
     uint256[] memory _geohashesContour,
     int256[] memory _heightsList,
     uint256 _area,
     AreaSource _areaSource
   )
     public
-    returns (uint256)
   {
-    uint256 _spaceTokenId = initSpaceToken(spaceTokenOwner);
     setSpaceTokenContour(_spaceTokenId, _geohashesContour);
     setSpaceTokenHeights(_spaceTokenId, _heightsList);
     setSpaceTokenArea(_spaceTokenId, _area, _areaSource);
-    return _spaceTokenId;
   }
 }

@@ -17,7 +17,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./interfaces/IPropertyManagerFeeCalculator.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
@@ -29,14 +29,19 @@ import "../registries/interfaces/IPGGRegistry.sol";
 contract NewPropertyManager is AbstractOracleApplication {
   using SafeMath for uint256;
 
-  bytes32 public constant APPLICATION_TYPE = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
-
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
   bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
+
+  event NewSpaceToken(address indexed applicant, uint256 spaceTokenId, bytes32 applicationId);
+  event NewApplication(address indexed applicant, bytes32 applicationId);
+  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
+  event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
+  event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -55,11 +60,6 @@ contract NewPropertyManager is AbstractOracleApplication {
     REJECTED,
     REVERTED
   }
-
-  event LogApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event LogValidationStatusChanged(bytes32 applicationId, bytes32 oracleType, ValidationStatus status);
-  event LogNewApplication(bytes32 id, address applicant);
-  event TokenMinted(bytes32 applicationId, uint256 tokenId, address beneficiary);
 
   struct Application {
     bytes32 id;
@@ -98,7 +98,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     string description;
     int256 level;
     uint256 area;
-    ISpaceGeoData.AreaSource areaSource;
+    ISpaceGeoDataRegistry.AreaSource areaSource;
     uint256[] contour;
     int256[] heights;
   }
@@ -195,7 +195,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
-      a.details.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      a.details.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
     } else {
       a.details.area = _customArea;
@@ -240,8 +240,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
-    emit LogNewApplication(_id, msg.sender);
-    emit LogApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, _id);
+    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
 
     assignRequiredOracleTypesAndRewards(applications[_id]);
 
@@ -287,11 +287,11 @@ contract NewPropertyManager is AbstractOracleApplication {
     checkResubmissionPayment(a, _resubmissionFeeInGalt, _newContour);
 
     if (_newCustomArea == 0) {
-      d.areaSource = ISpaceGeoData.AreaSource.CONTRACT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
       d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
     } else {
       d.area = _newCustomArea;
-      d.areaSource = ISpaceGeoData.AreaSource.USER_INPUT;
+      d.areaSource = ISpaceGeoDataRegistry.AreaSource.USER_INPUT;
     }
 
     d.level = _newLevel;
@@ -416,9 +416,9 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   function mintToken(Application storage a) internal {
-    ISpaceGeoData spaceGeoData = ISpaceGeoData(ggr.getSpaceGeoDataAddress());
+    ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
-    uint256 spaceTokenId = spaceGeoData.initSpaceToken(address(this));
+    uint256 spaceTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(address(this));
 
     a.spaceTokenId = spaceTokenId;
 
@@ -428,7 +428,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     spaceGeoData.setSpaceTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
     spaceGeoData.setSpaceTokenInfo(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
 
-    emit TokenMinted(a.id, spaceTokenId, a.applicant);
+    emit NewSpaceToken(a.applicant, spaceTokenId, a.id);
   }
 
   function reject(
@@ -516,6 +516,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     } else if (a.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, reward);
     }
+
+    emit OracleRewardClaim(_aId, msg.sender);
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
@@ -527,6 +529,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       }
 
       _a.rewards.galtProtocolFeePaidOut = true;
+      emit GaltProtocolFeeAssigned(_a.id);
     }
   }
 
@@ -599,7 +602,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogValidationStatusChanged(_a.id, _oracleType, _status);
+    emit ValidationStatusChanged(_a.id, _oracleType, _status);
 
     _a.validationStatus[_oracleType] = _status;
   }
@@ -611,7 +614,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   )
     internal
   {
-    emit LogApplicationStatusChanged(_a.id, _status);
+    emit ApplicationStatusChanged(_a.id, _status);
 
     _a.status = _status;
   }
@@ -704,7 +707,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       bytes32 ledgerIdentifier,
       int256 level,
       uint256 area,
-      ISpaceGeoData.AreaSource areaSource,
+      ISpaceGeoDataRegistry.AreaSource areaSource,
       uint256[] memory contour,
       string memory description,
       int256[] memory heights

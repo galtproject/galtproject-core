@@ -29,10 +29,12 @@ contract LiquidRA is Initializable {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
-  event Burn(address owner, uint256 amount);
-  event Mint(address owner, uint256 amount);
-  event Transfer(address from, address to, uint256 amount);
+  event Burn(address indexed owner, uint256 amount);
+  event Mint(address indexed owner, uint256 amount);
+  event Transfer(address indexed from, address indexed to, uint256 amount);
+  event RevokeDelegated(address indexed from, address indexed owner, uint256 amount);
 
+  // TODO: internal?
   GaltGlobalRegistry public ggr;
 
   // Delegate => balance
@@ -144,6 +146,8 @@ contract LiquidRA is Initializable {
     }
 
     _creditAccount(msg.sender, msg.sender, _amount);
+
+    emit RevokeDelegated(_account, msg.sender, _amount);
   }
 
   // GETTERS

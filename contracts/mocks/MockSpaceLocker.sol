@@ -14,7 +14,7 @@
 pragma solidity 0.5.7;
 
 import "../SpaceLocker.sol";
-import "../interfaces/ISpaceGeoData.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 
 
 contract MockSpaceLocker is SpaceLocker {
@@ -25,7 +25,7 @@ contract MockSpaceLocker is SpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = ISpaceGeoData(ggr.getSpaceGeoDataAddress()).getSpaceTokenArea(_spaceTokenId);
+    reputation = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenArea(_spaceTokenId);
     tokenDeposited = true;
   }
 

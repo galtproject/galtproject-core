@@ -26,20 +26,27 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   using ArraySet for ArraySet.AddressSet;
 
   event OracleStakeDeposit(
-    address oracle,
-    bytes32 oracleType,
+    address indexed oracle,
+    bytes32 indexed oracleType,
     uint256 amount,
     int256 finalOracleTypeStake,
     int256 finalOracleTotalStake
   );
 
   event OracleStakeSlash(
-    address oracle,
-    bytes32 oracleType,
+    address indexed oracle,
+    bytes32 indexed oracleType,
     uint256 amount,
     int256 finalOracleTypeStake,
     int256 finalOracleTotalStake
   );
+
+  struct OracleTypes {
+    int256 totalStakes;
+    uint256 totalStakesPositive;
+    mapping(bytes32 => int256) oracleTypeStakes;
+    mapping(bytes32 => uint256) oracleTypeStakesPositive;
+  }
 
   bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
   // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
@@ -50,13 +57,6 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
 
   int256 internal totalStake;
   uint256 internal totalStakePositive;
-
-  struct OracleTypes {
-    int256 totalStakes;
-    uint256 totalStakesPositive;
-    mapping(bytes32 => int256) oracleTypeStakes;
-    mapping(bytes32 => uint256) oracleTypeStakesPositive;
-  }
 
   modifier onlySlashManager {
     require(

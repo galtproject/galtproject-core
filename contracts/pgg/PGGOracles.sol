@@ -24,25 +24,11 @@ contract PGGOracles is IPGGOracles {
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Bytes32Set;
 
-  event LogOracleTypeAdded(bytes32 oracleType, uint256 share);
-  event LogOracleTypeRemoved(bytes32 oracleType);
-  event LogOracleTypeEnabled(bytes32 oracleType);
-  event LogOracleTypeDisabled(bytes32 oracleType);
-
   bytes32 public constant ROLE_ORACLE_MODIFIER = bytes32("ORACLE_MODIFIER");
 
-  // Oracle list
-  ArraySet.AddressSet private oracles;
-
-  // OracleType list
-  ArraySet.Bytes32Set private oracleTypes;
-
-  // OracleAddress => Oracle details
-  mapping(address => Oracle) private oracleDetails;
-
-  // OracleTypeName => OracleType details
-  mapping(bytes32 => OracleType) public oracleTypeDetails;
-
+  event SetOracleType(address indexed oracle, bytes32 indexed oracleType);
+  event ClearOracleTypes(address indexed oracle, bytes32[] indexed oracleTypes);
+  event DeactivateOracle(address indexed oracle);
 
   struct Oracle {
     string name;
@@ -54,15 +40,17 @@ contract PGGOracles is IPGGOracles {
     bool active;
   }
 
-  struct OracleType {
-    bytes32 descriptionHash;
-  }
+  IPGGConfig internal pggConfig;
 
-  // WARNING: we do not remove oracles from oraclesArray and oraclesByType,
+  ArraySet.AddressSet private oracles;
+  ArraySet.Bytes32Set private oracleTypes;
+
+  mapping(address => Oracle) private oracleDetails;
+
+  // WARNING: we do not remove oracles from oraclesByTypeCache,
   // so do not rely on this variable to verify whether oracle
   // exists or not.
-  mapping(bytes32 => ArraySet.AddressSet) private oraclesByType;
-  IPGGConfig private pggConfig;
+  mapping(bytes32 => ArraySet.AddressSet) internal oraclesByTypeCache;
 
   constructor(IPGGConfig _pggConfig) public {
     pggConfig = _pggConfig;
@@ -102,13 +90,16 @@ contract PGGOracles is IPGGOracles {
     o.position = _position;
     o.active = true;
 
+    emit ClearOracleTypes(_oracle, o.assignedOracleTypes.elements());
     o.assignedOracleTypes.clear();
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
       // TODO: check pggConfig for roleShare > 0
       o.assignedOracleTypes.add(_oracleType);
-      oraclesByType[_oracleType].addSilent(_oracle);
+      oraclesByTypeCache[_oracleType].addSilent(_oracle);
+
+      emit SetOracleType(_oracle, _oracleType);
     }
 
     oracles.addSilent(_oracle);
@@ -118,6 +109,7 @@ contract PGGOracles is IPGGOracles {
     require(_oracle != address(0), "Missing oracle");
     oracleDetails[_oracle].active = false;
     oracles.remove(_oracle);
+    emit DeactivateOracle(_oracle);
   }
 
   // REQUIRES
@@ -186,7 +178,7 @@ contract PGGOracles is IPGGOracles {
   }
 
   function getOraclesByOracleType(bytes32 _oracleType) external view returns (address[] memory) {
-    return oraclesByType[_oracleType].elements();
+    return oraclesByTypeCache[_oracleType].elements();
   }
 
   function getOracle(

@@ -95,13 +95,13 @@ contract('GlobalGovernance', accounts => {
 
     // Create and initialize contracts
     await (async () => {
-      this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
       this.claimManager = await ClaimManager.new({ from: coreTeam });
       this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
       this.acl = await ACL.new({ from: coreTeam });
       const deployment = await deploySpaceGeoDataMock(this.ggr);
       this.spaceGeoData = deployment.spaceGeoData;
 
+      this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
       this.globalGovernance = await GlobalGovernance.new({ from: coreTeam });
       this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
       this.stakeTracker = await StakeTracker.new({ from: coreTeam });
@@ -120,10 +120,6 @@ contract('GlobalGovernance', accounts => {
       await this.pggRegistry.initialize(this.ggr.address);
       await this.stakeTracker.initialize(this.ggr.address);
       await this.globalGovernance.initialize(this.ggr.address, 750000, 750000, { from: coreTeam });
-
-      await this.spaceToken.addRoleTo(minter, 'minter', {
-        from: coreTeam
-      });
 
       this.spaceRA = await SpaceRA.new({ from: coreTeam });
       this.galtRA = await GaltRA.new({ from: coreTeam });
@@ -165,6 +161,7 @@ contract('GlobalGovernance', accounts => {
         from: coreTeam
       });
       await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), geoDataManager, true, { from: coreTeam });
+      await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
 
       await this.feeRegistry.setGaltFee(await this.pggFactory.FEE_KEY(), ether(10), { from: coreTeam });
       await this.feeRegistry.setEthFee(await this.pggFactory.FEE_KEY(), ether(5), { from: coreTeam });

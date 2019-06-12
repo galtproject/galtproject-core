@@ -65,15 +65,24 @@ contract PGGConfig is IPGGConfig, Permissionable {
   // Creates new global governance proposals
   bytes32 public constant GLOBAL_PROPOSAL_CREATOR_ROLE = bytes32("global_proposal_creator");
 
+  event SetThreshold(bytes32 indexed key, uint256 value);
+  event SetMofN(uint256 m, uint256 n);
+  event SetMinimalArbitratorStake(uint256 value);
+  event SetContractAddress(bytes32 indexed key, address addr);
+  event SetApplicationConfigValue(bytes32 indexed key, bytes32 value);
+  event AddExternalRole(bytes32 indexed role, address addr);
+  event RemoveExternalRole(bytes32 indexed role, address addr);
+  event SetGlobalProposalSupport(uint256 indexed globalProposalId, bool isSupported);
+
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
   mapping(bytes32 => bytes32) public applicationConfig;
   mapping(uint256 => bool) public globalProposalSupport;
-  mapping(bytes32 => ArraySet.AddressSet) private externalRoles;
+  mapping(bytes32 => ArraySet.AddressSet) internal externalRoles;
 
   uint256 public minimalArbitratorStake;
 
-  bool initialized;
+  bool internal initialized;
 
   // initial voting => multiSig required
   uint256 public m;
@@ -142,6 +151,8 @@ contract PGGConfig is IPGGConfig, Permissionable {
   function setThreshold(bytes32 _key, uint256 _value) external onlyRole(THRESHOLD_MANAGER) {
     require(_value <= 100, "Value should be less than 100");
     thresholds[_key] = _value;
+
+    emit SetThreshold(_key, _value);
   }
 
   function setMofN(uint256 _m, uint256 _n) external onlyRole(M_N_MANAGER) {
@@ -151,26 +162,38 @@ contract PGGConfig is IPGGConfig, Permissionable {
 
     m = _m;
     n = _n;
+
+    emit SetMofN(_m, _n);
   }
 
   function setMinimalArbitratorStake(uint256 _value) external onlyRole(MINIMAL_ARBITRATOR_STAKE_MANAGER) {
     minimalArbitratorStake = _value;
+
+    emit SetMinimalArbitratorStake(_value);
   }
 
   function setContractAddress(bytes32 _key, address _address) external onlyRole(CONTRACT_ADDRESS_MANAGER) {
     contracts[_key] = _address;
+
+    emit SetContractAddress(_key, _address);
   }
 
   function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyRole(APPLICATION_CONFIG_MANAGER) {
     applicationConfig[_key] = _value;
+
+    emit SetApplicationConfigValue(_key, _value);
   }
 
   function addExternalRoleTo(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].add(_address);
+
+    emit AddExternalRole(_role, _address);
   }
 
   function removeExternalRoleFrom(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].remove(_address);
+
+    emit RemoveExternalRole(_role, _address);
   }
 
   function setGlobalProposalSupport(
@@ -181,6 +204,8 @@ contract PGGConfig is IPGGConfig, Permissionable {
     onlyRole(SUPPORT_GLOBAL_PROPOSAL_MANAGER)
   {
     globalProposalSupport[_globalProposalId] = _isSupported;
+
+    emit SetGlobalProposalSupport(_globalProposalId, _isSupported);
   }
 
   // GETTERS (TODO: replace contract getters with interfaces only)

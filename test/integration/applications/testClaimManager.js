@@ -209,7 +209,7 @@ contract("ClaimManager", (accounts) => {
           { from: alice }
         );
 
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -269,13 +269,13 @@ contract("ClaimManager", (accounts) => {
             { from: alice }
           );
 
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
           assert.equal(parseInt(res.createdAt, 10) > 0, true);
 
-          res = await this.claimManager.getClaimFees(this.aId);
+          res = await this.claimManager.getApplicationRewards(this.aId);
           assert.equal(res.currency, Currency.GALT);
 
           assert.equal(res.arbitratorsReward, ether('46.11'));
@@ -295,7 +295,7 @@ contract("ClaimManager", (accounts) => {
           { from: alice, value: ether(7) }
         );
 
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.claimManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -329,12 +329,12 @@ contract("ClaimManager", (accounts) => {
             { from: alice, value: ether(13) }
           );
 
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           res = await this.claimManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.SUBMITTED);
 
-          res = await this.claimManager.getClaimFees(this.aId);
+          res = await this.claimManager.getApplicationRewards(this.aId);
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, ether('8.71'));
@@ -356,7 +356,7 @@ contract("ClaimManager", (accounts) => {
         { from: alice, value: ether(7) }
       );
 
-      this.cId = res.logs[0].args.id;
+      this.cId = res.logs[0].args.applicationId;
     });
 
     describe('#lock()', () => {
@@ -955,7 +955,7 @@ contract("ClaimManager", (accounts) => {
         );
 
         // override default which paid by ETH
-        this.cId = res.logs[0].args.id;
+        this.cId = res.logs[0].args.applicationId;
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -994,7 +994,7 @@ contract("ClaimManager", (accounts) => {
         });
         this.pId3 = res.logs[0].args.proposalId;
 
-        res = await this.claimManager.getClaimFees(this.cId);
+        res = await this.claimManager.getApplicationRewards(this.cId);
         assert.equal(res.currency, Currency.GALT);
 
         assert.equal(res.arbitratorsReward, '40890000000000000000');
@@ -1014,7 +1014,7 @@ contract("ClaimManager", (accounts) => {
           });
 
           it('should calculate and assign rewards for arbitrators and galt space', async function() {
-            let res = await this.claimManager.getClaimFees(this.cId);
+            let res = await this.claimManager.getApplicationRewards(this.cId);
             assert.equal(res.arbitratorReward, '10222500000000000000');
 
             res = await this.claimManager.getApplication(this.cId);
@@ -1103,7 +1103,7 @@ contract("ClaimManager", (accounts) => {
           });
 
           it('should calculate and assign rewards for arbitrators and galt space', async function() {
-            let res = await this.claimManager.getClaimFees(this.cId);
+            let res = await this.claimManager.getApplicationRewards(this.cId);
             assert.equal(res.arbitratorReward, '13630000000000000000');
 
             res = await this.claimManager.getApplication(this.cId);
@@ -1152,7 +1152,7 @@ contract("ClaimManager", (accounts) => {
         });
 
         it('should calculate and assign rewards for arbitrators and galt space', async function() {
-          let res = await this.claimManager.getClaimFees(this.cId);
+          let res = await this.claimManager.getApplicationRewards(this.cId);
           assert.equal(res.arbitratorReward, '13630000000000000000');
 
           res = await this.claimManager.getApplication(this.cId);
@@ -1214,7 +1214,7 @@ contract("ClaimManager", (accounts) => {
         );
 
         // override default which paid by ETH
-        this.cId = res.logs[0].args.id;
+        this.cId = res.logs[0].args.applicationId;
 
         await this.claimManager.lock(this.cId, { from: bob });
         await this.claimManager.lock(this.cId, { from: dan });
@@ -1273,7 +1273,7 @@ contract("ClaimManager", (accounts) => {
         });
 
         it('should calculate and assign rewards for arbitrators and galt space', async function() {
-          let res = await this.claimManager.getClaimFees(this.cId);
+          let res = await this.claimManager.getApplicationRewards(this.cId);
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, '6030000000000000000');
@@ -1345,7 +1345,7 @@ contract("ClaimManager", (accounts) => {
         });
 
         it('should calculate and assign rewards for arbitrators and galt space', async function() {
-          let res = await this.claimManager.getClaimFees(this.cId);
+          let res = await this.claimManager.getApplicationRewards(this.cId);
           assert.equal(res.currency, Currency.ETH);
 
           assert.equal(res.arbitratorsReward, '6030000000000000000');

@@ -26,13 +26,16 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event NewApplication(bytes32 applicationId, address applicant);
-  event ApplicationStatusChanged(bytes32 applicationId, ApplicationStatus status);
-  event ArbitratorSlotTaken(bytes32 applicationId, uint256 slotsTaken, uint256 totalSlots);
-  event Aye(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
-  event Nay(bytes32 applicationId, uint256 ayeCount, uint256 nayCount, uint256 threshold);
+  event NewApplication(address indexed applicant, bytes32 applicationId);
+  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
+  event ArbitratorSlotTaken(bytes32 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
+  event Aye(bytes32 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
+  event Nay(bytes32 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
+  event ArbitratorRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
 
   struct Application {
+    bytes32 id;
     address pgg;
     address applicant;
 
@@ -75,7 +78,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     bool galtProtocolFeePaidOut;
   }
 
-  mapping(bytes32 => Application) applications;
+  mapping(bytes32 => Application) internal applications;
 
   constructor() public {}
 
@@ -169,6 +172,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     } else if (a.rewards.currency == Currency.GALT) {
       ggr.getGaltToken().transfer(msg.sender, a.rewards.arbitratorReward);
     }
+
+    emit ArbitratorRewardClaim(_aId, msg.sender);
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
@@ -180,6 +185,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       }
 
       _a.rewards.galtProtocolFeePaidOut = true;
+      emit GaltProtocolFeeAssigned(_a.id);
     }
   }
 
@@ -221,8 +227,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     }
 
     // TODO: use storage instead
-    Application memory a;
+    Application storage a = applications[_id];
+    require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
+    a.id = _id;
     a.status = ApplicationStatus.SUBMITTED;
     a.pgg = _pgg;
     a.applicant = msg.sender;
@@ -234,17 +242,15 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     calculateAndStoreFee(a, fee);
 
-    applications[_id] = a;
-
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
-    emit NewApplication(_id, msg.sender);
+    emit NewApplication(msg.sender, _id);
     emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
   }
 
   function calculateAndStoreFee(
-    Application memory _a,
+    Application storage _a,
     uint256 _fee
   )
     internal

@@ -126,7 +126,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.pggRegistry = await PGGRegistry.new({ from: coreTeam });
-    this.spaceToken = await SpaceToken.new('Space Token', 'SPACE', { from: coreTeam });
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
     this.feeRegistry = await FeeRegistry.new({ from: coreTeam });
     this.myPGGOracleStakeAccounting = await PGGOracleStakeAccounting.new(alice, { from: coreTeam });
     this.stakeTracker = await StakeTracker.new({ from: coreTeam });
@@ -136,9 +136,7 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.pggRegistry.initialize(this.ggr.address);
     await this.stakeTracker.initialize(this.ggr.address);
 
-    const deployment = await deploySpaceGeoDataMock(this.ggr);
-    this.spaceGeoData = deployment.spaceGeoData;
-    this.geodesic = deployment.geodesic;
+    await deploySpaceGeoDataMock(this.ggr);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
     await this.ggr.setContract(await this.ggr.FEE_REGISTRY(), this.feeRegistry.address, { from: coreTeam });
@@ -149,7 +147,6 @@ contract('UpdatePropertyManager', (accounts) => {
       from: coreTeam
     });
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address, { from: coreTeam });
-    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA(), this.spaceGeoData.address, { from: coreTeam });
 
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
@@ -164,6 +161,7 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
     await this.acl.setRole(bytes32('FEE_COLLECTOR'), feeMixerAddress, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
 
     await this.galtToken.mint(alice, ether(100000000), { from: coreTeam });
 
@@ -207,10 +205,6 @@ contract('UpdatePropertyManager', (accounts) => {
     this.oracleStakesAccountingX = this.pggX.oracleStakeAccounting;
     this.oraclesX = this.pggX.oracles;
 
-    await this.spaceToken.addRoleTo(minter, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'minter');
-    await this.spaceToken.addRoleTo(this.spaceGeoData.address, 'operator');
-
     await this.oraclesX.addOracle(bob, BOB, MN, '', [], [PM_SURVEYOR, PL_SURVEYOR], {
       from: oracleModifier
     });
@@ -251,17 +245,17 @@ contract('UpdatePropertyManager', (accounts) => {
   describe('application pipeline for GALT', () => {
     beforeEach(async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
-      this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
-      res = await this.spaceToken.ownerOf(this.spaceTokenId);
+      this.tokenId = res.logs[0].args.tokenId.toNumber();
+      res = await this.spaceToken.ownerOf(this.tokenId);
       assert.equal(res, alice);
-      await this.spaceToken.approve(this.updatePropertyManager.address, this.spaceTokenId, { from: alice });
+      await this.spaceToken.approve(this.updatePropertyManager.address, this.tokenId, { from: alice });
     });
 
     describe('#submit()', () => {
       it('should allow an applicant pay commission and gas deposit in Galt', async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -275,7 +269,7 @@ contract('UpdatePropertyManager', (accounts) => {
           }
         );
 
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -287,7 +281,7 @@ contract('UpdatePropertyManager', (accounts) => {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
             this.updatePropertyManager.submit(
-              this.spaceTokenId,
+              this.tokenId,
               this.ledgerIdentifier,
               this.newLevel,
               0,
@@ -306,7 +300,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submit(
-            this.spaceTokenId,
+            this.tokenId,
             this.ledgerIdentifier,
             this.newLevel,
             0,
@@ -319,7 +313,7 @@ contract('UpdatePropertyManager', (accounts) => {
               from: alice
             }
           );
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           // oracle share - 87%
           // galtspace share - 13%
@@ -332,7 +326,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should calculate oracle rewards according to their roles share', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(47), { from: alice });
           let res = await this.updatePropertyManager.submit(
-            this.spaceTokenId,
+            this.tokenId,
             this.ledgerIdentifier,
             this.newLevel,
             0,
@@ -345,7 +339,7 @@ contract('UpdatePropertyManager', (accounts) => {
               from: alice
             }
           );
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
 
           // oracle share - 87% (50%/25%/25%)
           // galtspace share - 13%
@@ -372,7 +366,7 @@ contract('UpdatePropertyManager', (accounts) => {
       beforeEach(async function() {
         await this.galtToken.approve(this.updatePropertyManager.address, ether(57), { from: alice });
         const res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -385,7 +379,7 @@ contract('UpdatePropertyManager', (accounts) => {
             from: alice
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
         await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
         await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
         await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });
@@ -563,16 +557,16 @@ contract('UpdatePropertyManager', (accounts) => {
     beforeEach(async function() {
       // Alice obtains a package token
       let res = await this.spaceToken.mint(alice, { from: minter });
-      this.spaceTokenId = res.logs[0].args.tokenId.toNumber();
-      res = await this.spaceToken.ownerOf(this.spaceTokenId);
+      this.tokenId = res.logs[0].args.tokenId.toNumber();
+      res = await this.spaceToken.ownerOf(this.tokenId);
       assert.equal(res, alice);
-      await this.spaceToken.approve(this.updatePropertyManager.address, this.spaceTokenId, { from: alice });
+      await this.spaceToken.approve(this.updatePropertyManager.address, this.tokenId, { from: alice });
     });
 
     describe('#submit()', () => {
       it('should create a new application', async function() {
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -586,14 +580,14 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(6)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
-        res = await this.spaceToken.ownerOf(this.spaceTokenId);
+        res = await this.spaceToken.ownerOf(this.tokenId);
         assert.equal(res, this.updatePropertyManager.address);
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(res.spaceTokenId, this.spaceTokenId);
+        assert.equal(res.spaceTokenId, this.tokenId);
         assert.equal(res.applicant, alice);
         assert.equal(res.currency, Currency.ETH);
 
@@ -605,7 +599,7 @@ contract('UpdatePropertyManager', (accounts) => {
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
             this.updatePropertyManager.submit(
-              this.spaceTokenId,
+              this.tokenId,
               this.ledgerIdentifier,
               this.newLevel,
               0,
@@ -624,7 +618,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should allow applications with payment greater than required', async function() {
           await this.updatePropertyManager.submit(
-            this.spaceTokenId,
+            this.tokenId,
             this.ledgerIdentifier,
             this.newLevel,
             0,
@@ -642,7 +636,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate corresponding oracle and galtspace rewards', async function() {
           let res = await this.updatePropertyManager.submit(
-            this.spaceTokenId,
+            this.tokenId,
             this.ledgerIdentifier,
             this.newLevel,
             0,
@@ -656,7 +650,7 @@ contract('UpdatePropertyManager', (accounts) => {
               value: ether(7)
             }
           );
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
           // oracle share - 67%
           // galtspace share - 33%
 
@@ -667,7 +661,7 @@ contract('UpdatePropertyManager', (accounts) => {
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.updatePropertyManager.submit(
-            this.spaceTokenId,
+            this.tokenId,
             this.ledgerIdentifier,
             this.newLevel,
             0,
@@ -681,7 +675,7 @@ contract('UpdatePropertyManager', (accounts) => {
               value: ether(13)
             }
           );
-          this.aId = res.logs[0].args.id;
+          this.aId = res.logs[0].args.applicationId;
           // oracle share - 67% (50%/25%/25%)
           // galtspace share - 33%
 
@@ -706,7 +700,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#lock()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -720,7 +714,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
       });
 
       it('should allow multiple oracles of different roles to lock a submitted application', async function() {
@@ -757,7 +751,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#unlock()', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -771,7 +765,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -805,7 +799,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#approve', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -819,7 +813,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -865,7 +859,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#revert', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -879,7 +873,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
       });
@@ -936,7 +930,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#resubmit', () => {
       beforeEach(async function() {
         let res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -950,7 +944,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
         await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
         await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
         await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });
@@ -1043,7 +1037,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('#withdrawSpaceToken()', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -1057,7 +1051,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(13)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
         await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
         await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });
         await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
@@ -1079,7 +1073,7 @@ contract('UpdatePropertyManager', (accounts) => {
     describe('claim reward', () => {
       beforeEach(async function() {
         const res = await this.updatePropertyManager.submit(
-          this.spaceTokenId,
+          this.tokenId,
           this.ledgerIdentifier,
           this.newLevel,
           0,
@@ -1093,7 +1087,7 @@ contract('UpdatePropertyManager', (accounts) => {
             value: ether(6)
           }
         );
-        this.aId = res.logs[0].args.id;
+        this.aId = res.logs[0].args.applicationId;
         await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
         await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
         await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });

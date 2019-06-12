@@ -410,42 +410,48 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySpaceGeoDataMock(ggr) {
-    const SpaceGeoData = Helpers.requireContract('./SpaceGeoData.sol');
-    const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
-    const spaceGeoDataLib = await Helpers.getSpaceGeoDataLib();
+  async deploySpaceGeoDataLight(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
 
-    SpaceGeoData.link('SpaceGeoDataLib', spaceGeoDataLib.address);
+    const spaceGeoData = await SpaceGeoData.new();
+
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
+
+    await spaceGeoData.initialize(ggr.address);
+
+    return spaceGeoData;
+  },
+  async deploySpaceGeoDataMock(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
+    const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
 
     const spaceGeoData = await SpaceGeoData.new();
     const geodesic = await Geodesic.new();
 
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPACE_GEO_DATA(), spaceGeoData.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
 
     await spaceGeoData.initialize(ggr.address);
 
     return { spaceGeoData, geodesic };
   },
   async deploySpaceGeoData(ggr) {
-    const SpaceGeoData = Helpers.requireContract('./SpaceGeoData.sol');
+    const SpaceGeoDataRegistry = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
-    const spaceGeoDataLib = await Helpers.getSpaceGeoDataLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
 
-    SpaceGeoData.link('SpaceGeoDataLib', spaceGeoDataLib.address);
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
 
-    const spaceGeoData = await SpaceGeoData.new();
+    const spaceGeoData = await SpaceGeoDataRegistry.new();
     const splitOperationFactory = await SpaceSplitOperationFactory.new(ggr.address);
     const geodesic = await Helpers.deployGeodesic();
 
     await ggr.setContract(await ggr.SPACE_SPLIT_OPERATION_FACTORY(), splitOperationFactory.address);
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPACE_GEO_DATA(), spaceGeoData.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
 
     await spaceGeoData.initialize(ggr.address);
 

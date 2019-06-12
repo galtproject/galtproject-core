@@ -18,7 +18,7 @@ import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./interfaces/ISpaceToken.sol";
-import "./interfaces/ISpaceGeoData.sol";
+import "./registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
 
@@ -58,7 +58,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     ggr = _ggr;
     subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
     subjectTokenId = _subjectTokenId;
-    subjectContour = ISpaceGeoData(_ggr.getSpaceGeoDataAddress()).getSpaceTokenContour(_subjectTokenId);
+    subjectContour = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_subjectTokenId);
     clippingContour = _clippingContour;
   }
 
@@ -74,7 +74,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
-    ggr.getSpaceToken().approve(ggr.getSpaceGeoDataAddress(), subjectTokenId);
+    ggr.getSpaceToken().approve(ggr.getSpaceGeoDataRegistryAddress(), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
 
     emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);
