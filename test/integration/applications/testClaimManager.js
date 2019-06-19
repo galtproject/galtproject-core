@@ -71,7 +71,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract.only("ClaimManager", (accounts) => {
+contract("ClaimManager", (accounts) => {
   const [coreTeam, feeMixerAddress, spaceRA, oracleModifier, alice, bob, charlie, dan, eve, frank, george] = accounts;
 
   before(async function() {

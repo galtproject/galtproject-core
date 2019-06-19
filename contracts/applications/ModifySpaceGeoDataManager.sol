@@ -22,9 +22,10 @@ import "../pgg/PGGMultiSig.sol";
 import "../registries/PGGRegistry.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./ArbitratorProposableApplication.sol";
+import "../interfaces/ISpaceToken.sol";
 
 
-contract ModifySpaceGeoDataApplication is ArbitratorProposableApplication {
+contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -146,7 +147,7 @@ contract ModifySpaceGeoDataApplication is ArbitratorProposableApplication {
     internal
     returns(ProposalDetails storage pD)
   {
-    require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) == true, "Space token doesn't exist");
     require(_contour.length >= 3, "Contour sould have at least 3 vertices");
     require(_contour.length == _heights.length, "Contour length should be equal heights length");
 
