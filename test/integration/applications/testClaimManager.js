@@ -12,7 +12,6 @@ const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
   ether,
-  zeroAddress,
   numberToEvmWord,
   evmMineBlock,
   assertGaltBalanceChanged,
@@ -389,74 +388,6 @@ contract("ClaimManager", (accounts) => {
       it('should deny proposal when claim is executed');
     });
 
-    describe('#pushMessage()', () => {
-      it('should allow any oracle push a message into registry', async function() {
-        await this.claimManager.lock(this.cId, { from: bob });
-        await this.claimManager.pushMessage(this.cId, 'hi!', { from: bob });
-      });
-
-      it('should allow a claimer pushing message into registry', async function() {
-        await this.claimManager.pushMessage(this.cId, 'hi!', { from: alice });
-      });
-
-      it('should deny a stranger pushing message into registry', async function() {
-        await assertRevert(this.claimManager.pushMessage(this.cId, 'hi!', { from: bob }));
-      });
-
-      it('should deny messaging in non-submitted state', async function() {
-        await this.claimManager.lock(this.cId, { from: bob });
-        await this.claimManager.lock(this.cId, { from: dan });
-        await this.claimManager.lock(this.cId, { from: eve });
-
-        const res = await this.claimManager.proposeReject(this.cId, 'looks bad', { from: bob });
-        const pId1 = res.logs[0].args.proposalId;
-
-        await this.claimManager.vote(this.cId, pId1, { from: eve });
-        await this.claimManager.vote(this.cId, pId1, { from: dan });
-      });
-
-      it('should provide with messages getter', async function() {
-        await this.claimManager.lock(this.cId, { from: charlie });
-        await this.claimManager.lock(this.cId, { from: bob });
-
-        let res = await this.claimManager.getApplication(this.cId);
-        assert.equal(res.status, ApplicationStatus.SUBMITTED);
-        assert.equal(await this.claimManager.getMessageCount(this.cId), 0);
-
-        await this.claimManager.pushMessage(this.cId, 'hi', { from: bob });
-        await this.claimManager.pushMessage(this.cId, 'hey', { from: bob });
-        await this.claimManager.pushMessage(this.cId, 'hello', { from: alice });
-        await this.claimManager.pushMessage(this.cId, 'you', { from: charlie });
-
-        assert.equal(await this.claimManager.getMessageCount(this.cId), 4);
-
-        res = await this.claimManager.getMessage(this.cId, 0);
-        assert(res.timestamp > 0);
-        assert.equal(res.from, bob);
-        assert.equal(res.text, 'hi');
-
-        res = await this.claimManager.getMessage(this.cId, 1);
-        assert(res.timestamp > 0);
-        assert.equal(res.from, bob);
-        assert.equal(res.text, 'hey');
-
-        res = await this.claimManager.getMessage(this.cId, 2);
-        assert(res.timestamp > 0);
-        assert.equal(res.from, alice);
-        assert.equal(res.text, 'hello');
-
-        res = await this.claimManager.getMessage(this.cId, 3);
-        assert(res.timestamp > 0);
-        assert.equal(res.from, charlie);
-        assert.equal(res.text, 'you');
-
-        res = await this.claimManager.getMessage(this.cId, 4);
-        assert.equal(res.timestamp, 0);
-        assert.equal(res.from, zeroAddress);
-        assert.equal(res.text, '');
-      });
-    });
-
     // WARNING: it is still possible to propose an approval when some of the candidates have no specified roles
     // and even inactive candidates
     describe('#proposeApproval()', () => {
@@ -503,13 +434,14 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.slotsTaken, 2);
 
-        res = await this.claimManager.getProposals(this.cId);
+        res = await this.claimManager.getProposalList(this.cId);
         assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManager.getProposal(this.cId, pId1);
         assert.equal(res.from, bob);
         assert.equal(res.message, 'good enough');
         assert.equal(res.action, Action.APPROVE);
+        res = await this.claimManager.getProposalDetails(this.cId, pId1);
         assert.sameMembers(res.oracles, [dan]);
         assert.sameMembers(res.oracleTypes.map(hexToString), [PC_AUDITOR_ORACLE_TYPE].map(hexToString));
         assert.sameMembers(res.oracleFines.map(v => v.toString(10)), [ether(20)]);
@@ -518,6 +450,7 @@ contract("ClaimManager", (accounts) => {
         assert.equal(res.from, dan);
         assert.equal(res.message, 'looks good');
         assert.equal(res.action, Action.APPROVE);
+        res = await this.claimManager.getProposalDetails(this.cId, pId2);
         assert.sameMembers(res.oracles, [bob, eve]);
         assert.sameMembers(
           res.oracleTypes.map(web3.utils.hexToString),
@@ -593,7 +526,7 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManager.getApplication(this.cId);
         assert.equal(res.slotsTaken, 2);
 
-        res = await this.claimManager.getProposals(this.cId);
+        res = await this.claimManager.getProposalList(this.cId);
         assert.sameMembers(res, [pId1, pId2]);
 
         res = await this.claimManager.getProposal(this.cId, pId1);

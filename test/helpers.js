@@ -425,6 +425,8 @@ const Helpers = {
     const SpaceGeoData = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
     const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
 
+    SpaceGeoData.numberFormat = 'String';
+
     const spaceGeoData = await SpaceGeoData.new();
     const geodesic = await Geodesic.new();
 

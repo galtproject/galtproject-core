@@ -47,6 +47,11 @@ contract AbstractApplication is Initializable {
     ETH_AND_GALT
   }
 
+  enum PaymentType {
+    ETH,
+    GALT
+  }
+
   constructor() public {}
 
   modifier onlyFeeCollector() {
@@ -66,6 +71,16 @@ contract AbstractApplication is Initializable {
   }
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod);
+
+  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
+    PaymentMethod pm = paymentMethod(_pgg);
+
+    if (_paymentType == PaymentType.ETH) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.ETH_ONLY, "Invalid payment type");
+    } else if (_paymentType == PaymentType.GALT) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.GALT_ONLY, "Invalid payment type");
+    }
+  }
 
   function executeBytecode(
     address _destination,
