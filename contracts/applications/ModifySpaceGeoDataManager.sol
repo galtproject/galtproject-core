@@ -17,6 +17,7 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "../pgg/PGGOracleStakeAccounting.sol";
 import "../pgg/PGGMultiSig.sol";
 import "../registries/PGGRegistry.sol";
@@ -158,11 +159,19 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     ApplicationDetails storage aD = applicationDetails[_aId];
     ProposalDetails storage pD = aD.proposalDetails[_pId];
 
+    uint256 area;
+    ISpaceGeoDataRegistry.AreaSource areaSource;
+    if (pD.areaSource == ISpaceGeoDataRegistry.AreaSource.USER_INPUT) {
+      area = pD.area;
+    } else {
+      area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(pD.contour);
+    }
+
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
     spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
     spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
     spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
-    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, pD.area, pD.areaSource);
+    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);
     spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
   }
 

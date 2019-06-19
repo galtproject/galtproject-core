@@ -738,19 +738,25 @@ contract("ModifySpaceGeoDataManager", (accounts) => {
         await this.modifySpaceGeoDataManager.lock(this.cId, { from: dan });
         await this.modifySpaceGeoDataManager.lock(this.cId, { from: eve });
 
+        this.customContour = ['qqqqqqqq', 'zzzzzzzz', 'pppppp'].map(galt.geohashToNumber).map(a => a.toString(10));
+        this.customHeights = this.customContour.map(() => ether(10));
+
         res = await this.modifySpaceGeoDataManager.proposeApproval(
           this.cId,
           'good enough',
-          this.spaceTokenId,
-          ...this.args,
+          this.spaceTokenId2,
+          this.ledgerIdentifier,
+          -1,
+          987,
+          AreaSource.CONTRACT,
+          'blah blah',
+          this.customContour,
+          this.customHeights,
           {
             from: bob
           }
         );
         this.pId1 = res.logs[0].args.proposalId;
-
-        this.customContour = ['qqqqqqqq', 'zzzzzzzz', 'pppppp'].map(galt.geohashToNumber).map(a => a.toString(10));
-        this.customHeights = this.customContour.map(() => ether(10));
 
         res = await this.modifySpaceGeoDataManager.proposeApproval(
           this.cId,
@@ -770,7 +776,7 @@ contract("ModifySpaceGeoDataManager", (accounts) => {
         this.pId2 = res.logs[0].args.proposalId;
       });
 
-      it('should apply proposed geo registry changes', async function() {
+      it('should apply proposed geo registry changes with user-input area', async function() {
         let res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
         assert.equal(res.contour.length, 0);
         assert.equal(res.heights.length, 0);
@@ -789,6 +795,30 @@ contract("ModifySpaceGeoDataManager", (accounts) => {
         assert.equal(res.level, -1);
         assert.equal(res.area, 987);
         assert.equal(res.areaSource, AreaSource.USER_INPUT);
+        assert.equal(hexToString(res.ledgerIdentifier), hexToString(this.ledgerIdentifier));
+        assert.equal(res.description, 'blah blah');
+      });
+
+      it('should apply proposed geo registry changes with contract-calculated area', async function() {
+        let res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        assert.equal(res.contour.length, 0);
+        assert.equal(res.heights.length, 0);
+        assert.equal(res.level, 0);
+        assert.equal(res.area, 0);
+        assert.equal(res.areaSource, 0);
+        assert.equal(hexToString(res.ledgerIdentifier), '');
+        assert.equal(res.description, '');
+
+        await this.modifySpaceGeoDataManager.vote(this.cId, this.pId1, { from: eve });
+        await this.modifySpaceGeoDataManager.vote(this.cId, this.pId1, { from: dan });
+
+        res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        console.log('>>>>', res);
+        assert.sameMembers(res.contour, this.customContour);
+        assert.sameMembers(res.heights, this.customHeights);
+        assert.equal(res.level, -1);
+        assert.equal(res.area, 3000000000000000000000);
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
         assert.equal(hexToString(res.ledgerIdentifier), hexToString(this.ledgerIdentifier));
         assert.equal(res.description, 'blah blah');
       });
