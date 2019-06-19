@@ -12,7 +12,6 @@ const galt = require('@galtproject/utils');
 const {
   initHelperWeb3,
   ether,
-  zeroAddress,
   numberToEvmWord,
   evmMineBlock,
   assertGaltBalanceChanged,

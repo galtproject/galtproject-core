@@ -139,7 +139,15 @@ contract ClaimManager is ArbitratorProposableApplication {
   )
     external
   {
-    ProposalDetails storage pD = verifyProposeApprovalInputs(_cId, _msg, _oracles, _oracleTypes, _oracleFines, _arbitrators, _arbitratorFines);
+    ProposalDetails storage pD = verifyProposeApprovalInputs(
+      _cId,
+      _msg,
+      _oracles,
+      _oracleTypes,
+      _oracleFines,
+      _arbitrators,
+      _arbitratorFines
+    );
 
     pD.amount = _amount;
     pD.arbitrators = _arbitrators;

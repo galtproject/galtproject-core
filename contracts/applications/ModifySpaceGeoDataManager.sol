@@ -158,8 +158,6 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     ApplicationDetails storage aD = applicationDetails[_aId];
     ProposalDetails storage pD = aD.proposalDetails[_pId];
 
-    IPGGConfig cfg = pggConfig(applications[_aId].pgg);
-
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
     spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
     spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
