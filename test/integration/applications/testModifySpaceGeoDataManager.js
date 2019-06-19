@@ -813,7 +813,6 @@ contract("ModifySpaceGeoDataManager", (accounts) => {
         await this.modifySpaceGeoDataManager.vote(this.cId, this.pId1, { from: dan });
 
         res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
-        console.log('>>>>', res);
         assert.sameMembers(res.contour, this.customContour);
         assert.sameMembers(res.heights, this.customHeights);
         assert.equal(res.level, -1);
