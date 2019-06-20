@@ -45,8 +45,6 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     uint256 limit
   );
 
-  string public constant ORACLE_STAKES_NOTIFIER = "oracle_stakes_notifier";
-
   // Oracle address => Oracle details
   mapping(address => Oracle) private oracles;
   // Oracle Candidate => totalWeights
@@ -60,6 +58,15 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   uint256 private _totalReputation;
 
   IPGGConfig pggConfig;
+
+  modifier onlyInternalRole(bytes32 _role) {
+    require(
+      pggConfig.hasInternalRole(_role, msg.sender),
+      "Invalid internal PGG role"
+    );
+
+    _;
+  }
 
   constructor(
     IPGGConfig _pggConfig
@@ -91,15 +98,14 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     _candidateReputation[_candidate] = _candidateReputation[_candidate].add(newReputation);
   }
 
-  // TODO: fix oracle stake change logic
   // @dev Oracle balance changed
-  //    onlyRole(ORACLE_STAKES_NOTIFIER)
   // reputationAfter is already casted to uint256 positive
   function onOracleStakeChanged(
     address _oracle,
     uint256 _oracleReputationAfter
   )
     external
+    onlyInternalRole(ROLE_ORACLE_STAKE_NOTIFIER)
   {
     address currentCandidate = oracles[_oracle].candidate;
     uint256 oracleReputationBefore = oracles[_oracle].reputation;

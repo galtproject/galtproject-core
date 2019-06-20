@@ -43,7 +43,8 @@ contract PGGConfigFactory is Ownable {
       _thresholds
     );
 
-    config.addRoleTo(msg.sender, "role_manager");
-    config.removeRoleFrom(address(this), "role_manager");
+    bytes32 role = config.INTERNAL_ROLE_MANAGER();
+    config.addInternalRole(msg.sender, role);
+    config.removeInternalRole(address(this), role);
   }
 }
