@@ -20,7 +20,7 @@ import "./PGGConfig.sol";
 import "./interfaces/IPGGMultiSig.sol";
 
 
-contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
+contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
   event GaltRunningTotalIncrease(
@@ -33,8 +33,8 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
   bytes32 public constant PGG_ROLE_MULTI_SIG_PROPOSER = bytes32("PGG_MULTI_SIG_PROPOSER");
 
-  string public constant ROLE_ARBITRATOR_MANAGER = "arbitrator_manager";
-  string public constant ROLE_REVOKE_MANAGER = "revoke_manager";
+  bytes32 public constant ROLE_ARBITRATOR_MANAGER = bytes32("arbitrator_manager");
+  bytes32 public constant ROLE_REVOKE_MANAGER = bytes32("revoke_manager");
 
   PGGConfig public pggConfig;
 
@@ -44,6 +44,15 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
   modifier forbidden() {
     assert(false);
+    _;
+  }
+
+  modifier onlyInternalRole(bytes32 _role) {
+    require(
+      pggConfig.hasInternalRole(_role, msg.sender),
+      "Invalid internal PGG role"
+    );
+
     _;
   }
 
@@ -97,7 +106,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
     address[] calldata descArbitrators
   )
     external
-    onlyRole(ROLE_ARBITRATOR_MANAGER)
+    onlyInternalRole(ROLE_ARBITRATOR_MANAGER)
   {
     uint256 m = pggConfig.m();
     uint256 n = pggConfig.n();
@@ -127,7 +136,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet, Permissionable {
 
   function revokeArbitrators()
     external
-    onlyRole(ROLE_REVOKE_MANAGER)
+    onlyInternalRole(ROLE_REVOKE_MANAGER)
   {
     delete owners;
 

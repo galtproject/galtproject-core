@@ -43,4 +43,6 @@ interface IPGGConfig {
   function getOracleStakeVoting() external view returns (IPGGOracleStakeVoting);
   function getExternalRoles(bytes32 _role) external view returns(address[] memory);
   function hasExternalRole(bytes32 _role, address _address) external view returns(bool);
+  function getInternalRoles(bytes32 _role) external view returns(address[] memory);
+  function hasInternalRole(bytes32 _role, address _address) external view returns(bool);
 }

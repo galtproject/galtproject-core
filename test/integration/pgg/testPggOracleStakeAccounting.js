@@ -98,6 +98,11 @@ contract('PGGOracleStakeAccounting', accounts => {
       this.oracleStakeVotingX.address
     );
 
+    await this.config.addInternalRole(
+      this.oracleStakeAccountingX.address,
+      await this.oracleStakeVotingX.ROLE_ORACLE_STAKE_NOTIFIER()
+    );
+
     await this.pggRegistry.addPgg(this.config.address, { from: pggRegistrar });
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });

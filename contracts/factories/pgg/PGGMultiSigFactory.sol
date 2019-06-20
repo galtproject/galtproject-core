@@ -30,8 +30,5 @@ contract PGGMultiSigFactory is Ownable {
     returns (PGGMultiSig multiSig)
   {
     multiSig = new PGGMultiSig(_initialOwners, _multiSigRequired, _pggConfig);
-
-    multiSig.addRoleTo(msg.sender, "role_manager");
-    multiSig.removeRoleFrom(address(this), "role_manager");
   }
 }

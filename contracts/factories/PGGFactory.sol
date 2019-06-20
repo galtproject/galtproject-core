@@ -283,7 +283,7 @@ contract PGGFactory is Initializable {
     );
     PGGMultiSigCandidateTop pggMultiSigCandidateTop = pggMultiSigCandidateTopFactory.build(g.pggConfig);
 
-    g.pggMultiSig.addRoleTo(address(pggMultiSigCandidateTop), g.pggMultiSig.ROLE_ARBITRATOR_MANAGER());
+    g.pggConfig.addInternalRole(address(pggMultiSigCandidateTop), g.pggMultiSig.ROLE_ARBITRATOR_MANAGER());
 
     g.pggArbitratorStakeAccounting = pggArbitratorStakeAccounting;
     g.pggMultiSigCandidateTop = pggMultiSigCandidateTop;
@@ -306,9 +306,9 @@ contract PGGFactory is Initializable {
     IProposalManager mOfNProposals = arbitrationModifyMofNProposalFactory.build(g.pggConfig);
     IProposalManager arbitratorStakeProposals = arbitrationModifyArbitratorStakeProposalFactory.build(g.pggConfig);
 
-    g.pggConfig.addRoleTo(address(thresholdProposals), g.pggConfig.THRESHOLD_MANAGER());
-    g.pggConfig.addRoleTo(address(mOfNProposals), g.pggConfig.M_N_MANAGER());
-    g.pggConfig.addRoleTo(address(arbitratorStakeProposals), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
+    g.pggConfig.addInternalRole(address(thresholdProposals), g.pggConfig.THRESHOLD_MANAGER());
+    g.pggConfig.addInternalRole(address(mOfNProposals), g.pggConfig.M_N_MANAGER());
+    g.pggConfig.addInternalRole(address(arbitratorStakeProposals), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
 
     g.proposalContracts.modifyThresholdProposalManager = thresholdProposals;
     g.proposalContracts.modifyMofNProposalManager = mOfNProposals;
@@ -336,8 +336,8 @@ contract PGGFactory is Initializable {
     IProposalManager changeAddressProposals = arbitrationModifyContractAddressProposalFactory.build(g.pggConfig);
     IProposalManager revokeArbitratorsProposals = arbitrationRevokeArbitratorsProposalFactory.build(g.pggConfig);
 
-    g.pggConfig.addRoleTo(address(changeAddressProposals), g.pggConfig.CONTRACT_ADDRESS_MANAGER());
-    g.pggMultiSig.addRoleTo(address(revokeArbitratorsProposals), g.pggMultiSig.ROLE_REVOKE_MANAGER());
+    g.pggConfig.addInternalRole(address(changeAddressProposals), g.pggConfig.CONTRACT_ADDRESS_MANAGER());
+    g.pggConfig.addInternalRole(address(revokeArbitratorsProposals), g.pggMultiSig.ROLE_REVOKE_MANAGER());
 
     g.proposalContracts.modifyContractAddressProposalManager = changeAddressProposals;
     g.proposalContracts.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
@@ -362,7 +362,7 @@ contract PGGFactory is Initializable {
 
     IProposalManager modifyApplicationConfigProposals = arbitrationModifyApplicationConfigProposalFactory.build(g.pggConfig);
 
-    g.pggConfig.addRoleTo(address(modifyApplicationConfigProposals), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+    g.pggConfig.addInternalRole(address(modifyApplicationConfigProposals), g.pggConfig.APPLICATION_CONFIG_MANAGER());
 
     g.proposalContracts.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
 
@@ -388,11 +388,11 @@ contract PGGFactory is Initializable {
     require(g.nextStep == Step.SIXTH, "SIXTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    g.pggConfig.addRoleTo(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+    g.pggConfig.addInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
     for (uint256 i = 0; i < _keys.length; i++) {
       g.pggConfig.setApplicationConfigValue(_keys[i], _values[i]);
     }
-    g.pggConfig.removeRoleFrom(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
   }
 
   function buildSixthStepDone(
@@ -426,6 +426,8 @@ contract PGGFactory is Initializable {
       "GALT_REPUTATION_NOTIFIER"
     );
 
+    g.pggConfig.addInternalRole(address(g.pggOracleStakeAccounting), oracleStakeVoting.ROLE_ORACLE_STAKE_NOTIFIER());
+
     g.nextStep = Step.EIGHTH;
     g.pggDelegateSpaceVoting = delegateSpaceVoting;
     g.pggDelegateGaltVoting = delegateGaltVoting;
@@ -456,15 +458,15 @@ contract PGGFactory is Initializable {
       g.pggConfig
     );
 
-    g.pggConfig.addRoleTo(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
-    g.pggConfig.addRoleTo(address(createGlobalProposal), g.pggConfig.CREATE_GLOBAL_PROPOSAL_MANAGER());
-    g.pggConfig.addRoleTo(address(supportGlobalProposal), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
-    g.pggConfig.removeRoleFrom(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+    g.pggConfig.addInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+    g.pggConfig.addInternalRole(address(createGlobalProposal), g.pggConfig.CREATE_GLOBAL_PROPOSAL_MANAGER());
+    g.pggConfig.addInternalRole(address(supportGlobalProposal), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
 
-    g.pggConfig.addRoleTo(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
+    g.pggConfig.addInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
     g.pggConfig.addExternalRoleTo(address(createGlobalProposal), g.pggConfig.GLOBAL_PROPOSAL_CREATOR_ROLE());
     g.pggConfig.addExternalRoleTo(address(g.pggOracleStakeAccounting), g.pggConfig.STAKE_TRACKER_NOTIFIER_ROLE());
-    g.pggConfig.removeRoleFrom(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
 
     g.nextStep = Step.NINTH;
 
@@ -497,9 +499,7 @@ contract PGGFactory is Initializable {
       g.pggOracleStakeVoting
     );
 
-    // Revoke role management permissions from this factory address
-    g.pggMultiSig.removeRoleFrom(address(this), "role_manager");
-    g.pggConfig.removeRoleFrom(address(this), "role_manager");
+    // TODO: transfer INTERNAL_ROLE_MANAGER permission to a specific contract/method and make self-revoke
 
     IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggConfig);
 

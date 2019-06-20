@@ -28,18 +28,19 @@ import "./voting/interfaces/IPGGMultiSigCandidateTop.sol";
 import "./PGGMultiSig.sol";
 
 
-contract PGGConfig is IPGGConfig, Permissionable {
+contract PGGConfig is IPGGConfig {
   using ArraySet for ArraySet.AddressSet;
 
-  string public constant THRESHOLD_MANAGER = "threshold_manager";
-  string public constant M_N_MANAGER = "m_n_manager";
-  string public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = "minimal_arbitrator_stake_manager";
-  string public constant CONTRACT_ADDRESS_MANAGER = "contract_address_manager";
-  string public constant APPLICATION_CONFIG_MANAGER = "application_config_manager";
+  bytes32 public constant THRESHOLD_MANAGER = bytes32("threshold_manager");
+  bytes32 public constant M_N_MANAGER = bytes32("m_n_manager");
+  bytes32 public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = bytes32("minimal_arbitrator_stake_manager");
+  bytes32 public constant CONTRACT_ADDRESS_MANAGER = bytes32("contract_address_manager");
+  bytes32 public constant APPLICATION_CONFIG_MANAGER = bytes32("application_config_manager");
 
-  string public constant CREATE_GLOBAL_PROPOSAL_MANAGER = "create_global_proposal_manager";
-  string public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = "support_global_proposal_manager";
-  string public constant EXTERNAL_ROLE_MANAGER = "external_role_manager";
+  bytes32 public constant CREATE_GLOBAL_PROPOSAL_MANAGER = bytes32("create_global_proposal_manager");
+  bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = bytes32("support_global_proposal_manager");
+  bytes32 public constant EXTERNAL_ROLE_MANAGER = bytes32("external_role_manager");
+  bytes32 public constant INTERNAL_ROLE_MANAGER = bytes32("internal_role_manager");
 
   bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
   bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
@@ -70,8 +71,10 @@ contract PGGConfig is IPGGConfig, Permissionable {
   event SetMinimalArbitratorStake(uint256 value);
   event SetContractAddress(bytes32 indexed key, address addr);
   event SetApplicationConfigValue(bytes32 indexed key, bytes32 value);
-  event AddExternalRole(bytes32 indexed role, address addr);
-  event RemoveExternalRole(bytes32 indexed role, address addr);
+  event AddExternalRole(bytes32 indexed role, address indexed addr);
+  event RemoveExternalRole(bytes32 indexed role, address indexed addr);
+  event AddInternalRole(bytes32 indexed role, address indexed addr);
+  event RemoveInternalRole(bytes32 indexed role, address indexed addr);
   event SetGlobalProposalSupport(uint256 indexed globalProposalId, bool isSupported);
 
   mapping(bytes32 => uint256) public thresholds;
@@ -79,6 +82,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
   mapping(bytes32 => bytes32) public applicationConfig;
   mapping(uint256 => bool) public globalProposalSupport;
   mapping(bytes32 => ArraySet.AddressSet) internal externalRoles;
+  mapping(bytes32 => ArraySet.AddressSet) internal internalRoles;
 
   uint256 public minimalArbitratorStake;
 
@@ -90,6 +94,12 @@ contract PGGConfig is IPGGConfig, Permissionable {
   uint256 public n;
 
   GaltGlobalRegistry public ggr;
+
+  modifier onlyInternalRole(bytes32 _role) {
+    require(internalRoles[_role].has(msg.sender) == true, "Denied by PGG internal role check");
+
+    _;
+  }
 
   constructor (
     GaltGlobalRegistry _ggr,
@@ -119,6 +129,10 @@ contract PGGConfig is IPGGConfig, Permissionable {
     thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
     thresholds[CREATE_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[6];
     thresholds[SUPPORT_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[7];
+
+    internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
+
+    emit AddInternalRole(INTERNAL_ROLE_MANAGER, msg.sender);
   }
 
   function initialize(
@@ -134,7 +148,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
     external
   {
     assert(initialized == false);
-    assert(hasRole(msg.sender, "role_manager"));
+    assert(hasInternalRole(INTERNAL_ROLE_MANAGER, msg.sender));
 
     contracts[MULTI_SIG_CONTRACT] = address(_pggMultiSig);
     contracts[MULTI_SIG_CANDIDATE_TOP_CONTRACT] = address(_candidateVoting);
@@ -148,14 +162,14 @@ contract PGGConfig is IPGGConfig, Permissionable {
     initialized = true;
   }
 
-  function setThreshold(bytes32 _key, uint256 _value) external onlyRole(THRESHOLD_MANAGER) {
+  function setThreshold(bytes32 _key, uint256 _value) external onlyInternalRole(THRESHOLD_MANAGER) {
     require(_value <= 100, "Value should be less than 100");
     thresholds[_key] = _value;
 
     emit SetThreshold(_key, _value);
   }
 
-  function setMofN(uint256 _m, uint256 _n) external onlyRole(M_N_MANAGER) {
+  function setMofN(uint256 _m, uint256 _n) external onlyInternalRole(M_N_MANAGER) {
     require(2 <= _m, "Should satisfy `2 <= m`");
     require(3 <= _n, "Should satisfy `3 <= n`");
     require(_m <= _n, "Should satisfy `m <= n`");
@@ -166,34 +180,46 @@ contract PGGConfig is IPGGConfig, Permissionable {
     emit SetMofN(_m, _n);
   }
 
-  function setMinimalArbitratorStake(uint256 _value) external onlyRole(MINIMAL_ARBITRATOR_STAKE_MANAGER) {
+  function setMinimalArbitratorStake(uint256 _value) external onlyInternalRole(MINIMAL_ARBITRATOR_STAKE_MANAGER) {
     minimalArbitratorStake = _value;
 
     emit SetMinimalArbitratorStake(_value);
   }
 
-  function setContractAddress(bytes32 _key, address _address) external onlyRole(CONTRACT_ADDRESS_MANAGER) {
+  function setContractAddress(bytes32 _key, address _address) external onlyInternalRole(CONTRACT_ADDRESS_MANAGER) {
     contracts[_key] = _address;
 
     emit SetContractAddress(_key, _address);
   }
 
-  function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyRole(APPLICATION_CONFIG_MANAGER) {
+  function setApplicationConfigValue(bytes32 _key, bytes32 _value) external onlyInternalRole(APPLICATION_CONFIG_MANAGER) {
     applicationConfig[_key] = _value;
 
     emit SetApplicationConfigValue(_key, _value);
   }
 
-  function addExternalRoleTo(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
+  function addExternalRoleTo(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].add(_address);
 
     emit AddExternalRole(_role, _address);
   }
 
-  function removeExternalRoleFrom(address _address, bytes32 _role) external onlyRole(EXTERNAL_ROLE_MANAGER) {
+  function removeExternalRoleFrom(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].remove(_address);
 
     emit RemoveExternalRole(_role, _address);
+  }
+
+  function addInternalRole(address _address, bytes32 _role) public onlyInternalRole(INTERNAL_ROLE_MANAGER) {
+    internalRoles[_role].add(_address);
+
+    emit AddInternalRole(_role, _address);
+  }
+
+  function removeInternalRole(address _address, bytes32 _role) external onlyInternalRole(INTERNAL_ROLE_MANAGER) {
+    internalRoles[_role].remove(_address);
+
+    emit RemoveInternalRole(_role, _address);
   }
 
   function setGlobalProposalSupport(
@@ -201,7 +227,7 @@ contract PGGConfig is IPGGConfig, Permissionable {
     bool _isSupported
   )
     external
-    onlyRole(SUPPORT_GLOBAL_PROPOSAL_MANAGER)
+    onlyInternalRole(SUPPORT_GLOBAL_PROPOSAL_MANAGER)
   {
     globalProposalSupport[_globalProposalId] = _isSupported;
 
@@ -246,7 +272,15 @@ contract PGGConfig is IPGGConfig, Permissionable {
     return externalRoles[_role].elements();
   }
 
-  function hasExternalRole(bytes32 _role, address _address) external view returns(bool) {
+  function getInternalRoles(bytes32 _role) external view returns(address[] memory) {
+    return internalRoles[_role].elements();
+  }
+
+  function hasExternalRole(bytes32 _role, address _address) public view returns(bool) {
     return externalRoles[_role].has(_address);
+  }
+
+  function hasInternalRole(bytes32 _role, address _address) public view returns(bool) {
+    return internalRoles[_role].has(_address);
   }
 }
