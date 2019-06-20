@@ -92,6 +92,7 @@ contract('NewPropertyManager', accounts => {
     feeMixerAddress,
     oracleModifier,
     spaceReputationAccountingAddress,
+    unlocker,
     alice,
     bob,
     charlie,
@@ -1048,6 +1049,10 @@ contract('NewPropertyManager', accounts => {
     });
 
     describe('#unlock()', () => {
+      before(async function() {
+        await this.acl.setRole(bytes32('APPLICATION_UNLOCKER'), unlocker, true, { from: coreTeam });
+      });
+
       beforeEach(async function() {
         const res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1055,8 +1060,8 @@ contract('NewPropertyManager', accounts => {
         await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
       });
 
-      it('should should allow a contract owner to unlock an application under consideration', async function() {
-        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice });
+      it('should allow corresponding ACL role unlocking an application under consideration', async function() {
+        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: unlocker });
 
         let res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
@@ -1066,8 +1071,8 @@ contract('NewPropertyManager', accounts => {
         assert.equal(res.status, ValidationStatus.PENDING);
       });
 
-      it('should deny non-owner to unlock an application under consideration', async function() {
-        await assertRevert(this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: charlie }));
+      it('should deny non-unlocker unlocking an application under consideration', async function() {
+        await assertRevert(this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice }));
 
         let res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);

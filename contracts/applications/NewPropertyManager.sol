@@ -32,6 +32,8 @@ contract NewPropertyManager is AbstractOracleApplication {
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
+  bytes32 public constant APPLICATION_UNLOCKER = bytes32("application_unlocker");
+
   bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
@@ -361,7 +363,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyApplicant(_aId) {
+  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyUnlocker {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
     require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");

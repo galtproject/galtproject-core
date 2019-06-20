@@ -18,9 +18,17 @@ import "./AbstractApplication.sol";
 
 contract AbstractOracleApplication is AbstractApplication {
 
+  bytes32 public constant ROLE_APPLICATION_UNLOCKER = bytes32("APPLICATION_UNLOCKER");
+
   mapping(address => bytes32[]) public applicationsByOracle;
 
   modifier _anyOracle() {
+    _;
+  }
+
+  modifier onlyUnlocker() {
+    require(ggr.getACL().hasRole(msg.sender, ROLE_APPLICATION_UNLOCKER), "No permission to unlock");
+
     _;
   }
 
