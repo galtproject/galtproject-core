@@ -269,7 +269,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
     changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyApplicant(_aId) {
+  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyUnlocker {
     Application storage a = applications[_aId];
     require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
     require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");
