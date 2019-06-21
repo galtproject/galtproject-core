@@ -23,9 +23,11 @@ import "../pgg/interfaces/IPGGMultiSig.sol";
 contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
 
-  event AddPgg(address indexed factory, address pggConfig);
+  event AddPgg(address indexed registrar, address pggConfig);
+  event RemovePgg(address indexed unregistrar, address pggConfig);
 
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
+  bytes32 public constant ROLE_PGG_UNREGISTRAR = bytes32("PGG_UNREGISTRAR");
 
   // TODO: need to be a private?
   mapping(address => ProtocolGovernanceGroup) public pggDetails;
@@ -52,6 +54,15 @@ contract PGGRegistry is IPGGRegistry, Initializable {
     _;
   }
 
+  modifier onlyPggUnregistrar() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_PGG_UNREGISTRAR),
+      "Only PGG_UNREGISTRAR role allowed"
+    );
+
+    _;
+  }
+
   function addPgg(
     IPGGConfig _pggConfig
   )
@@ -67,6 +78,16 @@ contract PGGRegistry is IPGGRegistry, Initializable {
     _pggs.add(address(_pggConfig));
 
     emit AddPgg(msg.sender, address(_pggConfig));
+  }
+
+  function removePgg(IPGGConfig _pggConfig) external onlyPggUnregistrar {
+    ProtocolGovernanceGroup storage pgg = pggDetails[address(_pggConfig)];
+
+    pgg.active = false;
+
+    _pggs.remove(address(_pggConfig));
+
+    emit RemovePgg(msg.sender, address(_pggConfig));
   }
 
   // REQUIRES
@@ -94,6 +115,4 @@ contract PGGRegistry is IPGGRegistry, Initializable {
   function getPggCount() external view returns (uint256) {
     return _pggs.size();
   }
-  // TODO: how to update Factory Address?
-  // TODO: how to deactivate multiSig?
 }
