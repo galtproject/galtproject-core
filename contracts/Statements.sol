@@ -19,6 +19,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 
+
 contract Statements is OwnableAndInitializable {
   using Counters for Counters.Counter;
 
