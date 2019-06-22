@@ -214,11 +214,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     // ETH
     if (msg.value > 0) {
+      requireValidPaymentType(_pgg, PaymentType.ETH);
       require(_applicationFeeInGalt == 0, "Could not accept both ETH and GALT");
       require(msg.value >= minimalApplicationFeeEth(_pgg), "Incorrect fee passed in");
       fee = msg.value;
       // GALT
     } else {
+      requireValidPaymentType(_pgg, PaymentType.GALT);
       require(msg.value == 0, "Could not accept both ETH and GALT");
       require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Incorrect fee passed in");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _applicationFeeInGalt);

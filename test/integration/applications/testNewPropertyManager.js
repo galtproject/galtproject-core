@@ -185,6 +185,8 @@ contract('NewPropertyManager', accounts => {
     applicationConfig[surveyorKey] = numberToEvmWord(ether(1500));
     applicationConfig[lawyerKey] = numberToEvmWord(ether(1500));
 
+    this.applicationConfig = applicationConfig;
+
     // MultiSig setup
     this.pggX = await buildPGG(
       this.pggFactory,
@@ -306,6 +308,41 @@ contract('NewPropertyManager', accounts => {
       });
 
       describe('payable', () => {
+        it('should reject applications if GALT payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('PM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledGalt = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await this.galtToken.approve(this.newPropertyManager.address, ether(this.fee), { from: alice });
+          await assertRevert(
+            this.newPropertyManager.submit(
+              pggDisabledGalt.config.address,
+              this.contour,
+              this.heights,
+              0,
+              0,
+              this.credentials,
+              this.ledgerIdentifier,
+              this.description,
+              this.fee,
+              { from: alice }
+            )
+          );
+        });
+
         it('should split fee between GaltSpace and Oracle', async function() {
           const res = await this.newPropertyManager.submit(
             this.pggConfigX.address,
@@ -744,6 +781,43 @@ contract('NewPropertyManager', accounts => {
       });
 
       describe('payable', () => {
+        it('should reject applications if ETH payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('PM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.GALT_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledEth = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan, frank],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await assertRevert(
+            this.newPropertyManager.submit(
+              pggDisabledEth.config.address,
+              this.contour,
+              this.heights,
+              0,
+              0,
+              this.credentials,
+              this.ledgerIdentifier,
+              this.description,
+              0,
+              {
+                from: alice,
+                value: ether(40)
+              }
+            )
+          );
+        });
+
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.newPropertyManager.submit(

@@ -181,6 +181,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
   {
     // GALT
     if (_applicationFeeInGalt > 0) {
+      requireValidPaymentType(_pgg, PaymentType.GALT);
       require(msg.value == 0, "Could not accept both GALT and ETH");
       require(_applicationFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Insufficient payment");
 
@@ -191,6 +192,7 @@ contract UpdatePropertyManager is AbstractOracleApplication {
       _a.currency = Currency.GALT;
       // ETH
     } else {
+      requireValidPaymentType(_pgg, PaymentType.ETH);
       require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
 
       _a.rewards.totalPaidFee = msg.value;
