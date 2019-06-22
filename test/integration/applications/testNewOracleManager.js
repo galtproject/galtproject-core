@@ -139,6 +139,8 @@ contract('NewOracleManager', (accounts) => {
     applicationConfig[pcCustodianKey] = numberToEvmWord(ether(30));
     applicationConfig[pcAuditorKey] = numberToEvmWord(ether(30));
 
+    this.applicationConfig = applicationConfig;
+
     await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
     this.pggX = await buildPGG(
       this.pggFactory,
@@ -268,6 +270,42 @@ contract('NewOracleManager', (accounts) => {
       });
 
       describe('payable', () => {
+        it('should reject applications if GALT payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('NO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledGalt = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan, eve, frank],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await this.galtToken.approve(this.newOracle.address, ether(45), { from: alice });
+          await assertRevert(
+            this.newOracle.submit(
+              pggDisabledGalt.config.address,
+              bob,
+              BOB,
+              MN,
+              '',
+              this.attachedDocumentsBytes32,
+              [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+              ether(45),
+              {
+                from: alice
+              }
+            )
+          );
+        });
+
         it('should reject applications without payment', async function() {
           await this.galtToken.approve(this.newOracle.address, ether(45), { from: alice });
           await assertRevert(
@@ -446,6 +484,42 @@ contract('NewOracleManager', (accounts) => {
       });
 
       describe('payable', () => {
+        it('should reject applications if ETH payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('NO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.GALT_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledEth = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan, eve, frank],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await assertRevert(
+            this.newOracle.submit(
+              pggDisabledEth.config.address,
+              bob,
+              BOB,
+              MN,
+              '',
+              this.attachedDocumentsBytes32,
+              [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+              0,
+              {
+                from: alice,
+                value: 20
+              }
+            )
+          );
+        });
+
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.newOracle.submit(

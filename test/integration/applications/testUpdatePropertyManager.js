@@ -187,6 +187,8 @@ contract('UpdatePropertyManager', (accounts) => {
     applicationConfig[lawyerKey] = numberToEvmWord(ether(1500));
     applicationConfig[auditorKey] = numberToEvmWord(ether(1500));
 
+    this.applicationConfig = applicationConfig;
+
     this.pggX = await buildPGG(
       this.pggFactory,
       [bob, charlie, dan, eve, frank],
@@ -278,6 +280,43 @@ contract('UpdatePropertyManager', (accounts) => {
       });
 
       describe('payable', () => {
+        it('should reject applications if GALT payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('PL_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledGalt = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await this.galtToken.approve(this.updatePropertyManager.address, ether(45), { from: alice });
+          await assertRevert(
+            this.updatePropertyManager.submit(
+              this.tokenId,
+              this.ledgerIdentifier,
+              this.newLevel,
+              0,
+              this.description,
+              this.newContour,
+              this.newHeights,
+              pggDisabledGalt.config.address,
+              ether(45),
+              {
+                from: alice
+              }
+            )
+          );
+        });
+
         it('should reject applications with payment less than required', async function() {
           await this.galtToken.approve(this.updatePropertyManager.address, ether(42), { from: alice });
           await assertRevert(
@@ -597,6 +636,43 @@ contract('UpdatePropertyManager', (accounts) => {
       });
 
       describe('payable', () => {
+        it('should reject applications if ETH payment is disabled', async function() {
+          await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+          this.applicationConfig[bytes32('PL_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.GALT_ONLY);
+
+          // disabled GALT payments
+          const pggDisabledEth = await buildPGG(
+            this.pggFactory,
+            [bob, charlie, dan, frank],
+            3,
+            7,
+            10,
+            60,
+            ether(1000),
+            [30, 30, 30, 30, 30, 30, 30, 30],
+            this.applicationConfig,
+            alice
+          );
+
+          await assertRevert(
+            this.updatePropertyManager.submit(
+              this.tokenId,
+              this.ledgerIdentifier,
+              this.newLevel,
+              0,
+              this.description,
+              this.newContour,
+              this.newHeights,
+              pggDisabledEth.config.address,
+              0,
+              {
+                from: alice,
+                value: ether(40)
+              }
+            )
+          );
+        });
+
         it('should reject applications with payment which less than required', async function() {
           await assertRevert(
             this.updatePropertyManager.submit(

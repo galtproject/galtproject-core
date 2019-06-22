@@ -206,6 +206,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     // GALT
     if (_submissionFeeInGalt > 0) {
+      requireValidPaymentType(_pgg, PaymentType.GALT);
       require(msg.value == 0, "Could not accept both ETH and GALT");
       require(_submissionFeeInGalt >= getSubmissionFeeByArea(_pgg, Currency.GALT, a.details.area), "Incorrect fee passed in");
 
@@ -216,6 +217,7 @@ contract NewPropertyManager is AbstractOracleApplication {
       a.currency = Currency.GALT;
     // ETH
     } else {
+      requireValidPaymentType(_pgg, PaymentType.ETH);
       a.rewards.totalPaidFee = msg.value;
       // Default a.currency is Currency.ETH
 

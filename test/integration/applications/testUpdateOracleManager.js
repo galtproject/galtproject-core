@@ -147,6 +147,8 @@ contract('UpdateOracleManager', (accounts) => {
     applicationConfig[pcCustodianKey] = numberToEvmWord(ether(30));
     applicationConfig[pcAuditorKey] = numberToEvmWord(ether(30));
 
+    this.applicationConfig = applicationConfig;
+
     await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
     this.pggX = await buildPGG(
@@ -182,6 +184,42 @@ contract('UpdateOracleManager', (accounts) => {
 
   describe('#submit()', () => {
     describe('with GALT payment', () => {
+      it('should reject applications if GALT payment is disabled', async function() {
+        await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+        this.applicationConfig[bytes32('UO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_ONLY);
+
+        // disabled GALT payments
+        const pggDisabledGalt = await buildPGG(
+          this.pggFactory,
+          [bob, charlie, dan],
+          3,
+          7,
+          10,
+          60,
+          ether(1000),
+          [30, 30, 30, 30, 30, 30, 30, 30],
+          this.applicationConfig,
+          alice
+        );
+
+        await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
+        await assertRevert(
+          this.updateOracle.submit(
+            pggDisabledGalt.config.address,
+            bob,
+            BOB,
+            MN,
+            '',
+            this.attachedDocumentsBytes32,
+            [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+            ether(45),
+            {
+              from: alice
+            }
+          )
+        );
+      });
+
       it('should allow an applicant pay commission in Galt', async function() {
         await this.galtToken.approve(this.updateOracle.address, ether(45), { from: alice });
         let res = await this.updateOracle.submit(
@@ -242,6 +280,42 @@ contract('UpdateOracleManager', (accounts) => {
         this.aId = res.logs[0].args.applicationId;
         res = await this.updateOracle.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.SUBMITTED);
+      });
+
+      it('should reject applications if ETH payment is disabled', async function() {
+        await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
+        this.applicationConfig[bytes32('UO_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.GALT_ONLY);
+
+        // disabled GALT payments
+        const pggDisabledEth = await buildPGG(
+          this.pggFactory,
+          [bob, charlie, dan, frank],
+          3,
+          7,
+          10,
+          60,
+          ether(1000),
+          [30, 30, 30, 30, 30, 30, 30, 30],
+          this.applicationConfig,
+          alice
+        );
+
+        await assertRevert(
+          this.updateOracle.submit(
+            pggDisabledEth.config.address,
+            bob,
+            BOB,
+            MN,
+            '',
+            this.attachedDocumentsBytes32,
+            [PC_AUDITOR_ORACLE_TYPE, PC_CUSTODIAN_ORACLE_TYPE],
+            0,
+            {
+              from: alice,
+              value: ether(7)
+            }
+          )
+        );
       });
 
       it('should deny applying for non-oracle', async function() {
