@@ -11,7 +11,7 @@ const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
 
-const { assertRevert, ether, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
+const { assertRevert, ether, int, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
 const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
@@ -135,7 +135,7 @@ contract('PGG Proposals', accounts => {
         10,
         60,
         ether(1000),
-        [24, 24, 24, 24, 24, 24, 24, 24],
+        [24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24],
         {},
         alice
       );
@@ -161,48 +161,59 @@ contract('PGG Proposals', accounts => {
   });
 
   describe('ModifyThreshold Proposals', () => {
-    it('should change corresponding values', async function() {
-      const key = await this.pgg.config.SET_THRESHOLD_THRESHOLD();
-      let res = await this.pgg.modifyThresholdProposalManager.propose(key, 42, 'its better', { from: alice });
+    it.only('should change corresponding values', async function() {
+      const key = await this.pgg.proposalManager.getMarker(
+        this.pgg.config.address,
+        await this.pgg.config.SET_THRESHOLD_SIGNATURE()
+      );
+      const proposeData = this.pgg.config.contract.methods.setThreshold(key, 42).encodeABI();
+      let res = await this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
+        from: alice
+      });
       const { proposalId } = res.logs[0].args;
 
-      await this.pgg.modifyThresholdProposalManager.aye(proposalId, { from: alice });
+      await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
-      res = await this.pgg.modifyThresholdProposalManager.getAyeShare(proposalId);
+      res = await this.pgg.proposalManager.getAyeShare(proposalId);
       assert.equal(res, 8);
-      res = await this.pgg.modifyThresholdProposalManager.getNayShare(proposalId);
+      res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
-      await this.pgg.modifyThresholdProposalManager.nay(proposalId, { from: bob });
-      await this.pgg.modifyThresholdProposalManager.aye(proposalId, { from: charlie });
+      await this.pgg.proposalManager.nay(proposalId, { from: bob });
+      await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
-      res = await this.pgg.modifyThresholdProposalManager.getAyeShare(proposalId);
+      res = await this.pgg.proposalManager.getAyeShare(proposalId);
       assert.equal(res, 24);
-      res = await this.pgg.modifyThresholdProposalManager.getNayShare(proposalId);
+      res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 8);
+      res = await this.pgg.proposalManager.getThreshold(proposalId);
+      assert.equal(res, 24);
 
-      await assertRevert(this.pgg.modifyThresholdProposalManager.triggerReject(proposalId));
-      await this.pgg.modifyThresholdProposalManager.triggerApprove(proposalId);
+      await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
+      await this.pgg.proposalManager.triggerApprove(proposalId);
 
-      res = await this.pgg.modifyThresholdProposalManager.getProposal(proposalId);
-      assert.equal(res.key, key);
-      assert.equal(res.value, 42);
+      res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.description, 'its better');
 
-      res = await this.pgg.modifyThresholdProposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
       assert.equal(res.status, ProposalStatus.APPROVED);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
-      res = await this.pgg.modifyThresholdProposalManager.getActiveProposals();
-      assert.sameMembers(res.map(a => a.toNumber(10)), []);
-      res = await this.pgg.modifyThresholdProposalManager.getApprovedProposals();
-      assert.sameMembers(res.map(a => a.toNumber(10)), [1]);
-      res = await this.pgg.modifyThresholdProposalManager.getRejectedProposals();
-      assert.sameMembers(res.map(a => a.toNumber(10)), []);
+      res = await this.pgg.proposalManager.getActiveProposals();
+      assert.sameMembers(res.map(int), []);
+      res = await this.pgg.proposalManager.getApprovedProposals();
+      assert.sameMembers(res.map(int), [1]);
+      res = await this.pgg.proposalManager.getRejectedProposals();
+      assert.sameMembers(res.map(int), []);
 
-      res = await this.pgg.config.thresholds(web3.utils.utf8ToHex('set_threshold_threshold'));
+      res = await this.pgg.config.thresholds(
+        await this.pgg.proposalManager.getMarker(this.pgg.config.address, proposeData)
+      );
       assert.equal(web3.utils.hexToNumberString(res), '42');
+
+      res = await this.pgg.proposalManager.getThreshold(proposalId);
+      assert.equal(res, 42);
     });
   });
 

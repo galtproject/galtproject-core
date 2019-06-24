@@ -15,13 +15,13 @@ pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "./interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGArbitratorStakeAccounting.sol";
 import "./interfaces/IPGGOracleStakeAccounting.sol";
 import "./interfaces/IPGGMultiSig.sol";
+import "./interfaces/IPGGProposalManager.sol";
 import "./voting/interfaces/IPGGDelegateReputationVoting.sol";
 import "./voting/interfaces/IPGGOracleStakeVoting.sol";
 import "./voting/interfaces/IPGGMultiSigCandidateTop.sol";
@@ -37,20 +37,36 @@ contract PGGConfig is IPGGConfig {
   bytes32 public constant CONTRACT_ADDRESS_MANAGER = bytes32("contract_address_manager");
   bytes32 public constant APPLICATION_CONFIG_MANAGER = bytes32("application_config_manager");
 
-  bytes32 public constant CREATE_GLOBAL_PROPOSAL_MANAGER = bytes32("create_global_proposal_manager");
   bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = bytes32("support_global_proposal_manager");
   bytes32 public constant EXTERNAL_ROLE_MANAGER = bytes32("external_role_manager");
   bytes32 public constant INTERNAL_ROLE_MANAGER = bytes32("internal_role_manager");
 
-  bytes32 public constant SET_THRESHOLD_THRESHOLD = bytes32("set_threshold_threshold");
-  bytes32 public constant SET_M_OF_N_THRESHOLD = bytes32("set_m_of_n_threshold");
-  bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = bytes32("arbitrator_stake_threshold");
-  bytes32 public constant CHANGE_CONTRACT_ADDRESS_THRESHOLD = bytes32("change_contract_threshold");
-  bytes32 public constant REVOKE_ARBITRATORS_THRESHOLD = bytes32("revoke_arbitrators_threshold");
-  bytes32 public constant APPLICATION_CONFIG_THRESHOLD = bytes32("application_config_threshold");
-  bytes32 public constant CREATE_GLOBAL_PROPOSAL_THRESHOLD = bytes32("create_global_prop_threshold");
-  bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_THRESHOLD = bytes32("support_global_prop_threshold");
-  bytes32 public constant EXTERNAL_ROLE_PROPOSAL_THRESHOLD = bytes32("external_role_threshold");
+  bytes32 public constant PROPOSAL_MANAGER = bytes32("proposal_manager");
+
+  // "a4db7b4d": "setThreshold(bytes32,uint256)"
+  bytes32 public constant SET_THRESHOLD_SIGNATURE = 0xa4db7b4d00000000000000000000000000000000000000000000000000000000;
+  // "223e3c82": "setMofN(uint256,uint256)",
+  bytes32 public constant SET_M_OF_N_SIGNATURE = 0x223e3c8200000000000000000000000000000000000000000000000000000000;
+  // "a8af70c6": "setMinimalArbitratorStake(uint256)",
+  bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE = 0xa8af70c600000000000000000000000000000000000000000000000000000000;
+  // "e001f841": "setContractAddress(bytes32,address)",
+  bytes32 public constant CHANGE_CONTRACT_ADDRESS_SIGNATURE = 0xe001f84100000000000000000000000000000000000000000000000000000000;
+  // "c0fa9dd2": "applicationConfig(bytes32)",
+  bytes32 public constant APPLICATION_CONFIG_SIGNATURE = 0xc0fa9dd200000000000000000000000000000000000000000000000000000000;
+  // "188bcad6": "setGlobalProposalSupport(uint256,bool)",
+  bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_SIGNATURE = 0x188bcad600000000000000000000000000000000000000000000000000000000;
+  // "2f6049e3": "addExternalRoleTo(address,bytes32)",
+  bytes32 public constant ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE = 0x2f6049e300000000000000000000000000000000000000000000000000000000;
+  // "7e84171b": "removeExternalRoleFrom(address,bytes32)",
+  bytes32 public constant REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE = 0x7e84171b00000000000000000000000000000000000000000000000000000000;
+  // "a57df267": "addInternalRole(address,bytes32)",
+  bytes32 public constant ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE = 0xa57df26700000000000000000000000000000000000000000000000000000000;
+  // "7ebf217e": "removeInternalRole(address,bytes32)",
+  bytes32 public constant REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE = 0x7ebf217e00000000000000000000000000000000000000000000000000000000;
+  // "9f6dde5d": "revokeArbitrators()",
+  bytes32 public constant REVOKE_ARBITRATORS_SIGNATURE = 0x9f6dde5d00000000000000000000000000000000000000000000000000000000;
+  //   "03f82494": "globalProposalSupport(uint256)",
+  //  bytes32 public constant CREATE_GLOBAL_PROPOSAL_SIGNATURE = 0x188bcad600000000000000000000000000000000000000000000000000000000;
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLES_CONTRACT = bytes32("oracles_contract");
@@ -77,6 +93,7 @@ contract PGGConfig is IPGGConfig {
   event RemoveInternalRole(bytes32 indexed role, address indexed addr);
   event SetGlobalProposalSupport(uint256 indexed globalProposalId, bool isSupported);
 
+  // marker => threshold
   mapping(bytes32 => uint256) public thresholds;
   mapping(bytes32 => address) public contracts;
   mapping(bytes32 => bytes32) public applicationConfig;
@@ -106,11 +123,6 @@ contract PGGConfig is IPGGConfig {
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
-    // 0 - SET_THRESHOLD_THRESHOLD
-    // 1 - SET_M_OF_N_THRESHOLD
-    // 2 - CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD
-    // 3 - CHANGE_CONTRACT_ADDRESS_THRESHOLD
-    // 4 - REVOKE_ARBITRATORS_THRESHOLD
     uint256[] memory _thresholds
   ) public {
     ggr = _ggr;
@@ -119,16 +131,20 @@ contract PGGConfig is IPGGConfig {
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
 
-    require(_thresholds.length == 8, "Invalid number of thresholds passed in");
+    require(_thresholds.length == 12, "Invalid number of thresholds passed in");
 
-    thresholds[SET_THRESHOLD_THRESHOLD] = _thresholds[0];
-    thresholds[SET_M_OF_N_THRESHOLD] = _thresholds[1];
-    thresholds[CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD] = _thresholds[2];
-    thresholds[CHANGE_CONTRACT_ADDRESS_THRESHOLD] = _thresholds[3];
-    thresholds[REVOKE_ARBITRATORS_THRESHOLD] = _thresholds[4];
-    thresholds[APPLICATION_CONFIG_THRESHOLD] = _thresholds[5];
-    thresholds[CREATE_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[6];
-    thresholds[SUPPORT_GLOBAL_PROPOSAL_THRESHOLD] = _thresholds[7];
+    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_SIGNATURE))] = _thresholds[0];
+    thresholds[keccak256(abi.encode(address(this), SET_M_OF_N_SIGNATURE))] = _thresholds[1];
+    thresholds[keccak256(abi.encode(address(this), CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE))] = _thresholds[2];
+    thresholds[keccak256(abi.encode(address(this), CHANGE_CONTRACT_ADDRESS_SIGNATURE))] = _thresholds[3];
+    thresholds[keccak256(abi.encode(address(this), REVOKE_ARBITRATORS_SIGNATURE))] = _thresholds[4];
+    thresholds[keccak256(abi.encode(address(this), APPLICATION_CONFIG_SIGNATURE))] = _thresholds[5];
+//    thresholds[keccak256(abi.encode(address(this), CREATE_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[6];
+    thresholds[keccak256(abi.encode(address(this), SUPPORT_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[7];
+    thresholds[keccak256(abi.encode(address(this), ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[8];
+    thresholds[keccak256(abi.encode(address(this), REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[9];
+    thresholds[keccak256(abi.encode(address(this), ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[10];
+    thresholds[keccak256(abi.encode(address(this), REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[11];
 
     internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
 
@@ -143,7 +159,8 @@ contract PGGConfig is IPGGConfig {
     IPGGOracles _oracles,
     IPGGDelegateReputationVoting _delegateSpaceVoting,
     IPGGDelegateReputationVoting _delegateGaltVoting,
-    IPGGOracleStakeVoting _oracleStakeVoting
+    IPGGOracleStakeVoting _oracleStakeVoting,
+    IPGGProposalManager _proposalManager
   )
     external
   {
@@ -158,6 +175,7 @@ contract PGGConfig is IPGGConfig {
     contracts[DELEGATE_SPACE_VOTING_CONTRACT] = address(_delegateSpaceVoting);
     contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);
     contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);
+    contracts[PROPOSAL_MANAGER] = address(_proposalManager);
 
     initialized = true;
   }

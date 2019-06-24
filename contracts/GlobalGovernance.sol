@@ -183,9 +183,9 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
 
     uint256 customThreshold = thresholds[p.marker];
     if (customThreshold > 0) {
-      require(support > customThreshold, "Threshold doesn't reached yet");
+      require(support >= customThreshold, "Threshold doesn't reached yet");
     } else {
-      require(support > defaultThreshold, "Threshold doesn't reached yet");
+      require(support >= defaultThreshold, "Threshold doesn't reached yet");
     }
 
     execute(_proposalId);

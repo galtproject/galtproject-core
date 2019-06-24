@@ -20,12 +20,14 @@ import "../registries/interfaces/IPGGRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/ClaimManager.sol";
 import "../pgg/PGGConfig.sol";
-import "../pgg/proposals/interfaces/IProposalManager.sol";
+import "../pgg/interfaces/IPGGProposalManager.sol";
 import "../pgg/voting/interfaces/IPGGOracleStakeVoting.sol";
 import "../pgg/voting/interfaces/IPGGDelegateReputationVoting.sol";
 import "../pgg/voting/interfaces/IPGGMultiSigCandidateTop.sol";
 import "../pgg/voting/PGGMultiSigCandidateTop.sol";
 import "../pgg/interfaces/IPGGOracles.sol";
+import "../pgg/interfaces/IPGGProposalManager.sol";
+import "../pgg/PGGProposalManager.sol";
 // Arbitration Factories
 import "./pgg/PGGMultiSigFactory.sol";
 import "./pgg/PGGArbitratorStakeAccountingFactory.sol";
@@ -35,15 +37,7 @@ import "./pgg/PGGMultiSigCandidateTopFactory.sol";
 import "./pgg/PGGOracleFactory.sol";
 import "./pgg/PGGDelegateReputationVotingFactory.sol";
 import "./pgg/PGGOracleStakeVotingFactory.sol";
-// Arbitration Proposal Factories
-import "./pgg/proposals/ArbitrationModifyThresholdProposalFactory.sol";
-import "./pgg/proposals/ArbitrationModifyMofNProposalFactory.sol";
-import "./pgg/proposals/ArbitrationModifyArbitratorStakeProposalFactory.sol";
-import "./pgg/proposals/ArbitrationRevokeArbitratorsProposalFactory.sol";
-import "./pgg/proposals/ArbitrationModifyContractAddressProposalFactory.sol";
-import "./pgg/proposals/ArbitrationModifyApplicationConfigProposalFactory.sol";
-import "./pgg/proposals/ArbitrationCreateGlobalProposalProposalManagerFactory.sol";
-import "./pgg/proposals/ArbitrationSupportGlobalProposalProposalManagerFactory.sol";
+import "./pgg/PGGProposalManagerFactory.sol";
 
 
 contract PGGFactory is Initializable {
@@ -60,40 +54,19 @@ contract PGGFactory is Initializable {
     address pggMultiSigCandidateTop
   );
 
-  event BuildPGGThirdStep(
-    bytes32 groupId,
-    address modifyThresholdProposalManager,
-    address modifyMofNProposalManager,
-    address modifyArbitratorStakeProposalManager
-  );
-
+  event BuildPGGThirdStep();
+  event BuildPGGThirdStepDone();
   event BuildPGGFourthStep(
-    bytes32 groupId,
-    address modifyContractAddressProposalManager,
-    address revokeArbitratorsProposalManager
-  );
-
-  event BuildPGGFifthStep(
-    bytes32 groupId,
-    address modifyApplicationConfigProposalManager
-  );
-
-  event BuildPGGSeventhStep(
     bytes32 groupId,
     address pggDelegateSpaceVoting,
     address pggDelegateGaltVoting,
     address pggOracleStakeVoting
   );
 
-  event BuildPGGEighthStep(
+  event BuildPGGFifthStep(
     bytes32 groupId,
-    address createGlobalProposal,
-    address supportGlobalProposal
-  );
-
-  event BuildPGGNinthStep(
-    bytes32 groupId,
-    address pggOracles
+    address pggOracles,
+    address pggProposalManager
   );
 
   enum Step {
@@ -102,10 +75,6 @@ contract PGGFactory is Initializable {
     THIRD,
     FOURTH,
     FIFTH,
-    SIXTH,
-    SEVENTH,
-    EIGHTH,
-    NINTH,
     DONE
   }
 
@@ -128,33 +97,26 @@ contract PGGFactory is Initializable {
   }
 
   struct PGGProposalContracts {
-    IProposalManager modifyThresholdProposalManager;
-    IProposalManager modifyMofNProposalManager;
-    IProposalManager modifyArbitratorStakeProposalManager;
-    IProposalManager modifyContractAddressProposalManager;
-    IProposalManager modifyApplicationConfigProposalManager;
-    IProposalManager revokeArbitratorsProposalManager;
+    IPGGProposalManager modifyThresholdProposalManager;
+    IPGGProposalManager modifyMofNProposalManager;
+    IPGGProposalManager modifyArbitratorStakeProposalManager;
+    IPGGProposalManager modifyContractAddressProposalManager;
+    IPGGProposalManager modifyApplicationConfigProposalManager;
+    IPGGProposalManager revokeArbitratorsProposalManager;
   }
 
   GaltGlobalRegistry public ggr;
 
-  PGGConfigFactory pggConfigFactory;
-  PGGMultiSigFactory pggMultiSigFactory;
-  PGGMultiSigCandidateTopFactory pggMultiSigCandidateTopFactory;
-  PGGArbitratorStakeAccountingFactory pggArbitratorStakeAccountingFactory;
-  PGGOracleFactory pggArbitrationOracleFactory;
-  PGGOracleStakeAccountingFactory pggOracleStakeAccountingFactory;
-  PGGDelegateReputationVotingFactory pggDelegateReputationVotingFactory;
-  PGGOracleStakeVotingFactory pggOracleStakeVotingFactory;
+  PGGConfigFactory internal pggConfigFactory;
+  PGGMultiSigFactory internal pggMultiSigFactory;
+  PGGMultiSigCandidateTopFactory internal pggMultiSigCandidateTopFactory;
+  PGGArbitratorStakeAccountingFactory internal pggArbitratorStakeAccountingFactory;
+  PGGOracleFactory internal pggArbitrationOracleFactory;
+  PGGOracleStakeAccountingFactory internal pggOracleStakeAccountingFactory;
+  PGGDelegateReputationVotingFactory internal pggDelegateReputationVotingFactory;
+  PGGOracleStakeVotingFactory internal pggOracleStakeVotingFactory;
 
-  ArbitrationModifyThresholdProposalFactory arbitrationModifyThresholdProposalFactory;
-  ArbitrationModifyMofNProposalFactory arbitrationModifyMofNProposalFactory;
-  ArbitrationModifyArbitratorStakeProposalFactory arbitrationModifyArbitratorStakeProposalFactory;
-  ArbitrationModifyContractAddressProposalFactory arbitrationModifyContractAddressProposalFactory;
-  ArbitrationRevokeArbitratorsProposalFactory arbitrationRevokeArbitratorsProposalFactory;
-  ArbitrationModifyApplicationConfigProposalFactory arbitrationModifyApplicationConfigProposalFactory;
-  ArbitrationCreateGlobalProposalProposalManagerFactory arbitrationCreateGlobalProposalProposalManagerFactory;
-  ArbitrationSupportGlobalProposalProposalManagerFactory arbitrationSupportGlobalProposalProposalManagerFactory;
+  PGGProposalManagerFactory internal pggProposalManagerFactory;
 
   mapping(bytes32 => PGGContractGroup) internal pggs;
 
@@ -167,7 +129,8 @@ contract PGGFactory is Initializable {
     PGGConfigFactory _pggConfigFactory,
     PGGOracleFactory _pggOracleFactory,
     PGGDelegateReputationVotingFactory _delegateReputationVotingFactory,
-    PGGOracleStakeVotingFactory _pggOracleStakeVotingFactory
+    PGGOracleStakeVotingFactory _pggOracleStakeVotingFactory,
+    PGGProposalManagerFactory _pggProposalManagerFactory
   ) public {
     pggOracleStakeVotingFactory = _pggOracleStakeVotingFactory;
     pggDelegateReputationVotingFactory = _delegateReputationVotingFactory;
@@ -178,6 +141,7 @@ contract PGGFactory is Initializable {
     pggArbitratorStakeAccountingFactory = _pggArbitratorStakeAccountingFactory;
     pggMultiSigCandidateTopFactory = _pggMultiSigCandidateTopFactory;
     pggMultiSigFactory = _pggMultiSigFactory;
+    pggProposalManagerFactory = _pggProposalManagerFactory;
 
     ggr = _ggr;
   }
@@ -188,29 +152,6 @@ contract PGGFactory is Initializable {
       "Only FEE_COLLECTOR role allowed"
     );
     _;
-  }
-
-  function initialize(
-    ArbitrationModifyThresholdProposalFactory _arbitrationModifyThresholdProposalFactory,
-    ArbitrationModifyMofNProposalFactory _arbitrationModifyMofNProposalFactory,
-    ArbitrationModifyArbitratorStakeProposalFactory _arbitrationModifyArbitratorStakeProposalFactory,
-    ArbitrationModifyContractAddressProposalFactory _arbitrationModifyContractAddressProposalFactory,
-    ArbitrationRevokeArbitratorsProposalFactory _arbitrationRevokeArbitratorsProposalFactory,
-    ArbitrationModifyApplicationConfigProposalFactory _arbitrationModifyApplicationConfigProposalFactory,
-    ArbitrationCreateGlobalProposalProposalManagerFactory _arbitrationCreateGlobalProposalProposalManagerFactory,
-    ArbitrationSupportGlobalProposalProposalManagerFactory _arbitrationSupportGlobalProposalProposalManagerFactory
-  )
-    external
-    isInitializer
-  {
-    arbitrationSupportGlobalProposalProposalManagerFactory = _arbitrationSupportGlobalProposalProposalManagerFactory;
-    arbitrationCreateGlobalProposalProposalManagerFactory = _arbitrationCreateGlobalProposalProposalManagerFactory;
-    arbitrationModifyApplicationConfigProposalFactory = _arbitrationModifyApplicationConfigProposalFactory;
-    arbitrationRevokeArbitratorsProposalFactory = _arbitrationRevokeArbitratorsProposalFactory;
-    arbitrationModifyContractAddressProposalFactory = _arbitrationModifyContractAddressProposalFactory;
-    arbitrationModifyArbitratorStakeProposalFactory = _arbitrationModifyArbitratorStakeProposalFactory;
-    arbitrationModifyMofNProposalFactory = _arbitrationModifyMofNProposalFactory;
-    arbitrationModifyThresholdProposalFactory = _arbitrationModifyThresholdProposalFactory;
   }
 
   function _acceptPayment() internal {
@@ -229,10 +170,6 @@ contract PGGFactory is Initializable {
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
-  // 0 - SET_THRESHOLD_THRESHOLD
-  // 1 - SET_M_OF_N_THRESHOLD
-  // 2 - REVOKE_ARBITRATORS_THRESHOLD
-  // 3 - CHANGE_CONTRACT_ADDRESS_THRESHOLD
     uint256[] calldata _thresholds
   )
     external
@@ -293,89 +230,8 @@ contract PGGFactory is Initializable {
     emit BuildPGGSecondStep(_groupId, address(pggArbitratorStakeAccounting), address(pggMultiSigCandidateTop));
   }
 
-  function buildThirdStep(
-    bytes32 _groupId
-  )
-    external
-  {
-    PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.THIRD, "THIRD step required");
-    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
-
-    IProposalManager thresholdProposals = arbitrationModifyThresholdProposalFactory.build(g.pggConfig);
-    IProposalManager mOfNProposals = arbitrationModifyMofNProposalFactory.build(g.pggConfig);
-    IProposalManager arbitratorStakeProposals = arbitrationModifyArbitratorStakeProposalFactory.build(g.pggConfig);
-
-    g.pggConfig.addInternalRole(address(thresholdProposals), g.pggConfig.THRESHOLD_MANAGER());
-    g.pggConfig.addInternalRole(address(mOfNProposals), g.pggConfig.M_N_MANAGER());
-    g.pggConfig.addInternalRole(address(arbitratorStakeProposals), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
-
-    g.proposalContracts.modifyThresholdProposalManager = thresholdProposals;
-    g.proposalContracts.modifyMofNProposalManager = mOfNProposals;
-    g.proposalContracts.modifyArbitratorStakeProposalManager = arbitratorStakeProposals;
-
-    g.nextStep = Step.FOURTH;
-
-    emit BuildPGGThirdStep(
-      _groupId,
-      address(thresholdProposals),
-      address(mOfNProposals),
-      address(arbitratorStakeProposals)
-    );
-  }
-
-  function buildFourthStep(
-    bytes32 _groupId
-  )
-    external
-  {
-    PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.FOURTH, "FOURTH step required");
-    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
-
-    IProposalManager changeAddressProposals = arbitrationModifyContractAddressProposalFactory.build(g.pggConfig);
-    IProposalManager revokeArbitratorsProposals = arbitrationRevokeArbitratorsProposalFactory.build(g.pggConfig);
-
-    g.pggConfig.addInternalRole(address(changeAddressProposals), g.pggConfig.CONTRACT_ADDRESS_MANAGER());
-    g.pggConfig.addInternalRole(address(revokeArbitratorsProposals), g.pggMultiSig.ROLE_REVOKE_MANAGER());
-
-    g.proposalContracts.modifyContractAddressProposalManager = changeAddressProposals;
-    g.proposalContracts.revokeArbitratorsProposalManager = revokeArbitratorsProposals;
-
-    g.nextStep = Step.FIFTH;
-
-    emit BuildPGGFourthStep(
-      _groupId,
-      address(changeAddressProposals),
-      address(revokeArbitratorsProposals)
-    );
-  }
-
-  function buildFifthStep(
-    bytes32 _groupId
-  )
-    external
-  {
-    PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.FIFTH, "FIFTH step required");
-    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
-
-    IProposalManager modifyApplicationConfigProposals = arbitrationModifyApplicationConfigProposalFactory.build(g.pggConfig);
-
-    g.pggConfig.addInternalRole(address(modifyApplicationConfigProposals), g.pggConfig.APPLICATION_CONFIG_MANAGER());
-
-    g.proposalContracts.modifyApplicationConfigProposalManager = modifyApplicationConfigProposals;
-
-    g.nextStep = Step.SIXTH;
-
-    emit BuildPGGFifthStep(
-      _groupId,
-      address(modifyApplicationConfigProposals)
-    );
-  }
-
   // can be called multiple times
-  function buildSixthStep(
+  function buildThirdStep(
     bytes32 _groupId,
     bytes32[] calldata _keys,
     bytes32[] calldata _values
@@ -385,7 +241,7 @@ contract PGGFactory is Initializable {
     require(_keys.length == _values.length, "Keys and values arrays should have the same lengths");
 
     PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.SIXTH, "SIXTH step required");
+    require(g.nextStep == Step.THIRD, "THIRD step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     g.pggConfig.addInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
@@ -393,27 +249,31 @@ contract PGGFactory is Initializable {
       g.pggConfig.setApplicationConfigValue(_keys[i], _values[i]);
     }
     g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
+
+    emit BuildPGGThirdStep();
   }
 
-  function buildSixthStepDone(
+  function buildThirdStepDone(
     bytes32 _groupId
   )
     external
   {
     PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.SIXTH, "SIXTH step required");
+    require(g.nextStep == Step.THIRD, "THIRD step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    g.nextStep = Step.SEVENTH;
+    g.nextStep = Step.FOURTH;
+
+    emit BuildPGGThirdStepDone();
   }
 
-  function buildSeventhStep(
+  function buildFourthStep(
     bytes32 _groupId
   )
     external
   {
     PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.SEVENTH, "SEVENTH step required");
+    require(g.nextStep == Step.FOURTH, "FOURTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     IPGGOracleStakeVoting oracleStakeVoting = pggOracleStakeVotingFactory.build(g.pggConfig);
@@ -428,12 +288,12 @@ contract PGGFactory is Initializable {
 
     g.pggConfig.addInternalRole(address(g.pggOracleStakeAccounting), oracleStakeVoting.ROLE_ORACLE_STAKE_NOTIFIER());
 
-    g.nextStep = Step.EIGHTH;
+    g.nextStep = Step.FIFTH;
     g.pggDelegateSpaceVoting = delegateSpaceVoting;
     g.pggDelegateGaltVoting = delegateGaltVoting;
     g.pggOracleStakeVoting = oracleStakeVoting;
 
-    emit BuildPGGSeventhStep(
+    emit BuildPGGFourthStep(
       _groupId,
       address(delegateSpaceVoting),
       address(delegateGaltVoting),
@@ -441,52 +301,28 @@ contract PGGFactory is Initializable {
     );
   }
 
-  function buildEighthStep(
+  function buildFifthStep(
     bytes32 _groupId
   )
     external
   {
     PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.EIGHTH, "EIGHTH step required");
-    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
-
-    IProposalManager createGlobalProposal = arbitrationCreateGlobalProposalProposalManagerFactory.build(
-      g.pggConfig
-    );
-
-    IProposalManager supportGlobalProposal = arbitrationSupportGlobalProposalProposalManagerFactory.build(
-      g.pggConfig
-    );
-
-    g.pggConfig.addInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
-    g.pggConfig.addInternalRole(address(createGlobalProposal), g.pggConfig.CREATE_GLOBAL_PROPOSAL_MANAGER());
-    g.pggConfig.addInternalRole(address(supportGlobalProposal), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
-    g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
-
-    g.pggConfig.addInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
-    g.pggConfig.addExternalRoleTo(address(createGlobalProposal), g.pggConfig.GLOBAL_PROPOSAL_CREATOR_ROLE());
-    g.pggConfig.addExternalRoleTo(address(g.pggOracleStakeAccounting), g.pggConfig.STAKE_TRACKER_NOTIFIER_ROLE());
-    g.pggConfig.removeInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
-
-    g.nextStep = Step.NINTH;
-
-    emit BuildPGGEighthStep(
-      _groupId,
-      address(createGlobalProposal),
-      address(supportGlobalProposal)
-    );
-  }
-
-  function buildNinthStep(
-    bytes32 _groupId
-  )
-    external
-  {
-    PGGContractGroup storage g = pggs[_groupId];
-    require(g.nextStep == Step.NINTH, "NINTH step required");
+    require(g.nextStep == Step.FIFTH, "FIFTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     PGGOracles oracles = pggArbitrationOracleFactory.build(g.pggConfig);
+    IPGGProposalManager proposalManager = pggProposalManagerFactory.build(g.pggConfig);
+
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.CONTRACT_ADDRESS_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.THRESHOLD_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.M_N_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
+
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.EXTERNAL_ROLE_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.INTERNAL_ROLE_MANAGER());
+
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggMultiSig.ROLE_REVOKE_MANAGER());
 
     g.pggConfig.initialize(
       g.pggMultiSig,
@@ -496,7 +332,8 @@ contract PGGFactory is Initializable {
       oracles,
       g.pggDelegateSpaceVoting,
       g.pggDelegateGaltVoting,
-      g.pggOracleStakeVoting
+      g.pggOracleStakeVoting,
+      proposalManager
     );
 
     // TODO: transfer INTERNAL_ROLE_MANAGER permission to a specific contract/method and make self-revoke
@@ -505,9 +342,10 @@ contract PGGFactory is Initializable {
 
     g.nextStep = Step.DONE;
 
-    emit BuildPGGNinthStep(
+    emit BuildPGGFifthStep(
       _groupId,
-      address(oracles)
+      address(oracles),
+      address(proposalManager)
     );
   }
 
