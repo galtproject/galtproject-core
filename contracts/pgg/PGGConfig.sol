@@ -51,8 +51,8 @@ contract PGGConfig is IPGGConfig {
   bytes32 public constant CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE = 0xa8af70c600000000000000000000000000000000000000000000000000000000;
   // "e001f841": "setContractAddress(bytes32,address)",
   bytes32 public constant CHANGE_CONTRACT_ADDRESS_SIGNATURE = 0xe001f84100000000000000000000000000000000000000000000000000000000;
-  // "c0fa9dd2": "applicationConfig(bytes32)",
-  bytes32 public constant APPLICATION_CONFIG_SIGNATURE = 0xc0fa9dd200000000000000000000000000000000000000000000000000000000;
+  // "ae32c951": "setApplicationConfigValue(bytes32,bytes32)",
+  bytes32 public constant APPLICATION_CONFIG_SIGNATURE = 0xae32c95100000000000000000000000000000000000000000000000000000000;
   // "188bcad6": "setGlobalProposalSupport(uint256,bool)",
   bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_SIGNATURE = 0x188bcad600000000000000000000000000000000000000000000000000000000;
   // "2f6049e3": "addExternalRoleTo(address,bytes32)",
@@ -63,10 +63,10 @@ contract PGGConfig is IPGGConfig {
   bytes32 public constant ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE = 0xa57df26700000000000000000000000000000000000000000000000000000000;
   // "7ebf217e": "removeInternalRole(address,bytes32)",
   bytes32 public constant REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE = 0x7ebf217e00000000000000000000000000000000000000000000000000000000;
-  // "9f6dde5d": "revokeArbitrators()",
+  // "9f6dde5d": "revokeArbitrators()", PGGMultiSig
   bytes32 public constant REVOKE_ARBITRATORS_SIGNATURE = 0x9f6dde5d00000000000000000000000000000000000000000000000000000000;
-  //   "03f82494": "globalProposalSupport(uint256)",
-  //  bytes32 public constant CREATE_GLOBAL_PROPOSAL_SIGNATURE = 0x188bcad600000000000000000000000000000000000000000000000000000000;
+  // "8a4285f5": "propose(address,address,uint256,bytes)", GlobalGovernance
+  bytes32 public constant CREATE_GLOBAL_PROPOSAL_SIGNATURE = 0x8a4285f500000000000000000000000000000000000000000000000000000000;
 
   bytes32 public constant MULTI_SIG_CONTRACT = bytes32("multi_sig_contract");
   bytes32 public constant ORACLES_CONTRACT = bytes32("oracles_contract");
@@ -122,29 +122,13 @@ contract PGGConfig is IPGGConfig {
     GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
-    uint256 _minimalArbitratorStake,
-    uint256[] memory _thresholds
+    uint256 _minimalArbitratorStake
   ) public {
     ggr = _ggr;
 
     m = _m;
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
-
-    require(_thresholds.length == 12, "Invalid number of thresholds passed in");
-
-    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_SIGNATURE))] = _thresholds[0];
-    thresholds[keccak256(abi.encode(address(this), SET_M_OF_N_SIGNATURE))] = _thresholds[1];
-    thresholds[keccak256(abi.encode(address(this), CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE))] = _thresholds[2];
-    thresholds[keccak256(abi.encode(address(this), CHANGE_CONTRACT_ADDRESS_SIGNATURE))] = _thresholds[3];
-    thresholds[keccak256(abi.encode(address(this), REVOKE_ARBITRATORS_SIGNATURE))] = _thresholds[4];
-    thresholds[keccak256(abi.encode(address(this), APPLICATION_CONFIG_SIGNATURE))] = _thresholds[5];
-//    thresholds[keccak256(abi.encode(address(this), CREATE_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[6];
-    thresholds[keccak256(abi.encode(address(this), SUPPORT_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[7];
-    thresholds[keccak256(abi.encode(address(this), ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[8];
-    thresholds[keccak256(abi.encode(address(this), REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[9];
-    thresholds[keccak256(abi.encode(address(this), ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[10];
-    thresholds[keccak256(abi.encode(address(this), REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[11];
 
     internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
 
@@ -160,7 +144,8 @@ contract PGGConfig is IPGGConfig {
     IPGGDelegateReputationVoting _delegateSpaceVoting,
     IPGGDelegateReputationVoting _delegateGaltVoting,
     IPGGOracleStakeVoting _oracleStakeVoting,
-    IPGGProposalManager _proposalManager
+    IPGGProposalManager _proposalManager,
+    uint256[] calldata _thresholds
   )
     external
   {
@@ -176,6 +161,21 @@ contract PGGConfig is IPGGConfig {
     contracts[DELEGATE_GALT_VOTING_CONTRACT] = address(_delegateGaltVoting);
     contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);
     contracts[PROPOSAL_MANAGER] = address(_proposalManager);
+
+    require(_thresholds.length == 12, "Invalid number of thresholds passed in");
+
+    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_SIGNATURE))] = _thresholds[0];
+    thresholds[keccak256(abi.encode(address(this), SET_M_OF_N_SIGNATURE))] = _thresholds[1];
+    thresholds[keccak256(abi.encode(address(this), CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE))] = _thresholds[2];
+    thresholds[keccak256(abi.encode(address(this), CHANGE_CONTRACT_ADDRESS_SIGNATURE))] = _thresholds[3];
+    thresholds[keccak256(abi.encode(address(_pggMultiSig), REVOKE_ARBITRATORS_SIGNATURE))] = _thresholds[4];
+    thresholds[keccak256(abi.encode(address(this), APPLICATION_CONFIG_SIGNATURE))] = _thresholds[5];
+    thresholds[keccak256(abi.encode(address(this), SUPPORT_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[6];
+    thresholds[keccak256(abi.encode(address(ggr.getGlobalGovernanceAddress()), CREATE_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[7];
+    thresholds[keccak256(abi.encode(address(this), ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[8];
+    thresholds[keccak256(abi.encode(address(this), REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[9];
+    thresholds[keccak256(abi.encode(address(this), ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[10];
+    thresholds[keccak256(abi.encode(address(this), REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[11];
 
     initialized = true;
   }
@@ -216,13 +216,13 @@ contract PGGConfig is IPGGConfig {
     emit SetApplicationConfigValue(_key, _value);
   }
 
-  function addExternalRoleTo(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
+  function addExternalRole(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].add(_address);
 
     emit AddExternalRole(_role, _address);
   }
 
-  function removeExternalRoleFrom(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
+  function removeExternalRole(address _address, bytes32 _role) external onlyInternalRole(EXTERNAL_ROLE_MANAGER) {
     externalRoles[_role].remove(_address);
 
     emit RemoveExternalRole(_role, _address);

@@ -169,8 +169,7 @@ contract PGGFactory is Initializable {
     uint256 _initialMultiSigRequired,
     uint256 _m,
     uint256 _n,
-    uint256 _minimalArbitratorStake,
-    uint256[] calldata _thresholds
+    uint256 _minimalArbitratorStake
   )
     external
     payable
@@ -188,8 +187,7 @@ contract PGGFactory is Initializable {
       ggr,
       _m,
       _n,
-      _minimalArbitratorStake,
-      _thresholds
+      _minimalArbitratorStake
     );
 
     PGGMultiSig pggMultiSig = pggMultiSigFactory.build(_initialOwners, _initialMultiSigRequired, pggConfig);
@@ -302,7 +300,8 @@ contract PGGFactory is Initializable {
   }
 
   function buildFifthStep(
-    bytes32 _groupId
+    bytes32 _groupId,
+    uint256[] calldata _thresholds
   )
     external
   {
@@ -317,12 +316,16 @@ contract PGGFactory is Initializable {
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.THRESHOLD_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.M_N_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.APPLICATION_CONFIG_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
-
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.EXTERNAL_ROLE_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.INTERNAL_ROLE_MANAGER());
-
     g.pggConfig.addInternalRole(address(proposalManager), g.pggMultiSig.ROLE_REVOKE_MANAGER());
+
+    g.pggConfig.addInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
+    g.pggConfig.addExternalRole(address(proposalManager), g.pggConfig.GLOBAL_PROPOSAL_CREATOR_ROLE());
+    g.pggConfig.addExternalRole(address(g.pggOracleStakeAccounting), g.pggConfig.STAKE_TRACKER_NOTIFIER_ROLE());
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.EXTERNAL_ROLE_MANAGER());
 
     g.pggConfig.initialize(
       g.pggMultiSig,
@@ -333,7 +336,8 @@ contract PGGFactory is Initializable {
       g.pggDelegateSpaceVoting,
       g.pggDelegateGaltVoting,
       g.pggOracleStakeVoting,
-      proposalManager
+      proposalManager,
+      _thresholds
     );
 
     // TODO: transfer INTERNAL_ROLE_MANAGER permission to a specific contract/method and make self-revoke
@@ -347,6 +351,13 @@ contract PGGFactory is Initializable {
       address(oracles),
       address(proposalManager)
     );
+
+    // TODO: revoke this
+//    internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
+//    internalRoles[EXTERNAL_ROLE_MANAGER].add(msg.sender);
+//
+//    emit AddInternalRole(INTERNAL_ROLE_MANAGER, msg.sender);
+//    emit AddInternalRole(EXTERNAL_ROLE_MANAGER, msg.sender);
   }
 
   function withdrawEthFees() external onlyFeeCollector {

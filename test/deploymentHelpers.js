@@ -65,7 +65,7 @@ const Helpers = {
     owner,
     ethValue = 0
   ) {
-    let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, thresholds, {
+    let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, {
       from: owner,
       value: ethValue
     });
@@ -95,7 +95,7 @@ const Helpers = {
     const delegateGaltVoting = await PGGDelegateReputationVoting.at(res.logs[0].args.pggDelegateGaltVoting);
     const oracleStakeVoting = await PGGOracleStakeVoting.at(res.logs[0].args.pggOracleStakeVoting);
 
-    res = await factory.buildFifthStep(groupId, { from: owner });
+    res = await factory.buildFifthStep(groupId, thresholds, { from: owner });
     const oracles = await PGGOracles.at(res.logs[0].args.pggOracles);
     const proposalManager = await PGGProposalManager.at(res.logs[0].args.pggProposalManager);
 

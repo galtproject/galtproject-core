@@ -200,12 +200,12 @@ contract PGGProposalManager is IPGGProposalManager {
 
     require(p.executed == false, "Already executed");
 
-    (bool x, bytes memory response) = address(p.destination)
+    (bool ok, bytes memory response) = address(p.destination)
       .call
       .value(p.value)
       .gas(gasleft() - 50000)(p.data);
 
-    p.executed = x;
+    p.executed = ok;
     p.response = response;
   }
 
@@ -280,6 +280,10 @@ contract PGGProposalManager is IPGGProposalManager {
 
   function getRejectedProposalsCount() public view returns (uint256) {
     return _rejectedProposals.length;
+  }
+
+  function getProposalResponseAsErrorString(uint256 _proposalId) public view returns (string memory) {
+    return string(proposals[_proposalId].response);
   }
 
   function getProposalVoting(
