@@ -24,6 +24,9 @@ PGGOracleStakeVoting.numberFormat = 'String';
 PGGOracleStakeAccounting.numberFormat = 'String';
 PGGProposalManager.numberFormat = 'String';
 
+const MockHelper = artifacts.require('./MockHelper.sol');
+let mockHelper;
+
 const Helpers = {
   async deployPGGFactory(ggr, owner) {
     const pggMultiSigFactory = await PGGMultiSigFactory.new({ from: owner });
@@ -60,15 +63,24 @@ const Helpers = {
     n,
     periodLength,
     minimalArbitratorStake,
-    thresholds,
+    defaultThreshold,
+    customThresholds,
     applicationConfigs,
     owner,
     ethValue = 0
   ) {
-    let res = await factory.buildFirstStep(initialOwners, initialRequired, m, n, minimalArbitratorStake, {
-      from: owner,
-      value: ethValue
-    });
+    let res = await factory.buildFirstStep(
+      initialOwners,
+      initialRequired,
+      m,
+      n,
+      minimalArbitratorStake,
+      defaultThreshold,
+      {
+        from: owner,
+        value: ethValue
+      }
+    );
     const multiSig = await PGGMultiSig.at(res.logs[0].args.pggMultiSig);
     const config = await PGGConfig.at(res.logs[0].args.pggConfig);
     const oracleStakeAccounting = await PGGOracleStakeAccounting.at(res.logs[0].args.pggOracleStakeAccounting);
@@ -80,8 +92,8 @@ const Helpers = {
       res.logs[0].args.pggArbitratorStakeAccounting
     );
 
-    const keys = Object.keys(applicationConfigs);
-    const values = [];
+    let keys = Object.keys(applicationConfigs);
+    let values = [];
 
     for (let i = 0; i < keys.length; i++) {
       values[i] = applicationConfigs[keys[i]];
@@ -95,7 +107,39 @@ const Helpers = {
     const delegateGaltVoting = await PGGDelegateReputationVoting.at(res.logs[0].args.pggDelegateGaltVoting);
     const oracleStakeVoting = await PGGOracleStakeVoting.at(res.logs[0].args.pggOracleStakeVoting);
 
-    res = await factory.buildFifthStep(groupId, thresholds, { from: owner });
+    keys = Object.keys(customThresholds);
+    let markers = [];
+    values = [];
+
+    for (let i = 0; i < keys.length; i++) {
+      const val = customThresholds[keys[i]];
+      const localKeys = Object.keys(val);
+      assert(localKeys.length === 1, 'Invalid threshold keys length');
+      const contract = localKeys[0];
+      let marker;
+      switch (contract) {
+        case 'config':
+          marker = config.getThresholdMarker(config.address, keys[i]);
+          break;
+        case 'multiSig':
+          marker = config.getThresholdMarker(multiSig.address, keys[i]);
+          break;
+        default:
+          marker = config.getThresholdMarker(contract, keys[i]);
+          break;
+      }
+      console.log('marker>>>', keys[i], marker, val[contract]);
+
+      markers.push(marker);
+      values.push(customThresholds[keys[i]]);
+    }
+
+    markers = await Promise.all(markers);
+
+    res = await factory.buildFifthStep(groupId, markers, values, { from: owner });
+    await factory.buildFifthStepDone(groupId, { from: owner });
+
+    res = await factory.buildSixthStep(groupId, { from: owner });
     const oracles = await PGGOracles.at(res.logs[0].args.pggOracles);
     const proposalManager = await PGGProposalManager.at(res.logs[0].args.pggProposalManager);
 
@@ -112,6 +156,13 @@ const Helpers = {
       oracleStakeVoting,
       oracles
     };
+  },
+  async thresholdMarker(destination, data) {
+    if (!mockHelper) {
+      mockHelper = await MockHelper.new();
+    }
+
+    return mockHelper.getThresholdMarker(destination, data);
   }
 };
 

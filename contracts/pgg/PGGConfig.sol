@@ -102,6 +102,7 @@ contract PGGConfig is IPGGConfig {
   mapping(bytes32 => ArraySet.AddressSet) internal internalRoles;
 
   uint256 public minimalArbitratorStake;
+  uint256 public defaultProposalThreshold;
 
   bool internal initialized;
 
@@ -122,16 +123,17 @@ contract PGGConfig is IPGGConfig {
     GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
-    uint256 _minimalArbitratorStake
+    uint256 _minimalArbitratorStake,
+    uint256 _defaultProposalThreshold
   ) public {
     ggr = _ggr;
 
     m = _m;
     n = _n;
     minimalArbitratorStake = _minimalArbitratorStake;
+    defaultProposalThreshold = _defaultProposalThreshold;
 
     internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
-
     emit AddInternalRole(INTERNAL_ROLE_MANAGER, msg.sender);
   }
 
@@ -144,8 +146,7 @@ contract PGGConfig is IPGGConfig {
     IPGGDelegateReputationVoting _delegateSpaceVoting,
     IPGGDelegateReputationVoting _delegateGaltVoting,
     IPGGOracleStakeVoting _oracleStakeVoting,
-    IPGGProposalManager _proposalManager,
-    uint256[] calldata _thresholds
+    IPGGProposalManager _proposalManager
   )
     external
   {
@@ -162,22 +163,23 @@ contract PGGConfig is IPGGConfig {
     contracts[ORACLE_STAKE_VOTING_CONTRACT] = address(_oracleStakeVoting);
     contracts[PROPOSAL_MANAGER] = address(_proposalManager);
 
-    require(_thresholds.length == 12, "Invalid number of thresholds passed in");
-
-    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_SIGNATURE))] = _thresholds[0];
-    thresholds[keccak256(abi.encode(address(this), SET_M_OF_N_SIGNATURE))] = _thresholds[1];
-    thresholds[keccak256(abi.encode(address(this), CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE))] = _thresholds[2];
-    thresholds[keccak256(abi.encode(address(this), CHANGE_CONTRACT_ADDRESS_SIGNATURE))] = _thresholds[3];
-    thresholds[keccak256(abi.encode(address(_pggMultiSig), REVOKE_ARBITRATORS_SIGNATURE))] = _thresholds[4];
-    thresholds[keccak256(abi.encode(address(this), APPLICATION_CONFIG_SIGNATURE))] = _thresholds[5];
-    thresholds[keccak256(abi.encode(address(this), SUPPORT_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[6];
-    thresholds[keccak256(abi.encode(address(ggr.getGlobalGovernanceAddress()), CREATE_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[7];
-    thresholds[keccak256(abi.encode(address(this), ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[8];
-    thresholds[keccak256(abi.encode(address(this), REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[9];
-    thresholds[keccak256(abi.encode(address(this), ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[10];
-    thresholds[keccak256(abi.encode(address(this), REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[11];
+//    thresholds[keccak256(abi.encode(address(this), SET_THRESHOLD_SIGNATURE))] = _thresholds[0];
+//    thresholds[keccak256(abi.encode(address(this), SET_M_OF_N_SIGNATURE))] = _thresholds[1];
+//    thresholds[keccak256(abi.encode(address(this), CHANGE_MINIMAL_ARBITRATOR_STAKE_SIGNATURE))] = _thresholds[2];
+//    thresholds[keccak256(abi.encode(address(this), CHANGE_CONTRACT_ADDRESS_SIGNATURE))] = _thresholds[3];
+//    thresholds[keccak256(abi.encode(address(_pggMultiSig), REVOKE_ARBITRATORS_SIGNATURE))] = _thresholds[4];
+//    thresholds[keccak256(abi.encode(address(this), APPLICATION_CONFIG_SIGNATURE))] = _thresholds[5];
+//    thresholds[keccak256(abi.encode(address(this), SUPPORT_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[6];
+//    thresholds[keccak256(abi.encode(address(ggr.getGlobalGovernanceAddress()), CREATE_GLOBAL_PROPOSAL_SIGNATURE))] = _thresholds[7];
+//    thresholds[keccak256(abi.encode(address(this), ADD_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[8];
+//    thresholds[keccak256(abi.encode(address(this), REMOVE_EXTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[9];
+//    thresholds[keccak256(abi.encode(address(this), ADD_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[10];
+//    thresholds[keccak256(abi.encode(address(this), REMOVE_INTERNAL_ROLE_PROPOSAL_SIGNATURE))] = _thresholds[11];
 
     initialized = true;
+
+    internalRoles[INTERNAL_ROLE_MANAGER].remove(msg.sender);
+    emit RemoveInternalRole(INTERNAL_ROLE_MANAGER, msg.sender);
   }
 
   function setThreshold(bytes32 _key, uint256 _value) external onlyInternalRole(THRESHOLD_MANAGER) {
@@ -253,6 +255,17 @@ contract PGGConfig is IPGGConfig {
   }
 
   // GETTERS (TODO: replace contract getters with interfaces only)
+
+  function getThresholdMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
+    bytes32 methodName;
+
+    assembly {
+      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+    }
+
+    return keccak256(abi.encode(_destination, methodName));
+  }
+
   function getMultiSig() external view returns (IPGGMultiSig) {
     address payable ms = address(uint160(contracts[MULTI_SIG_CONTRACT]));
     return IPGGMultiSig(ms);

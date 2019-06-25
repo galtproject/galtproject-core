@@ -62,8 +62,6 @@ contract PGGProposalManager is IPGGProposalManager {
     bytes response;
   }
 
-  uint256 public defaultThreshold;
-
   Counters.Counter internal idCounter;
 
   uint256[] private _approvedProposals;
@@ -71,7 +69,7 @@ contract PGGProposalManager is IPGGProposalManager {
 
   mapping(uint256 => Proposal) public proposals;
   mapping(uint256 => ProposalVoting) internal _proposalVotings;
-  PGGConfig public pggConfig;
+  PGGConfig internal pggConfig;
 
   // Cache
   ArraySet.Uint256Set private _activeProposals;
@@ -87,17 +85,6 @@ contract PGGProposalManager is IPGGProposalManager {
 
   constructor(PGGConfig _pggConfig) public {
     pggConfig = _pggConfig;
-    defaultThreshold = 100 * DECIMALS / 100;
-  }
-
-  function getMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
-    bytes32 methodName;
-
-    assembly {
-      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
-    }
-
-    return keccak256(abi.encode(_destination, methodName));
   }
 
   function propose(
@@ -119,7 +106,7 @@ contract PGGProposalManager is IPGGProposalManager {
     p.value = _value;
     p.data = _data;
     p.description = _description;
-    p.marker = getMarker(_destination, _data);
+    p.marker = pggConfig.getThresholdMarker(_destination, _data);
 
     _activeProposals.add(id);
     _activeProposalsBySender[msg.sender].add(id);
@@ -157,7 +144,7 @@ contract PGGProposalManager is IPGGProposalManager {
     if (threshold > 0) {
       require(support >= threshold, "Threshold doesn't reached yet");
     } else {
-      require(support >= defaultThreshold, "Threshold doesn't reached yet");
+      require(support >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
     }
 
     proposalVoting.status = ProposalStatus.APPROVED;
@@ -182,7 +169,7 @@ contract PGGProposalManager is IPGGProposalManager {
     if (threshold > 0) {
       require(nayShare >= threshold, "Threshold doesn't reached yet");
     } else {
-      require(nayShare >= threshold, "Threshold doesn't reached yet");
+      require(nayShare >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
     }
 
     proposalVoting.status = ProposalStatus.REJECTED;
@@ -234,8 +221,14 @@ contract PGGProposalManager is IPGGProposalManager {
   }
 
   // GETTERS
-  function getThreshold(uint256 _proposalId) public view returns (uint256) {
-    return pggConfig.thresholds(proposals[_proposalId].marker);
+  function getThreshold(uint256 _proposalId) external view returns (uint256) {
+    uint256 custom = pggConfig.thresholds(proposals[_proposalId].marker);
+
+    if (custom > 0) {
+      return custom;
+    } else {
+      return pggConfig.defaultProposalThreshold();
+    }
   }
 
   function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {

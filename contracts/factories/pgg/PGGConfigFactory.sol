@@ -25,7 +25,8 @@ contract PGGConfigFactory is Ownable {
     GaltGlobalRegistry _ggr,
     uint256 _m,
     uint256 _n,
-    uint256 _minimalArbitratorStake
+    uint256 _minimalArbitratorStake,
+    uint256 _defaultProposalThreshold
   )
     external
     returns (PGGConfig config)
@@ -34,7 +35,8 @@ contract PGGConfigFactory is Ownable {
       _ggr,
       _m,
       _n,
-      _minimalArbitratorStake
+      _minimalArbitratorStake,
+      _defaultProposalThreshold
     );
 
     bytes32 role = config.INTERNAL_ROLE_MANAGER();

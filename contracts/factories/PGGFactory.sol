@@ -62,8 +62,10 @@ contract PGGFactory is Initializable {
     address pggDelegateGaltVoting,
     address pggOracleStakeVoting
   );
+  event BuildPGGFifthStep();
+  event BuildPGGFifthStepDone();
 
-  event BuildPGGFifthStep(
+  event BuildPGGSixthStep(
     bytes32 groupId,
     address pggOracles,
     address pggProposalManager
@@ -75,6 +77,7 @@ contract PGGFactory is Initializable {
     THIRD,
     FOURTH,
     FIFTH,
+    SIXTH,
     DONE
   }
 
@@ -169,7 +172,8 @@ contract PGGFactory is Initializable {
     uint256 _initialMultiSigRequired,
     uint256 _m,
     uint256 _n,
-    uint256 _minimalArbitratorStake
+    uint256 _minimalArbitratorStake,
+    uint256 _defaultProposalThreshold
   )
     external
     payable
@@ -187,7 +191,8 @@ contract PGGFactory is Initializable {
       ggr,
       _m,
       _n,
-      _minimalArbitratorStake
+      _minimalArbitratorStake,
+      _defaultProposalThreshold
     );
 
     PGGMultiSig pggMultiSig = pggMultiSigFactory.build(_initialOwners, _initialMultiSigRequired, pggConfig);
@@ -301,12 +306,51 @@ contract PGGFactory is Initializable {
 
   function buildFifthStep(
     bytes32 _groupId,
-    uint256[] calldata _thresholds
+    bytes32[] calldata _thresholdKeys,
+    uint256[] calldata _thresholdValues
   )
     external
   {
     PGGContractGroup storage g = pggs[_groupId];
     require(g.nextStep == Step.FIFTH, "FIFTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    uint256 len = _thresholdValues.length;
+    require(len == _thresholdKeys.length, "Thresholds key and value array lengths mismatch");
+    PGGConfig pggConfig = g.pggConfig;
+
+    pggConfig.addInternalRole(address(this), pggConfig.THRESHOLD_MANAGER());
+
+    for (uint256 i = 0; i < len; i++) {
+      pggConfig.setThreshold(_thresholdKeys[i], _thresholdValues[i]);
+    }
+
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.THRESHOLD_MANAGER());
+
+    emit BuildPGGFifthStep();
+  }
+
+  function buildFifthStepDone(
+    bytes32 _groupId
+  )
+    external
+  {
+    PGGContractGroup storage g = pggs[_groupId];
+    require(g.nextStep == Step.FIFTH, "FIFTH step required");
+    require(g.creator == msg.sender, "Only the initial allowed to continue build process");
+
+    g.nextStep = Step.SIXTH;
+
+    emit BuildPGGFifthStepDone();
+  }
+
+  function buildSixthStep(
+    bytes32 _groupId
+  )
+    external
+  {
+    PGGContractGroup storage g = pggs[_groupId];
+    require(g.nextStep == Step.SIXTH, "SIXTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
     PGGOracles oracles = pggArbitrationOracleFactory.build(g.pggConfig);
@@ -336,28 +380,18 @@ contract PGGFactory is Initializable {
       g.pggDelegateSpaceVoting,
       g.pggDelegateGaltVoting,
       g.pggOracleStakeVoting,
-      proposalManager,
-      _thresholds
+      proposalManager
     );
-
-    // TODO: transfer INTERNAL_ROLE_MANAGER permission to a specific contract/method and make self-revoke
 
     IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggConfig);
 
     g.nextStep = Step.DONE;
 
-    emit BuildPGGFifthStep(
+    emit BuildPGGSixthStep(
       _groupId,
       address(oracles),
       address(proposalManager)
     );
-
-    // TODO: revoke this
-//    internalRoles[INTERNAL_ROLE_MANAGER].add(msg.sender);
-//    internalRoles[EXTERNAL_ROLE_MANAGER].add(msg.sender);
-//
-//    emit AddInternalRole(INTERNAL_ROLE_MANAGER, msg.sender);
-//    emit AddInternalRole(EXTERNAL_ROLE_MANAGER, msg.sender);
   }
 
   function withdrawEthFees() external onlyFeeCollector {

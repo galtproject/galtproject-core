@@ -14,7 +14,7 @@ const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
 const { assertRevert, ether, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
-const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG, thresholdMarker } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
@@ -170,6 +170,13 @@ contract('ArbitratorSlashing', accounts => {
       applicationConfig[pcCustodianKey] = numberToEvmWord(ether(200));
       applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
 
+      const customThresholds = {};
+      customThresholds.SET_THRESHOLD_THRESHOLD = { config: 80 };
+      customThresholds.SET_M_OF_N_THRESHOLD = { config: 80 };
+      customThresholds.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = { config: 70 };
+      customThresholds.CHANGE_CONTRACT_ADDRESS_THRESHOLD = { config: 90 };
+      customThresholds.REVOKE_ARBITRATORS_THRESHOLD = { multiSig: 90 };
+
       await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
       this.pggX = await buildPGG(
         this.pggFactory,
@@ -179,7 +186,8 @@ contract('ArbitratorSlashing', accounts => {
         10,
         60,
         ether(1000),
-        [80, 80, 70, 90, 90, 30, 30, 30],
+        30,
+        customThresholds,
         applicationConfig,
         alice
       );

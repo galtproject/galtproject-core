@@ -127,18 +127,7 @@ contract('PGG Proposals', accounts => {
     await (async () => {
       await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
-      this.pgg = await buildPGG(
-        this.pggFactory,
-        [a1, a2, a3],
-        2,
-        7,
-        10,
-        60,
-        ether(1000),
-        [24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24],
-        {},
-        alice
-      );
+      this.pgg = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 7, 10, 60, ether(1000), 24, {}, {}, alice);
 
       this.mX = this.pgg.config.address;
     })();
@@ -162,7 +151,7 @@ contract('PGG Proposals', accounts => {
 
   describe('ModifyThreshold Proposals', () => {
     it('should change corresponding values', async function() {
-      const key = await this.pgg.proposalManager.getMarker(
+      const key = await this.pgg.config.getThresholdMarker(
         this.pgg.config.address,
         await this.pgg.config.SET_THRESHOLD_SIGNATURE()
       );
@@ -209,7 +198,7 @@ contract('PGG Proposals', accounts => {
       assert.sameMembers(res.map(int), []);
 
       res = await this.pgg.config.thresholds(
-        await this.pgg.proposalManager.getMarker(this.pgg.config.address, proposeData)
+        await this.pgg.config.getThresholdMarker(this.pgg.config.address, proposeData)
       );
       assert.equal(web3.utils.hexToNumberString(res), '42');
 
