@@ -31,6 +31,9 @@ import "./PGGMultiSig.sol";
 contract PGGConfig is IPGGConfig {
   using ArraySet for ArraySet.AddressSet;
 
+  // 100% == 10**6
+  uint256 public constant DECIMALS = 10**6;
+
   bytes32 public constant THRESHOLD_MANAGER = bytes32("threshold_manager");
   bytes32 public constant M_N_MANAGER = bytes32("m_n_manager");
   bytes32 public constant MINIMAL_ARBITRATOR_STAKE_MANAGER = bytes32("minimal_arbitrator_stake_manager");
@@ -40,6 +43,7 @@ contract PGGConfig is IPGGConfig {
   bytes32 public constant SUPPORT_GLOBAL_PROPOSAL_MANAGER = bytes32("support_global_proposal_manager");
   bytes32 public constant EXTERNAL_ROLE_MANAGER = bytes32("external_role_manager");
   bytes32 public constant INTERNAL_ROLE_MANAGER = bytes32("internal_role_manager");
+  bytes32 public constant DEFAULT_PROPOSAL_THRESHOLD_MANAGER = bytes32("default_threshold_manager");
 
   bytes32 public constant PROPOSAL_MANAGER = bytes32("proposal_manager");
 
@@ -85,6 +89,7 @@ contract PGGConfig is IPGGConfig {
   event SetThreshold(bytes32 indexed key, uint256 value);
   event SetMofN(uint256 m, uint256 n);
   event SetMinimalArbitratorStake(uint256 value);
+  event SetDefaultProposalThreshold(uint256 value);
   event SetContractAddress(bytes32 indexed key, address addr);
   event SetApplicationConfigValue(bytes32 indexed key, bytes32 value);
   event AddExternalRole(bytes32 indexed role, address indexed addr);
@@ -167,7 +172,8 @@ contract PGGConfig is IPGGConfig {
   }
 
   function setThreshold(bytes32 _key, uint256 _value) external onlyInternalRole(THRESHOLD_MANAGER) {
-    require(_value <= 100, "Value should be less than 100");
+    require(_value <= DECIMALS, "Invalid threshold value");
+
     thresholds[_key] = _value;
 
     emit SetThreshold(_key, _value);
@@ -188,6 +194,14 @@ contract PGGConfig is IPGGConfig {
     minimalArbitratorStake = _value;
 
     emit SetMinimalArbitratorStake(_value);
+  }
+
+  function setDefaultProposalThreshold(uint256 _value) external onlyInternalRole(DEFAULT_PROPOSAL_THRESHOLD_MANAGER) {
+    require(_value > 0 && _value <= DECIMALS, "Invalid threshold value");
+
+    defaultProposalThreshold = _value;
+
+    emit SetDefaultProposalThreshold(_value);
   }
 
   function setContractAddress(bytes32 _key, address _address) external onlyInternalRole(CONTRACT_ADDRESS_MANAGER) {

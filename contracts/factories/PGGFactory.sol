@@ -362,6 +362,7 @@ contract PGGFactory is Initializable {
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.MINIMAL_ARBITRATOR_STAKE_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.APPLICATION_CONFIG_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.SUPPORT_GLOBAL_PROPOSAL_MANAGER());
+    g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.DEFAULT_PROPOSAL_THRESHOLD_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.EXTERNAL_ROLE_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggConfig.INTERNAL_ROLE_MANAGER());
     g.pggConfig.addInternalRole(address(proposalManager), g.pggMultiSig.ROLE_REVOKE_MANAGER());

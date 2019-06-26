@@ -582,9 +582,6 @@ contract('GlobalGovernance', accounts => {
       await this.pggM.proposalManager.aye(proposalId, { from: charlie });
       await this.pggM.proposalManager.aye(proposalId, { from: dan });
 
-      res = await this.pggM.proposalManager.getAyeShare(proposalId);
-      res = await this.pggM.proposalManager.getNayShare(proposalId);
-
       await assertRevert(this.pggM.proposalManager.triggerReject(proposalId));
       await this.pggM.proposalManager.triggerApprove(proposalId);
 
@@ -657,7 +654,7 @@ contract('GlobalGovernance', accounts => {
         await this.pggN.proposalManager.aye(proposalId, { from: mike });
 
         res = await this.pggN.proposalManager.getAyeShare(proposalId);
-        assert.equal(res, 30);
+        assert.equal(res, 300000);
 
         await this.pggN.proposalManager.triggerApprove(proposalId);
 

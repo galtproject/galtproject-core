@@ -141,7 +141,7 @@ contract('PGGOracleStakeVoting', accounts => {
       4,
       60,
       ether(1000),
-      30,
+      300000,
       {},
       applicationConfigX,
       alice

@@ -196,7 +196,7 @@ contract('NewPropertyManager', accounts => {
       10,
       60,
       ether(1000),
-      30,
+      300000,
       {},
       applicationConfig,
       alice
@@ -322,7 +322,7 @@ contract('NewPropertyManager', accounts => {
             10,
             60,
             ether(1000),
-            30,
+            300000,
             {},
             this.applicationConfig,
             alice
@@ -796,7 +796,7 @@ contract('NewPropertyManager', accounts => {
             10,
             60,
             ether(1000),
-            30,
+            300000,
             {},
             this.applicationConfig,
             alice

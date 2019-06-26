@@ -127,7 +127,7 @@ contract('PGG Proposals', accounts => {
     await (async () => {
       await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
 
-      this.pgg = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 7, 10, 60, ether(1000), 24, {}, {}, alice);
+      this.pgg = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 7, 10, 60, ether(1000), 240000, {}, {}, alice);
 
       this.mX = this.pgg.config.address;
     })();
@@ -155,7 +155,7 @@ contract('PGG Proposals', accounts => {
         this.pgg.config.address,
         await this.pgg.config.SET_THRESHOLD_SIGNATURE()
       );
-      const proposeData = this.pgg.config.contract.methods.setThreshold(key, 42).encodeABI();
+      const proposeData = this.pgg.config.contract.methods.setThreshold(key, 420000).encodeABI();
       let res = await this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
         from: alice
       });
@@ -164,7 +164,7 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -172,11 +172,11 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
       await this.pgg.proposalManager.triggerApprove(proposalId);
@@ -200,10 +200,10 @@ contract('PGG Proposals', accounts => {
       res = await this.pgg.config.thresholds(
         await this.pgg.config.getThresholdMarker(this.pgg.config.address, proposeData)
       );
-      assert.equal(web3.utils.hexToNumberString(res), '42');
+      assert.equal(web3.utils.hexToNumberString(res), '420000');
 
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 42);
+      assert.equal(res, 420000);
     });
   });
 
@@ -218,7 +218,7 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
 
@@ -226,11 +226,11 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
       await this.pgg.proposalManager.triggerApprove(proposalId);
@@ -269,19 +269,19 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await this.pgg.proposalManager.nay(proposalId, { from: bob });
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
 
       await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
       await this.pgg.proposalManager.triggerApprove(proposalId);
@@ -319,19 +319,19 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await this.pgg.proposalManager.nay(proposalId, { from: bob });
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
 
       await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
       await this.pgg.proposalManager.triggerApprove(proposalId);
@@ -367,19 +367,19 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await this.pgg.proposalManager.nay(proposalId, { from: bob });
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
 
       res = await this.pgg.multiSig.getOwners();
       assert.sameMembers(res, [a1, a2, a3]);
@@ -415,19 +415,19 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.aye(proposalId, { from: alice });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
       assert.equal(res, 0);
       res = await this.pgg.proposalManager.getThreshold(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
 
       await this.pgg.proposalManager.nay(proposalId, { from: bob });
       await this.pgg.proposalManager.aye(proposalId, { from: charlie });
 
       res = await this.pgg.proposalManager.getAyeShare(proposalId);
-      assert.equal(res, 24);
+      assert.equal(res, 240000);
       res = await this.pgg.proposalManager.getNayShare(proposalId);
-      assert.equal(res, 8);
+      assert.equal(res, 80000);
 
       await assertRevert(this.pgg.proposalManager.triggerReject(proposalId));
       await this.pgg.proposalManager.triggerApprove(proposalId);

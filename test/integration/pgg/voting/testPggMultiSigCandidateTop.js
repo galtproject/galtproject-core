@@ -146,7 +146,7 @@ contract('PGGMultiSigCandidateTop', accounts => {
         3,
         60,
         ether(1000),
-        30,
+        300000,
         {},
         {},
         alice
@@ -2472,7 +2472,7 @@ contract('PGGMultiSigCandidateTop', accounts => {
       await this.acl.setRole(bytes32('SPACE_REPUTATION_NOTIFIER'), fakeSRA, true, { from: coreTeam });
 
       await this.galtToken.approve(this.pggFactoryF.address, ether(10), { from: bob });
-      this.pggF = await buildPGG(this.pggFactoryF, [a1, a2, a3], 2, 3, 5, 60, ether(1000), 30, {}, {}, bob);
+      this.pggF = await buildPGG(this.pggFactoryF, [a1, a2, a3], 2, 3, 5, 60, ether(1000), 300000, {}, {}, bob);
       this.pggMultiSigF = this.pggF.multiSig;
       this.arbitratorStakeAccountingX = this.pggF.arbitratorStakeAccounting;
       this.delegateSpaceVotingF = this.pggF.delegateSpaceVoting;

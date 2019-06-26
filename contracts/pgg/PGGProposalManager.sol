@@ -142,9 +142,9 @@ contract PGGProposalManager is IPGGProposalManager {
 
     uint256 threshold = pggConfig.thresholds(p.marker);
     if (threshold > 0) {
-      require(support >= threshold, "Threshold doesn't reached yet");
+      require(support >= threshold, "Custom threshold doesn't reached yet");
     } else {
-      require(support >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
+      require(support >= pggConfig.defaultProposalThreshold(), "Default threshold doesn't reached yet");
     }
 
     proposalVoting.status = ProposalStatus.APPROVED;
