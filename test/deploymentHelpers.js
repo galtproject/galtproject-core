@@ -109,7 +109,11 @@ const Helpers = {
 
     keys = Object.keys(customThresholds);
     let markers = [];
+    let signatures = [];
     values = [];
+
+    signatures = keys.map(k => config[`${k}_SIGNATURE`]());
+    signatures = await Promise.all(signatures);
 
     for (let i = 0; i < keys.length; i++) {
       const val = customThresholds[keys[i]];
@@ -117,21 +121,21 @@ const Helpers = {
       assert(localKeys.length === 1, 'Invalid threshold keys length');
       const contract = localKeys[0];
       let marker;
+
       switch (contract) {
         case 'config':
-          marker = config.getThresholdMarker(config.address, keys[i]);
+          marker = config.getThresholdMarker(config.address, signatures[i]);
           break;
         case 'multiSig':
-          marker = config.getThresholdMarker(multiSig.address, keys[i]);
+          marker = config.getThresholdMarker(multiSig.address, signatures[i]);
           break;
         default:
-          marker = config.getThresholdMarker(contract, keys[i]);
+          marker = config.getThresholdMarker(contract, signatures[i]);
           break;
       }
-      console.log('marker>>>', keys[i], marker, val[contract]);
 
       markers.push(marker);
-      values.push(customThresholds[keys[i]]);
+      values.push(customThresholds[keys[i]][contract]);
     }
 
     markers = await Promise.all(markers);

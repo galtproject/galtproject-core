@@ -306,48 +306,15 @@ contract('GaltRA', accounts => {
       await this.galtToken.approve(this.pggFactory.address, ether(10), { from: charlie });
 
       // MultiSigX
-      this.pggX = await buildPGG(
-        this.pggFactory,
-        [a1, a2, a3],
-        2,
-        3,
-        4,
-        60,
-        ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
-        {},
-        alice
-      );
+      this.pggX = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 3, 4, 60, ether(1000), 30, {}, {}, alice);
       const pggConfigX = this.pggX.config;
 
       // MultiSigY
-      this.pggY = await buildPGG(
-        this.pggFactory,
-        [a1, a2, a3],
-        2,
-        3,
-        4,
-        60,
-        ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
-        {},
-        bob
-      );
+      this.pggY = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 3, 4, 60, ether(1000), 30, {}, {}, bob);
       const pggConfigY = this.pggY.config;
 
       // MultiSigZ
-      this.pggZ = await buildPGG(
-        this.pggFactory,
-        [a1, a2, a3],
-        2,
-        3,
-        4,
-        60,
-        ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
-        {},
-        charlie
-      );
+      this.pggZ = await buildPGG(this.pggFactory, [a1, a2, a3], 2, 3, 4, 60, ether(1000), 30, {}, {}, charlie);
       const pggConfigZ = this.pggZ.config;
 
       await this.galtToken.approve(this.galtLockerFactory.address, ether(10), { from: alice });

@@ -22,7 +22,7 @@ contract('PGGMultiSig', accounts => {
 
     await this.ggr.setContract(await this.ggr.GALT_TOKEN(), this.galtToken.address, { from: coreTeam });
 
-    this.pggConfigX = await PGGConfig.new(this.ggr.address, 2, 3, 200, [30, 30, 30, 30, 30, 30, 30, 30], {
+    this.pggConfigX = await PGGConfig.new(this.ggr.address, 2, 3, 200, 30, {
       from: coreTeam
     });
     this.pggMultiSig = await PGGMultiSig.new([alice, bob, charlie], 2, this.pggConfigX.address, {

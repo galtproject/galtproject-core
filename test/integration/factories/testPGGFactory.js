@@ -57,19 +57,7 @@ contract("PGGFactory", (accounts) => {
 
   describe('protocol fee', () => {
     async function build(factory, value = 0) {
-      await buildPGG(
-        factory,
-        [a1, a2, a3],
-        2,
-        7,
-        10,
-        60,
-        ether(1000),
-        [24, 24, 24, 24, 24, 24, 24, 24],
-        {},
-        alice,
-        value
-      );
+      await buildPGG(factory, [a1, a2, a3], 2, 7, 10, 60, ether(1000), 24, {}, {}, alice, value);
     }
 
     describe('payments', async function() {

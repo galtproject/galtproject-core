@@ -125,7 +125,8 @@ function globalGovernanceHelpers(
         10,
         60,
         ether(1000),
-        [24, 24, 24, 24, 24, 24, 24, 24],
+        24,
+        {},
         {},
         owner
       );

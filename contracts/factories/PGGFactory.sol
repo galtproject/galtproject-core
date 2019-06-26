@@ -383,6 +383,8 @@ contract PGGFactory is Initializable {
       proposalManager
     );
 
+    g.pggConfig.removeInternalRole(address(this), g.pggConfig.INTERNAL_ROLE_MANAGER());
+
     IPGGRegistry(ggr.getPggRegistryAddress()).addPgg(g.pggConfig);
 
     g.nextStep = Step.DONE;

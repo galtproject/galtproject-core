@@ -171,11 +171,11 @@ contract('ArbitratorSlashing', accounts => {
       applicationConfig[pcAuditorKey] = numberToEvmWord(ether(200));
 
       const customThresholds = {};
-      customThresholds.SET_THRESHOLD_THRESHOLD = { config: 80 };
-      customThresholds.SET_M_OF_N_THRESHOLD = { config: 80 };
-      customThresholds.CHANGE_MINIMAL_ARBITRATOR_STAKE_THRESHOLD = { config: 70 };
-      customThresholds.CHANGE_CONTRACT_ADDRESS_THRESHOLD = { config: 90 };
-      customThresholds.REVOKE_ARBITRATORS_THRESHOLD = { multiSig: 90 };
+      customThresholds.SET_THRESHOLD = { config: 80 };
+      customThresholds.SET_M_OF_N = { config: 80 };
+      customThresholds.CHANGE_MINIMAL_ARBITRATOR_STAKE = { config: 70 };
+      customThresholds.CHANGE_CONTRACT_ADDRESS = { config: 90 };
+      customThresholds.REVOKE_ARBITRATORS = { multiSig: 90 };
 
       await this.galtToken.approve(this.pggFactory.address, ether(20), { from: alice });
       this.pggX = await buildPGG(
