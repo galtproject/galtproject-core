@@ -1,3 +1,33 @@
+## Galt Project Contracts [v0.10.0](https://github.com/galtspace/galtproject-contracts/tree/v0.10.0) (2019-06-26)
+
+- Adjust linter config
+- Extract SpaceGeoDataRegistry logic from SplitMerge
+- Temporarily remove SplitMerge
+- Bump Solidity version to v0.5.7
+- Make math safe using SafeMath
+- Remove non-storage uint8s
+- Replace SpaceToken Permissionable roles with ACL-level roles
+- Add ROLE_APPLICATION_UNLOCKER who has permission to unlock applications locked by oracles
+- Fix New/Update*PropertyManager resubmission methods
+- Unify namings in application contracts
+- Improve Event coverage in contracts scheduled for mainnet release
+- Make selected contracts proxy-compatible (initialized using initializer())
+- Bump OpenZeppelin to v2.3.0
+
+- Rename { multisig/arbitration } => PGG (ProtocolGovernanceGroup)
+- Move Oracles to PGG level
+- Replace all PGG proposal contracts with a single one
+- Replace PGG Permissionable roles with PGG-level ACL
+
+- Rename PlotManager => NewPropertyManager
+- Rename PlotClarificationManager => UpdatePropertyManager
+- Move PlotCustodian application and registry contracts to @market submodule
+
+- Add ModifySpaceGeoDataManager contract
+- Add StakeTracker contract
+- Add Statements contract 
+- Add GlobalGovernance contract
+
 ## Galt Project Contracts [v0.9.0](https://github.com/galtspace/galtproject-contracts/tree/v0.9.0) (2019-04-11)
 
 * Introduce Global FeeRegistry
