@@ -24,9 +24,6 @@ PGGOracleStakeVoting.numberFormat = 'String';
 PGGOracleStakeAccounting.numberFormat = 'String';
 PGGProposalManager.numberFormat = 'String';
 
-const MockHelper = artifacts.require('./MockHelper.sol');
-let mockHelper;
-
 const Helpers = {
   async deployPGGFactory(ggr, owner) {
     const pggMultiSigFactory = await PGGMultiSigFactory.new({ from: owner });
@@ -160,13 +157,6 @@ const Helpers = {
       oracleStakeVoting,
       oracles
     };
-  },
-  async thresholdMarker(destination, data) {
-    if (!mockHelper) {
-      mockHelper = await MockHelper.new();
-    }
-
-    return mockHelper.getThresholdMarker(destination, data);
   }
 };
 
