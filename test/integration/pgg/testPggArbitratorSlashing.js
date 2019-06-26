@@ -14,7 +14,7 @@ const Web3 = require('web3');
 const galt = require('@galtproject/utils');
 
 const { assertRevert, ether, initHelperWeb3, numberToEvmWord, paymentMethods } = require('../../helpers');
-const { deployPGGFactory, buildPGG, thresholdMarker } = require('../../deploymentHelpers');
+const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
