@@ -207,6 +207,10 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
 
   // GETTERS
 
+  function getProposalResponseAsErrorString(uint256 _proposalId) public view returns (string memory) {
+    return string(proposals[_proposalId].response);
+  }
+
   function getSupport(uint256 _proposalId) public view returns(uint256) {
     address[] memory supportPggs = getSupportedPggs(_proposalId);
 
