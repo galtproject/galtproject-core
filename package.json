@@ -27,7 +27,7 @@
     "ganache-core": "2.5.5",
     "lodash": "^4.17.11",
     "mocha": "^6.1.4",
-    "openzeppelin-solidity": "2.2.0",
+    "openzeppelin-solidity": "2.3.0",
     "p-iteration": "^1.1.8",
     "prettier": "1.17.0",
     "solidity-coverage": "^0.5.11",
