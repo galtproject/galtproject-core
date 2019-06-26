@@ -163,7 +163,8 @@ contract('PGG Voting Full Cycle', accounts => {
       4,
       60,
       ether(1000),
-      [30, 30, 30, 30, 30, 30, 30, 30],
+      30,
+      {},
       applicationConfigX,
       alice
     );

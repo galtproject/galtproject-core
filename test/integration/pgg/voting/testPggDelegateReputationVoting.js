@@ -152,7 +152,8 @@ contract('PGGDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
+        30,
+        {},
         applicationConfig,
         alice
       );
@@ -172,7 +173,8 @@ contract('PGGDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
+        30,
+        {},
         applicationConfig,
         bob
       );
@@ -191,7 +193,8 @@ contract('PGGDelegateReputationVoting', accounts => {
         4,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
+        30,
+        {},
         applicationConfig,
         charlie
       );
@@ -584,7 +587,8 @@ contract('PGGDelegateReputationVoting', accounts => {
         3,
         60,
         ether(1000),
-        [30, 30, 30, 30, 30, 30, 30, 30],
+        30,
+        {},
         {},
         alice
       );
