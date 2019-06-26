@@ -31,6 +31,12 @@ interface IPGGConfig {
   function setThreshold(bytes32 _key, uint256 _value) external;
   function setMofN(uint256 _m, uint256 _n) external;
   function setMinimalArbitratorStake(uint256 _value) external;
+  function setApplicationConfigValue(bytes32 _key, bytes32 _value) external;
+  function addExternalRole(address _address, bytes32 _role) external;
+  function removeExternalRole(address _address, bytes32 _role) external;
+  function addInternalRole(address _address, bytes32 _role) external;
+  function removeInternalRole(address _address, bytes32 _role) external;
+  function setGlobalProposalSupport(uint256 _globalProposalId, bool _isSupported) external;
   function setContractAddress(bytes32 _key, address _address) external;
   function applicationConfig(bytes32) external view returns (bytes32);
   function getMultiSig() external view returns (IPGGMultiSig);

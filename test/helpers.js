@@ -19,6 +19,9 @@ const Helpers = {
   hex(input) {
     return web3.utils.toHex(input);
   },
+  int(input) {
+    return parseInt(input, 10);
+  },
   gwei(number) {
     return web3.utils.toWei(number.toString(), 'gwei');
   },

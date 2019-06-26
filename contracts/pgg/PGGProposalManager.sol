@@ -16,30 +16,19 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./PGGConfig.sol";
 
 
-contract AbstractProposalManager {
+contract PGGProposalManager is IPGGProposalManager {
   using Counters for Counters.Counter;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
-  event NewProposal(uint256 proposalId, address proposee);
-  event Approved(uint256 ayeShare, uint256 threshold);
-  event Rejected(uint256 nayShare, uint256 threshold);
+  uint256 public constant DECIMALS = 10**6;
 
-  Counters.Counter internal idCounter;
-
-  ArraySet.Uint256Set private _activeProposals;
-  mapping(address => ArraySet.Uint256Set) private _activeProposalsBySender;
-
-  mapping(uint256 => address) private _proposalToSender;
-
-  uint256[] private _approvedProposals;
-  uint256[] private _rejectedProposals;
-
-  //  string public constant RSRA_CONTRACT = "rsra_contract";
-
-  mapping(uint256 => ProposalVoting) internal _proposalVotings;
+  event NewProposal(uint256 proposalId, address indexed creator, address indexed destination, bytes32 marker);
+  event Approve(uint256 ayeShare, uint256 threshold);
+  event Reject(uint256 nayShare, uint256 threshold);
 
   enum ProposalStatus {
     NULL,
@@ -61,6 +50,32 @@ contract AbstractProposalManager {
     ArraySet.AddressSet nays;
   }
 
+  struct Proposal {
+    ProposalStatus status;
+    address creator;
+    address destination;
+    uint256 value;
+    bytes32 marker;
+    bytes data;
+    string description;
+    bool executed;
+    bytes response;
+  }
+
+  Counters.Counter internal idCounter;
+
+  uint256[] private _approvedProposals;
+  uint256[] private _rejectedProposals;
+
+  mapping(uint256 => Proposal) public proposals;
+  mapping(uint256 => ProposalVoting) internal _proposalVotings;
+  PGGConfig internal pggConfig;
+
+  // Cache
+  ArraySet.Uint256Set private _activeProposals;
+  mapping(address => ArraySet.Uint256Set) private _activeProposalsBySender;
+  mapping(uint256 => address) private _proposalToSender;
+
   modifier onlyMember() {
     // TODO: define
     //    require(rsra.balanceOf(msg.sender) > 0, "Not valid member");
@@ -68,13 +83,40 @@ contract AbstractProposalManager {
     _;
   }
 
-  // Should be implemented inside descendant
-  function _execute(uint256 _proposalId) internal;
+  constructor(PGGConfig _pggConfig) public {
+    pggConfig = _pggConfig;
+  }
 
-  function getThreshold() public view returns (uint256);
+  function propose(
+    address _destination,
+    uint256 _value,
+    bytes calldata _data,
+    string calldata _description
+  )
+    external
+    returns(uint256)
+  {
+    idCounter.increment();
+    uint256 id = idCounter.current();
 
-  // Nothing to do in case when non-overridden
-  function _reject(uint256 _proposalId) internal {
+    Proposal storage p = proposals[id];
+
+    p.creator = msg.sender;
+    p.destination = _destination;
+    p.value = _value;
+    p.data = _data;
+    p.description = _description;
+    p.marker = pggConfig.getThresholdMarker(_destination, _data);
+
+    _activeProposals.add(id);
+    _activeProposalsBySender[msg.sender].add(id);
+    _proposalToSender[id] = msg.sender;
+
+    _proposalVotings[id].status = ProposalStatus.ACTIVE;
+
+    emit NewProposal(id, msg.sender, _destination, p.marker);
+
+    return id;
   }
 
   function aye(uint256 _proposalId) external onlyMember {
@@ -89,15 +131,21 @@ contract AbstractProposalManager {
     _nay(_proposalId, msg.sender);
   }
 
-  // permissionLESS
   function triggerApprove(uint256 _proposalId) external {
     ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
     require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
-    uint256 threshold = getThreshold();
-    uint256 ayeShare = getAyeShare(_proposalId);
+    uint256 support = getAyeShare(_proposalId);
+    assert(support <= DECIMALS);
 
-    require(ayeShare >= threshold, "Threshold doesn't reached yet");
+    Proposal storage p = proposals[_proposalId];
+
+    uint256 threshold = pggConfig.thresholds(p.marker);
+    if (threshold > 0) {
+      require(support >= threshold, "Custom threshold doesn't reached yet");
+    } else {
+      require(support >= pggConfig.defaultProposalThreshold(), "Default threshold doesn't reached yet");
+    }
 
     proposalVoting.status = ProposalStatus.APPROVED;
 
@@ -106,31 +154,48 @@ contract AbstractProposalManager {
     _approvedProposals.push(_proposalId);
 
     _execute(_proposalId);
-
-    emit Approved(ayeShare, threshold);
   }
 
-  // permissionLESS
   function triggerReject(uint256 _proposalId) external {
     ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
+    Proposal storage p = proposals[_proposalId];
+
     require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
-    uint256 threshold = getThreshold();
+    uint256 threshold = pggConfig.thresholds(p.marker);
     uint256 nayShare = getNayShare(_proposalId);
+    assert(nayShare <= DECIMALS);
 
-    require(nayShare >= threshold, "Threshold doesn't reached yet");
+    if (threshold > 0) {
+      require(nayShare >= threshold, "Threshold doesn't reached yet");
+    } else {
+      require(nayShare >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
+    }
 
     proposalVoting.status = ProposalStatus.REJECTED;
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _rejectedProposals.push(_proposalId);
 
-    _reject(_proposalId);
-
-    emit Rejected(nayShare, threshold);
+    emit Reject(nayShare, threshold);
   }
 
   // INTERNAL
+
+  function _execute(uint256 _proposalId) internal {
+    Proposal storage p = proposals[_proposalId];
+
+    require(p.executed == false, "Already executed");
+
+    (bool ok, bytes memory response) = address(p.destination)
+      .call
+      .value(p.value)
+      .gas(gasleft() - 50000)(p.data);
+
+    p.executed = ok;
+    p.response = response;
+  }
+
   function _aye(uint256 _proposalId, address _voter) internal {
     if (_proposalVotings[_proposalId].participants[_voter] == Choice.NAY) {
       _proposalVotings[_proposalId].nays.remove(_voter);
@@ -156,10 +221,27 @@ contract AbstractProposalManager {
   }
 
   // GETTERS
+  function getThreshold(uint256 _proposalId) external view returns (uint256) {
+    uint256 custom = pggConfig.thresholds(proposals[_proposalId].marker);
 
-  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare);
+    if (custom > 0) {
+      return custom;
+    } else {
+      return pggConfig.defaultProposalThreshold();
+    }
+  }
 
-  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare);
+  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
+    return pggConfig
+      .getMultiSigCandidateTop()
+      .getHolderWeights(_proposalVotings[_proposalId].ayes.elements());
+  }
+
+  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
+    return pggConfig
+      .getMultiSigCandidateTop()
+      .getHolderWeights(_proposalVotings[_proposalId].nays.elements());
+  }
 
   function getActiveProposals() public view returns (uint256[] memory) {
     return _activeProposals.elements();
@@ -193,15 +275,20 @@ contract AbstractProposalManager {
     return _rejectedProposals.length;
   }
 
+  function getProposalResponseAsErrorString(uint256 _proposalId) public view returns (string memory) {
+    return string(proposals[_proposalId].response);
+  }
+
   function getProposalVoting(
     uint256 _proposalId
   )
-  external
-  view
-  returns (
-    ProposalStatus status,
-    address[] memory ayes,
-    address[] memory nays)
+    external
+    view
+    returns (
+      ProposalStatus status,
+      address[] memory ayes,
+      address[] memory nays
+    )
   {
     ProposalVoting storage p = _proposalVotings[_proposalId];
 
@@ -211,12 +298,13 @@ contract AbstractProposalManager {
   function getProposalStatus(
     uint256 _proposalId
   )
-  external
-  view
-  returns (
-    ProposalStatus status,
-    uint256 ayesCount,
-    uint256 naysCount)
+    external
+    view
+    returns (
+      ProposalStatus status,
+      uint256 ayesCount,
+      uint256 naysCount
+    )
   {
     ProposalVoting storage p = _proposalVotings[_proposalId];
 

@@ -11,23 +11,17 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
-
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-
-// This contract will be included into the current one
-import "../../../pgg/PGGConfig.sol";
-import "../../../pgg/proposals/SupportGlobalProposalProposalManager.sol";
-import "../../../pgg/proposals/interfaces/IProposalManager.sol";
+pragma solidity ^0.5.7;
 
 
-contract ArbitrationSupportGlobalProposalProposalManagerFactory is Ownable {
-  function build(
-    PGGConfig _config
-  )
-    external
-    returns (IProposalManager proposalManager)
-  {
-    proposalManager = new SupportGlobalProposalProposalManager(_config);
+contract MockHelper {
+  function getThresholdMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
+    bytes32 methodName;
+
+    assembly {
+      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+    }
+
+    return keccak256(abi.encode(_destination, methodName));
   }
 }

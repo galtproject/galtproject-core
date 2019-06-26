@@ -16,7 +16,7 @@ const bytes32 = utf8ToHex;
 initHelperWeb3(web3);
 
 // eslint-disable-next-line
-contract("PGGFactory", (accounts) => {
+contract("PGGRegistry", (accounts) => {
   const [coreTeam, alice, a1, a2, registrar, unregistrar] = accounts;
 
   beforeEach(async function() {

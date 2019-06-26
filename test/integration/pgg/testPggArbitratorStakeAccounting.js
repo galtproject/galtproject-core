@@ -38,7 +38,7 @@ contract('PGGArbitratorStakeAccounting', accounts => {
     await this.acl.setRole(bytes32('ARBITRATION_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_STAKE_SLASHER'), slashManager, true, { from: coreTeam });
 
-    this.config = await PGGConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
+    this.config = await PGGConfig.new(this.ggr.address, 2, 3, ether(1000), 30, {
       from: coreTeam
     });
     this.arbitratorStakeAccountingX = await PGGArbitratorStakeAccounting.new(this.config.address, 60, {
@@ -53,7 +53,8 @@ contract('PGGArbitratorStakeAccounting', accounts => {
       zeroAddress,
       delegateSpaceVoting,
       delegateGaltVoting,
-      oracleStakeVoting
+      oracleStakeVoting,
+      zeroAddress
     );
 
     await this.galtToken.mint(alice, ether(10000000), { from: coreTeam });

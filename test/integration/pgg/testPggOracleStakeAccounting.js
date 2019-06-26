@@ -79,7 +79,7 @@ contract('PGGOracleStakeAccounting', accounts => {
 
     assert.equal(await this.acl.hasRole(slashManager, bytes32('ORACLE_STAKE_SLASHER')), true);
 
-    this.config = await PGGConfig.new(this.ggr.address, 2, 3, ether(1000), [30, 30, 30, 30, 30, 30, 30, 30], {
+    this.config = await PGGConfig.new(this.ggr.address, 2, 3, ether(1000), 30, {
       from: coreTeam
     });
     this.candidateTop = await PGGMultiSigCandidateTop.new(this.config.address, { from: coreTeam });
@@ -95,7 +95,8 @@ contract('PGGOracleStakeAccounting', accounts => {
       this.oraclesX.address,
       delegateSpaceVoting,
       delegateGaltVoting,
-      this.oracleStakeVotingX.address
+      this.oracleStakeVotingX.address,
+      zeroAddress
     );
 
     await this.config.addInternalRole(

@@ -117,18 +117,7 @@ function globalGovernanceHelpers(
       galtReputationToLock = 0,
       oracleReputationToStake = 0
     ) {
-      const pgg = await buildPGG(
-        factory,
-        _initialOwners,
-        2,
-        7,
-        10,
-        60,
-        ether(1000),
-        [24, 24, 24, 24, 24, 24, 24, 24],
-        {},
-        owner
-      );
+      const pgg = await buildPGG(factory, _initialOwners, 2, 7, 10, 60, ether(1000), 240000, {}, {}, owner);
 
       if (spaceReputationToLock > 0) {
         await pIteration.forEach(spaceReputationDelegates, async function(delegate) {

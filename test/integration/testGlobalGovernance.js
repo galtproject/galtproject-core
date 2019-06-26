@@ -29,7 +29,7 @@ const { assertRevert, ether, initHelperWeb3, deploySpaceGeoDataMock, paymentMeth
 const { deployPGGFactory } = require('../deploymentHelpers');
 const globalGovernanceHelpers = require('../globalGovernanceHelpers');
 
-const { utf8ToHex } = Web3.utils;
+const { utf8ToHex, hexToNumberString } = Web3.utils;
 const bytes32 = utf8ToHex;
 const web3 = new Web3(GaltToken.web3.currentProvider);
 
@@ -230,44 +230,49 @@ contract('GlobalGovernance', accounts => {
 
       // Step #1. Create proposal for an increased threshold for add2ggr change to 95% instead of default 75%
       const globalGovernanceV2 = await MockGlobalGovernance_V2.new({ from: coreTeam });
-      const upgradeBytecode = await proxy.contract.methods.upgradeTo(globalGovernanceV2.address).encodeABI();
+      const upgradeBytecode = proxy.contract.methods.upgradeTo(globalGovernanceV2.address).encodeABI();
+
+      let proposeBytecode = this.globalGovernance.contract.methods
+        .propose(this.pggM.config.address, globalGovernance.address, '0', upgradeBytecode)
+        .encodeABI();
 
       // we want to vote to transfer it back to the coreTeam
-      let res = await this.pggM.createGlobalProposalProposalManager.propose(
+      let res = await this.pggM.proposalManager.propose(
         globalGovernance.address,
         '0',
-        upgradeBytecode,
+        proposeBytecode,
         'back to centralization',
         { from: alice }
       );
       let { proposalId } = res.logs[0].args;
 
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.aye(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
-      res = await this.pggM.createGlobalProposalProposalManager.getProposal(proposalId);
-      const globalProposalId = res.globalId;
+      res = await this.pggM.proposalManager.proposals(proposalId);
+      const globalProposalId = hexToNumberString(res.response);
 
       // Step #2. Create support proposal and accept it
-      res = await this.pggM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+      proposeBytecode = this.pggM.config.contract.methods.setGlobalProposalSupport(globalProposalId, true).encodeABI();
+      res = await this.pggM.proposalManager.propose(this.pggM.config.address, 0, proposeBytecode, 'looks good', {
         from: alice
       });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
 
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.nay(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.nay(proposalId, { from: george });
+      await this.pggM.proposalManager.aye(proposalId, { from: hannah });
+      await this.pggM.proposalManager.aye(proposalId, { from: mike });
+      await this.pggM.proposalManager.aye(proposalId, { from: xander });
 
-      await this.pggM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.config.globalProposalSupport(globalProposalId);
       assert.equal(true, res);
@@ -277,6 +282,9 @@ contract('GlobalGovernance', accounts => {
       await assertRevert(globalGovernance.foo());
 
       await globalGovernance.trigger(globalProposalId);
+
+      res = await globalGovernance.proposals(globalProposalId);
+      assert.equal(res.executed, true);
 
       res = await globalGovernance.foo();
       assert.equal(res, 'bar');
@@ -336,111 +344,134 @@ contract('GlobalGovernance', accounts => {
 
       // console.log('signatureHash >>>', signatureHash);
       const marker = await this.globalGovernance.getMarker(this.ggr.address, signatureHash);
-      // console.log('marker >>>', marker);
       const increaseThreshold = this.globalGovernance.contract.methods.setThreshold(marker, 950000).encodeABI();
 
       // we want to vote to transfer it back to the coreTeam
-      let res = await this.pggM.createGlobalProposalProposalManager.propose(
-        this.globalGovernance.address,
-        '0',
-        increaseThreshold,
-        'back to centralization',
-        { from: alice }
-      );
+      let proposeBytecode = this.globalGovernance.contract.methods
+        .propose(this.pggM.config.address, this.globalGovernance.address, '0', increaseThreshold)
+        .encodeABI();
+      let res = await this.pggM.proposalManager.propose(this.globalGovernance.address, '0', proposeBytecode, 'blah', {
+        from: alice
+      });
       let { proposalId } = res.logs[0].args;
 
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.aye(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
-      res = await this.pggM.createGlobalProposalProposalManager.getProposal(proposalId);
-      let globalProposalId = res.globalId;
+      res = await this.pggM.proposalManager.proposals(proposalId);
+      assert.equal(res.executed, true);
+      let globalProposalId = hexToNumberString(res.response);
 
       // Step #2. Create support proposal and accept it
-      res = await this.pggM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+      proposeBytecode = this.pggM.config.contract.methods.setGlobalProposalSupport(globalProposalId, true).encodeABI();
+      res = await this.pggM.proposalManager.propose(this.pggM.config.address, 0, proposeBytecode, 'looks good', {
         from: alice
       });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
 
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.nay(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.nay(proposalId, { from: george });
+      await this.pggM.proposalManager.aye(proposalId, { from: hannah });
+      await this.pggM.proposalManager.aye(proposalId, { from: mike });
+      await this.pggM.proposalManager.aye(proposalId, { from: xander });
 
-      await this.pggM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.triggerApprove(proposalId);
+
+      res = await this.pggM.proposalManager.proposals(proposalId);
+      assert.equal(res.executed, true);
 
       res = await this.pggM.config.globalProposalSupport(globalProposalId);
       assert.equal(true, res);
 
+      res = await this.globalGovernance.proposals(globalProposalId);
+      assert.equal(res.executed, false);
+
       await this.globalGovernance.trigger(globalProposalId);
+
+      res = await this.globalGovernance.proposals(globalProposalId);
+      assert.equal(res.executed, true);
 
       // Step #3. Crate proposal to add a record
       const addRecordBytecode = this.ggr.contract.methods.setContract(await this.ggr.GEODESIC(), charlie).encodeABI();
+      proposeBytecode = this.globalGovernance.contract.methods
+        .propose(this.pggM.config.address, this.ggr.address, '0', addRecordBytecode)
+        .encodeABI();
 
-      res = await this.pggM.createGlobalProposalProposalManager.propose(
-        this.ggr.address,
+      res = await this.pggM.proposalManager.propose(
+        this.globalGovernance.address,
         '0',
-        addRecordBytecode,
+        proposeBytecode,
         'charlie is a new geodesic',
         { from: alice }
       );
       proposalId = res.logs[0].args.proposalId;
 
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.aye(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
-      res = await this.pggM.createGlobalProposalProposalManager.getProposal(proposalId);
-      globalProposalId = res.globalId;
+      res = await this.pggM.proposalManager.proposals(proposalId);
+      assert.equal(res.executed, true);
+      globalProposalId = hexToNumberString(res.response);
 
       // Step #4. Support proposal to add a record at around 94.19%
-      res = await this.pggM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+      proposeBytecode = this.pggM.config.contract.methods.setGlobalProposalSupport(globalProposalId, true).encodeABI();
+      res = await this.pggM.proposalManager.propose(this.pggM.config.address, 0, proposeBytecode, 'looks good', {
         from: alice
       });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
 
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
-      await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.nay(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.nay(proposalId, { from: george });
+      await this.pggM.proposalManager.aye(proposalId, { from: hannah });
+      await this.pggM.proposalManager.aye(proposalId, { from: mike });
+      await this.pggM.proposalManager.aye(proposalId, { from: xander });
 
-      await this.pggM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
+      res = await this.pggM.proposalManager.proposals(proposalId);
+
+      assert.equal(res.executed, true);
+
+      res = await this.globalGovernance.proposals(globalProposalId);
+      assert.equal(res.executed, false);
+
+      // should revert since not reached a new threshold of 95%
       await assertRevert(this.globalGovernance.trigger(globalProposalId));
 
       // Step #5. Support proposal to add a record at 100%
-      res = await this.pggN.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+      proposeBytecode = this.pggN.config.contract.methods.setGlobalProposalSupport(globalProposalId, true).encodeABI();
+      res = await this.pggN.proposalManager.propose(this.pggN.config.address, 0, proposeBytecode, 'looks good', {
         from: alice
       });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
 
-      await this.pggN.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: eve });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: george });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: yan });
-      await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: zack });
+      await this.pggN.proposalManager.nay(proposalId, { from: bob });
+      await this.pggN.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggN.proposalManager.aye(proposalId, { from: dan });
+      await this.pggN.proposalManager.aye(proposalId, { from: eve });
+      await this.pggN.proposalManager.aye(proposalId, { from: george });
+      await this.pggN.proposalManager.aye(proposalId, { from: hannah });
+      await this.pggN.proposalManager.aye(proposalId, { from: mike });
+      await this.pggN.proposalManager.aye(proposalId, { from: nick });
+      await this.pggN.proposalManager.aye(proposalId, { from: yan });
+      await this.pggN.proposalManager.aye(proposalId, { from: zack });
 
-      await this.pggN.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+      await this.pggN.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.config.globalProposalSupport(globalProposalId);
       log('M support', res);
@@ -524,17 +555,20 @@ contract('GlobalGovernance', accounts => {
         this.pggZ = await seedPgg(this.pggFactory, alice, [oliver, xander], [alice], [xander], 3500, 0, 600);
       })();
 
-      // Step #2. Transfer PGGRegistry to the Governance contract
+      // Step #2. Transfer FeeRegistry to the Governance contract
       await this.feeRegistry.transferOwnership(this.globalGovernance.address);
 
-      // Step #3. Transfer PGGRegistry to the Governance contract
+      // Step #3. Transfer FeeRegistry from the Governance contract back to the coreTeam
       const transferBackBytecode = this.feeRegistry.contract.methods.transferOwnership(coreTeam).encodeABI();
+      let proposeBytecode = this.globalGovernance.contract.methods
+        .propose(this.pggM.config.address, this.feeRegistry.address, '0', transferBackBytecode)
+        .encodeABI();
 
       // we want to vote to transfer it back to the coreTeam
-      let res = await this.pggM.createGlobalProposalProposalManager.propose(
-        this.feeRegistry.address,
+      let res = await this.pggM.proposalManager.propose(
+        this.globalGovernance.address,
         '0',
-        transferBackBytecode,
+        proposeBytecode,
         'back to centralization',
         { from: alice }
       );
@@ -543,28 +577,24 @@ contract('GlobalGovernance', accounts => {
       // [alice, bob, charlie, dan],
       //   [bob, george, hannah, mike],
       //   [xander, bob],
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: alice });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: bob });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-      await this.pggM.createGlobalProposalProposalManager.aye(proposalId, { from: dan });
+      await this.pggM.proposalManager.aye(proposalId, { from: alice });
+      await this.pggM.proposalManager.aye(proposalId, { from: bob });
+      await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+      await this.pggM.proposalManager.aye(proposalId, { from: dan });
 
-      res = await this.pggM.createGlobalProposalProposalManager.getAyeShare(proposalId);
-      res = await this.pggM.createGlobalProposalProposalManager.getNayShare(proposalId);
+      await assertRevert(this.pggM.proposalManager.triggerReject(proposalId));
+      await this.pggM.proposalManager.triggerApprove(proposalId);
 
-      await assertRevert(this.pggM.createGlobalProposalProposalManager.triggerReject(proposalId));
-      await this.pggM.createGlobalProposalProposalManager.triggerApprove(proposalId);
+      res = await this.pggM.proposalManager.proposals(proposalId);
+      const globalProposalId = hexToNumberString(res.response);
 
-      res = await this.pggM.createGlobalProposalProposalManager.getProposal(proposalId);
-      const globalProposalId = res.globalId;
-
-      assert.equal(res.destination, this.feeRegistry.address);
+      assert.equal(res.destination, this.globalGovernance.address);
       assert.equal(res.value, 0);
-      assert.equal(res.globalId, 1);
-      assert.equal(res.data, transferBackBytecode);
+      assert.equal(res.data, proposeBytecode);
       assert.equal(res.description, 'back to centralization');
 
       res = await this.globalGovernance.proposals(globalProposalId);
-      assert.equal(res.creator, this.pggM.createGlobalProposalProposalManager.address);
+      assert.equal(res.creator, this.pggM.proposalManager.address);
       assert.equal(res.value, 0);
       assert.equal(res.destination, this.feeRegistry.address);
       assert.equal(res.data, transferBackBytecode);
@@ -576,22 +606,25 @@ contract('GlobalGovernance', accounts => {
       // MultiSig M votes AYE
       await (async () => {
         log('### MultiSig M');
-        res = await this.pggM.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        proposeBytecode = this.pggM.config.contract.methods
+          .setGlobalProposalSupport(globalProposalId, true)
+          .encodeABI();
+        res = await this.pggM.proposalManager.propose(this.pggM.config.address, 0, proposeBytecode, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
-        await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: bob });
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: charlie });
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: dan });
-        await this.pggM.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
-        await this.pggM.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+        await this.pggM.proposalManager.aye(proposalId, { from: alice });
+        await this.pggM.proposalManager.nay(proposalId, { from: bob });
+        await this.pggM.proposalManager.aye(proposalId, { from: charlie });
+        await this.pggM.proposalManager.aye(proposalId, { from: dan });
+        await this.pggM.proposalManager.nay(proposalId, { from: george });
+        await this.pggM.proposalManager.aye(proposalId, { from: hannah });
+        await this.pggM.proposalManager.aye(proposalId, { from: mike });
+        await this.pggM.proposalManager.aye(proposalId, { from: xander });
 
-        await this.pggM.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+        await this.pggM.proposalManager.triggerApprove(proposalId);
 
         res = await this.pggM.config.globalProposalSupport(globalProposalId);
         assert.equal(true, res);
@@ -606,21 +639,24 @@ contract('GlobalGovernance', accounts => {
       // MultiSig N votes AYE
       await (async () => {
         log('### MultiSig N');
-        res = await this.pggN.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        proposeBytecode = this.pggN.config.contract.methods
+          .setGlobalProposalSupport(globalProposalId, true)
+          .encodeABI();
+        res = await this.pggN.proposalManager.propose(this.pggN.config.address, 0, proposeBytecode, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: george });
-        await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
-        await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
-        await this.pggN.supportGlobalProposalProposalManager.aye(proposalId, { from: mike });
+        await this.pggN.proposalManager.aye(proposalId, { from: george });
+        await this.pggN.proposalManager.aye(proposalId, { from: hannah });
+        await this.pggN.proposalManager.aye(proposalId, { from: nick });
+        await this.pggN.proposalManager.aye(proposalId, { from: mike });
 
-        res = await this.pggN.supportGlobalProposalProposalManager.getAyeShare(proposalId);
-        assert.equal(res, 30);
+        res = await this.pggN.proposalManager.getAyeShare(proposalId);
+        assert.equal(res, 300000);
 
-        await this.pggN.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+        await this.pggN.proposalManager.triggerApprove(proposalId);
 
         res = await this.globalGovernance.getSupportedPggs(globalProposalId);
         assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
@@ -639,19 +675,22 @@ contract('GlobalGovernance', accounts => {
       // X: charlie, dan, eve, george, hannah, mike, nick, yan, zack
       await (async () => {
         log('### MultiSig X');
-        res = await this.pggX.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        proposeBytecode = this.pggX.config.contract.methods
+          .setGlobalProposalSupport(globalProposalId, true)
+          .encodeABI();
+        res = await this.pggX.proposalManager.propose(this.pggX.config.address, 0, proposeBytecode, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.pggX.supportGlobalProposalProposalManager.aye(proposalId, { from: hannah });
+        await this.pggX.proposalManager.aye(proposalId, { from: hannah });
 
-        res = await this.pggX.supportGlobalProposalProposalManager.getAyeShare(proposalId);
+        res = await this.pggX.proposalManager.getAyeShare(proposalId);
         log('>>>', res.toString(10));
         // assert.equal(res, 30);
 
-        await assertRevert(this.pggX.supportGlobalProposalProposalManager.triggerApprove(proposalId));
+        await assertRevert(this.pggX.proposalManager.triggerApprove(proposalId));
 
         res = await this.globalGovernance.getSupportedPggs(globalProposalId);
         assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
@@ -670,25 +709,28 @@ contract('GlobalGovernance', accounts => {
       // Y: charlie, dan, eve, george, hannah, mike, nick, yan, zack
       await (async () => {
         log('### MultiSig Y');
-        res = await this.pggY.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        proposeBytecode = this.pggY.config.contract.methods
+          .setGlobalProposalSupport(globalProposalId, true)
+          .encodeABI();
+        res = await this.pggY.proposalManager.propose(this.pggY.config.address, 0, proposeBytecode, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: charlie });
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: dan });
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: eve });
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: george });
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: hannah });
-        await this.pggY.supportGlobalProposalProposalManager.nay(proposalId, { from: mike });
-        await this.pggY.supportGlobalProposalProposalManager.aye(proposalId, { from: nick });
+        await this.pggY.proposalManager.nay(proposalId, { from: charlie });
+        await this.pggY.proposalManager.nay(proposalId, { from: dan });
+        await this.pggY.proposalManager.nay(proposalId, { from: eve });
+        await this.pggY.proposalManager.nay(proposalId, { from: george });
+        await this.pggY.proposalManager.nay(proposalId, { from: hannah });
+        await this.pggY.proposalManager.nay(proposalId, { from: mike });
+        await this.pggY.proposalManager.aye(proposalId, { from: nick });
 
-        res = await this.pggY.supportGlobalProposalProposalManager.getAyeShare(proposalId);
+        res = await this.pggY.proposalManager.getAyeShare(proposalId);
         log('>>>', res.toString(10));
         // assert.equal(res, 30);
 
-        await this.pggY.supportGlobalProposalProposalManager.triggerReject(proposalId);
+        await this.pggY.proposalManager.triggerReject(proposalId);
 
         res = await this.globalGovernance.getSupportedPggs(globalProposalId);
         assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address]);
@@ -717,21 +759,24 @@ contract('GlobalGovernance', accounts => {
       // Z: oliver, alice, xander
       await (async () => {
         log('### MultiSig Z');
-        res = await this.pggZ.supportGlobalProposalProposalManager.propose(globalProposalId, 'looks good', {
+        proposeBytecode = this.pggZ.config.contract.methods
+          .setGlobalProposalSupport(globalProposalId, true)
+          .encodeABI();
+        res = await this.pggZ.proposalManager.propose(this.pggZ.config.address, 0, proposeBytecode, 'looks good', {
           from: alice
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
 
-        await this.pggZ.supportGlobalProposalProposalManager.aye(proposalId, { from: oliver });
-        await this.pggZ.supportGlobalProposalProposalManager.aye(proposalId, { from: alice });
-        await this.pggZ.supportGlobalProposalProposalManager.aye(proposalId, { from: xander });
+        await this.pggZ.proposalManager.aye(proposalId, { from: oliver });
+        await this.pggZ.proposalManager.aye(proposalId, { from: alice });
+        await this.pggZ.proposalManager.aye(proposalId, { from: xander });
 
-        res = await this.pggZ.supportGlobalProposalProposalManager.getAyeShare(proposalId);
+        res = await this.pggZ.proposalManager.getAyeShare(proposalId);
         log('>>>', res.toString(10));
         // assert.equal(res, 30);
 
-        await this.pggZ.supportGlobalProposalProposalManager.triggerApprove(proposalId);
+        await this.pggZ.proposalManager.triggerApprove(proposalId);
 
         res = await this.globalGovernance.getSupportedPggs(globalProposalId);
         assert.sameMembers(res, [this.pggM.config.address, this.pggN.config.address, this.pggZ.config.address]);

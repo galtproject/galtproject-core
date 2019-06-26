@@ -16,18 +16,18 @@ pragma solidity 0.5.7;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // This contract will be included into the current one
-import "../../../pgg/PGGConfig.sol";
-import "../../../pgg/proposals/ModifyMofNProposalManager.sol";
-import "../../../pgg/proposals/interfaces/IProposalManager.sol";
+import "../../pgg/PGGConfig.sol";
+import "../../pgg/PGGProposalManager.sol";
+import "../../pgg/interfaces/IPGGProposalManager.sol";
 
 
-contract ArbitrationModifyMofNProposalFactory is Ownable {
+contract PGGProposalManagerFactory is Ownable {
   function build(
-    PGGConfig _config
+    PGGConfig _pggConfig
   )
     external
-    returns (IProposalManager proposalManager)
+    returns (IPGGProposalManager proposalManager)
   {
-    proposalManager = new ModifyMofNProposalManager(_config);
+    proposalManager = new PGGProposalManager(_pggConfig);
   }
 }

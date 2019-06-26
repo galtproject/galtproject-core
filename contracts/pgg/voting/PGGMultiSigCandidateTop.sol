@@ -269,7 +269,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     }
 
     // return total * 100 / DECIMALS;
-    return total.mul(100).div(DECIMALS);
+    return total;
   }
 
   function getTopCandidateWeight(address _candidate) public view returns (uint256) {

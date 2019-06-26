@@ -26,11 +26,7 @@ contract PGGConfigFactory is Ownable {
     uint256 _m,
     uint256 _n,
     uint256 _minimalArbitratorStake,
-  // 0 - SET_THRESHOLD_THRESHOLD
-  // 1 - SET_M_OF_N_THRESHOLD
-  // 2 - REVOKE_ARBITRATORS_THRESHOLD
-  // 3 - CHANGE_CONTRACT_ADDRESS_THRESHOLD
-    uint256[] calldata _thresholds
+    uint256 _defaultProposalThreshold
   )
     external
     returns (PGGConfig config)
@@ -40,7 +36,7 @@ contract PGGConfigFactory is Ownable {
       _m,
       _n,
       _minimalArbitratorStake,
-      _thresholds
+      _defaultProposalThreshold
     );
 
     bytes32 role = config.INTERNAL_ROLE_MANAGER();
