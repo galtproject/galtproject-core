@@ -23,7 +23,7 @@ contract MockSpaceGeoData {
     _tokenAreas[_tokenId] = _amount;
   }
 
-  function setSpaceTokenArea(uint256 _tokenId) external view returns(uint256) {
+  function getSpaceTokenArea(uint256 _tokenId) external view returns(uint256) {
     return _tokenAreas[_tokenId];
   }
 }
