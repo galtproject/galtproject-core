@@ -11,19 +11,18 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Statusable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../registries/MultiSigRegistry.sol";
+import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 import "./ArbitratorApprovableApplication.sol";
 
-contract NewOracleManager is ArbitratorApprovableApplication {
-  bytes32 public constant APPLICATION_TYPE = 0xec6610ed0bf714476800ac10ef0615b9f667f714ca25d80079e41026c60a76ed;
 
+contract NewOracleManager is ArbitratorApprovableApplication {
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("NO_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("NO_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("NO_PAYMENT_METHOD");
@@ -33,7 +32,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
 
   struct OracleDetails {
     address addr;
-    bytes32 name;
+    string name;
     bytes32 position;
     string description;
     bytes32[] descriptionHashes;
@@ -41,8 +40,6 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   }
 
   mapping(bytes32 => OracleDetails) oracleDetails;
-
-  Oracles oracles;
 
   constructor() public {}
 
@@ -53,35 +50,34 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     isInitializer
   {
     _initialize(_ggr);
-    oracles = Oracles(ggr.getOraclesAddress());
   }
 
-  function minimalApplicationFeeEth(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_ETH));
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _multiSig) internal view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_MINIMAL_FEE_GALT));
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
   }
 
   // arbitrators count required
-  function m(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_M));
+  function m(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_M));
   }
 
   // total arbitrators count able to lock the claim
-  function n(address _multiSig) public view returns (uint256) {
-    return uint256(applicationConfig(_multiSig, CONFIG_N));
+  function n(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_N));
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod) {
-    return PaymentMethod(uint256(applicationConfig(_multiSig, CONFIG_PAYMENT_METHOD)));
+  function paymentMethod(address _pgg) public view returns (PaymentMethod) {
+    return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
   function submit(
-    address payable _multiSig,
+    address _pgg,
     address _oracleAddress,
-    bytes32 _name,
+    string calldata _name,
     bytes32 _position,
     string calldata _description,
     bytes32[] calldata _descriptionHashes,
@@ -90,35 +86,41 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   )
     external
     payable
-    returns (bytes32)
   {
-    require(_descriptionHashes.length > 0, "Description hashes required");
-    require(_descriptionHashes.length > 0, "Oracle Types required");
+    bytes32 id = _generateId(_oracleTypes, _descriptionHashes, _name);
 
-    bytes32 id = keccak256(
+    _submit(id, _pgg, _applicationFeeInGalt);
+
+    OracleDetails storage o = oracleDetails[id];
+    o.oracleTypes = _oracleTypes;
+    o.descriptionHashes = _descriptionHashes;
+    o.description = _description;
+    o.name = _name;
+    o.position = _position;
+    o.addr = _oracleAddress;
+  }
+
+  function _generateId(bytes32[] memory _oracleTypes, bytes32[] memory _descriptionHashes, string memory _name) internal returns (bytes32) {
+    require(_descriptionHashes.length > 0, "Description hashes required");
+    require(_oracleTypes.length > 0, "Oracle Types required");
+
+    return keccak256(
       abi.encodePacked(
         msg.sender,
         _name,
         _descriptionHashes,
-        applicationsArray.length
+        block.number
       )
     );
-
-    OracleDetails storage o = oracleDetails[id];
-    o.addr = _oracleAddress;
-    o.name = _name;
-    o.position = _position;
-    o.description = _description;
-    o.descriptionHashes = _descriptionHashes;
-    o.oracleTypes = _oracleTypes;
-
-    return _submit(id, _multiSig, _applicationFeeInGalt);
   }
 
   function _execute(bytes32 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
-    oracles.addOracle(a.multiSig, d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
+
+    pggConfig(a.pgg)
+      .getOracles()
+      .addOracle(d.addr, d.name, d.position, d.description, d.descriptionHashes, d.oracleTypes);
   }
 
   // GETTERS
@@ -129,10 +131,10 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     external
     view
     returns (
-      address multiSig,
+      address pgg,
       address addr,
-      bytes32 name,
       bytes32 position,
+      string memory name,
       string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory oracleTypes
@@ -142,10 +144,10 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     Application storage a = applications[_id];
 
     return (
-      a.multiSig,
+      a.pgg,
       o.addr,
-      o.name,
       o.position,
+      o.name,
       o.description,
       o.descriptionHashes,
       o.oracleTypes

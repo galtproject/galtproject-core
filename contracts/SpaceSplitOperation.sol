@@ -11,22 +11,22 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
-//pragma experimental ABIEncoderV2;
+pragma solidity 0.5.7;
 
 import "@galtproject/geodesic/contracts/utils/WeilerAtherton.sol";
 import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
 import "./interfaces/ISpaceToken.sol";
-import "./interfaces/ISplitMerge.sol";
+import "./registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./registries/GaltGlobalRegistry.sol";
+
 
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
 
   WeilerAtherton.State private weilerAtherton;
-  
+
   event InitSplitOperation(address subjectTokenOwner, uint256 subjectTokenId, uint256[] subjectContour, uint256[] clippingContour);
 
   // TODO: use stages
@@ -58,7 +58,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     ggr = _ggr;
     subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
     subjectTokenId = _subjectTokenId;
-    subjectContour = ISplitMerge(_ggr.getSplitMergeAddress()).getPackageContour(_subjectTokenId);
+    subjectContour = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_subjectTokenId);
     clippingContour = _clippingContour;
   }
 
@@ -74,9 +74,9 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
-    ggr.getSpaceToken().approve(ggr.getSplitMergeAddress(), subjectTokenId);
+    ggr.getSpaceToken().approve(ggr.getSpaceGeoDataRegistryAddress(), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
-    
+
     emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);
   }
 
@@ -212,7 +212,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
     weilerAtherton.buildResultPolygon();
   }
-  
+
   function isBuildResultFinished() external view returns(bool) {
     /* solium-disable-next-line */
     return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
@@ -222,8 +222,14 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   function buildSubjectPolygonOutput() public {
     require(doneStage == Stage.INTERSECT_POINTS_ADD, "doneStage should be SEGMENTS_ADD");
-    require(weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length, "buildResultPolygon not finished");
-    require(weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length, "buildResultPolygon not finished");
+    require(
+      weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length,
+      "buildResultPolygon not finished"
+    );
+    require(
+      weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length,
+      "buildResultPolygon not finished"
+    );
 
     weilerAtherton.buildSubjectPolygonOutput();
 

@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "./interfaces/IRA.sol";
 import "./components/LiquidRA.sol";
@@ -27,17 +27,17 @@ import "./components/SpaceInputRA.sol";
 
 
 contract SpaceRA is IRA, LiquidRA, LockableRA, SpaceInputRA {
-
-  constructor(
+  function initialize(
     GaltGlobalRegistry _ggr
   )
-    public
-    LiquidRA(_ggr)
+    external
   {
+    initializeInternal(_ggr);
+    ggr = _ggr;
   }
 
-  function onDelegateReputationChanged(address _multiSig, address _delegate, uint256 _amount) internal {
-    arbitrationConfig(_multiSig)
+  function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal {
+    pggConfig(_pgg)
       .getDelegateSpaceVoting()
       .onDelegateReputationChanged(_delegate, _amount);
   }

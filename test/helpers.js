@@ -19,6 +19,9 @@ const Helpers = {
   hex(input) {
     return web3.utils.toHex(input);
   },
+  int(input) {
+    return parseInt(input, 10);
+  },
   gwei(number) {
     return web3.utils.toWei(number.toString(), 'gwei');
   },
@@ -42,6 +45,9 @@ const Helpers = {
   },
   addressToEvmWord(address) {
     return web3.utils.padLeft(address, 64);
+  },
+  bytes32ToEvmWord(bytes32) {
+    return web3.utils.padRight(bytes32, 64);
   },
   log(...args) {
     console.log('>>>', new Date().toLocaleTimeString(), '>>>', ...args);
@@ -67,6 +73,48 @@ const Helpers = {
   async sleep(timeout) {
     return new Promise(resolve => {
       setTimeout(resolve, timeout);
+    });
+  },
+  // For Geth/Truffle
+  async debugTraceTransaction(transactionHash, traceTypes = {}) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'debug_traceTransaction',
+          params: [transactionHash, traceTypes],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  },
+  // For Parity
+  async traceReplayTransaction(transactionHash, traceTypes = ['vmTrace']) {
+    return new Promise(function(resolve, reject) {
+      web3.eth.currentProvider.send(
+        {
+          jsonrpc: '2.0',
+          method: 'trace_replayTransaction',
+          params: [transactionHash, traceTypes],
+          id: 0
+        },
+        function(err, res) {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(res);
+        }
+      );
     });
   },
   async evmMineBlock() {
@@ -153,7 +201,7 @@ const Helpers = {
       .add(adjust); // <- 0.01 ether
 
     assert(
-      diff.lt(max), // diff < 0.01 ether
+      diff.lte(max), // diff < 0.01 ether
       `Expected ${web3.utils.fromWei(diff.toString(10))} (${diff.toString(10)} wei) to be less than 0.01 ether`
     );
 
@@ -347,14 +395,14 @@ const Helpers = {
     libCache.WeilerAtherton = await WeilerAtherton.new();
     return libCache.WeilerAtherton;
   },
-  async getSplitMergeLib() {
-    if (libCache.SplitMergeLib) {
-      return libCache.SplitMergeLib;
+  async getSpaceGeoDataLib() {
+    if (libCache.SpaceGeoDataLib) {
+      return libCache.SpaceGeoDataLib;
     }
-    const SplitMergeLib = Helpers.requireContract('./SplitMergeLib.sol');
-    SplitMergeLib.link('ArrayUtils', (await Helpers.getArrayUtilsLib()).address);
-    libCache.SplitMergeLib = await SplitMergeLib.new();
-    return libCache.SplitMergeLib;
+    const SpaceGeoDataLib = Helpers.requireContract('./SpaceGeoDataLib.sol');
+    SpaceGeoDataLib.link('ArrayUtils', (await Helpers.getArrayUtilsLib()).address);
+    libCache.SpaceGeoDataLib = await SpaceGeoDataLib.new();
+    return libCache.SpaceGeoDataLib;
   },
   async deployGeodesic() {
     const Geodesic = Helpers.requireContract('./Geodesic.sol');
@@ -365,46 +413,54 @@ const Helpers = {
     Geodesic.link('PolygonUtils', polygonUtils.address);
     return Geodesic.new();
   },
-  async deploySplitMergeMock(ggr) {
-    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+  async deploySpaceGeoDataLight(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
+
+    const spaceGeoData = await SpaceGeoData.new();
+
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
+
+    await spaceGeoData.initialize(ggr.address);
+
+    return spaceGeoData;
+  },
+  async deploySpaceGeoDataMock(ggr) {
+    const SpaceGeoData = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
     const Geodesic = Helpers.requireContract('./MockGeodesic.sol');
-    const splitMergeLib = await Helpers.getSplitMergeLib();
 
-    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
+    SpaceGeoData.numberFormat = 'String';
 
-    const splitMerge = await SplitMerge.new();
+    const spaceGeoData = await SpaceGeoData.new();
     const geodesic = await Geodesic.new();
 
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
 
-    await splitMerge.initialize(ggr.address);
+    await spaceGeoData.initialize(ggr.address);
 
-    return { splitMerge, geodesic };
+    return { spaceGeoData, geodesic };
   },
-  async deploySplitMerge(ggr) {
-    const SplitMerge = Helpers.requireContract('./SplitMerge.sol');
+  async deploySpaceGeoData(ggr) {
+    const SpaceGeoDataRegistry = Helpers.requireContract('./SpaceGeoDataRegistry.sol');
     const SpaceSplitOperationFactory = Helpers.requireContract('./SpaceSplitOperationFactory.sol');
 
     const weilerAtherton = await Helpers.getWeilerAthertonLib();
-    const splitMergeLib = await Helpers.getSplitMergeLib();
     const polygonUtils = await Helpers.getPolygonUtilsLib();
 
-    SplitMerge.link('SplitMergeLib', splitMergeLib.address);
     SpaceSplitOperationFactory.link('PolygonUtils', polygonUtils.address);
     SpaceSplitOperationFactory.link('WeilerAtherton', weilerAtherton.address);
 
-    const splitMerge = await SplitMerge.new();
+    const spaceGeoData = await SpaceGeoDataRegistry.new();
     const splitOperationFactory = await SpaceSplitOperationFactory.new(ggr.address);
     const geodesic = await Helpers.deployGeodesic();
 
     await ggr.setContract(await ggr.SPACE_SPLIT_OPERATION_FACTORY(), splitOperationFactory.address);
     await ggr.setContract(await ggr.GEODESIC(), geodesic.address);
-    await ggr.setContract(await ggr.SPLIT_MERGE(), splitMerge.address);
+    await ggr.setContract(await ggr.SPACE_GEO_DATA_REGISTRY(), spaceGeoData.address);
 
-    await splitMerge.initialize(ggr.address);
+    await spaceGeoData.initialize(ggr.address);
 
-    return splitMerge;
+    return spaceGeoData;
   },
 
   // TODO: fix Error: Invalid number of arguments to Solidity function

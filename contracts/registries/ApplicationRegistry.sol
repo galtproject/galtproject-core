@@ -11,14 +11,18 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
-contract ApplicationRegistry is Ownable {
+contract ApplicationRegistry is OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
+
+  event SetActiveApplication(bytes32 indexed key, address addr);
+  event AddToValidApplications(bytes32 indexed key, address addr);
+  event RemoveFromValidApplications(bytes32 indexed key, address addr);
 
   // Oracle managed applications
   bytes32 public constant PLOT_MANAGER = bytes32("plot_manager");
@@ -32,18 +36,27 @@ contract ApplicationRegistry is Ownable {
   bytes32 public constant UPDATE_ORACLE_MANAGER = bytes32("update_oracle_manager");
   bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
 
-  mapping(bytes32 => address) private _currentApplications;
-  mapping(bytes32 => ArraySet.AddressSet) private _validApplications;
+  mapping(bytes32 => address) internal _currentApplications;
+  mapping(bytes32 => ArraySet.AddressSet) internal _validApplications;
+
+  function initialize() public isInitializer {
+  }
 
   function setActiveApplication(bytes32 _key, address _current) external onlyOwner {
     _currentApplications[_key] = _current;
+
+    emit SetActiveApplication(_key, _current);
   }
 
   function addToValidApplications(bytes32 _key, address _current) external onlyOwner {
     _validApplications[_key].add(_current);
+
+    emit AddToValidApplications(_key, _current);
   }
 
   function removeFromValidApplications(bytes32 _key, address _current) external onlyOwner {
     _validApplications[_key].remove(_current);
+
+    emit RemoveFromValidApplications(_key, _current);
   }
 }

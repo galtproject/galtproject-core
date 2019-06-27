@@ -11,9 +11,10 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./reputation/interfaces/IRA.sol";
 import "./interfaces/IGaltLocker.sol";
 import "./interfaces/ILocker.sol";
@@ -21,11 +22,14 @@ import "./registries/GaltGlobalRegistry.sol";
 
 
 contract GaltLocker is ILocker, IGaltLocker {
+  using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMinted(address gra);
-  event ReputationBurned(address gra);
-  event TokenBurned(uint256 spaceTokenId);
+  event ReputationMint(address gra);
+  event ReputationBurn(address gra);
+  event Deposit(uint256 amount);
+  event Withdrawal(uint256 amount);
+  event TransferExtra(address indexed to, uint256 amount);
 
   address public owner;
   uint256 public reputation;
@@ -44,7 +48,7 @@ contract GaltLocker is ILocker, IGaltLocker {
   }
 
   modifier onlyOwner() {
-    require(isOwner());
+    require(isOwner(), "Not the locker owner");
     _;
   }
 
@@ -52,28 +56,34 @@ contract GaltLocker is ILocker, IGaltLocker {
   function deposit(uint256 _amount) external onlyOwner reputationAndBalanceEqual {
     require(gras.size() == 0, "GRAs counter not 0");
 
-    reputation += _amount;
+    reputation = reputation.add(_amount);
     ggr.getGaltToken().transferFrom(msg.sender, address(this), _amount);
+
+    emit Deposit(_amount);
   }
 
   function withdraw(uint256 _amount) external onlyOwner reputationAndBalanceEqual {
     require(gras.size() == 0, "GRAs counter not 0");
     require(reputation >= _amount, "Reputation is less than withdrawal amount");
 
-    reputation -= _amount;
+    reputation = reputation.sub(_amount);
 
     ggr.getGaltToken().transfer(msg.sender, _amount);
+
+    emit Withdrawal(_amount);
   }
 
   // for cases when reputation and balance are not equal
   function transferExtraGalt(address _to) external onlyOwner {
     uint256 balance = ggr.getGaltToken().balanceOf(msg.sender);
-    uint256 diff = balance - reputation;
+    uint256 diff = balance.sub(reputation);
 
     assert(balance >= reputation);
     require(diff > 0, "Diff is 0");
 
     ggr.getGaltToken().transfer(_to, diff);
+
+    emit TransferExtra(_to, diff);
   }
 
   function approveMint(IRA _gra) external onlyOwner reputationAndBalanceEqual {
@@ -81,6 +91,8 @@ contract GaltLocker is ILocker, IGaltLocker {
     require(_gra.ping() == bytes32("pong"), "Handshake failed");
 
     gras.add(address(_gra));
+
+    emit ReputationMint(address(_gra));
   }
 
   function burn(IRA _gra) external onlyOwner reputationAndBalanceEqual {
@@ -88,6 +100,8 @@ contract GaltLocker is ILocker, IGaltLocker {
     require(_gra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
     gras.remove(address(_gra));
+
+    emit ReputationBurn(address(_gra));
   }
 
   // GETTERS

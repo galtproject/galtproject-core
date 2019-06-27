@@ -11,13 +11,13 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/ISpaceToken.sol";
 import "./interfaces/ISpaceLocker.sol";
 import "./interfaces/ILocker.sol";
-import "./interfaces/ISplitMerge.sol";
+import "./registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./reputation/interfaces/IRA.sol";
 import "./registries/GaltGlobalRegistry.sol";
 
@@ -25,8 +25,10 @@ import "./registries/GaltGlobalRegistry.sol";
 contract SpaceLocker is ILocker, ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMinted(address sra);
-  event ReputationBurned(address sra);
+  event ReputationMint(address sra);
+  event ReputationBurn(address sra);
+  event Deposit(uint256 reputation);
+  event Withdrawal(uint256 reputation);
   event TokenBurned(uint256 spaceTokenId);
 
   address public owner;
@@ -47,12 +49,12 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   }
 
   modifier onlyOwner() {
-    require(isOwner());
+    require(isOwner(), "Not the locker owner");
     _;
   }
 
   modifier notBurned() {
-    require(tokenBurned == false);
+    require(tokenBurned == false, "Token has already burned");
     _;
   }
 
@@ -60,10 +62,12 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(!tokenDeposited, "Token already deposited");
 
     spaceTokenId = _spaceTokenId;
-    reputation = ISplitMerge(ggr.getSplitMergeAddress()).getContourArea(_spaceTokenId);
+    reputation = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenArea(_spaceTokenId);
     tokenDeposited = true;
 
     ggr.getSpaceToken().transferFrom(msg.sender, address(this), _spaceTokenId);
+
+    emit Deposit(reputation);
   }
 
   function withdraw(uint256 _spaceTokenId) external onlyOwner notBurned {
@@ -75,6 +79,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     tokenDeposited = false;
 
     ggr.getSpaceToken().safeTransferFrom(address(this), msg.sender, _spaceTokenId);
+
+    emit Withdrawal(reputation);
   }
 
   function approveMint(IRA _sra) external onlyOwner notBurned {
@@ -82,6 +88,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(_sra.ping() == bytes32("pong"), "Handshake failed");
 
     sras.add(address(_sra));
+
+    emit ReputationMint(address(_sra));
   }
 
   function burn(IRA _sra) external onlyOwner {
@@ -89,6 +97,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     require(_sra.balanceOf(msg.sender) == 0, "Reputation not completely burned");
 
     sras.remove(address(_sra));
+
+    emit ReputationBurn(address(_sra));
   }
 
   /*
@@ -122,14 +132,16 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     return msg.sender == owner;
   }
 
-  function getTokenInfo() public view returns 
-  (
-    address _owner,
-    uint256 _spaceTokenId,
-    uint256 _reputation,
-    bool _tokenDeposited,
-    bool _tokenBurned
-  ) 
+  function getTokenInfo()
+    public
+    view
+    returns (
+      address _owner,
+      uint256 _spaceTokenId,
+      uint256 _reputation,
+      bool _tokenDeposited,
+      bool _tokenBurned
+    )
   {
     return (
       owner,

@@ -11,19 +11,19 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
-//pragma experimental ABIEncoderV2;
+pragma solidity 0.5.7;
 
 import "../interfaces/ISpaceSplitOperationFactory.sol";
 import "../interfaces/ISpaceToken.sol";
-import "../interfaces/ISplitMerge.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "../SpaceSplitOperation.sol";
 import "../registries/GaltGlobalRegistry.sol";
+
 
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
   GaltGlobalRegistry ggr;
-  
+
   constructor(GaltGlobalRegistry _ggr) public {
     ggr = _ggr;
   }

@@ -1,6 +1,6 @@
 {
   "name": "@galtproject/core",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Open-source software for land tokenization (accounting on blockchain) and self-governance",
   "directories": {
     "test": "test"
@@ -8,9 +8,9 @@
   "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "git+https://github.com/galtspace/eslint-config-galt.git",
-    "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#02290d2",
-    "@galtproject/libs": "git+ssh://git@github.com/galtspace/galtproject-libs.git#38369d234f47ee1068f26f78d9139266fbce035a",
-    "@galtproject/math": "git+ssh://git@github.com/galtspace/galtproject-math.git#1d1bd770646f2f62ac01dda22855517090249747",
+    "@galtproject/geodesic": "git+ssh://git@github.com/galtspace/galtproject-geodesic.git#96a52a9",
+    "@galtproject/libs": "git+ssh://git@github.com/galtspace/galtproject-libs.git#d0cdbf3",
+    "@galtproject/math": "git+ssh://git@github.com/galtspace/galtproject-math.git#4d734ca",
     "@galtproject/utils": "git://github.com/galtspace/galtproject-utils-js.git#72ed184",
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.5",
@@ -24,25 +24,25 @@
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-prettier": "^3.0.0",
     "ethlint": "1.2.4",
-    "ganache-core": "2.5.4",
+    "ganache-core": "2.5.5",
     "lodash": "^4.17.11",
-    "mocha": "^6.1.2",
-    "openzeppelin-solidity": "2.1.2",
+    "mocha": "^6.1.4",
+    "openzeppelin-solidity": "2.3.0",
     "p-iteration": "^1.1.8",
-    "prettier": "1.16.4",
+    "prettier": "1.17.0",
     "solidity-coverage": "^0.5.11",
-    "truffle": "5.0.11",
+    "@galtproject/truffle": "5.0.17-rc.1",
     "typedarray-to-buffer": "^3.1.5",
     "web3": "1.0.0-beta.37",
     "yaeti": "^1.0.2"
   },
   "engines": {
-    "node": ">=10.15.1"
+    "node": ">=10.15.3"
   },
   "repository": "https://github.com/galtspace/galtproject-contracts",
   "scripts": {
-    "test": "./node_modules/truffle/build/cli.bundled.js test --network test",
-    "compile": "./node_modules/truffle/build/cli.bundled.js compile",
+    "test": "truffle test --network test",
+    "compile": "truffle compile",
     "test-cov": "./node_modules/.bin/solidity-coverage",
     "eslint": "eslint .",
     "ethlint": "solium --dir ."

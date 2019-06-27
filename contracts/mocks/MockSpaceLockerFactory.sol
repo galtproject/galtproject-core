@@ -1,8 +1,7 @@
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "../factories/SpaceLockerFactory.sol";
 import "./MockSpaceLocker.sol";
-// TODO: remove initializer
 
 
 contract MockSpaceLockerFactory is SpaceLockerFactory {
@@ -13,7 +12,7 @@ contract MockSpaceLockerFactory is SpaceLockerFactory {
 
     ILockerRegistry(ggr.getSpaceLockerRegistryAddress()).addLocker(address(locker));
 
-    emit SpaceLockerCreated(_owner, address(locker));
+    emit NewSpaceLocker(_owner, address(locker));
 
     return ISpaceLocker(locker);
   }

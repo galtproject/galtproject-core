@@ -1,4 +1,4 @@
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
@@ -13,7 +13,7 @@ contract MockToken is Initializable, ERC20Mintable {
   string public constant symbol = "MALT";
 
   // solium-disable-next-line uppercase
-  uint8 public constant decimals = 18;
+  uint256 public constant decimals = 18;
 
   uint256 public constant INITIAL_SUPPLY = 0;
 

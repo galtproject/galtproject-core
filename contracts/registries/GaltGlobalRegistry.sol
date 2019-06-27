@@ -11,9 +11,9 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "../interfaces/IACL.sol";
@@ -25,12 +25,13 @@ import "../interfaces/IACL.sol";
  * Getters with `address` suffix return contract instances,
  * the rest of them return just an `address` primitive.
  */
-contract GaltGlobalRegistry is Ownable {
-  address private ZERO_ADDRESS = address(0);
-
-  bytes32 public constant FEE_COLLECTOR = bytes32("fee_collector");
+contract GaltGlobalRegistry is OwnableAndInitializable {
+  // solium-disable-next-line mixedcase
+  address internal ZERO_ADDRESS = address(0);
 
   bytes32 public constant ACL = bytes32("ACL");
+
+  bytes32 public constant GLOBAL_GOVERNANCE = bytes32("global_governance");
 
   // Tokens
   bytes32 public constant GALT_TOKEN = bytes32("galt_token");
@@ -38,41 +39,39 @@ contract GaltGlobalRegistry is Ownable {
 
   // Registries
   bytes32 public constant APPLICATION_REGISTRY = bytes32("application_registry");
-  bytes32 public constant MULTI_SIG_REGISTRY = bytes32("multi_sig_registry");
+  bytes32 public constant PGG_REGISTRY = bytes32("pgg_registry");
   bytes32 public constant FEE_REGISTRY = bytes32("fee_registry");
   bytes32 public constant SPACE_CUSTODIAN_REGISTRY = bytes32("space_custodian_registry");
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
-
-  // TODO: move to the arbitration level
-  bytes32 public constant ORACLES = bytes32("oracles");
-  // TODO: move to the application level
-  bytes32 public constant CLAIM_MANAGER = bytes32("claim_manager");
+  bytes32 public constant SPACE_GEO_DATA_REGISTRY = bytes32("space_geo_data_registry");
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
+  bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
-  bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
 
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
 
-  mapping(bytes32 => address) private contracts;
+  event SetContract(bytes32 indexed kye, address addr);
+
+  mapping(bytes32 => address) internal contracts;
+
+  function initialize() public isInitializer {
+  }
 
   function setContract(bytes32 _key, address _value) external onlyOwner {
     contracts[_key] = _value;
+
+    emit SetContract(_key, _value);
   }
 
   // GETTERS
   function getContract(bytes32 _key) external view returns (address) {
     return contracts[_key];
-  }
-
-  function getFeeCollectorAddress() external view returns (address) {
-    require(contracts[FEE_COLLECTOR] != ZERO_ADDRESS, "GGR: FEE_COLLECTOR not set");
-    return contracts[FEE_COLLECTOR];
   }
 
   // TODO: add Address suffix
@@ -81,14 +80,19 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[APPLICATION_REGISTRY];
   }
 
+  function getGlobalGovernanceAddress() external view returns (address) {
+    require(contracts[GLOBAL_GOVERNANCE] != ZERO_ADDRESS, "GGR: GLOBAL_GOVERNANCE not set");
+    return contracts[GLOBAL_GOVERNANCE];
+  }
+
   function getFeeRegistryAddress() external view returns (address) {
     require(contracts[FEE_REGISTRY] != ZERO_ADDRESS, "GGR: FEE_REGISTRY not set");
     return contracts[FEE_REGISTRY];
   }
 
-  function getMultiSigRegistryAddress() external view returns (address) {
-    require(contracts[MULTI_SIG_REGISTRY] != ZERO_ADDRESS, "GGR: MULTI_SIG_REGISTRY not set");
-    return contracts[MULTI_SIG_REGISTRY];
+  function getPggRegistryAddress() external view returns (address) {
+    require(contracts[PGG_REGISTRY] != ZERO_ADDRESS, "GGR: PGG_REGISTRY not set");
+    return contracts[PGG_REGISTRY];
   }
 
   function getSpaceCustodianRegistryAddress() external view returns (address) {
@@ -111,17 +115,6 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[GEODESIC];
   }
 
-  function getOraclesAddress() external view returns (address) {
-    require(contracts[ORACLES] != ZERO_ADDRESS, "GGR: ORACLES not set");
-    return contracts[ORACLES];
-  }
-
-  // TODO: should be moved to the application level registry
-  function getClaimManagerAddress() external view returns (address) {
-    require(contracts[CLAIM_MANAGER] != ZERO_ADDRESS, "GGR: CLAIM_MANAGER not set");
-    return contracts[CLAIM_MANAGER];
-  }
-
   function getSpaceRAAddress() external view returns (address) {
     require(contracts[SPACE_RA] != ZERO_ADDRESS, "GGR: SPACE_RA not set");
     return contracts[SPACE_RA];
@@ -132,9 +125,14 @@ contract GaltGlobalRegistry is Ownable {
     return contracts[GALT_RA];
   }
 
-  function getSplitMergeAddress() external view returns (address) {
-    require(contracts[SPLIT_MERGE] != ZERO_ADDRESS, "GGR: SPLIT_MERGE not set");
-    return contracts[SPLIT_MERGE];
+  function getStakeTrackerAddress() external view returns (address) {
+    require(contracts[STAKE_TRACKER] != ZERO_ADDRESS, "GGR: STAKE_TRACKER not set");
+    return contracts[STAKE_TRACKER];
+  }
+
+  function getSpaceGeoDataRegistryAddress() external view returns (address) {
+    require(contracts[SPACE_GEO_DATA_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA_REGISTRY not set");
+    return contracts[SPACE_GEO_DATA_REGISTRY];
   }
 
   function getSpaceSplitOperationFactoryAddress() external view returns (address) {

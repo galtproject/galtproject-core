@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../interfaces/ILocker.sol";
@@ -22,20 +22,20 @@ import "./GaltGlobalRegistry.sol";
 contract LockerRegistry is ILockerRegistry {
   using ArraySet for ArraySet.AddressSet;
 
-  // Locker address => Details
-  mapping(address => Details) public lockers;
-
-  // Locker address => Details
-  mapping(address => ArraySet.AddressSet) private lockersByOwner;
-
   struct Details {
     bool active;
     address factory;
   }
 
-  event LockerAdded(address indexed locker, address indexed owner, address factory);
+  event AddLocker(address indexed locker, address indexed owner, address factory);
 
-  GaltGlobalRegistry private ggr;
+  // Locker address => Details
+  mapping(address => Details) public lockers;
+
+  // Locker address => Details
+  mapping(address => ArraySet.AddressSet) internal lockersByOwner;
+
+  GaltGlobalRegistry internal ggr;
   bytes32 public roleFactory;
 
   constructor (GaltGlobalRegistry _ggr, bytes32 _roleFactory) public {
@@ -60,7 +60,7 @@ contract LockerRegistry is ILockerRegistry {
 
     lockersByOwner[ILocker(_locker).owner()].add(_locker);
 
-    emit LockerAdded(_locker, ILocker(_locker).owner(), locker.factory);
+    emit AddLocker(_locker, ILocker(_locker).owner(), locker.factory);
   }
 
   // REQUIRES

@@ -1,8 +1,9 @@
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "./MockToken.sol";
 
 
+/* solium-disable-next-line */
 contract MockToken_V2 is MockToken {
   constructor() public {
   }

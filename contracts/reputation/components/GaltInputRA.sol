@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
@@ -20,7 +20,7 @@ import "./LiquidRA.sol";
 
 
 contract GaltInputRA is LiquidRA {
-  ArraySet.AddressSet private _members;
+  ArraySet.AddressSet internal _members;
 
   // locker => isMinted
   mapping(address => bool) public _reputationMinted;

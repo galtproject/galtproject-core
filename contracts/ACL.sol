@@ -11,16 +11,23 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./interfaces/IACL.sol";
+import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 
-contract ACL is IACL, Ownable {
+
+contract ACL is IACL, OwnableAndInitializable {
+  event SetRole(bytes32 indexed role, address indexed candidate, bool allowed);
+
   mapping(bytes32 => mapping(address => bool)) _roles;
+
+  function initialize() external isInitializer {
+  }
 
   function setRole(bytes32 _role, address _candidate, bool _allow) external onlyOwner {
     _roles[_role][_candidate] = _allow;
+    emit SetRole(_role, _candidate, _allow);
   }
 
   function hasRole(address _candidate, bytes32 _role) external view returns (bool) {

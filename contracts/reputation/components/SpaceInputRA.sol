@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
@@ -27,9 +27,9 @@ import "./LiquidRA.sol";
 
 
 contract SpaceInputRA is LiquidRA {
-  ArraySet.AddressSet private _spaceTokenOwners;
+  ArraySet.AddressSet internal _spaceTokenOwners;
 
-  mapping(address => ArraySet.Uint256Set) private _spaceTokensByOwner;
+  mapping(address => ArraySet.Uint256Set) internal _spaceTokensByOwner;
 
   mapping(uint256 => bool) public reputationMinted;
 

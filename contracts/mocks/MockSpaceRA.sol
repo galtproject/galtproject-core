@@ -11,22 +11,14 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity ^0.5.3;
+pragma solidity ^0.5.7;
 
-import "openzeppelin-solidity/contracts/drafts/Counter.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../reputation/SpaceRA.sol";
 
 
 contract MockSpaceRA is SpaceRA {
-  constructor(
-    GaltGlobalRegistry _ggr
-  )
-    public
-    SpaceRA(_ggr)
-  {
-  }
 
   function mintHack(address _beneficiary, uint256 _amount, uint256 _spaceTokenId) external {
     _mint(_beneficiary, _amount);
@@ -36,7 +28,7 @@ contract MockSpaceRA is SpaceRA {
   function delegateHack(address _to, address _from, address _owner, uint256 _amount) external {
     _transfer(_to, _from, _owner, _amount);
   }
-  
+
   function mintAll(address[] calldata _addresses, uint256[] calldata _spaceTokens, uint256 _amount) external {
     for (uint256 i = 0; i < _addresses.length; i++) {
       _mint(_addresses[i], _amount);

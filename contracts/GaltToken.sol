@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
 
@@ -24,7 +24,7 @@ contract GaltToken is ERC20Mintable {
   string public constant _symbol = "GALT";
 
   // solium-disable-next-line uppercase
-  uint8 public constant _decimals = 18;
+  uint256 public constant _decimals = 18;
 
   uint256 public constant INITIAL_SUPPLY = 0;
 

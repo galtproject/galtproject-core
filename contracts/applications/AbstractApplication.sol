@@ -11,25 +11,29 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.3;
+pragma solidity 0.5.7;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../Oracles.sol";
-import "../registries/interfaces/IMultiSigRegistry.sol";
+import "../registries/interfaces/IPGGRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../registries/GaltGlobalRegistry.sol";
+import "../pgg/interfaces/IPGGConfig.sol";
 
 
-contract AbstractApplication is Initializable, Permissionable {
-  GaltGlobalRegistry public ggr;
+contract AbstractApplication is Initializable {
+  GaltGlobalRegistry internal ggr;
+
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+  bytes32 public constant ROLE_APPLICATION_BYTECODE_EXECUTOR = bytes32("APPLICATION_BYTECODE_EXECUTOR");
 
   uint256 public protocolFeesEth;
   uint256 public protocolFeesGalt;
 
   bytes32[] internal applicationsArray;
   mapping(address => bytes32[]) public applicationsByApplicant;
+
+  event ExecuteBytecode(bool success, address destination);
 
   enum Currency {
     ETH,
@@ -43,14 +47,55 @@ contract AbstractApplication is Initializable, Permissionable {
     ETH_AND_GALT
   }
 
+  enum PaymentType {
+    ETH,
+    GALT
+  }
+
   constructor() public {}
 
   modifier onlyFeeCollector() {
-    require(msg.sender == ggr.getFeeCollectorAddress(), "Only FeeMixer allowed");
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
     _;
   }
 
-  function paymentMethod(address _multiSig) public view returns (PaymentMethod);
+  modifier onlyApplicationBytecodeExecutor() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_APPLICATION_BYTECODE_EXECUTOR),
+      "Only APPLICATION_BYTECODE_EXECUTOR role allowed"
+    );
+    _;
+  }
+
+  function paymentMethod(address _pgg) public view returns (PaymentMethod);
+
+  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
+    PaymentMethod pm = paymentMethod(_pgg);
+
+    if (_paymentType == PaymentType.ETH) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.ETH_ONLY, "Invalid payment type");
+    } else if (_paymentType == PaymentType.GALT) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.GALT_ONLY, "Invalid payment type");
+    }
+  }
+
+  function executeBytecode(
+    address _destination,
+    uint256 _value,
+    bytes calldata _data
+  )
+    external
+    onlyApplicationBytecodeExecutor
+  {
+    (bool success,) = address(_destination).call.value(_value)(_data);
+
+    assert(success == true);
+
+    emit ExecuteBytecode(success, _destination);
+  }
 
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
@@ -68,12 +113,18 @@ contract AbstractApplication is Initializable, Permissionable {
     return IFeeRegistry(ggr.getFeeRegistryAddress()).getProtocolApplicationShares();
   }
 
-  function multiSigRegistry() internal view returns(IMultiSigRegistry) {
-    return IMultiSigRegistry(ggr.getMultiSigRegistryAddress());
+  function pggRegistry() internal view returns(IPGGRegistry) {
+    return IPGGRegistry(ggr.getPggRegistryAddress());
   }
 
-  function applicationConfig(address _multiSig, bytes32 _key) internal view returns (bytes32) {
-    return multiSigRegistry().getArbitrationConfig(_multiSig).applicationConfig(_key);
+  function pggConfig(address _pgg) internal view returns (IPGGConfig) {
+    pggRegistry().requireValidPgg(_pgg);
+
+    return IPGGConfig(_pgg);
+  }
+
+  function pggConfigValue(address _pgg, bytes32 _key) internal view returns (bytes32) {
+    return pggConfig(_pgg).applicationConfig(_key);
   }
 
   function getAllApplications() external view returns (bytes32[] memory) {
