@@ -5,7 +5,7 @@ const MockSpaceLockerFactory = artifacts.require('./MockSpaceLockerFactory.sol')
 const MockSpaceLocker = artifacts.require('./MockSpaceLocker.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const MockSpaceRA = artifacts.require('./MockSpaceRA.sol');
-const MockSplitMerge = artifacts.require('./MockSplitMerge.sol');
+const MockSpaceGeoData = artifacts.require('./MockSpaceGeoData.sol');
 
 MockSpaceLockerFactory.numberFormat = 'String';
 SpaceToken.numberFormat = 'String';
@@ -21,16 +21,15 @@ const bytes32 = utf8ToHex;
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-contract('SpaceLockerFactory', accounts => {
+contract('MockSpaceLockerFactory', accounts => {
   const [coreTeam, alice] = accounts;
 
   beforeEach(async function() {
     this.ggr = await GaltGlobalRegistry.new();
     this.acl = await ACL.new();
-    this.spaceToken = await SpaceToken.new('SPACE', 'SPACE');
-    this.mockSplitMerge = await MockSplitMerge.new();
+    this.spaceToken = await SpaceToken.new(this.ggr.address, 'SPACE', 'SPACE');
+    this.mockSpaceGeoDataRegistry = await MockSpaceGeoData.new();
 
-    await this.spaceToken.addRoleTo(coreTeam, 'minter');
     this.mockSpaceRA = await MockSpaceRA.new(this.ggr.address);
 
     this.spaceLockerRegistry = await LockerRegistry.new(this.ggr.address, bytes32('SPACE_LOCKER_REGISTRAR'));
@@ -40,8 +39,10 @@ contract('SpaceLockerFactory', accounts => {
     await this.ggr.setContract(await this.ggr.SPACE_LOCKER_REGISTRY(), this.spaceLockerRegistry.address);
     await this.ggr.setContract(await this.ggr.SPACE_RA(), this.mockSpaceRA.address);
     await this.ggr.setContract(await this.ggr.SPACE_TOKEN(), this.spaceToken.address);
-    await this.ggr.setContract(await this.ggr.SPLIT_MERGE(), this.mockSplitMerge.address);
+    await this.ggr.setContract(await this.ggr.SPACE_GEO_DATA_REGISTRY(), this.mockSpaceGeoDataRegistry.address);
 
+    await this.acl.setRole(bytes32('SPACE_MINTER'), coreTeam, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('SPACE_BURNER'), coreTeam, true, { from: coreTeam });
     await this.acl.setRole(bytes32('SPACE_LOCKER_REGISTRAR'), this.spaceLockerFactory.address, true);
   });
 
@@ -49,7 +50,7 @@ contract('SpaceLockerFactory', accounts => {
     it('should allow build for owner by coreTeam', async function() {
       let res = await this.spaceToken.mint(coreTeam, { from: coreTeam });
       const spaceTokenId = res.logs[0].args.tokenId;
-      await this.mockSplitMerge.setTokenArea(spaceTokenId, toWei('200', 'ether'));
+      await this.mockSpaceGeoDataRegistry.setSpaceTokenArea(spaceTokenId, toWei('200', 'ether'));
       res = await this.spaceLockerFactory.buildMock(alice, { from: coreTeam });
       const mockSpaceLocker = await MockSpaceLocker.at(res.logs[0].args.locker);
 
@@ -63,10 +64,6 @@ contract('SpaceLockerFactory', accounts => {
       assert.equal(await this.mockSpaceRA.isMember(alice), true);
       assert.equal(await this.mockSpaceRA.ownerHasSpaceToken(alice, spaceTokenId), true);
       assert.deepEqual(await this.mockSpaceRA.spaceTokenOwners(), [alice]);
-
-      await this.mockSpaceRA.approveBurn(mockSpaceLocker.address, { from: alice });
-      await mockSpaceLocker.burn(this.mockSpaceRA.address, { from: alice });
-      await mockSpaceLocker.withdraw(spaceTokenId, { from: alice });
     });
   });
 });
