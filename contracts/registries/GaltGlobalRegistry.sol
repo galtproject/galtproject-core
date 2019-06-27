@@ -56,7 +56,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   // Factories
   bytes32 public constant SPACE_SPLIT_OPERATION_FACTORY = bytes32("space_split_operation_factory");
 
-  event SetContract(bytes32 indexed kye, address addr);
+  event SetContract(bytes32 indexed key, address addr);
 
   mapping(bytes32 => address) internal contracts;
 

@@ -25,8 +25,8 @@ contract GaltLocker is ILocker, IGaltLocker {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMint(address gra);
-  event ReputationBurn(address gra);
+  event ReputationMint(address indexed gra);
+  event ReputationBurn(address indexed gra);
   event Deposit(uint256 amount);
   event Withdrawal(uint256 amount);
   event TransferExtra(address indexed to, uint256 amount);
