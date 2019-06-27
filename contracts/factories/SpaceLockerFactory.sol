@@ -23,9 +23,9 @@ import "../SpaceLocker.sol";
 
 
 contract SpaceLockerFactory is ISpaceLockerFactory {
-  event NewSpaceLocker(address owner, address locker);
-  event EthFeeWithdrawal(address collector, uint256 amount);
-  event GaltFeeWithdrawal(address collector, uint256 amount);
+  event NewSpaceLocker(address indexed owner, address locker);
+  event EthFeeWithdrawal(address indexed collector, uint256 amount);
+  event GaltFeeWithdrawal(address indexed collector, uint256 amount);
 
   bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
   bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");

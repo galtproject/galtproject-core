@@ -42,31 +42,31 @@ import "./pgg/PGGProposalManagerFactory.sol";
 
 contract PGGFactory is Initializable {
   event BuildPGGFirstStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggConfig,
     address pggMultiSig,
     address pggOracleStakeAccounting
   );
 
   event BuildPGGSecondStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggArbitratorStakeAccounting,
     address pggMultiSigCandidateTop
   );
 
-  event BuildPGGThirdStep();
-  event BuildPGGThirdStepDone();
+  event BuildPGGThirdStep(bytes32 indexed groupId);
+  event BuildPGGThirdStepDone(bytes32 indexed groupId);
   event BuildPGGFourthStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggDelegateSpaceVoting,
     address pggDelegateGaltVoting,
     address pggOracleStakeVoting
   );
-  event BuildPGGFifthStep();
-  event BuildPGGFifthStepDone();
+  event BuildPGGFifthStep(bytes32 indexed groupId);
+  event BuildPGGFifthStepDone(bytes32 indexed groupId);
 
   event BuildPGGSixthStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggOracles,
     address pggProposalManager
   );
@@ -253,7 +253,7 @@ contract PGGFactory is Initializable {
     }
     g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
 
-    emit BuildPGGThirdStep();
+    emit BuildPGGThirdStep(_groupId);
   }
 
   function buildThirdStepDone(
@@ -267,7 +267,7 @@ contract PGGFactory is Initializable {
 
     g.nextStep = Step.FOURTH;
 
-    emit BuildPGGThirdStepDone();
+    emit BuildPGGThirdStepDone(_groupId);
   }
 
   function buildFourthStep(
@@ -327,7 +327,7 @@ contract PGGFactory is Initializable {
 
     g.pggConfig.removeInternalRole(address(this), g.pggConfig.THRESHOLD_MANAGER());
 
-    emit BuildPGGFifthStep();
+    emit BuildPGGFifthStep(_groupId);
   }
 
   function buildFifthStepDone(
@@ -341,7 +341,7 @@ contract PGGFactory is Initializable {
 
     g.nextStep = Step.SIXTH;
 
-    emit BuildPGGFifthStepDone();
+    emit BuildPGGFifthStepDone(_groupId);
   }
 
   function buildSixthStep(

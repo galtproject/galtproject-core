@@ -25,8 +25,8 @@ import "./registries/GaltGlobalRegistry.sol";
 contract SpaceLocker is ILocker, ISpaceLocker {
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMint(address sra);
-  event ReputationBurn(address sra);
+  event ReputationMint(address indexed sra);
+  event ReputationBurn(address indexed sra);
   event Deposit(uint256 reputation);
   event Withdrawal(uint256 reputation);
   event TokenBurned(uint256 spaceTokenId);
