@@ -44,6 +44,7 @@ contract NewPropertyManager is AbstractOracleApplication {
   event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
   event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
   event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  event ClaimSpaceToken(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -415,6 +416,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     require(
       a.status == ApplicationStatus.APPROVED,
       "Application status should be APPROVED");
+
+    emit ClaimSpaceToken(_aId, a.spaceTokenId);
 
     ggr.getSpaceToken().transferFrom(address(this), a.applicant, a.spaceTokenId);
   }

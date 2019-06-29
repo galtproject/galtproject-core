@@ -10,6 +10,7 @@ const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
+const SharedMultiSigWallet = artifacts.require('./SharedMultiSigWallet.sol');
 
 const Web3 = require('web3');
 const galt = require('@galtproject/utils');
@@ -29,7 +30,7 @@ const {
 } = require('../../helpers');
 const { deployPGGFactory, buildPGG } = require('../../deploymentHelpers');
 
-const web3 = new Web3(NewPropertyManager.web3.currentProvider);
+const { web3 } = NewPropertyManager;
 const { BN, utf8ToHex, hexToUtf8 } = Web3.utils;
 const bytes32 = utf8ToHex;
 
@@ -41,6 +42,8 @@ const DAN = bytes32('Dan');
 
 const PM_SURVEYOR = bytes32('PM_SURVEYOR_ORACLE_TYPE');
 const PM_LAWYER = bytes32('PM_LAWYER_ORACLE_TYPE');
+
+NewPropertyManager.numberFormat = 'String';
 
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
@@ -109,7 +112,7 @@ contract('NewPropertyManager', accounts => {
     this.initContour3 = ['qqqq', 'wwww', 'eeee'];
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
-    this.contour = this.initContour.map(galt.geohashToNumber);
+    this.contour = this.initContour.map(galt.geohashToNumber).map(a => a.toString(10));
     this.heights = [1, 2, 3];
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
@@ -221,6 +224,14 @@ contract('NewPropertyManager', accounts => {
     await this.oracleStakesAccountingX.stake(bob, PM_SURVEYOR, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(charlie, PM_LAWYER, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(dan, PM_LAWYER, ether(2000), { from: alice });
+
+    this.sharedMultiSig = await SharedMultiSigWallet.new(
+      [alice, bob, charlie],
+      [ether(20), ether(50), ether(30)],
+      ether(50)
+    );
+    await this.galtToken.transfer(this.sharedMultiSig.address, ether(200000), { from: alice });
+    await web3.eth.sendTransaction({ to: this.sharedMultiSig.address, from: frank, value: ether(3000) });
   });
 
   beforeEach(async function() {
@@ -729,6 +740,69 @@ contract('NewPropertyManager', accounts => {
           assertEqualBN(orgsFinalBalance, orgsInitialBalance.add(new BN('2600000000000000000')));
         });
       });
+    });
+
+    it('should allow galt application pipeline for applications from shared multiSig', async function() {
+      // approve galts
+      const approveData = this.galtToken.contract.methods
+        .approve(this.newPropertyManager.address, this.fee)
+        .encodeABI();
+      let res = await this.sharedMultiSig.submitTransaction(this.galtToken.address, 0, approveData, {
+        from: alice
+      });
+      let txId = res.logs[0].args.transactionId;
+      res = await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+
+      // submit application
+      const submitData = this.newPropertyManager.contract.methods
+        .submit(
+          this.pggConfigX.address,
+          this.contour,
+          this.heights,
+          0,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          this.description,
+          this.fee
+        )
+        .encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.newPropertyManager.address, 0, submitData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      // fetch txId from tx response field response
+      this.aId = res.lastResponse;
+
+      // assert id is correct
+      res = await this.newPropertyManager.getApplication(this.aId);
+      assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+      // lock
+      await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+      await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+
+      // approve
+      await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+      await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+
+      // withdraw token
+      const claimData = this.newPropertyManager.contract.methods.claimSpaceToken(this.aId).encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.newPropertyManager.address, 0, claimData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      res = await this.newPropertyManager.getApplication(this.aId);
+      res = await this.spaceToken.ownerOf(res.spaceTokenId);
+      assert.equal(res, this.sharedMultiSig.address);
     });
   });
 
@@ -1451,6 +1525,59 @@ contract('NewPropertyManager', accounts => {
           assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(0.66));
         });
       });
+    });
+
+    it('should allow galt application pipeline for applications from shared multiSig', async function() {
+      // submit application
+      const submitData = this.newPropertyManager.contract.methods
+        .submit(
+          this.pggConfigX.address,
+          this.contour,
+          this.heights,
+          0,
+          0,
+          this.credentials,
+          this.ledgerIdentifier,
+          this.description,
+          0
+        )
+        .encodeABI();
+      let res = await this.sharedMultiSig.submitTransaction(this.newPropertyManager.address, this.fee, submitData, {
+        from: alice
+      });
+      let txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      // fetch txId from tx response field response
+      this.aId = res.lastResponse;
+
+      // assert id is correct
+      res = await this.newPropertyManager.getApplication(this.aId);
+      assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+      // lock
+      await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+      await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
+
+      // approve
+      await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
+      await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+
+      // withdraw token
+      const claimData = this.newPropertyManager.contract.methods.claimSpaceToken(this.aId).encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.newPropertyManager.address, 0, claimData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      res = await this.newPropertyManager.getApplication(this.aId);
+      res = await this.spaceToken.ownerOf(res.spaceTokenId);
+      assert.equal(res, this.sharedMultiSig.address);
     });
   });
 });
