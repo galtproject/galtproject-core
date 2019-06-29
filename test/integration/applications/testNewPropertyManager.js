@@ -1527,7 +1527,7 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    it('should allow galt application pipeline for applications from shared multiSig', async function() {
+    it('should allow eth application pipeline for applications from shared multiSig', async function() {
       // submit application
       const submitData = this.newPropertyManager.contract.methods
         .submit(
