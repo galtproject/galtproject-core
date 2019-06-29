@@ -293,7 +293,7 @@ contract('NewPropertyManager', accounts => {
 
         // assertions
         for (let i = 0; i < res3.length; i++) {
-          assert.equal(res3[i].toString(10), this.initContour[i]);
+          assert.equal(res3[i].toString(10), this.contour[i]);
         }
       });
     });
