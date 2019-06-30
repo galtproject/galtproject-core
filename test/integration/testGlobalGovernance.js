@@ -39,6 +39,14 @@ initHelperWeb3(web3);
 // const { log } = console;
 const log = function() {};
 
+const ProposalStatus = {
+  NULL: 0,
+  ACTIVE: 1,
+  APPROVED: 2,
+  EXECUTED: 3,
+  REJECTED: 4
+};
+
 contract('GlobalGovernance', accounts => {
   const [
     coreTeam,
@@ -362,7 +370,7 @@ contract('GlobalGovernance', accounts => {
       await this.pggM.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
       let globalProposalId = hexToNumberString(res.response);
 
       // Step #2. Create support proposal and accept it
@@ -385,7 +393,7 @@ contract('GlobalGovernance', accounts => {
       await this.pggM.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
       res = await this.pggM.config.globalProposalSupport(globalProposalId);
       assert.equal(true, res);
@@ -420,7 +428,7 @@ contract('GlobalGovernance', accounts => {
       await this.pggM.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
       globalProposalId = hexToNumberString(res.response);
 
       // Step #4. Support proposal to add a record at around 94.19%
@@ -443,8 +451,7 @@ contract('GlobalGovernance', accounts => {
       await this.pggM.proposalManager.triggerApprove(proposalId);
 
       res = await this.pggM.proposalManager.proposals(proposalId);
-
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
       res = await this.globalGovernance.proposals(globalProposalId);
       assert.equal(res.executed, false);
