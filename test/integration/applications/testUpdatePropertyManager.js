@@ -7,6 +7,7 @@ const PGGRegistry = artifacts.require('./PGGRegistry.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.sol');
 const StakeTracker = artifacts.require('./StakeTracker.sol');
+const SharedMultiSigWallet = artifacts.require('./SharedMultiSigWallet.sol');
 
 UpdatePropertyManager.numberFormat = 'String';
 
@@ -112,7 +113,7 @@ contract('UpdatePropertyManager', (accounts) => {
     this.initLedgerIdentifier = 'шц50023中222ائِيل';
 
     this.contour = this.initContour.map(galt.geohashToNumber);
-    this.newContour = this.newContourRaw.map(galt.geohashToNumber);
+    this.newContour = this.initContour.map(galt.geohashToNumber).map(a => a.toString(10));
     this.newHeights = this.newContour.map(() => ether(10));
     this.heights = [1, 2, 3];
     this.newLevel = 1;
@@ -232,6 +233,14 @@ contract('UpdatePropertyManager', (accounts) => {
     await this.oracleStakesAccountingX.stake(charlie, PL_LAWYER, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(dan, PL_LAWYER, ether(2000), { from: alice });
     await this.oracleStakesAccountingX.stake(eve, PL_AUDITOR, ether(2000), { from: alice });
+
+    this.sharedMultiSig = await SharedMultiSigWallet.new(
+      [alice, bob, charlie],
+      [ether(20), ether(50), ether(30)],
+      ether(50)
+    );
+    await this.galtToken.transfer(this.sharedMultiSig.address, ether(200000), { from: alice });
+    await web3.eth.sendTransaction({ to: this.sharedMultiSig.address, from: frank, value: ether(3000) });
   });
 
   beforeEach(async function() {
@@ -592,6 +601,81 @@ contract('UpdatePropertyManager', (accounts) => {
           await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
+    });
+
+    it('should allow galt application pipeline for applications from shared multiSig', async function() {
+      await this.spaceToken.transferFrom(alice, this.sharedMultiSig.address, this.tokenId, { from: alice });
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.sharedMultiSig.address);
+
+      // approve space
+      let approveData = this.spaceToken.contract.methods
+        .approve(this.updatePropertyManager.address, this.tokenId)
+        .encodeABI();
+      let res = await this.sharedMultiSig.submitTransaction(this.spaceToken.address, 0, approveData, {
+        from: alice
+      });
+      let txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+
+      // approve galts
+      approveData = this.galtToken.contract.methods.approve(this.updatePropertyManager.address, ether(57)).encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.galtToken.address, 0, approveData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      res = await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+
+      // submit application
+      const submitData = this.updatePropertyManager.contract.methods
+        .submit(
+          this.tokenId,
+          this.ledgerIdentifier,
+          this.newLevel,
+          0,
+          this.description,
+          this.newContour,
+          this.newHeights,
+          this.pggConfigX.address,
+          ether(57)
+        )
+        .encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.updatePropertyManager.address, 0, submitData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.updatePropertyManager.address);
+
+      // fetch txId from tx response field response
+      this.aId = res.lastResponse;
+
+      // assert id is correct
+      res = await this.updatePropertyManager.getApplication(this.aId);
+      assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+      // lock
+      await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
+      await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
+      await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });
+
+      // approve
+      await this.updatePropertyManager.approve(this.aId, { from: bob });
+      await this.updatePropertyManager.approve(this.aId, { from: dan });
+      await this.updatePropertyManager.approve(this.aId, { from: eve });
+
+      // withdraw token
+      const claimData = this.updatePropertyManager.contract.methods.withdrawSpaceToken(this.aId).encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.updatePropertyManager.address, 0, claimData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.sharedMultiSig.address);
     });
   });
 
@@ -1343,6 +1427,73 @@ contract('UpdatePropertyManager', (accounts) => {
           await assertRevert(this.updatePropertyManager.claimOracleReward(this.aId, { from: alice }));
         });
       });
+    });
+
+    it('should allow eth application pipeline for applications from shared multiSig', async function() {
+      await this.spaceToken.transferFrom(alice, this.sharedMultiSig.address, this.tokenId, { from: alice });
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.sharedMultiSig.address);
+
+      // approve space
+      const approveData = this.spaceToken.contract.methods
+        .approve(this.updatePropertyManager.address, this.tokenId)
+        .encodeABI();
+      let res = await this.sharedMultiSig.submitTransaction(this.spaceToken.address, 0, approveData, {
+        from: alice
+      });
+      let txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+
+      // submit application
+      const submitData = this.updatePropertyManager.contract.methods
+        .submit(
+          this.tokenId,
+          this.ledgerIdentifier,
+          this.newLevel,
+          0,
+          this.description,
+          this.newContour,
+          this.newHeights,
+          this.pggConfigX.address,
+          0
+        )
+        .encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.updatePropertyManager.address, ether(8), submitData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.updatePropertyManager.address);
+
+      // fetch txId from tx response field response
+      this.aId = res.lastResponse;
+
+      // assert id is correct
+      res = await this.updatePropertyManager.getApplication(this.aId);
+      assert.equal(res.status, ApplicationStatus.SUBMITTED);
+
+      // lock
+      await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
+      await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
+      await this.updatePropertyManager.lock(this.aId, PL_AUDITOR, { from: eve });
+
+      // approve
+      await this.updatePropertyManager.approve(this.aId, { from: bob });
+      await this.updatePropertyManager.approve(this.aId, { from: dan });
+      await this.updatePropertyManager.approve(this.aId, { from: eve });
+
+      // withdraw token
+      const claimData = this.updatePropertyManager.contract.methods.withdrawSpaceToken(this.aId).encodeABI();
+      res = await this.sharedMultiSig.submitTransaction(this.updatePropertyManager.address, 0, claimData, {
+        from: alice
+      });
+      txId = res.logs[0].args.transactionId;
+      await this.sharedMultiSig.confirmTransaction(txId, { from: charlie });
+      res = await this.sharedMultiSig.transactions(txId);
+      assert.equal(res.executed, true);
+
+      assert.equal(await this.spaceToken.ownerOf(this.tokenId), this.sharedMultiSig.address);
     });
   });
 });

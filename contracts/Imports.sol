@@ -14,6 +14,7 @@
 pragma solidity 0.5.7;
 
 import "@galtproject/geodesic/contracts/Geodesic.sol";
+import "@galtproject/multisig/contracts/SharedMultiSigWallet.sol";
 import "@galtproject/libs/contracts/proxy/unstructured-storage/OwnedUpgradeabilityProxy.sol";
 
 
