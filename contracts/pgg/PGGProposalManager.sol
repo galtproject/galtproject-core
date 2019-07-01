@@ -34,6 +34,7 @@ contract PGGProposalManager is IPGGProposalManager {
     NULL,
     ACTIVE,
     APPROVED,
+    EXECUTED,
     REJECTED
   }
 
@@ -44,7 +45,6 @@ contract PGGProposalManager is IPGGProposalManager {
   }
 
   struct ProposalVoting {
-    ProposalStatus status;
     mapping(address => Choice) participants;
     ArraySet.AddressSet ayes;
     ArraySet.AddressSet nays;
@@ -58,7 +58,6 @@ contract PGGProposalManager is IPGGProposalManager {
     bytes32 marker;
     bytes data;
     string description;
-    bool executed;
     bytes response;
   }
 
@@ -112,7 +111,7 @@ contract PGGProposalManager is IPGGProposalManager {
     _activeProposalsBySender[msg.sender].add(id);
     _proposalToSender[id] = msg.sender;
 
-    _proposalVotings[id].status = ProposalStatus.ACTIVE;
+    proposals[id].status = ProposalStatus.ACTIVE;
 
     emit NewProposal(id, msg.sender, _destination, p.marker);
 
@@ -120,25 +119,23 @@ contract PGGProposalManager is IPGGProposalManager {
   }
 
   function aye(uint256 _proposalId) external onlyMember {
-    require(_proposalVotings[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _aye(_proposalId, msg.sender);
   }
 
   function nay(uint256 _proposalId) external onlyMember {
-    require(_proposalVotings[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _nay(_proposalId, msg.sender);
   }
 
   function triggerApprove(uint256 _proposalId) external {
-    ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
-    require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    Proposal storage p = proposals[_proposalId];
+    require(p.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     uint256 support = getAyeShare(_proposalId);
     assert(support <= DECIMALS);
-
-    Proposal storage p = proposals[_proposalId];
 
     uint256 threshold = pggConfig.thresholds(p.marker);
     if (threshold > 0) {
@@ -147,20 +144,21 @@ contract PGGProposalManager is IPGGProposalManager {
       require(support >= pggConfig.defaultProposalThreshold(), "Default threshold doesn't reached yet");
     }
 
-    proposalVoting.status = ProposalStatus.APPROVED;
+    p.status = ProposalStatus.APPROVED;
 
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _approvedProposals.push(_proposalId);
 
-    _execute(_proposalId);
+    emit Approve(support, threshold);
+
+    execute(_proposalId);
   }
 
   function triggerReject(uint256 _proposalId) external {
-    ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
     Proposal storage p = proposals[_proposalId];
 
-    require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    require(p.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     uint256 threshold = pggConfig.thresholds(p.marker);
     uint256 nayShare = getNayShare(_proposalId);
@@ -172,7 +170,8 @@ contract PGGProposalManager is IPGGProposalManager {
       require(nayShare >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
     }
 
-    proposalVoting.status = ProposalStatus.REJECTED;
+    p.status = ProposalStatus.REJECTED;
+
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _rejectedProposals.push(_proposalId);
@@ -180,21 +179,26 @@ contract PGGProposalManager is IPGGProposalManager {
     emit Reject(nayShare, threshold);
   }
 
-  // INTERNAL
-
-  function _execute(uint256 _proposalId) internal {
+  function execute(uint256 _proposalId) public {
     Proposal storage p = proposals[_proposalId];
 
-    require(p.executed == false, "Already executed");
+    require(p.status == ProposalStatus.APPROVED, "Proposal isn't APPROVED");
+
+    p.status = ProposalStatus.EXECUTED;
 
     (bool ok, bytes memory response) = address(p.destination)
       .call
       .value(p.value)
       .gas(gasleft() - 50000)(p.data);
 
-    p.executed = ok;
+    if (ok == false) {
+      p.status = ProposalStatus.APPROVED;
+    }
+
     p.response = response;
   }
+
+  // INTERNAL
 
   function _aye(uint256 _proposalId, address _voter) internal {
     if (_proposalVotings[_proposalId].participants[_voter] == Choice.NAY) {
@@ -285,30 +289,13 @@ contract PGGProposalManager is IPGGProposalManager {
     external
     view
     returns (
-      ProposalStatus status,
       address[] memory ayes,
       address[] memory nays
     )
   {
-    ProposalVoting storage p = _proposalVotings[_proposalId];
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
 
-    return (p.status, p.ayes.elements(), p.nays.elements());
-  }
-
-  function getProposalStatus(
-    uint256 _proposalId
-  )
-    external
-    view
-    returns (
-      ProposalStatus status,
-      uint256 ayesCount,
-      uint256 naysCount
-    )
-  {
-    ProposalVoting storage p = _proposalVotings[_proposalId];
-
-    return (p.status, p.ayes.size(), p.nays.size());
+    return (pV.ayes.elements(), pV.nays.elements());
   }
 
   function getParticipantProposalChoice(uint256 _proposalId, address _participant) external view returns (Choice) {
