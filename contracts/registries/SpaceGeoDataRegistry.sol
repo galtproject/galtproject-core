@@ -33,11 +33,12 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   GaltGlobalRegistry internal ggr;
 
-  event SetSpaceTokenHeights(uint256 id, int256[] heights);
-  event SetSpaceTokenContour(uint256 id, uint256[] contour);
-  event SetSpaceTokenLevel(uint256 id, int256 level);
-  event SetSpaceTokenArea(uint256 id, uint256 area, AreaSource areaSource);
-  event SetSpaceTokenInfo(uint256 id);
+  event SetSpaceTokenHeights(uint256 indexed spaceTokenId, int256[] heights);
+  event SetSpaceTokenContour(uint256 indexed spaceTokenId, uint256[] contour);
+  event SetSpaceTokenLevel(uint256 indexed spaceTokenId, int256 level);
+  event SetSpaceTokenArea(uint256 indexed spaceTokenId, uint256 area, AreaSource areaSource);
+  event SetSpaceTokenInfo(uint256 indexed spaceTokenId);
+  event DeleteSpaceTokenGeoData(uint256 indexed spaceTokenId, address indexed operator);
 
   struct SpaceToken {
     uint256[] contour;
@@ -124,6 +125,12 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     emit SetSpaceTokenInfo(_spaceTokenId);
   }
 
+  function deleteSpaceTokenGeoData(uint256 _spaceTokenId) external onlyGeoDataManager {
+    delete spaceTokens[_spaceTokenId];
+
+    emit DeleteSpaceTokenGeoData(_spaceTokenId, msg.sender);
+  }
+
   function spaceToken() internal view returns (ISpaceToken) {
     return ISpaceToken(ggr.getSpaceTokenAddress());
   }
@@ -144,6 +151,14 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   function getSpaceTokenArea(uint256 _spaceTokenId) external view returns (uint256) {
     return spaceTokens[_spaceTokenId].area;
+  }
+
+  function getSpaceTokenAreaSource(uint256 _spaceTokenId) external view returns (ISpaceGeoDataRegistry.AreaSource) {
+    return spaceTokens[_spaceTokenId].areaSource;
+  }
+
+  function getSpaceTokenVertexCount(uint256 _spaceTokenId) external view returns (uint256) {
+    return spaceTokens[_spaceTokenId].contour.length;
   }
 
   function getSpaceTokenGeoData(uint256 _spaceTokenId) public view returns (
