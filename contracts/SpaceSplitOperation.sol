@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/geodesic/contracts/utils/WeilerAtherton.sol";
 import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
@@ -74,7 +74,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
 
     weilerAtherton.initWeilerAtherton();
-    ggr.getSpaceToken().approve(ggr.getSpaceGeoDataRegistryAddress(), subjectTokenId);
+    ggr.getSpaceToken().approve(ggr.getSplitMergeAddress(), subjectTokenId);
     doneStage = Stage.CONTRACT_INIT;
 
     emit InitSplitOperation(subjectTokenOwner, subjectTokenId, subjectContour, clippingContour);

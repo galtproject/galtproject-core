@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -49,6 +49,8 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
   bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
+
+  bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
 
   // Utils
   bytes32 public constant GEODESIC = bytes32("geodesic");
@@ -113,6 +115,11 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   function getGeodesicAddress() external view returns (address) {
     require(contracts[GEODESIC] != ZERO_ADDRESS, "GGR: GEODESIC not set");
     return contracts[GEODESIC];
+  }
+
+  function getSplitMergeAddress() external view returns (address) {
+    require(contracts[SPLIT_MERGE] != ZERO_ADDRESS, "GGR: SPLIT_MERGE not set");
+    return contracts[SPLIT_MERGE];
   }
 
   function getSpaceRAAddress() external view returns (address) {
