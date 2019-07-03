@@ -61,11 +61,16 @@ contract SplitMerge is OwnableAndInitializable {
   {
     SpaceGeoDataRegistry _reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
-    require(_reg.getSpaceTokenAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT, "Split available only for contract calculated token's area");
+    require(
+      _reg.getSpaceTokenAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      "Split available only for contract calculated token's area"
+    );
 
     address spaceTokenOwner = spaceToken().ownerOf(_spaceTokenId);
 
-    address newSplitOperationAddress = SpaceSplitOperationFactory(ggr.getSpaceSplitOperationFactoryAddress()).build(_spaceTokenId, _clippingContour);
+    address newSplitOperationAddress = SpaceSplitOperationFactory(ggr.getSpaceSplitOperationFactoryAddress())
+      .build(_spaceTokenId, _clippingContour);
+
     activeSplitOperations[newSplitOperationAddress] = true;
     tokenIdToSplitOperations[_spaceTokenId].push(newSplitOperationAddress);
     allSplitOperations.push(newSplitOperationAddress);
@@ -190,7 +195,11 @@ contract SplitMerge is OwnableAndInitializable {
       }
     }
     reg.setSpaceTokenHeights(_destinationSpaceTokenId, packageHeights);
-    reg.setSpaceTokenArea(_destinationSpaceTokenId, calculateTokenArea(_destinationSpaceTokenId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
+    reg.setSpaceTokenArea(
+      _destinationSpaceTokenId,
+      calculateTokenArea(_destinationSpaceTokenId),
+      ISpaceGeoDataRegistry.AreaSource.CONTRACT
+    );
 
     reg.deleteSpaceTokenGeoData(_sourceSpaceTokenId);
 
