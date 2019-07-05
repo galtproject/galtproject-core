@@ -19,9 +19,10 @@ import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGDelegateReputationVoting.sol";
+import "../../Checkpointable.sol";
 
 
-contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
+contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpointable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
@@ -186,6 +187,9 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
 
       _revokeDelegatedReputation(_delegate, remainder);
     }
+
+    _updateValueAtNow(_cachedBalances[_delegate], lockedReputation[_delegate]);
+    _updateValueAtNow(_cachedTotalSupply, totalReputation);
   }
 
   function _revokeDelegatedReputation(address _delegate, uint256 _revokeAmount) internal {
@@ -233,6 +237,10 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     return reputationBalance[_candidate];
   }
 
+  function balanceOfDelegate(address _delegate) external view returns(uint256) {
+    return lockedReputation[_delegate];
+  }
+
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
     uint256 reputation = reputationBalance[_candidate];
 
@@ -251,5 +259,13 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
 
     // return (lockedReputation[_delegate] * _decimals) / totalReputation;
     return lockedReputation[_delegate].mul(_decimals).div(totalReputation);
+  }
+
+  function balanceOfDelegateAt(address _delegate, uint256 _blockNumber) external view returns (uint256) {
+    return _balanceOfAt(_delegate, _blockNumber);
+  }
+
+  function totalDelegateSupplyAt(uint256 _blockNumber) external view returns (uint256) {
+    return _totalSupplyAt(_blockNumber);
   }
 }

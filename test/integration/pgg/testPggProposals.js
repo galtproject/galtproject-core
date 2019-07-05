@@ -186,7 +186,7 @@ contract('PGG Proposals', accounts => {
       assert.equal(res.description, 'its better');
       assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -239,7 +239,7 @@ contract('PGG Proposals', accounts => {
       assert.equal(res.description, 'its better');
       assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -288,7 +288,7 @@ contract('PGG Proposals', accounts => {
       res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -337,7 +337,7 @@ contract('PGG Proposals', accounts => {
       res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -429,7 +429,7 @@ contract('PGG Proposals', accounts => {
       res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 

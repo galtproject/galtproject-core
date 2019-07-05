@@ -22,4 +22,6 @@ interface IPGGDelegateReputationVoting {
   function balanceOf(address _candidate) external view returns(uint256);
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256);
   function shareOfDelegate(address _delegate, uint256 _decimals) external view returns(uint256);
+  function balanceOfDelegateAt(address _delegate, uint256 _blockNumber) external view returns (uint256);
+  function totalDelegateSupplyAt(uint256 _blockNumber) external view returns (uint256);
 }
