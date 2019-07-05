@@ -19,9 +19,10 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGOracleStakeAccounting.sol";
 import "../interfaces/IStakeTracker.sol";
+import "../Checkpointable.sol";
 
 
-contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
+contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
@@ -115,6 +116,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     totalStake = totalStakeAfter;
 
     _updatePositiveValues(oracleDetails[_oracle], _oracleType, finalOracleTypeStake, finalOracleTotalStake, totalStakeAfter);
+    _updateCheckpoints(_oracle);
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
     IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
@@ -146,11 +148,17 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     totalStake = totalStakeAfter;
 
     _updatePositiveValues(oracleDetails[_oracle], _oracleType, oracleTypeStakeAfter, oracleStakeAfter, totalStakeAfter);
+    _updateCheckpoints(_oracle);
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
     IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, oracleTypeStakeAfter, oracleStakeAfter);
+  }
+
+  function _updateCheckpoints(address _oracle) internal {
+    _updateValueAtNow(_cachedBalances[_oracle], oracleDetails[_oracle].totalStakesPositive);
+    _updateValueAtNow(_cachedTotalSupply, totalStakePositive);
   }
 
   function _updatePositiveValues(
@@ -238,5 +246,13 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
 
   function positiveTypeStakeOf(address _oracle, bytes32 _oracleType) external view returns (uint256) {
     return oracleDetails[_oracle].oracleTypeStakesPositive[_oracleType];
+  }
+
+  function balanceOfAt(address _oracle, uint256 _blockNumber) external view returns (uint256) {
+    return _balanceOfAt(_oracle, _blockNumber);
+  }
+
+  function totalSupplyAt(uint256 _blockNumber) external view returns (uint256) {
+    return _totalSupplyAt(_blockNumber);
   }
 }

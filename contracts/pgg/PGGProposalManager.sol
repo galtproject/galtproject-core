@@ -142,7 +142,7 @@ contract PGGProposalManager is IPGGProposalManager {
 
     uint256 totalSpaceSupply = pggConfig.getDelegateSpaceVoting().totalDelegateSupplyAt(blockNumber);
     uint256 totalGaltSupply = pggConfig.getDelegateGaltVoting().totalDelegateSupplyAt(blockNumber);
-    uint256 totalStakeSupply = pggConfig.getDelegateGaltVoting().totalDelegateSupplyAt(blockNumber);
+    uint256 totalStakeSupply = pggConfig.getOracleStakes().totalSupplyAt(blockNumber);
 
     require((totalSpaceSupply + totalGaltSupply + totalStakeSupply) > 0, "Total reputation is 0");
 
@@ -240,18 +240,18 @@ contract PGGProposalManager is IPGGProposalManager {
 
     uint256 spaceBalance = pggConfig.getDelegateSpaceVoting().balanceOfDelegateAt(_voter, blockNumber);
     uint256 galtBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
-    uint256 stakeBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 stakeBalance = pggConfig.getOracleStakes().balanceOfAt(_voter, blockNumber);
 
     if (pV.participants[_voter] == Choice.NAY) {
       pV.nay.totalSpace = pV.nay.totalSpace.sub(spaceBalance);
       pV.nay.totalGalt = pV.nay.totalGalt.sub(galtBalance);
-      pV.nay.totalStake = pV.nay.totalGalt.sub(stakeBalance);
+      pV.nay.totalStake = pV.nay.totalStake.sub(stakeBalance);
       pV.nay.voters.remove(_voter);
     }
 
-    pV.aye.totalSpace = pV.nay.totalSpace.add(spaceBalance);
-    pV.aye.totalGalt = pV.nay.totalGalt.add(galtBalance);
-    pV.aye.totalStake = pV.nay.totalGalt.add(stakeBalance);
+    pV.aye.totalSpace = pV.aye.totalSpace.add(spaceBalance);
+    pV.aye.totalGalt = pV.aye.totalGalt.add(galtBalance);
+    pV.aye.totalStake = pV.aye.totalStake.add(stakeBalance);
     pV.aye.voters.add(_voter);
 
     pV.participants[_voter] = Choice.AYE;
@@ -263,18 +263,18 @@ contract PGGProposalManager is IPGGProposalManager {
 
     uint256 spaceBalance = pggConfig.getDelegateSpaceVoting().balanceOfDelegateAt(_voter, blockNumber);
     uint256 galtBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
-    uint256 stakeBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 stakeBalance = pggConfig.getOracleStakes().balanceOfAt(_voter, blockNumber);
 
     if (pV.participants[_voter] == Choice.AYE) {
-      pV.aye.totalSpace = pV.nay.totalSpace.sub(spaceBalance);
-      pV.aye.totalGalt = pV.nay.totalGalt.sub(galtBalance);
-      pV.aye.totalStake = pV.nay.totalGalt.sub(stakeBalance);
+      pV.aye.totalSpace = pV.aye.totalSpace.sub(spaceBalance);
+      pV.aye.totalGalt = pV.aye.totalGalt.sub(galtBalance);
+      pV.aye.totalStake = pV.aye.totalStake.sub(stakeBalance);
       pV.aye.voters.remove(_voter);
     }
 
     pV.nay.totalSpace = pV.nay.totalSpace.add(spaceBalance);
     pV.nay.totalGalt = pV.nay.totalGalt.add(galtBalance);
-    pV.nay.totalStake = pV.nay.totalGalt.add(stakeBalance);
+    pV.nay.totalStake = pV.nay.totalStake.add(stakeBalance);
     pV.nay.voters.add(_voter);
 
     pV.participants[_voter] = Choice.NAY;
@@ -393,9 +393,9 @@ contract PGGProposalManager is IPGGProposalManager {
     external
     view
     returns (
-      uint256 totalSpace,
-      uint256 totalGalt,
-      uint256 totalStake,
+      uint256 space,
+      uint256 galt,
+      uint256 stake,
       address[] memory voters
     )
   {
@@ -415,9 +415,9 @@ contract PGGProposalManager is IPGGProposalManager {
     external
     view
     returns (
-      uint256 totalSpace,
-      uint256 totalGalt,
-      uint256 totalStake,
+      uint256 space,
+      uint256 galt,
+      uint256 stake,
       address[] memory voters
     )
   {
