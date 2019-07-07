@@ -50,6 +50,8 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant GALT_RA = bytes32("galt_ra");
   bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
 
+  bytes32 public constant CONTOUR_VERIFIERS = bytes32("contour_verifiers");
+
   bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
 
   // Utils
@@ -135,6 +137,11 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   function getStakeTrackerAddress() external view returns (address) {
     require(contracts[STAKE_TRACKER] != ZERO_ADDRESS, "GGR: STAKE_TRACKER not set");
     return contracts[STAKE_TRACKER];
+  }
+
+  function getContourVerifiersAddress() external view returns (address) {
+    require(contracts[CONTOUR_VERIFIERS] != ZERO_ADDRESS, "GGR: CONTOUR_VERIFIERS not set");
+    return contracts[CONTOUR_VERIFIERS];
   }
 
   function getSpaceGeoDataRegistryAddress() external view returns (address) {
