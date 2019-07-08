@@ -125,9 +125,9 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit Aye(_aId, a.ayeCount, a.nayCount, a.m);
 
     if (a.ayeCount == a.m) {
+      a.status = ApplicationStatus.APPROVED;
       _execute(_aId);
       calculateAndStoreAuditorRewards(a);
-      a.status = ApplicationStatus.APPROVED;
     }
   }
 

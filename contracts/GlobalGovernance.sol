@@ -39,13 +39,6 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
 
   uint256 public constant DECIMALS = 10**6;
 
-  enum ProposalStatus {
-    NULL,
-    ACTIVE,
-    APPROVED,
-    REJECTED
-  }
-
   enum Choice {
     PENDING,
     AYE,
@@ -53,14 +46,12 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
   }
 
   struct ProposalVoting {
-    ProposalStatus status;
     mapping(address => Choice) participants;
     ArraySet.AddressSet ayes;
     ArraySet.AddressSet nays;
   }
 
   struct Proposal {
-    ProposalStatus status;
     address creator;
     address destination;
     uint256 value;
@@ -195,6 +186,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     Proposal storage p = proposals[_proposalId];
 
     require(p.executed == false, "Already executed");
+
+    p.executed = true;
 
     (bool x, bytes memory response) = address(p.destination)
       .call
