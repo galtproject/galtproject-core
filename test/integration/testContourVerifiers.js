@@ -34,7 +34,7 @@ const bytes32 = utf8ToHex;
 initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
-contract.only('ContourVerifiers', accounts => {
+contract('ContourVerifiers', accounts => {
   const [coreTeam, minter, alice, bob, charlie, v1, v2, v3, v4, geoDateManagement] = accounts;
 
   before(async function() {

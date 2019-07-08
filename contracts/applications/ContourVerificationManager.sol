@@ -16,12 +16,12 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
-import "./registries/GaltGlobalRegistry.sol";
-import "./registries/interfaces/IFeeRegistry.sol";
-import "./ContourVerifiers.sol";
+import "../registries/GaltGlobalRegistry.sol";
+import "../registries/interfaces/IFeeRegistry.sol";
+import "../ContourVerifiers.sol";
 
 
-contract ContourVerification is OwnableAndInitializable {
+contract ContourVerificationManager is OwnableAndInitializable {
   using SafeMath for uint256;
 
   bytes32 public constant FEE_KEY = bytes32("CONTOUR_VERIFICATION");
@@ -33,14 +33,22 @@ contract ContourVerification is OwnableAndInitializable {
     REMOVE
   }
 
+  enum Status {
+    NULL,
+    PENDING,
+    APPROVED,
+    REJECTED
+  }
+
   struct Contour {
+    Status status;
     uint256[] contour;
     address[] validators;
-    mapping(address => bool) validatorVerified;
-    bool approved;
+    mapping(address => bool) validatorVoted;
     Action action;
     uint256 requiredConfirmations;
-    uint256 totalConfirmations;
+    uint256 approvalCount;
+    uint256 rejectionCount;
   }
 
   uint256 public requiredConfirmations;
@@ -78,12 +86,17 @@ contract ContourVerification is OwnableAndInitializable {
   // USER INTERFACE
 
   function submit(uint256[] calldata _contour) external {
+    require(_contour.length >= 3, "Contour should have at least 3 vertices");
+
     _acceptPayment();
 
     uint256 id = head;
     head += 1;
 
     Contour storage contour = addQueue[id];
+    require(contour.status == Status.NULL, "Application already exists");
+
+    contour.status = Status.PENDING;
     contour.contour = _contour;
     contour.requiredConfirmations = requiredConfirmations;
   }
@@ -94,15 +107,34 @@ contract ContourVerification is OwnableAndInitializable {
     uint256 currentId = tail;
 
     require(_id == currentId, "ID mismatches with the current");
-    require(contour.totalConfirmations < contour.requiredConfirmations, "Contour was already verified");
-    require(contour.validatorVerified[msg.sender] == false, "Operator has already verified the contour");
+    require(contour.status == Status.PENDING, "Expect PENDING status");
+    require(contour.validatorVoted[msg.sender] == false, "Operator has already verified the contour");
 
-    contour.validatorVerified[msg.sender] = true;
+    contour.validatorVoted[msg.sender] = true;
     contour.validators.push(msg.sender);
-    contour.totalConfirmations += 1;
+    contour.approvalCount += 1;
 
-    if (contour.totalConfirmations == contour.requiredConfirmations) {
-      contour.approved = true;
+    if (contour.approvalCount == contour.requiredConfirmations) {
+      contour.status = Status.APPROVED;
+      tail += 1;
+    }
+  }
+
+  function reject(uint256 _id, address _verifier) external onlyValidContourVerifier(_verifier) {
+    Contour storage contour = addQueue[_id];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(contour.status == Status.PENDING, "Expect PENDING status");
+    require(contour.validatorVoted[msg.sender] == false, "Operator has already verified the contour");
+
+    contour.validatorVoted[msg.sender] = true;
+    contour.validators.push(msg.sender);
+    contour.rejectionCount += 1;
+
+    if (contour.rejectionCount == contour.requiredConfirmations) {
+      contour.status = Status.REJECTED;
       tail += 1;
     }
   }
