@@ -21,4 +21,6 @@ interface IPGGOracleStakeAccounting {
   function balanceOf(address _oracle) external view returns (int256);
   function typeStakeOf(address _oracle, bytes32 _oracleType) external view returns (int256);
   function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool);
+  function balanceOfAt(address _oracle, uint256 _blockNumber) external view returns (uint256);
+  function totalSupplyAt(uint256 _blockNumber) external view returns (uint256);
 }
