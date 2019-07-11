@@ -157,6 +157,11 @@ contract('PGG Proposals', accounts => {
         await this.pgg.config.SET_THRESHOLD_SIGNATURE()
       );
       const proposeData = this.pgg.config.contract.methods.setThreshold(key, 420000).encodeABI();
+      await assertRevert(
+        this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
+          from: coreTeam
+        })
+      );
       let res = await this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
         from: alice
       });

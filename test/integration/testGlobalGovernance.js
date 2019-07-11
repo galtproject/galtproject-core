@@ -462,7 +462,7 @@ contract('GlobalGovernance', accounts => {
       // Step #5. Support proposal to add a record at 100%
       proposeBytecode = this.pggN.config.contract.methods.setGlobalProposalSupport(globalProposalId, true).encodeABI();
       res = await this.pggN.proposalManager.propose(this.pggN.config.address, 0, proposeBytecode, 'looks good', {
-        from: alice
+        from: bob
       });
       // eslint-disable-next-line
       proposalId = res.logs[0].args.proposalId;
@@ -650,7 +650,7 @@ contract('GlobalGovernance', accounts => {
           .setGlobalProposalSupport(globalProposalId, true)
           .encodeABI();
         res = await this.pggN.proposalManager.propose(this.pggN.config.address, 0, proposeBytecode, 'looks good', {
-          from: alice
+          from: george
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
@@ -686,7 +686,7 @@ contract('GlobalGovernance', accounts => {
           .setGlobalProposalSupport(globalProposalId, true)
           .encodeABI();
         res = await this.pggX.proposalManager.propose(this.pggX.config.address, 0, proposeBytecode, 'looks good', {
-          from: alice
+          from: charlie
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;
@@ -770,7 +770,7 @@ contract('GlobalGovernance', accounts => {
           .setGlobalProposalSupport(globalProposalId, true)
           .encodeABI();
         res = await this.pggZ.proposalManager.propose(this.pggZ.config.address, 0, proposeBytecode, 'looks good', {
-          from: alice
+          from: xander
         });
         // eslint-disable-next-line
         proposalId = res.logs[0].args.proposalId;

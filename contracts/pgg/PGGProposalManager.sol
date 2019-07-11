@@ -91,8 +91,14 @@ contract PGGProposalManager is IPGGProposalManager {
   mapping(uint256 => address) private _proposalToSender;
 
   modifier onlyMember() {
-    // TODO: define
-    //    require(rsra.balanceOf(msg.sender) > 0, "Not valid member");
+    uint256 blockNumber = block.number - 1;
+    address member = msg.sender;
+
+    bool hasSpace = pggConfig.getDelegateSpaceVoting().balanceOfDelegate(member) > 0;
+    bool hasGalt = pggConfig.getDelegateGaltVoting().balanceOfDelegate(member) > 0;
+    bool hasStake = pggConfig.getOracleStakes().balanceOf(member) > 0;
+
+    require(hasSpace || hasGalt || hasStake, "Not a valid member");
 
     _;
   }
@@ -108,6 +114,7 @@ contract PGGProposalManager is IPGGProposalManager {
     string calldata _description
   )
     external
+    onlyMember
     returns(uint256)
   {
     idCounter.increment();
@@ -152,13 +159,13 @@ contract PGGProposalManager is IPGGProposalManager {
     pV.creationTotalStakeSupply = totalStakeSupply;
   }
 
-  function aye(uint256 _proposalId) external onlyMember {
+  function aye(uint256 _proposalId) external {
     require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _aye(_proposalId, msg.sender);
   }
 
-  function nay(uint256 _proposalId) external onlyMember {
+  function nay(uint256 _proposalId) external {
     require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _nay(_proposalId, msg.sender);
