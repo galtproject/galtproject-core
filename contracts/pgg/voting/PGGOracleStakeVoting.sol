@@ -78,7 +78,7 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
   // 'Oracle Stake Locking' accounting only inside this contract
   function vote(address _candidate) external {
-    // TODO: check oracle is activev
+    pggConfig.getOracles().requireOracleActive(msg.sender);
 
     uint256 newReputation = uint256(pggConfig.getOracleStakes().balanceOf(msg.sender));
     require(newReputation > 0, "Reputation is 0");
