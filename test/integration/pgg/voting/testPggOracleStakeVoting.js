@@ -176,11 +176,15 @@ contract('PGGOracleStakeVoting', accounts => {
 
     await this.oracleStakesAccountingX.stake(bob, TYPE_A, ether(200), { from: alice });
 
-    await this.oracleStakeVotingX.vote(candidateA, { from: bob });
-    // TODO: check candidates
+    let res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(1300));
 
-    let res = await this.oracleStakeVotingX.candidateBalanceOf(candidateA);
+    await this.oracleStakeVotingX.vote(candidateA, { from: bob });
+
+    res = await this.oracleStakeVotingX.candidateBalanceOf(candidateA);
     assert.equal(res, ether(200));
+    res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(1300));
 
     // oracle 2 votes for candidate B
     await this.oracleStakeVotingX.vote(candidateB, { from: charlie });
@@ -191,6 +195,9 @@ contract('PGGOracleStakeVoting', accounts => {
     res = await this.oracleStakeVotingX.candidateBalanceOf(candidateB);
     assert.equal(res, ether(400));
 
+    res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(1300));
+
     // oracle 2 change decision and votes for the candidates A
     await this.oracleStakeVotingX.vote(candidateA, { from: charlie });
 
@@ -200,11 +207,17 @@ contract('PGGOracleStakeVoting', accounts => {
     res = await this.oracleStakeVotingX.candidateBalanceOf(candidateB);
     assert.equal(res, ether(0));
 
+    res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(1300));
+
     // oracle 3 change decision and votes for the candidates C
     await this.oracleStakeVotingX.vote(candidateC, { from: dan });
 
     res = await this.oracleStakeVotingX.candidateBalanceOf(candidateC);
     assert.equal(res, ether(700));
+
+    res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(1300));
 
     // oracle 3 stake is slashed due some misbehaviour
     await this.oracleStakesAccountingX.slashMultiple([dan, dan], [TYPE_B, TYPE_C], [ether(150), ether(200)], {
@@ -219,5 +232,8 @@ contract('PGGOracleStakeVoting', accounts => {
 
     res = await this.oracleStakeVotingX.candidateBalanceOf(candidateC);
     assert.equal(res, ether(350));
+
+    res = await this.oracleStakeVotingX.totalSupply();
+    assert.equal(res, ether(950));
   });
 });
