@@ -34,7 +34,7 @@ contract LiquidRA is Initializable {
   event Transfer(address indexed from, address indexed to, uint256 amount);
   event RevokeDelegated(address indexed from, address indexed owner, uint256 amount);
 
-  GaltGlobalRegistry internal ggr;
+  GaltGlobalRegistry public ggr;
 
   // Delegate => balance
   mapping(address => uint256) internal _balances;
