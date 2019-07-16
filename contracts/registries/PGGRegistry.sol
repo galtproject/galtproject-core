@@ -29,7 +29,6 @@ contract PGGRegistry is IPGGRegistry, Initializable {
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
   bytes32 public constant ROLE_PGG_UNREGISTRAR = bytes32("PGG_UNREGISTRAR");
 
-  // TODO: need to be a private?
   mapping(address => ProtocolGovernanceGroup) public pggDetails;
   ArraySet.AddressSet internal _pggs;
 

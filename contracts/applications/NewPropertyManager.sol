@@ -71,7 +71,6 @@ contract NewPropertyManager is AbstractOracleApplication {
     address operator;
     uint256 spaceTokenId;
     uint256 createdAt;
-    // TODO: should depend on plot area, but now it is fixed
     Details details;
     Rewards rewards;
     Currency currency;
@@ -596,7 +595,6 @@ contract NewPropertyManager is AbstractOracleApplication {
       totalReward = totalReward.add(rewardShare);
     }
 
-    // TODO: 🙊 handle such cases more precisely
     assert(totalReward <= a.rewards.oraclesReward);
     uint256 diff = a.rewards.oraclesReward - totalReward;
     a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);

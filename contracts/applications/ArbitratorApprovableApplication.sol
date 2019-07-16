@@ -228,7 +228,6 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       currency = Currency.GALT;
     }
 
-    // TODO: use storage instead
     Application storage a = applications[_id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 

@@ -76,12 +76,6 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[_key];
   }
 
-  // TODO: add Address suffix
-  function getApplicationRegistry() external view returns (address) {
-    require(contracts[APPLICATION_REGISTRY] != ZERO_ADDRESS, "GGR: APPLICATION_REGISTRY not set");
-    return contracts[APPLICATION_REGISTRY];
-  }
-
   function getGlobalGovernanceAddress() external view returns (address) {
     require(contracts[GLOBAL_GOVERNANCE] != ZERO_ADDRESS, "GGR: GLOBAL_GOVERNANCE not set");
     return contracts[GLOBAL_GOVERNANCE];

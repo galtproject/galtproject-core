@@ -252,7 +252,7 @@ contract PGGConfig is IPGGConfig {
     emit SetGlobalProposalSupport(_globalProposalId, _isSupported);
   }
 
-  // GETTERS (TODO: replace contract getters with interfaces only)
+  // GETTERS
 
   function getThresholdMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
     bytes32 methodName;

@@ -95,7 +95,6 @@ contract PGGOracles is IPGGOracles {
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
-      // TODO: check pggConfig for roleShare > 0
       o.assignedOracleTypes.add(_oracleType);
       oraclesByTypeCache[_oracleType].addSilent(_oracle);
 
