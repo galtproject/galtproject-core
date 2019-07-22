@@ -45,6 +45,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
   bytes32 public constant SPACE_GEO_DATA_REGISTRY = bytes32("space_geo_data_registry");
+  bytes32 public constant CONTOUR_VERIFICATION_SOURCE_REGISTRY = bytes32("contour_verification_registry");
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
@@ -147,6 +148,14 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   function getSpaceGeoDataRegistryAddress() external view returns (address) {
     require(contracts[SPACE_GEO_DATA_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA_REGISTRY not set");
     return contracts[SPACE_GEO_DATA_REGISTRY];
+  }
+
+  function getContourVerificationSourceRegistryAddress() external view returns (address) {
+    require(
+      contracts[CONTOUR_VERIFICATION_SOURCE_REGISTRY] != ZERO_ADDRESS,
+      "GGR: CONTOUR_VERIFICATION_SOURCE_REGISTRY not set"
+    );
+    return contracts[CONTOUR_VERIFICATION_SOURCE_REGISTRY];
   }
 
   function getSpaceSplitOperationFactoryAddress() external view returns (address) {

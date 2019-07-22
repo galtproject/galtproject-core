@@ -103,7 +103,7 @@ contract AbstractApplication is Initializable {
     protocolFeesEth = 0;
   }
 
-  function claimGaltProtocolFeeGalt() external onlyFeeCollector {
+  function claimGaltProtocolFeeGalt() external {
     require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
     ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
     protocolFeesGalt = 0;

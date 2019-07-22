@@ -48,6 +48,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
   enum ApplicationStatus {
     NOT_EXISTS,
+    CONTOUR_VERIFICATION,
     SUBMITTED,
     APPROVED,
     REJECTED,
@@ -227,7 +228,7 @@ contract NewPropertyManager is AbstractOracleApplication {
         "Incorrect msg.value passed in");
     }
 
-    a.status = ApplicationStatus.SUBMITTED;
+    a.status = ApplicationStatus.CONTOUR_VERIFICATION;
     a.id = _id;
     a.pgg = _pgg;
     a.applicant = msg.sender;
@@ -246,7 +247,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     applicationsByApplicant[msg.sender].push(_id);
 
     emit NewApplication(msg.sender, _id);
-    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit ApplicationStatusChanged(_id, ApplicationStatus.CONTOUR_VERIFICATION);
 
     assignRequiredOracleTypesAndRewards(applications[_id]);
 
