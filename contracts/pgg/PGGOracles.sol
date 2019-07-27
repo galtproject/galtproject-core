@@ -189,6 +189,7 @@ contract PGGOracles is IPGGOracles {
     returns (
       bytes32 position,
       string memory name,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory assignedOracleTypes,
       bool active
@@ -199,6 +200,7 @@ contract PGGOracles is IPGGOracles {
     return (
       o.position,
       o.name,
+      o.description,
       o.descriptionHashes,
       o.assignedOracleTypes.elements(),
       o.active
