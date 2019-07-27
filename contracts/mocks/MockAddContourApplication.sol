@@ -95,9 +95,9 @@ contract MockApplication is IContourModifierApplication {
   }
 
   // GETTERS
-   function getApplicationStatus(bytes32 _applicationId) external view returns(ApplicationStatus) {
+  function getApplicationStatus(bytes32 _applicationId) external view returns(ApplicationStatus) {
     return applications[_applicationId].status;
-   }
+  }
 
   // CV GETTERS
   function getCVPendingApplications() external view returns(bytes32[] memory) {
@@ -106,6 +106,10 @@ contract MockApplication is IContourModifierApplication {
 
   function getCVApprovedApplications() external view returns(bytes32[] memory) {
     return CVApprovedApplicationIds.elements();
+  }
+
+  function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory) {
+    return applications[_applicationId].contour;
   }
 
   function getCVData(

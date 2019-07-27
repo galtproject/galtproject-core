@@ -16,8 +16,11 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
+import "@galtproject/geodesic/contracts/utils/SegmentUtils.sol";
+import "@galtproject/geodesic/contracts/utils/LandUtils.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/ContourVerificationSourceRegistry.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/interfaces/IContourModifierApplication.sol";
 import "../ContourVerifiers.sol";
@@ -26,6 +29,7 @@ import "./AbstractApplication.sol";
 
 contract ContourVerificationManager is OwnableAndInitializable, AbstractApplication {
   using SafeMath for uint256;
+  using ArraySet for ArraySet.AddressSet;
 
   bytes32 public constant FEE_KEY = bytes32("CONTOUR_VERIFICATION");
 
@@ -52,12 +56,12 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     address applicationContract;
     bytes32 externalApplicationId;
     uint256 approvalTimeoutInitiatedAt;
-    address[] validators;
-    mapping(address => bool) validatorVoted;
+    address[] approvers;
+    mapping(address => bool) verifierVoted;
     Action action;
     uint256 requiredConfirmations;
     uint256 approvalCount;
-    uint256 rejectionCount;
+    address rejecter;
 
     Rewards rewards;
     Currency currency;
@@ -156,16 +160,17 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(_id == currentId, "ID mismatches with the current");
     require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.validatorVoted[_verifier] == false, "Operator has already verified the contour");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
 
-    a.validatorVoted[_verifier] = true;
-    a.validators.push(_verifier);
+    a.verifierVoted[_verifier] = true;
+    a.approvers.push(_verifier);
     a.approvalCount += 1;
 
     if (a.approvalCount == a.requiredConfirmations) {
       a.status = Status.APPROVAL_TIMEOUT;
       a.approvalTimeoutInitiatedAt = block.timestamp;
       tail += 1;
+      _calculateAndStoreApprovalRewards(a);
     }
   }
 
@@ -180,44 +185,193 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     IContourModifierApplication(a.applicationContract).cvApprove(a.externalApplicationId);
   }
 
-  function reject(uint256 _id, address _verifier) external onlyValidContourVerifier(_verifier) {
-    // TODO: requires proof
+  // token has it's data in
+  // TODO: approved
+  // TODO: timeout
+  function rejectWithExistingContourIntersectionProof(
+    uint256 _id,
+    address _verifier,
+    uint256 _existingTokenId,
+    uint256 _existingContourSegmentFirstPointIndex,
+    uint256 _existingContourSegmentFirstPoint,
+    uint256 _existingContourSegmentSecondPoint,
+    uint256 _verifyingContourSegmentFirstPointIndex,
+    uint256 _verifyingContourSegmentFirstPoint,
+    uint256 _verifyingContourSegmentSecondPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
     Application storage a = verificationQueue[_id];
 
     uint256 currentId = tail;
 
     require(_id == currentId, "ID mismatches with the current");
     require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.validatorVoted[msg.sender] == false, "Operator has already verified the contour");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
 
-    a.validatorVoted[msg.sender] = true;
-    a.validators.push(msg.sender);
-    a.rejectionCount += 1;
+    bool intersects = _checkContourIntersects(
+      _id,
+      _existingTokenId,
+      _existingContourSegmentFirstPointIndex,
+      _existingContourSegmentFirstPoint,
+      _existingContourSegmentSecondPoint,
+      _verifyingContourSegmentFirstPointIndex,
+      _verifyingContourSegmentFirstPoint,
+      _verifyingContourSegmentSecondPoint
+    );
+    require(intersects == true, "Contours don't intersect");
 
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
     a.status = Status.REJECTED;
     tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
   }
 
-  function claimVerifierApprovalReward(uint256 _id, address _verifier) external onlyValidContourVerifier(_verifier) {
+  function _checkContourIntersects(
+    uint256 _id,
+    uint256 _existingTokenId,
+    uint256 _existingContourSegmentFirstPointIndex,
+    uint256 _existingContourSegmentFirstPoint,
+    uint256 _existingContourSegmentSecondPoint,
+    uint256 _verifyingContourSegmentFirstPointIndex,
+    uint256 _verifyingContourSegmentFirstPoint,
+    uint256 _verifyingContourSegmentSecondPoint
+  )
+    internal
+    returns (bool)
+  {
+    Application storage a = verificationQueue[_id];
+
+    // Existing Token
+    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
+    require(
+      _contourHasSegment(
+        _existingContourSegmentFirstPointIndex,
+        _existingContourSegmentFirstPoint,
+        _existingContourSegmentSecondPoint,
+        existingTokenContour
+      ),
+      "Invalid segment for existing token"
+    );
+
+    // Verifying Token
+    IContourModifierApplication applicationContract = IContourModifierApplication(a.applicationContract);
+
+    applicationContract.isCVApplicationPending(a.externalApplicationId);
+    uint256[] memory verifyingTokenContour = applicationContract.getCVContour(a.externalApplicationId);
+
+    require(
+      _contourHasSegment(
+        _verifyingContourSegmentFirstPointIndex,
+        _verifyingContourSegmentFirstPoint,
+        _verifyingContourSegmentSecondPoint,
+        verifyingTokenContour
+      ),
+      "Invalid segment for verifying token"
+    );
+
+    return SegmentUtils.segmentsIntersect(
+      getLatLonSegment(_existingContourSegmentFirstPoint, _existingContourSegmentSecondPoint),
+      getLatLonSegment(_verifyingContourSegmentFirstPoint, _verifyingContourSegmentSecondPoint)
+    );
+  }
+
+  function getLatLonSegment(
+    uint256 _firstPointGeohash,
+    uint256 _secondPointGeohash
+  )
+    public
+    view
+    returns (int256[2][2] memory)
+  {
+    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
+    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
+
+    int256[2] memory first = int256[2]([lat1, lon1]);
+    int256[2] memory second = int256[2]([lat2, lon2]);
+
+    return int256[2][2]([first, second]);
+  }
+
+  function _contourHasSegment(
+    uint256 _firstPointIndex,
+    uint256 _firstPoint,
+    uint256 _secondPoint,
+    uint256[] memory _contour
+  )
+    internal
+    returns (bool)
+  {
+    uint256 len = _contour.length;
+    require(len > 0, "Empty contour");
+    require(_firstPointIndex < len, "Invalid existing coord index");
+
+    if(_contour[_firstPointIndex] != _firstPoint) {
+      return false;
+    }
+
+    uint256 secondPointIndex = _firstPointIndex + 1;
+    if (secondPointIndex == len) {
+      secondPointIndex = 0;
+    }
+
+    if(_contour[secondPointIndex] != _secondPoint) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function claimVerifierApprovalReward(uint256 _id, address payable _verifier) external onlyValidContourVerifier(_verifier) {
     Application storage a = verificationQueue[_id];
     Rewards storage r = a.rewards;
 
     require(a.status == Status.APPROVED, "Expect APPROVED status");
     require(r.verifierRewardPaidOut[_verifier] == false, "Reward has already paid out");
-    require(a.validatorVoted[_verifier] == true, "Not voted on the application ");
+    require(a.verifierVoted[_verifier] == true, "Not voted on the application ");
 
     r.verifierRewardPaidOut[_verifier] = true;
 
-    if (a.currency == Currency.ETH) {
-      msg.sender.transfer(r.verifierReward);
-    } else if (a.currency == Currency.GALT) {
-      ggr.getGaltToken().transfer(msg.sender, r.verifierReward);
-    }
-
+    _calculateAndStoreApprovalRewards(a);
     _assignGaltProtocolReward(_id);
+
+    if (a.currency == Currency.ETH) {
+      _verifier.transfer(r.verifierReward);
+    } else if (a.currency == Currency.GALT) {
+      ggr.getGaltToken().transfer(_verifier, r.verifierReward);
+    }
 
     emit ClaimVerifierApprovalReward(_id, msg.sender, _verifier);
   }
+
+  function claimVerifierRejectionReward(uint256 _id, address payable _verifier) external onlyValidContourVerifier(_verifier) {
+    Application storage a = verificationQueue[_id];
+    Rewards storage r = a.rewards;
+
+    require(a.status == Status.REJECTED, "Expect REJECTED status");
+    require(r.verifierRewardPaidOut[_verifier] == false, "Reward has already paid out");
+    require(a.verifierVoted[_verifier] == true, "Not voted on the application ");
+    require(a.rejecter == _verifier, "Only rejecter allowed ");
+
+    r.verifierRewardPaidOut[_verifier] = true;
+
+    _calculateAndStoreRejectionRewards(a);
+    _assignGaltProtocolReward(_id);
+
+    if (a.currency == Currency.ETH) {
+      _verifier.transfer(r.verifierReward);
+    } else if (a.currency == Currency.GALT) {
+      ggr.getGaltToken().transfer(_verifier, r.verifierReward);
+    }
+
+    emit ClaimVerifierApprovalReward(_id, msg.sender, _verifier);
+  }
+
+  // INTERNAL
 
   function _assignGaltProtocolReward(uint256 _id) internal {
     Application storage a = verificationQueue[_id];
@@ -234,8 +388,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     }
   }
 
-  // INTERNAL
-
   function _acceptPayment(Application storage _a) internal {
     uint256 fee;
     if (msg.value == 0) {
@@ -248,10 +400,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       // a.currency = Currency.ETH; by default
     }
 
-    _calculateAndStoreRewards(_a, fee);
+    _parseFee(_a, fee);
   }
 
-  function _calculateAndStoreRewards(
+  function _parseFee(
     Application storage _a,
     uint256 _fee
   )
@@ -259,9 +411,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   {
     uint256 share;
 
-    // TODO: discuss where to store these values
-    uint256 ethFee = 33 ether;
-    uint256 galtFee = 13 ether;
+    (uint256 ethFee, uint256 galtFee) = getProtocolShares();
 
     if (_a.currency == Currency.ETH) {
       share = ethFee;
@@ -269,7 +419,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       share = galtFee;
     }
 
-    uint256 galtProtocolReward = share.mul(_fee).div(100 ether);
+    uint256 galtProtocolReward = share.mul(_fee).div(100);
     uint256 verifiersReward = _fee.sub(galtProtocolReward);
 
     assert(verifiersReward.add(galtProtocolReward) == _fee);
@@ -277,10 +427,32 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     _a.rewards.totalPaidFee = _fee;
     _a.rewards.verifiersReward = verifiersReward;
     _a.rewards.galtProtocolReward = galtProtocolReward;
+  }
 
-    uint256 verifierReward = verifiersReward.div(requiredConfirmations);
+  function _calculateAndStoreApprovalRewards(
+    Application storage _a
+  )
+    internal
+  {
+    _a.rewards.verifierReward = _a.rewards.verifiersReward.div(_a.requiredConfirmations);
+  }
 
-    _a.rewards.verifierReward = verifierReward;
+  function _calculateAndStoreRejectionRewards(
+    Application storage _a
+  )
+    internal
+  {
+    // An account who was able to invoke and prove the reject receives all the reward
+    _a.rewards.verifierReward = _a.rewards.verifiersReward;
+  }
+
+  function _executeSlashing(
+    Application storage _a,
+    address _verifier
+  )
+    internal
+  {
+    ContourVerifiers(ggr.getContourVerifiersAddress()).slash(_a.approvers, _verifier);
   }
 
   // GETTERS
@@ -297,9 +469,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       bytes32 externalApplicationId,
       uint256 approvalTimeoutInitiatedAt,
       Action action,
-      uint256 requiredConfirmations,
-      uint256 approvalCount,
-      uint256 rejectionCount
+      uint256 requiredApprovals,
+      uint256 approvalCount
     )
   {
     Application storage a = verificationQueue[_id];
@@ -309,9 +480,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     externalApplicationId = a.externalApplicationId;
     approvalTimeoutInitiatedAt = a.approvalTimeoutInitiatedAt;
     action = a.action;
-    requiredConfirmations = a.requiredConfirmations;
+    requiredApprovals = a.requiredConfirmations;
     approvalCount = a.approvalCount;
-    rejectionCount = a.rejectionCount;
   }
 
   function getApplicationRewards(
