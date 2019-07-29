@@ -18,6 +18,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/geodesic/contracts/utils/SegmentUtils.sol";
 import "@galtproject/geodesic/contracts/utils/LandUtils.sol";
+import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/ContourVerificationSourceRegistry.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
@@ -40,7 +41,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   enum Action {
     ADD,
-    REMOVE
+    MODIFY
   }
 
   enum Status {
@@ -231,6 +232,41 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     _calculateAndStoreRejectionRewards(a);
   }
 
+  function rejectWithExistingPointInclusionProof(
+    uint256 _id,
+    address _verifier,
+    uint256 _existingTokenId,
+    uint256 _verifyingContourPointIndex,
+    uint256 _verifyingContourPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
+    Application storage a = verificationQueue[_id];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    bool isInside = _checkPointInsideContour(
+      _id,
+      _existingTokenId,
+      _verifyingContourPointIndex,
+      _verifyingContourPoint
+    );
+    require(isInside == true, "Existing contour doesn't include verifying");
+
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
+    a.status = Status.REJECTED;
+    tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
+  }
+
   function _checkContourIntersects(
     uint256 _id,
     uint256 _existingTokenId,
@@ -278,6 +314,34 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       getLatLonSegment(_existingContourSegmentFirstPoint, _existingContourSegmentSecondPoint),
       getLatLonSegment(_verifyingContourSegmentFirstPoint, _verifyingContourSegmentSecondPoint)
     );
+  }
+
+  function _checkPointInsideContour(
+    uint256 _id,
+    uint256 _existingTokenId,
+    uint256 _verifyingContourPointIndex,
+    uint256 _verifyingContourPoint
+  )
+    internal
+    returns (bool)
+  {
+    Application storage a = verificationQueue[_id];
+
+    // Existing Token
+    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
+
+    // Verifying Token
+    IContourModifierApplication applicationContract = IContourModifierApplication(a.applicationContract);
+
+    applicationContract.isCVApplicationPending(a.externalApplicationId);
+    uint256[] memory verifyingTokenContour = applicationContract.getCVContour(a.externalApplicationId);
+
+    require(
+      verifyingTokenContour[_verifyingContourPointIndex] == _verifyingContourPoint,
+      "Invalid point of verifying token"
+    );
+
+    return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, existingTokenContour);
   }
 
   function getLatLonSegment(
