@@ -34,6 +34,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   bytes32 public constant FEE_KEY = bytes32("CONTOUR_VERIFICATION");
 
+  event NewApplication(uint256 indexed applicationId);
   event SetRequiredConfirmations(uint256 requiredConfirmations);
   event SetApprovalTimeout(uint256 approvalTimeout);
   event ClaimVerifierApprovalReward(uint256 indexed applicationId, address indexed operator, address indexed verifier);
@@ -152,6 +153,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     a.applicationContract = _applicationContract;
     a.externalApplicationId = _externalApplicationId;
     a.requiredConfirmations = requiredConfirmations;
+
+    emit NewApplication(id);
   }
 
   function approve(uint256 _id, address _verifier) external onlyValidContourVerifier(_verifier) {
@@ -211,9 +214,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     require(a.status == Status.PENDING, "Expect PENDING status");
     require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
 
+    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
     bool intersects = _checkContourIntersects(
       _id,
-      _existingTokenId,
+      existingTokenContour,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
       _existingContourSegmentSecondPoint,
@@ -222,6 +226,54 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentSecondPoint
     );
     require(intersects == true, "Contours don't intersect");
+
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
+    a.status = Status.REJECTED;
+    tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
+  }
+
+  function rejectWithApplicationApprovedContourIntersectionProof(
+    uint256 _id,
+    address _verifier,
+    address _applicationContract,
+    bytes32 _externalApplicationId,
+    uint256 _existingContourSegmentFirstPointIndex,
+    uint256 _existingContourSegmentFirstPoint,
+    uint256 _existingContourSegmentSecondPoint,
+    uint256 _verifyingContourSegmentFirstPointIndex,
+    uint256 _verifyingContourSegmentFirstPoint,
+    uint256 _verifyingContourSegmentSecondPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
+    Application storage a = verificationQueue[_id];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
+      .requireValid(_applicationContract);
+    IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
+    applicationContract.isCVApplicationApproved(_externalApplicationId);
+
+    require(_checkContourIntersects(
+      _id,
+      applicationContract.getCVContour(_externalApplicationId),
+      _existingContourSegmentFirstPointIndex,
+      _existingContourSegmentFirstPoint,
+      _existingContourSegmentSecondPoint,
+      _verifyingContourSegmentFirstPointIndex,
+      _verifyingContourSegmentFirstPoint,
+      _verifyingContourSegmentSecondPoint
+    ), "Contours don't intersect");
 
     a.verifierVoted[_verifier] = true;
     a.rejecter = _verifier;
@@ -269,7 +321,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   function _checkContourIntersects(
     uint256 _id,
-    uint256 _existingTokenId,
+    uint256[] memory _existingTokenContour,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
     uint256 _existingContourSegmentSecondPoint,
@@ -283,13 +335,12 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     Application storage a = verificationQueue[_id];
 
     // Existing Token
-    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
     require(
       _contourHasSegment(
         _existingContourSegmentFirstPointIndex,
         _existingContourSegmentFirstPoint,
         _existingContourSegmentSecondPoint,
-        existingTokenContour
+        _existingTokenContour
       ),
       "Invalid segment for existing token"
     );
