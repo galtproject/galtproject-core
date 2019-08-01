@@ -189,9 +189,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     IContourModifierApplication(a.applicationContract).cvApprove(a.externalApplicationId);
   }
 
-  // token has it's data in
-  // TODO: approved
-  // TODO: timeout
   function rejectWithExistingContourIntersectionProof(
     uint256 _id,
     address _verifier,
@@ -236,17 +233,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     _executeSlashing(a, _verifier);
     _calculateAndStoreRejectionRewards(a);
-  }
-
-  function isSelfUpdateCase(uint256 _id, uint256 _existingTokenId) public view returns (bool) {
-    Application storage a = verificationQueue[_id];
-    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
-    if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
-
-      return (spaceTokenId ==_existingTokenId);
-    }
-
-    return false;
   }
 
   function rejectWithApplicationApprovedContourIntersectionProof(
@@ -363,9 +349,93 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
 
+    // Existing Token
+    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress())
+      .getSpaceTokenContour(_existingTokenId);
+
     bool isInside = _checkPointInsideContour(
       _id,
-      _existingTokenId,
+      existingTokenContour,
+      _verifyingContourPointIndex,
+      _verifyingContourPoint
+    );
+    require(isInside == true, "Existing contour doesn't include verifying");
+
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
+    a.status = Status.REJECTED;
+    tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
+  }
+
+  function rejectWithApplicationApprovedPointInclusionProof(
+    uint256 _id,
+    address _verifier,
+    address _applicationContract,
+    bytes32 _externalApplicationId,
+    uint256 _verifyingContourPointIndex,
+    uint256 _verifyingContourPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
+    Application storage a = verificationQueue[_id];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
+      .requireValid(_applicationContract);
+    IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
+    require(applicationContract.isCVApplicationApproved(_externalApplicationId), "Not in CVApplicationApproved list");
+
+    bool isInside = _checkPointInsideContour(
+      _id,
+      applicationContract.getCVContour(_externalApplicationId),
+      _verifyingContourPointIndex,
+      _verifyingContourPoint
+    );
+    require(isInside == true, "Existing contour doesn't include verifying");
+
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
+    a.status = Status.REJECTED;
+    tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
+  }
+
+  function rejectWithApplicationApprovedTimeoutPointInclusionProof(
+    uint256 _id,
+    address _verifier,
+    address _applicationContract,
+    uint256 _existingApplicationId,
+    uint256 _verifyingContourPointIndex,
+    uint256 _verifyingContourPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
+    Application storage a = verificationQueue[_id];
+    Application storage existingA = verificationQueue[_existingApplicationId];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
+
+    bool isInside = _checkPointInsideContour(
+      _id,
+      IContourModifierApplication(_applicationContract).getCVContour(existingA.externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
@@ -430,7 +500,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   function _checkPointInsideContour(
     uint256 _id,
-    uint256 _existingTokenId,
+    uint256[] memory _existingTokenContour,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -438,9 +508,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     returns (bool)
   {
     Application storage a = verificationQueue[_id];
-
-    // Existing Token
-    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
 
     // Verifying Token
     IContourModifierApplication applicationContract = IContourModifierApplication(a.applicationContract);
@@ -453,7 +520,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       "Invalid point of verifying token"
     );
 
-    return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, existingTokenContour);
+    return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, _existingTokenContour);
   }
 
   function getLatLonSegment(
@@ -548,6 +615,17 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   }
 
   // INTERNAL
+
+  function isSelfUpdateCase(uint256 _id, uint256 _existingTokenId) public view returns (bool) {
+    Application storage a = verificationQueue[_id];
+    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+    if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
+
+      return (spaceTokenId ==_existingTokenId);
+    }
+
+    return false;
+  }
 
   function _assignGaltProtocolReward(uint256 _id) internal {
     Application storage a = verificationQueue[_id];
