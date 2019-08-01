@@ -18,7 +18,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../registries/GaltGlobalRegistry.sol";
 
 
-contract MockApplication is IContourModifierApplication {
+contract MockAddContourApplication is IContourModifierApplication {
   using ArraySet for ArraySet.Bytes32Set;
 
   bytes32 public constant ROLE_CONTOUR_VERIFIER_POOL = bytes32("CONTOUR_VERIFIER");
@@ -60,7 +60,7 @@ contract MockApplication is IContourModifierApplication {
     _;
   }
 
-  function submit(uint256[] calldata _contour) external {
+  function submit(uint256[] memory _contour) public returns (bytes32) {
     bytes32 id = keccak256(abi.encode(_contour));
     Application storage a = applications[id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Already exists");
@@ -70,6 +70,8 @@ contract MockApplication is IContourModifierApplication {
     CVPendingApplicationIds.add(id);
 
     emit NewApplication(id);
+
+    return id;
   }
 
   function cvApprove(bytes32 _applicationId) external onlyCVM {
@@ -118,16 +120,14 @@ contract MockApplication is IContourModifierApplication {
     external
     view
     returns (
-      ContourModificationType contourModificationType,
+      IContourModifierApplication.ContourModificationType contourModificationType,
       uint256 spaceTokenId,
-      uint256[] memory contour
+      uint256[] memory contourToAdd,
+      uint256[] memory contourToRemove
     )
   {
-    return (
-      ContourModificationType.ADD,
-      0,
-      applications[_applicationId].contour
-    );
+    contourModificationType = IContourModifierApplication.ContourModificationType.ADD;
+    contourToAdd = applications[_applicationId].contour;
   }
 
   function isCVApplicationPending(bytes32 _applicationId) public view returns (bool) {

@@ -214,6 +214,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     require(a.status == Status.PENDING, "Expect PENDING status");
     require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
 
+    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
+
     uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
     bool intersects = _checkContourIntersects(
       _id,
@@ -234,6 +236,17 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     _executeSlashing(a, _verifier);
     _calculateAndStoreRejectionRewards(a);
+  }
+
+  function isSelfUpdateCase(uint256 _id, uint256 _existingTokenId) public view returns (bool) {
+    Application storage a = verificationQueue[_id];
+    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+    if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
+
+      return (spaceTokenId ==_existingTokenId);
+    }
+
+    return false;
   }
 
   function rejectWithApplicationApprovedContourIntersectionProof(
@@ -262,7 +275,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
-    applicationContract.isCVApplicationApproved(_externalApplicationId);
+    require(applicationContract.isCVApplicationApproved(_externalApplicationId), "Not in CVApplicationApproved list");
 
     require(_checkContourIntersects(
       _id,
@@ -274,6 +287,52 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     ), "Contours don't intersect");
+
+    a.verifierVoted[_verifier] = true;
+    a.rejecter = _verifier;
+    a.status = Status.REJECTED;
+    tail += 1;
+
+    _executeSlashing(a, _verifier);
+    _calculateAndStoreRejectionRewards(a);
+  }
+
+  function rejectWithApplicationApprovedTimeoutContourIntersectionProof(
+    uint256 _id,
+    address _verifier,
+    address _applicationContract,
+    uint256 _existingApplicationId,
+    uint256 _existingContourSegmentFirstPointIndex,
+    uint256 _existingContourSegmentFirstPoint,
+    uint256 _existingContourSegmentSecondPoint,
+    uint256 _verifyingContourSegmentFirstPointIndex,
+    uint256 _verifyingContourSegmentFirstPoint,
+    uint256 _verifyingContourSegmentSecondPoint
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
+    Application storage a = verificationQueue[_id];
+    Application storage existingA = verificationQueue[_existingApplicationId];
+
+    uint256 currentId = tail;
+
+    require(_id == currentId, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
+
+    require(_checkContourIntersects(
+        _id,
+        IContourModifierApplication(_applicationContract).getCVContour(existingA.externalApplicationId),
+        _existingContourSegmentFirstPointIndex,
+        _existingContourSegmentFirstPoint,
+        _existingContourSegmentSecondPoint,
+        _verifyingContourSegmentFirstPointIndex,
+        _verifyingContourSegmentFirstPoint,
+        _verifyingContourSegmentSecondPoint
+      ), "Contours don't intersect");
 
     a.verifierVoted[_verifier] = true;
     a.rejecter = _verifier;
@@ -301,6 +360,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     require(_id == currentId, "ID mismatches with the current");
     require(a.status == Status.PENDING, "Expect PENDING status");
     require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+
+    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
 
     bool isInside = _checkPointInsideContour(
       _id,
