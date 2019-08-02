@@ -157,14 +157,16 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     emit NewApplication(id);
   }
 
-  function approve(uint256 _id, address _verifier) external onlyValidContourVerifier(_verifier) {
+  function approve(
+    uint256 _id,
+    address _verifier
+  )
+    external
+    onlyValidContourVerifier(_verifier)
+  {
     Application storage a = verificationQueue[_id];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     a.verifierVoted[_verifier] = true;
     a.approvers.push(_verifier);
@@ -205,11 +207,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   {
     Application storage a = verificationQueue[_id];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
 
@@ -226,13 +224,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     );
     require(intersects == true, "Contours don't intersect");
 
-    a.verifierVoted[_verifier] = true;
-    a.rejecter = _verifier;
-    a.status = Status.REJECTED;
-    tail += 1;
-
-    _executeSlashing(a, _verifier);
-    _calculateAndStoreRejectionRewards(a);
+    _executeReject(_id, _verifier);
   }
 
   function rejectWithApplicationApprovedContourIntersectionProof(
@@ -252,11 +244,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   {
     Application storage a = verificationQueue[_id];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
@@ -274,13 +262,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentSecondPoint
     ), "Contours don't intersect");
 
-    a.verifierVoted[_verifier] = true;
-    a.rejecter = _verifier;
-    a.status = Status.REJECTED;
-    tail += 1;
-
-    _executeSlashing(a, _verifier);
-    _calculateAndStoreRejectionRewards(a);
+    _executeReject(_id, _verifier);
   }
 
   function rejectWithApplicationApprovedTimeoutContourIntersectionProof(
@@ -301,11 +283,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     Application storage a = verificationQueue[_id];
     Application storage existingA = verificationQueue[_existingApplicationId];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
 
@@ -320,13 +298,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
         _verifyingContourSegmentSecondPoint
       ), "Contours don't intersect");
 
-    a.verifierVoted[_verifier] = true;
-    a.rejecter = _verifier;
-    a.status = Status.REJECTED;
-    tail += 1;
-
-    _executeSlashing(a, _verifier);
-    _calculateAndStoreRejectionRewards(a);
+    _executeReject(_id, _verifier);
   }
 
   function rejectWithExistingPointInclusionProof(
@@ -341,11 +313,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   {
     Application storage a = verificationQueue[_id];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
 
@@ -361,13 +329,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     );
     require(isInside == true, "Existing contour doesn't include verifying");
 
-    a.verifierVoted[_verifier] = true;
-    a.rejecter = _verifier;
-    a.status = Status.REJECTED;
-    tail += 1;
-
-    _executeSlashing(a, _verifier);
-    _calculateAndStoreRejectionRewards(a);
+    _executeReject(_id, _verifier);
   }
 
   function rejectWithApplicationApprovedPointInclusionProof(
@@ -383,11 +345,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   {
     Application storage a = verificationQueue[_id];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
@@ -402,13 +360,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     );
     require(isInside == true, "Existing contour doesn't include verifying");
 
-    a.verifierVoted[_verifier] = true;
-    a.rejecter = _verifier;
-    a.status = Status.REJECTED;
-    tail += 1;
-
-    _executeSlashing(a, _verifier);
-    _calculateAndStoreRejectionRewards(a);
+    _executeReject(_id, _verifier);
   }
 
   function rejectWithApplicationApprovedTimeoutPointInclusionProof(
@@ -425,11 +377,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     Application storage a = verificationQueue[_id];
     Application storage existingA = verificationQueue[_existingApplicationId];
 
-    uint256 currentId = tail;
-
-    require(_id == currentId, "ID mismatches with the current");
-    require(a.status == Status.PENDING, "Expect PENDING status");
-    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+    eligibleForCastingDecision(_id, _verifier);
 
     require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
 
@@ -440,6 +388,20 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPoint
     );
     require(isInside == true, "Existing contour doesn't include verifying");
+
+    _executeReject(_id, _verifier);
+  }
+
+  function eligibleForCastingDecision(uint256 _aId, address _verifier) internal {
+    Application storage a = verificationQueue[_aId];
+
+    require(_aId == tail, "ID mismatches with the current");
+    require(a.status == Status.PENDING, "Expect PENDING status");
+    require(a.verifierVoted[_verifier] == false, "Operator has already verified the contour");
+  }
+
+  function _executeReject(uint256 _aId, address _verifier) internal {
+    Application storage a = verificationQueue[_aId];
 
     a.verifierVoted[_verifier] = true;
     a.rejecter = _verifier;
@@ -521,23 +483,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     );
 
     return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, _existingTokenContour);
-  }
-
-  function getLatLonSegment(
-    uint256 _firstPointGeohash,
-    uint256 _secondPointGeohash
-  )
-    public
-    view
-    returns (int256[2][2] memory)
-  {
-    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
-    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
-
-    int256[2] memory first = int256[2]([lat1, lon1]);
-    int256[2] memory second = int256[2]([lat2, lon2]);
-
-    return int256[2][2]([first, second]);
   }
 
   function _contourHasSegment(
@@ -710,6 +655,24 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   }
 
   // GETTERS
+
+  function getLatLonSegment(
+    uint256 _firstPointGeohash,
+    uint256 _secondPointGeohash
+  )
+    public
+    view
+    returns (int256[2][2] memory)
+  {
+    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
+    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
+
+    int256[2] memory first = int256[2]([lat1, lon1]);
+    int256[2] memory second = int256[2]([lat2, lon2]);
+
+    return int256[2][2]([first, second]);
+  }
+
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod.ETH_AND_GALT;
   }
