@@ -125,6 +125,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // OWNER INTERFACE
 
   function setRequiredConfirmations(uint256 _requiredConfirmations) external onlyOwner {
+    require(_requiredConfirmations > 0, "Can't be 0");
+
     requiredConfirmations = _requiredConfirmations;
     emit SetRequiredConfirmations(_requiredConfirmations);
   }
