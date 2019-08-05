@@ -368,8 +368,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithApplicationApprovedTimeoutPointInclusionProof(
     uint256 _id,
     address _verifier,
-    address _applicationContract,
-    uint256 _existingApplicationId,
+    uint256 _existingCVApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -377,7 +376,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     onlyValidContourVerifier(_verifier)
   {
     Application storage a = verificationQueue[_id];
-    Application storage existingA = verificationQueue[_existingApplicationId];
+    Application storage existingA = verificationQueue[_existingCVApplicationId];
 
     eligibleForCastingDecision(_id, _verifier);
 
@@ -385,7 +384,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     bool isInside = _checkPointInsideContour(
       _id,
-      IContourModifierApplication(_applicationContract).getCVContour(existingA.externalApplicationId),
+      IContourModifierApplication(existingA.applicationContract).getCVContour(existingA.externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );

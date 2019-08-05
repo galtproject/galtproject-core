@@ -62,7 +62,7 @@ const Currency = {
   GALT: 1
 };
 
-contract.only('ContourVerification Reward Distribition', accounts => {
+contract('ContourVerification Reward Distribition', accounts => {
   const [
     coreTeam,
     minter,
@@ -498,18 +498,18 @@ contract.only('ContourVerification Reward Distribition', accounts => {
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
     res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
-    const cvId = res.logs[0].args.applicationId;
-    this.cvId = cvId;
+    const cvId1 = res.logs[0].args.applicationId;
+    this.cvId1 = cvId1;
 
-    await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-    await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-    await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
-    await this.contourVerificationManager.approve(cvId, v1, { from: o1 });
-    await this.contourVerificationManager.approve(cvId, v5, { from: o5 });
+    await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+    await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+    await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+    await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+    await this.contourVerificationManager.approve(cvId1, v5, { from: o5 });
 
     await evmIncreaseTime(3600 * 9);
 
-    await this.contourVerificationManager.pushApproval(cvId);
+    await this.contourVerificationManager.pushApproval(cvId1);
 
     await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
@@ -536,14 +536,14 @@ contract.only('ContourVerification Reward Distribition', accounts => {
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
     res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-    const cvId = res.logs[0].args.applicationId;
-    this.cvId = cvId;
+    const cvId1 = res.logs[0].args.applicationId;
+    this.cvId1 = cvId1;
 
-    await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-    await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-    await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
-    await this.contourVerificationManager.approve(cvId, v1, { from: o1 });
-    await this.contourVerificationManager.approve(cvId, v5, { from: o5 });
+    await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+    await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+    await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+    await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+    await this.contourVerificationManager.approve(cvId1, v5, { from: o5 });
 
     await evmIncreaseTime(3600 * 3);
 
@@ -552,7 +552,7 @@ contract.only('ContourVerification Reward Distribition', accounts => {
         cvId2,
         v2,
         this.newPropertyManager.address,
-        this.cvId,
+        this.cvId1,
         3,
         galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
         galt.geohashToNumber('dr5qvnpd300r').toString(10),
@@ -586,18 +586,18 @@ contract.only('ContourVerification Reward Distribition', accounts => {
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
     res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
-    const cvId = res.logs[0].args.applicationId;
-    this.cvId = cvId;
+    const cvId1 = res.logs[0].args.applicationId;
+    this.cvId1 = cvId1;
 
-    await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-    await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-    await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
-    await this.contourVerificationManager.approve(cvId, v1, { from: o1 });
-    await this.contourVerificationManager.approve(cvId, v5, { from: o5 });
+    await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+    await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+    await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+    await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+    await this.contourVerificationManager.approve(cvId1, v5, { from: o5 });
 
     await evmIncreaseTime(3600 * 9);
 
-    await this.contourVerificationManager.pushApproval(cvId);
+    await this.contourVerificationManager.pushApproval(cvId1);
 
     await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
@@ -620,14 +620,14 @@ contract.only('ContourVerification Reward Distribition', accounts => {
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
     res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-    const cvId = res.logs[0].args.applicationId;
-    this.cvId = cvId;
+    const cvId1 = res.logs[0].args.applicationId;
+    this.cvId1 = cvId1;
 
-    await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-    await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-    await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
-    await this.contourVerificationManager.approve(cvId, v1, { from: o1 });
-    await this.contourVerificationManager.approve(cvId, v5, { from: o5 });
+    await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+    await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+    await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+    await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+    await this.contourVerificationManager.approve(cvId1, v5, { from: o5 });
 
     await evmIncreaseTime(3600 * 3);
 
@@ -635,8 +635,7 @@ contract.only('ContourVerification Reward Distribition', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
         cvId2,
         v2,
-        this.newPropertyManager.address,
-        this.cvId,
+        this.cvId1,
         0,
         galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
         { from: o2 }

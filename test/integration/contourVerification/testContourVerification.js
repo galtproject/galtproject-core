@@ -256,34 +256,6 @@ contract('ContourVerification', accounts => {
 
       res = await this.contourVerificationManager.getApplication(0);
       assert.equal(res.status, CVStatus.APPROVED);
-      res = await this.contourVerificationManager.getApplicationRewards(0);
-      assert.equal(res.currency, Currency.GALT);
-      assert.equal(res.totalPaidFee, ether(10));
-      assert.equal(res.verifiersReward, ether(8.7));
-      assert.equal(res.galtProtocolReward, ether(1.3));
-      assert.equal(res.verifierReward, ether(2.9));
-
-      const v2BalanceBefore = await this.galtToken.balanceOf(v2);
-      const v3BalanceBefore = await this.galtToken.balanceOf(v3);
-      const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-      const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 });
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v3, { from: o3 });
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o4 });
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }));
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
-      await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-      const v2BalanceAfter = await this.galtToken.balanceOf(v2);
-      const v3BalanceAfter = await this.galtToken.balanceOf(v3);
-      const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-      const mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-      assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
     });
 
     describe('with intersecting contours', async function() {
@@ -296,8 +268,6 @@ contract('ContourVerification', accounts => {
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
-
-        // Create a new NewPropertyManager application
       });
 
       describe('existing token', () => {
@@ -374,53 +344,6 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(0);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(0);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
-
-          let v2BalanceBefore = await this.galtToken.balanceOf(v2);
-          let v3BalanceBefore = await this.galtToken.balanceOf(v3);
-          const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-          let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o1 }));
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
-          await this.contourVerificationManager.claimVerifierRejectionReward(0, v2, { from: o2 });
-          await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-          await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-          let v2BalanceAfter = await this.galtToken.balanceOf(v2);
-          let v3BalanceAfter = await this.galtToken.balanceOf(v3);
-          const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-          let mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-          assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(8.7));
-          assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-          assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
-          assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
-
-          v2BalanceBefore = await this.galtToken.balanceOf(v2);
-          v3BalanceBefore = await this.galtToken.balanceOf(v3);
-          // TODO: check
-          await this.contourVerifiers.claimSlashedReward({ from: v3 });
-          await this.contourVerifiers.claimSlashedReward({ from: v2 });
-          await this.contourVerifiers.claimSlashedReward({ from: v2 });
-          v2BalanceAfter = await this.galtToken.balanceOf(v2);
-          v3BalanceAfter = await this.galtToken.balanceOf(v3);
-
-          assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(174));
-          assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-
-          mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-          await assertRevert(this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }));
-          await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-          await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-          mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-          assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(26));
         });
 
         it('should allow rejecting with existing token inclusion proof', async function() {
@@ -467,12 +390,6 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
         });
       });
 
@@ -485,16 +402,16 @@ contract('ContourVerification', accounts => {
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
           res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
-          const cvId = res.logs[0].args.applicationId;
-          this.cvId = cvId;
+          const cvId1 = res.logs[0].args.applicationId;
+          this.cvId1 = cvId1;
 
-          await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
 
           await evmIncreaseTime(3600 * 9);
 
-          await this.contourVerificationManager.pushApproval(cvId);
+          await this.contourVerificationManager.pushApproval(cvId1);
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
@@ -504,13 +421,13 @@ contract('ContourVerification', accounts => {
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
           res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId = res.logs[0].args.applicationId;
+          const cvId1 = res.logs[0].args.applicationId;
 
           assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
           await assertRevert(
             this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
-              cvId,
+              cvId1,
               v2,
               this.updatePropertyManager.address,
               this.existingAId,
@@ -573,52 +490,6 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
-
-          let v2BalanceBefore = await this.galtToken.balanceOf(v2);
-          let v3BalanceBefore = await this.galtToken.balanceOf(v3);
-          const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-          let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId2, v4, { from: o1 }));
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId2, v2, { from: o2 }));
-          await this.contourVerificationManager.claimVerifierRejectionReward(cvId2, v2, { from: o2 });
-          await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-          await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-          let v2BalanceAfter = await this.galtToken.balanceOf(v2);
-          let v3BalanceAfter = await this.galtToken.balanceOf(v3);
-          const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-          let mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-          assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(8.7));
-          assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-          assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
-          assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
-
-          v2BalanceBefore = await this.galtToken.balanceOf(v2);
-          v3BalanceBefore = await this.galtToken.balanceOf(v3);
-          await this.contourVerifiers.claimSlashedReward({ from: v3 });
-          await this.contourVerifiers.claimSlashedReward({ from: v2 });
-          await this.contourVerifiers.claimSlashedReward({ from: v2 });
-          v2BalanceAfter = await this.galtToken.balanceOf(v2);
-          v3BalanceAfter = await this.galtToken.balanceOf(v3);
-
-          assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(174));
-          assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-
-          mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-          await assertRevert(this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }));
-          await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-          await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-          mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-          assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(26));
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
@@ -666,12 +537,6 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
         });
       });
 
@@ -684,12 +549,12 @@ contract('ContourVerification', accounts => {
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
           res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId = res.logs[0].args.applicationId;
-          this.cvId = cvId;
+          const cvId1 = res.logs[0].args.applicationId;
+          this.cvId1 = cvId1;
 
-          await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
 
           await evmIncreaseTime(3600 * 2);
         });
@@ -735,7 +600,7 @@ contract('ContourVerification', accounts => {
           assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
           await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
-          res = await this.contourVerificationManager.getApplication(this.cvId);
+          res = await this.contourVerificationManager.getApplication(this.cvId1);
           assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
           res = await this.newPropertyManager.isCVApplicationApproved(this.existingAId);
           assert.equal(res, false);
@@ -759,7 +624,7 @@ contract('ContourVerification', accounts => {
             cvId2,
             v2,
             this.newPropertyManager.address,
-            this.cvId,
+            this.cvId1,
             3,
             galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
             galt.geohashToNumber('dr5qvnpd300r').toString(10),
@@ -791,12 +656,6 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
@@ -812,7 +671,7 @@ contract('ContourVerification', accounts => {
           assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
           await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
-          res = await this.contourVerificationManager.getApplication(this.cvId);
+          res = await this.contourVerificationManager.getApplication(this.cvId1);
           assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
           res = await this.newPropertyManager.isCVApplicationApproved(this.existingAId);
           assert.equal(res, false);
@@ -832,8 +691,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
             cvId2,
             v2,
-            this.newPropertyManager.address,
-            this.cvId,
+            this.cvId1,
             0,
             galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: o2 }
@@ -861,17 +719,11 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-          assert.equal(res.currency, Currency.GALT);
-          assert.equal(res.totalPaidFee, ether(10));
-          assert.equal(res.verifiersReward, ether(8.7));
-          assert.equal(res.galtProtocolReward, ether(1.3));
-          assert.equal(res.verifierReward, ether(8.7));
         });
       });
     });
 
-    describe('when one token completely includes another', async function() {
+    describe('full inclusion cases', async function() {
       beforeEach(async function() {
         let res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId1 = res.logs[0].args.tokenId.toNumber();
@@ -883,285 +735,266 @@ contract('ContourVerification', accounts => {
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
-        await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-
-        // Create a new NewPropertyManager application
       });
 
-      it('should deny rejecting with non-intersecting contours', async function() {
-        const res = await this.newPropertyManager.submit(this.contour2);
-        const aId = res.logs[0].args.applicationId;
+      describe('existing contours', () => {
+        beforeEach(async function() {
+          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+        });
 
-        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+        it('should deny rejecting with non-intersecting contour', async function() {
+          const res = await this.newPropertyManager.submit(this.contour2);
+          const aId = res.logs[0].args.applicationId;
 
-        await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-        assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-        await this.contourVerificationManager.approve(0, v4, { from: o4 });
-        await assertRevert(
-          this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          await this.contourVerificationManager.approve(0, v4, { from: o4 });
+          await assertRevert(
+            this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+              0,
+              v2,
+              this.tokenId3,
+              2,
+              galt.geohashToNumber('dr5qvnp9grz7').toString(10),
+              { from: o2 }
+            )
+          );
+        });
+
+        it('should allow rejecting with existing token inclusion proof', async function() {
+          let res = await this.newPropertyManager.submit(this.contour4);
+          const aId = res.logs[0].args.applicationId;
+
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          await this.contourVerificationManager.approve(0, v4, { from: o4 });
+          await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
             0,
             v2,
             this.tokenId3,
             1,
             galt.geohashToNumber('dr5qvnp6h46c').toString(10),
             { from: o2 }
-          )
-        );
+          );
+          await assertRevert(this.contourVerificationManager.approve(0, v3, { from: o3 }));
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
+
+          await evmIncreaseTime(3600 * 4);
+
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.contourVerificationManager.getApplication(0);
+          assert.equal(res.approvalCount, 1);
+          assert.equal(res.action, 0);
+          assert.equal(res.status, CVStatus.REJECTED);
+
+          // too early
+          await assertRevert(this.contourVerificationManager.pushApproval(0));
+
+          await evmIncreaseTime(3600 * 5);
+
+          await assertRevert(this.contourVerificationManager.pushApproval(0));
+
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.contourVerificationManager.getApplication(0);
+          assert.equal(res.status, CVStatus.REJECTED);
+        });
       });
 
-      it('should allow rejecting with existing token inclusion proof', async function() {
-        let res = await this.newPropertyManager.submit(this.contour4);
-        const aId = res.logs[0].args.applicationId;
+      describe('application approved contour', () => {
+        beforeEach(async function() {
+          let res = await this.updatePropertyManager.submit(this.contour1);
+          const aId = res.logs[0].args.applicationId;
+          this.existingAId = aId;
 
-        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-        await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-        assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-        await this.contourVerificationManager.approve(0, v4, { from: o4 });
-        await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-          0,
-          v2,
-          this.tokenId3,
-          1,
-          galt.geohashToNumber('dr5qvnp6h46c').toString(10),
-          { from: o2 }
-        );
-        await assertRevert(this.contourVerificationManager.approve(0, v3, { from: o3 }));
-        assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
+          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
+          const cvId1 = res.logs[0].args.applicationId;
+          this.cvId1 = cvId1;
 
-        await evmIncreaseTime(3600 * 4);
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
 
-        assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+          await evmIncreaseTime(3600 * 9);
 
-        res = await this.contourVerificationManager.getApplication(0);
-        assert.equal(res.approvalCount, 1);
-        assert.equal(res.action, 0);
-        assert.equal(res.status, CVStatus.REJECTED);
+          await this.contourVerificationManager.pushApproval(cvId1);
+        });
 
-        // too early
-        await assertRevert(this.contourVerificationManager.pushApproval(0));
+        it('should deny rejecting with non-intersecting contours', async function() {
+          let res = await this.newPropertyManager.submit(this.contour3);
+          const aId = res.logs[0].args.applicationId;
 
-        await evmIncreaseTime(3600 * 5);
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-        await assertRevert(this.contourVerificationManager.pushApproval(0));
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
 
-        assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+          await assertRevert(
+            this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
+              cvId2,
+              v2,
+              this.updatePropertyManager.address,
+              this.existingAId,
+              0,
+              galt.geohashToNumber('dr5qvnp3ewcv').toString(10),
+              { from: o2 }
+            )
+          );
+        });
 
-        res = await this.contourVerificationManager.getApplication(0);
-        assert.equal(res.status, CVStatus.REJECTED);
-        res = await this.contourVerificationManager.getApplicationRewards(0);
-        assert.equal(res.currency, Currency.GALT);
-        assert.equal(res.totalPaidFee, ether(10));
-        assert.equal(res.verifiersReward, ether(8.7));
-        assert.equal(res.galtProtocolReward, ether(1.3));
-        assert.equal(res.verifierReward, ether(8.7));
+        it('should allow rejecting with contour in another application contract cinclusion proof', async function() {
+          let res = await this.newPropertyManager.submit(this.contour4);
+          const aId = res.logs[0].args.applicationId;
 
-        let v2BalanceBefore = await this.galtToken.balanceOf(v2);
-        let v3BalanceBefore = await this.galtToken.balanceOf(v3);
-        const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-        let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-        await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o1 }));
-        await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
-        await this.contourVerificationManager.claimVerifierRejectionReward(0, v2, { from: o2 });
-        await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-        await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-        let v2BalanceAfter = await this.galtToken.balanceOf(v2);
-        let v3BalanceAfter = await this.galtToken.balanceOf(v3);
-        const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-        let mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+          await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
+            cvId2,
+            v2,
+            this.updatePropertyManager.address,
+            this.existingAId,
+            0,
+            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            { from: o2 }
+          );
+          await assertRevert(this.contourVerificationManager.approve(1, v3, { from: o3 }));
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
 
-        assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(8.7));
-        assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-        assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
-        assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
+          await evmIncreaseTime(3600 * 4);
 
-        v2BalanceBefore = await this.galtToken.balanceOf(v2);
-        v3BalanceBefore = await this.galtToken.balanceOf(v3);
-        await this.contourVerifiers.claimSlashedReward({ from: v3 });
-        await this.contourVerifiers.claimSlashedReward({ from: v2 });
-        await this.contourVerifiers.claimSlashedReward({ from: v2 });
-        v2BalanceAfter = await this.galtToken.balanceOf(v2);
-        v3BalanceAfter = await this.galtToken.balanceOf(v3);
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-        assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(174));
-        assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
+          res = await this.contourVerificationManager.getApplication(cvId2);
+          assert.equal(res.approvalCount, 1);
+          assert.equal(res.action, 0);
+          assert.equal(res.status, CVStatus.REJECTED);
 
-        mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-        await assertRevert(this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }));
-        await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-        await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-        mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+          // too early
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
 
-        assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(26));
+          await evmIncreaseTime(3600 * 5);
+
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
+
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.contourVerificationManager.getApplication(cvId2);
+          assert.equal(res.status, CVStatus.REJECTED);
+        });
       });
-    });
-  });
 
-  describe('reward distribution', () => {
-    beforeEach(async function() {
-      let res = await this.spaceToken.mint(alice, { from: minter });
-      this.tokenId1 = res.logs[0].args.tokenId.toNumber();
+      describe('approved timeout contour', () => {
+        beforeEach(async function() {
+          let res = await this.updatePropertyManager.submit(this.contour1);
+          const aId = res.logs[0].args.applicationId;
+          this.existingAId = aId;
 
-      res = await this.spaceToken.mint(alice, { from: minter });
-      this.tokenId2 = res.logs[0].args.tokenId.toNumber();
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-      res = await this.spaceToken.mint(alice, { from: minter });
-      this.tokenId3 = res.logs[0].args.tokenId.toNumber();
+          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
+          const cvId1 = res.logs[0].args.applicationId;
+          this.cvId1 = cvId1;
 
-      await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-    });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
 
-    describe('reject with existing token proof', () => {
-      it('should distribute proper reward if 1 CVs has voted before', async function() {
-        let res = await this.newPropertyManager.submit(this.contour2);
-        const aId = res.logs[0].args.applicationId;
+          await evmIncreaseTime(3600 * 3);
+        });
 
-        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+        it('should deny rejecting with non-intersecting contours', async function() {
+          let res = await this.newPropertyManager.submit(this.contour3);
+          const aId = res.logs[0].args.applicationId;
 
-        await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-        assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-        await this.contourVerificationManager.approve(0, v4, { from: o4 });
-        res = await this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-          0,
-          v2,
-          this.tokenId3,
-          3,
-          galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-          galt.geohashToNumber('dr5qvnpd300r').toString(10),
-          0,
-          galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-          galt.geohashToNumber('dr5qvnpd5npy').toString(10),
-          { from: o2 }
-        );
-        await assertRevert(this.contourVerificationManager.approve(0, v3, { from: o3 }));
-        assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-        await evmIncreaseTime(3600 * 4);
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
 
-        assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+          await assertRevert(
+            this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
+              cvId2,
+              v2,
+              this.cvId1,
+              0,
+              galt.geohashToNumber('dr5qvnp3ewcv').toString(10),
+              { from: o2 }
+            )
+          );
+        });
 
-        res = await this.contourVerificationManager.getApplication(0);
-        assert.equal(res.approvalCount, 1);
-        assert.equal(res.action, 0);
-        assert.equal(res.status, CVStatus.REJECTED);
+        it('should allow rejecting with contour in another application contract inclusion proof', async function() {
+          let res = await this.newPropertyManager.submit(this.contour4);
+          const aId = res.logs[0].args.applicationId;
 
-        // too early
-        await assertRevert(this.contourVerificationManager.pushApproval(0));
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-        await evmIncreaseTime(3600 * 5);
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-        await assertRevert(this.contourVerificationManager.pushApproval(0));
+          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
-        assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+          res = await this.contourVerificationManager.getApplication(this.cvId1);
+          assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+          res = await this.updatePropertyManager.isCVApplicationApproved(this.existingAId);
+          assert.equal(res, false);
+          res = await this.updatePropertyManager.isCVApplicationPending(this.existingAId);
+          assert.equal(res, true);
+          res = await this.newPropertyManager.isCVApplicationPending(aId);
+          assert.equal(res, true);
 
-        res = await this.contourVerificationManager.getApplication(0);
-        assert.equal(res.status, CVStatus.REJECTED);
+          await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
+            cvId2,
+            v2,
+            this.cvId1,
+            0,
+            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            { from: o2 }
+          );
+          await assertRevert(this.contourVerificationManager.approve(1, v3, { from: o3 }));
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
 
-        await checkRejectDistributionFor1CVVotedBefore(0, 0);
+          await evmIncreaseTime(3600 * 4);
+
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.contourVerificationManager.getApplication(cvId2);
+          assert.equal(res.approvalCount, 1);
+          assert.equal(res.action, 0);
+          assert.equal(res.status, CVStatus.REJECTED);
+
+          // too early
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
+
+          await evmIncreaseTime(3600 * 5);
+
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
+
+          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.contourVerificationManager.getApplication(cvId2);
+          assert.equal(res.status, CVStatus.REJECTED);
+        });
       });
-    });
-
-    async function checkRejectDistributionFor1CVVotedBefore(aId, cvId) {
-      const res = await this.contourVerificationManager.getApplicationRewards(cvId);
-      assert.equal(res.currency, Currency.GALT);
-      assert.equal(res.totalPaidFee, ether(10));
-      assert.equal(res.verifiersReward, ether(8.7));
-      assert.equal(res.galtProtocolReward, ether(1.3));
-      assert.equal(res.verifierReward, ether(8.7));
-
-      let v2BalanceBefore = await this.galtToken.balanceOf(v2);
-      let v3BalanceBefore = await this.galtToken.balanceOf(v3);
-      const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-      let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o1 }));
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
-      await this.contourVerificationManager.claimVerifierRejectionReward(0, v2, { from: o2 });
-      await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-      await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-      let v2BalanceAfter = await this.galtToken.balanceOf(v2);
-      let v3BalanceAfter = await this.galtToken.balanceOf(v3);
-      const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-      let mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-      assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(8.7));
-      assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-      assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
-      assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
-
-      v2BalanceBefore = await this.galtToken.balanceOf(v2);
-      v3BalanceBefore = await this.galtToken.balanceOf(v3);
-      await this.contourVerifiers.claimSlashedReward({ from: v3 });
-      await this.contourVerifiers.claimSlashedReward({ from: v2 });
-      await this.contourVerifiers.claimSlashedReward({ from: v2 });
-      v2BalanceAfter = await this.galtToken.balanceOf(v2);
-      v3BalanceAfter = await this.galtToken.balanceOf(v3);
-
-      assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(174));
-      assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
-
-      mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-      await assertRevert(this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }));
-      await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-      await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
-      mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-      assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(26));
-    }
-
-    it.skip('should allow rejecting with existing token inclusion proof', async function() {
-      let res = await this.newPropertyManager.submit(this.contour2);
-      const aId = res.logs[0].args.applicationId;
-
-      await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-
-      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-      const cvId2 = res.logs[0].args.applicationId;
-      assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-
-      assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-      await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-
-      await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-        0,
-        v2,
-        this.tokenId3,
-        3,
-        galt.geohashToNumber('dr5qvnpd100z').toString(10),
-        { from: o2 }
-      );
-      await assertRevert(this.contourVerificationManager.approve(1, v3, { from: o3 }));
-      assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
-
-      await evmIncreaseTime(3600 * 4);
-
-      assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
-
-      res = await this.contourVerificationManager.getApplication(cvId2);
-      assert.equal(res.approvalCount, 1);
-      assert.equal(res.action, 0);
-      assert.equal(res.status, CVStatus.REJECTED);
-
-      // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
-
-      await evmIncreaseTime(3600 * 5);
-
-      await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
-
-      assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
-
-      res = await this.contourVerificationManager.getApplication(cvId2);
-      assert.equal(res.status, CVStatus.REJECTED);
-      res = await this.contourVerificationManager.getApplicationRewards(cvId2);
-      assert.equal(res.currency, Currency.GALT);
-      assert.equal(res.totalPaidFee, ether(10));
-      assert.equal(res.verifiersReward, ether(8.7));
-      assert.equal(res.galtProtocolReward, ether(1.3));
-      assert.equal(res.verifierReward, ether(8.7));
     });
   });
 
@@ -1235,34 +1068,6 @@ contract('ContourVerification', accounts => {
 
       res = await this.contourVerificationManager.getApplication(0);
       assert.equal(res.status, CVStatus.APPROVED);
-      res = await this.contourVerificationManager.getApplicationRewards(0);
-      assert.equal(res.currency, Currency.GALT);
-      assert.equal(res.totalPaidFee, ether(10));
-      assert.equal(res.verifiersReward, ether(8.7));
-      assert.equal(res.galtProtocolReward, ether(1.3));
-      assert.equal(res.verifierReward, ether(2.9));
-
-      const v2BalanceBefore = await this.galtToken.balanceOf(v2);
-      const v3BalanceBefore = await this.galtToken.balanceOf(v3);
-      const v4BalanceBefore = await this.galtToken.balanceOf(v4);
-      const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 });
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v3, { from: o3 });
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o4 });
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }));
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
-      await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-      const v2BalanceAfter = await this.galtToken.balanceOf(v2);
-      const v3BalanceAfter = await this.galtToken.balanceOf(v3);
-      const v4BalanceAfter = await this.galtToken.balanceOf(v4);
-      const mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-      assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(2.9));
-      assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
     });
 
     describe.skip('with intersecting contours', async function() {
@@ -1413,15 +1218,15 @@ contract('ContourVerification', accounts => {
 
           res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
           const cvId = res.logs[0].args.applicationId;
-          this.cvId = cvId;
+          this.cvId1 = cvId1;
 
-          await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
 
           await evmIncreaseTime(3600 * 9);
 
-          await this.contourVerificationManager.pushApproval(cvId);
+          await this.contourVerificationManager.pushApproval(cvId1);
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
@@ -1434,10 +1239,10 @@ contract('ContourVerification', accounts => {
           const cvId = res.logs[0].args.applicationId;
 
           assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
           await assertRevert(
             this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
-              cvId,
+              cvId1,
               v2,
               this.updatePropertyManager.address,
               this.existingAId,
@@ -1463,9 +1268,9 @@ contract('ContourVerification', accounts => {
           assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
           assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-          await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
           res = await this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
-            cvId,
+            cvId1,
             v2,
             this.updatePropertyManager.address,
             this.existingAId,
@@ -1484,23 +1289,23 @@ contract('ContourVerification', accounts => {
 
           assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-          res = await this.contourVerificationManager.getApplication(cvId);
+          res = await this.contourVerificationManager.getApplication(cvId1);
           assert.equal(res.approvalCount, 1);
           assert.equal(res.action, 0);
           assert.equal(res.status, CVStatus.REJECTED);
 
           // too early
-          await assertRevert(this.contourVerificationManager.pushApproval(cvId));
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId1));
 
           await evmIncreaseTime(3600 * 5);
 
-          await assertRevert(this.contourVerificationManager.pushApproval(cvId));
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId1));
 
           assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-          res = await this.contourVerificationManager.getApplication(cvId);
+          res = await this.contourVerificationManager.getApplication(cvId1);
           assert.equal(res.status, CVStatus.REJECTED);
-          res = await this.contourVerificationManager.getApplicationRewards(cvId);
+          res = await this.contourVerificationManager.getApplicationRewards(cvId1);
           assert.equal(res.currency, Currency.GALT);
           assert.equal(res.totalPaidFee, ether(10));
           assert.equal(res.verifiersReward, ether(8.7));
@@ -1512,9 +1317,9 @@ contract('ContourVerification', accounts => {
           const v4BalanceBefore = await this.galtToken.balanceOf(v4);
           let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
 
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId, v4, { from: o1 }));
-          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId, v2, { from: o2 }));
-          await this.contourVerificationManager.claimVerifierRejectionReward(cvId, v2, { from: o2 });
+          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId1, v4, { from: o1 }));
+          await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId1, v2, { from: o2 }));
+          await this.contourVerificationManager.claimVerifierRejectionReward(cvId1, v2, { from: o2 });
           await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
           await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
