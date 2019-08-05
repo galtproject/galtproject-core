@@ -211,7 +211,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     eligibleForCastingDecision(_id, _verifier);
 
-    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
+    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Can't reject self-update action");
 
     uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
     bool intersects = _checkContourIntersects(
@@ -317,7 +317,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     eligibleForCastingDecision(_id, _verifier);
 
-    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Cant' reject self-update action");
+    require(isSelfUpdateCase(_id, _existingTokenId) == false, "Can't reject self-update action");
 
     // Existing Token
     uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress())
