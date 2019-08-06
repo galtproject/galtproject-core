@@ -30,6 +30,10 @@ contract MockUpdateContourApplication is MockAddContourApplication {
     return applicationId;
   }
 
+  function submit(uint256[] memory _contour) public returns (bytes32) {
+    revert("Specify token ID as a first argument");
+  }
+
   function getCVData(
     bytes32 _applicationId
   )

@@ -491,7 +491,7 @@ contract('ContourVerification Reward Distribition', accounts => {
   }
 
   async function rejectApplicationApprovedIntersection(numberOfApprovalsBeforeReject) {
-    let res = await this.updatePropertyManager.submit(this.contour1);
+    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
@@ -579,7 +579,7 @@ contract('ContourVerification Reward Distribition', accounts => {
   }
 
   async function rejectApplicationApprovedInclusion(numberOfApprovalsBeforeReject) {
-    let res = await this.updatePropertyManager.submit(this.contour1);
+    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
