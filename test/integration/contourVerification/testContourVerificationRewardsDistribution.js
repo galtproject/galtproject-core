@@ -62,7 +62,7 @@ const Currency = {
   GALT: 1
 };
 
-contract('ContourVerification Reward Distribition', accounts => {
+contract('ContourVerification Reward Distribution', accounts => {
   const [
     coreTeam,
     minter,
