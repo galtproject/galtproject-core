@@ -37,7 +37,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   event SetSpaceTokenContour(uint256 id, uint256[] contour);
   event SetSpaceTokenLevel(uint256 id, int256 level);
   event SetSpaceTokenArea(uint256 id, uint256 area, AreaSource areaSource);
-  event SetSpaceTokenInfo(uint256 id);
+  event SetSpaceTokenInfo(uint256 id, string description, bytes32 ledgerIdentifier);
 
   struct SpaceToken {
     uint256[] contour;
@@ -121,7 +121,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     spaceTokens[_spaceTokenId].ledgerIdentifier = _ledgerIdentifier;
     spaceTokens[_spaceTokenId].description = _description;
 
-    emit SetSpaceTokenInfo(_spaceTokenId);
+    emit SetSpaceTokenInfo(_spaceTokenId, _description, _ledgerIdentifier);
   }
 
   function spaceToken() internal view returns (ISpaceToken) {
