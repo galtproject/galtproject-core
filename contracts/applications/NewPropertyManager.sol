@@ -98,13 +98,18 @@ contract NewPropertyManager is AbstractOracleApplication {
 
   struct Details {
     bytes32 credentialsHash;
-    bytes32 ledgerIdentifier;
-    string description;
-    int256 level;
-    uint256 area;
-    ISpaceGeoDataRegistry.AreaSource areaSource;
+
+    ISpaceGeoDataRegistry.SpaceTokenType tokenType;
+
     uint256[] contour;
-    int256[] heights;
+    int256 highestPoint;
+
+    ISpaceGeoDataRegistry.AreaSource areaSource;
+    uint256 area;
+
+    bytes32 ledgerIdentifier;
+    string humanAddress;
+    string dataLink;
   }
 
   mapping(bytes32 => Application) internal applications;
@@ -162,40 +167,31 @@ contract NewPropertyManager is AbstractOracleApplication {
     a.operator = _to;
   }
 
+  uint256 idCounter = 1;
+
   function submit(
-    address _pgg,
-    uint256[] calldata _contour,
-    int256[] calldata _heights,
-    int256 _level,
-    uint256 _customArea,
+    ISpaceGeoDataRegistry.SpaceTokenType _tokenType,
+    string calldata _dataLink,
+    string calldata _humanAddress,
+    int256 _highestPoint,
     bytes32 _credentialsHash,
     bytes32 _ledgerIdentifier,
-    string calldata _description,
+    uint256[] calldata _contour,
+    uint256 _customArea,
+    address _pgg,
     uint256 _submissionFeeInGalt
   )
     external
     payable
     returns (bytes32)
   {
-    require(
-      _contour.length >= 3 && _contour.length <= 50,
-      "Number of contour elements should be between 3 and 50"
-    );
-
     pggRegistry().requireValidPgg(_pgg);
+    _checkSubmissionParams(_tokenType, _highestPoint, _contour, _customArea);
 
-    bytes32 _id = keccak256(
-      abi.encodePacked(
-        _pgg,
-        _contour,
-        _credentialsHash,
-        msg.sender,
-        applicationsArray.length
-      )
-    );
+    bytes32 _id = bytes32(idCounter);
+    idCounter++;
 
     Application storage a = applications[_id];
-
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     if (_customArea == 0) {
@@ -230,18 +226,19 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     a.status = ApplicationStatus.CONTOUR_VERIFICATION;
     a.id = _id;
-    a.pgg = _pgg;
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
 
     calculateAndStoreFee(a, a.rewards.totalPaidFee);
 
     a.details.ledgerIdentifier = _ledgerIdentifier;
-    a.details.description = _description;
     a.details.credentialsHash = _credentialsHash;
-    a.details.level = _level;
+    a.details.highestPoint = _highestPoint;
+    a.details.humanAddress = _humanAddress;
+    a.details.dataLink = _dataLink;
     a.details.contour = _contour;
-    a.details.heights = _heights;
+    a.details.tokenType = _tokenType;
+    a.pgg = _pgg;
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -260,22 +257,22 @@ contract NewPropertyManager is AbstractOracleApplication {
    * @param _aId application id
    * @param _newCredentialsHash keccak256 of user credentials
    * @param _newLedgerIdentifier of a plot
-   * @param _newDescription of a plot
+   * @param _newDataLink of a plot
    * @param _newContour array, empty if not changed
-   * @param _newHeights array, empty if not changed
-   * @param _newLevel int
+   * @param _newHighestPoint array, empty if not changed
    * @param _newCustomArea int
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
-    bytes32 _aId,
+    ISpaceGeoDataRegistry.SpaceTokenType _newTokenType,
     bytes32 _newCredentialsHash,
     bytes32 _newLedgerIdentifier,
-    string calldata _newDescription,
+    string calldata _newDataLink,
+    string calldata _newHumanAddress,
     uint256[] calldata _newContour,
-    int256[] calldata _newHeights,
-    int256 _newLevel,
+    int256 _newHighestPoint,
     uint256 _newCustomArea,
+    bytes32 _aId,
     uint256 _resubmissionFeeInGalt
   )
     external
@@ -283,6 +280,13 @@ contract NewPropertyManager is AbstractOracleApplication {
   {
     Application storage a = applications[_aId];
     Details storage d = a.details;
+
+    _checkSubmissionParams(
+      _newTokenType,
+      _newHighestPoint,
+      _newContour,
+      _newCustomArea
+    );
     require(
       a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
       "Applicant invalid");
@@ -300,12 +304,13 @@ contract NewPropertyManager is AbstractOracleApplication {
       d.areaSource = ISpaceGeoDataRegistry.AreaSource.USER_INPUT;
     }
 
-    d.level = _newLevel;
-    d.heights = _newHeights;
+    d.highestPoint = _newHighestPoint;
     d.contour = _newContour;
-    d.description = _newDescription;
+    d.humanAddress = _newHumanAddress;
+    d.dataLink = _newDataLink;
     d.ledgerIdentifier = _newLedgerIdentifier;
     d.credentialsHash = _newCredentialsHash;
+    d.tokenType = _newTokenType;
 
     assignLockedStatus(_aId);
 
@@ -429,12 +434,15 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256 spaceTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(address(this));
 
     a.spaceTokenId = spaceTokenId;
+    Details storage d = a.details;
 
-    spaceGeoData.setSpaceTokenContour(spaceTokenId, a.details.contour);
-    spaceGeoData.setSpaceTokenHeights(spaceTokenId, a.details.heights);
-    spaceGeoData.setSpaceTokenLevel(spaceTokenId, a.details.level);
-    spaceGeoData.setSpaceTokenArea(spaceTokenId, a.details.area, a.details.areaSource);
-    spaceGeoData.setSpaceTokenInfo(spaceTokenId, a.details.ledgerIdentifier, a.details.description);
+    spaceGeoData.setSpaceTokenType(spaceTokenId, d.tokenType);
+    spaceGeoData.setSpaceTokenContour(spaceTokenId, d.contour);
+    spaceGeoData.setSpaceTokenHighestPoint(spaceTokenId, d.highestPoint);
+    spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);
+    spaceGeoData.setSpaceTokenArea(spaceTokenId, d.area, d.areaSource);
+    spaceGeoData.setSpaceTokenLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
+    spaceGeoData.setSpaceTokenDataLink(spaceTokenId, d.dataLink);
 
     emit NewSpaceToken(a.applicant, spaceTokenId, a.id);
   }
@@ -526,6 +534,28 @@ contract NewPropertyManager is AbstractOracleApplication {
     }
 
     emit OracleRewardClaim(_aId, msg.sender);
+  }
+
+  function _checkSubmissionParams(
+    ISpaceGeoDataRegistry.SpaceTokenType _tokenType,
+    int256 _highestPoint,
+    uint256[] memory _contour,
+    uint256 _customArea
+  )
+    internal
+  {
+    require(
+      _contour.length >= 3 && _contour.length <= 50,
+      "Number of contour elements should be between 3 and 50"
+    );
+
+    if (_tokenType == ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT) {
+      require(_customArea == 0, "Can't use custom area for LAND_PLOT type");
+    }
+
+    if (_tokenType == ISpaceGeoDataRegistry.SpaceTokenType.BUILDING) {
+      require(_customArea > 0, "Provide custom are value");
+    }
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {
@@ -705,37 +735,37 @@ contract NewPropertyManager is AbstractOracleApplication {
   /**
    * @dev Get application details
    */
-  function getApplicationDetails(
-    bytes32 _id
-  )
-    external
-    view
-    returns (
-      bytes32 credentialsHash,
-      bytes32 ledgerIdentifier,
-      int256 level,
-      uint256 area,
-      ISpaceGeoDataRegistry.AreaSource areaSource,
-      uint256[] memory contour,
-      string memory description,
-      int256[] memory heights
-    )
-  {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
-    Application storage m = applications[_id];
-
-    return (
-      m.details.credentialsHash,
-      m.details.ledgerIdentifier,
-      m.details.level,
-      m.details.area,
-      m.details.areaSource,
-      m.details.contour,
-      m.details.description,
-      m.details.heights
-    );
-  }
+//  function getApplicationDetails(
+//    bytes32 _id
+//  )
+//    external
+//    view
+//    returns (
+//      bytes32 credentialsHash,
+//      bytes32 ledgerIdentifier,
+//      int256 level,
+//      uint256 area,
+//      ISpaceGeoDataRegistry.AreaSource areaSource,
+//      uint256[] memory contour,
+//      string memory description,
+//      int256[] memory heights
+//    )
+//  {
+//    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+//
+//    Application storage m = applications[_id];
+//
+//    return (
+//      m.details.credentialsHash,
+//      m.details.ledgerIdentifier,
+//      m.details.level,
+//      m.details.area,
+//      m.details.areaSource,
+//      m.details.contour,
+//      m.details.description,
+//      m.details.heights
+//    );
+//  }
 
   function getApplicationOperator(bytes32 _aId) public view returns (address) {
     return applications[_aId].operator;

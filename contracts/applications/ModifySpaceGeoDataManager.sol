@@ -168,11 +168,11 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     }
 
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
-    spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
-    spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
-    spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
-    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);
-    spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
+//    spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
+//    spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
+//    spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
+//    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);
+//    spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
   }
 
   function _checkRewardCanBeClaimed(bytes32 _aId) internal returns (bool) {

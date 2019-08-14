@@ -50,14 +50,19 @@ contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
   function setSpaceToken(
     uint256 _spaceTokenId,
     uint256[] memory _contour,
-    int256  _theHighestPoint,
+    int256  _highestPoint,
     uint256 _area,
     AreaSource _areaSource
   )
     public
   {
-    setSpaceTokenContour(_spaceTokenId, _contour);
-    setSpaceTokenHighestPoint(_spaceTokenId, _theHighestPoint);
-    setSpaceTokenArea(_spaceTokenId, _area, _areaSource);
+    spaceTokens[_spaceTokenId].contour = _contour;
+    spaceTokens[_spaceTokenId].highestPoint = _highestPoint;
+    spaceTokens[_spaceTokenId].area = _area;
+    spaceTokens[_spaceTokenId].areaSource = _areaSource;
+
+    emit SetSpaceTokenContour(_spaceTokenId, _contour);
+    emit SetSpaceTokenHighestPoint(_spaceTokenId, _highestPoint);
+    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 }
