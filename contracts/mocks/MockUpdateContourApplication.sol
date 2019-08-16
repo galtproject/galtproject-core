@@ -42,13 +42,11 @@ contract MockUpdateContourApplication is MockAddContourApplication {
     returns (
       IContourModifierApplication.ContourModificationType contourModificationType,
       uint256 spaceTokenId,
-      uint256[] memory contourToAdd,
-      uint256[] memory contourToRemove
+      uint256[] memory contourToAdd
     )
   {
     contourModificationType = IContourModifierApplication.ContourModificationType.UPDATE;
     spaceTokenId = applicationIdToSpaceTokenId[_applicationId];
     contourToAdd = applications[_applicationId].contour;
-    contourToRemove = applications[_applicationId].contour;
   }
 }

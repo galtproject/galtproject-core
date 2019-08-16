@@ -30,8 +30,7 @@ interface IContourModifierApplication {
   function getCVData(bytes32 _applicationId) external view returns (
     IContourModifierApplication.ContourModificationType contourModificationType,
     uint256 spaceTokenId,
-    uint256[] memory contourToAdd,
-    uint256[] memory contourToRemove
+    uint256[] memory contour
   );
   function isCVApplicationPending(bytes32 _applicationId) external view returns (bool);
   function isCVApplicationApproved(bytes32 _applicationId) external view returns (bool);

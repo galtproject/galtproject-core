@@ -16,17 +16,20 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "./interfaces/IPropertyManagerFeeCalculator.sol";
+import "./interfaces/IContourModifierApplication.sol";
 import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./NewPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IPGGRegistry.sol";
+import "./ContourVerifiableApplication.sol";
 
 
-contract NewPropertyManager is AbstractOracleApplication {
+contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableApplication {
   using SafeMath for uint256;
 
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
@@ -125,22 +128,21 @@ contract NewPropertyManager is AbstractOracleApplication {
     ggr = _ggr;
   }
 
-  modifier onlyApplicant(bytes32 _aId) {
-    Application storage a = applications[_aId];
-
+  function onlyCVM() internal {
     require(
-      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
-      "Applicant invalid");
-
-    _;
+      ggr.getACL().hasRole(msg.sender, ROLE_CONTOUR_VERIFIER_POOL),
+      "Invalid verifier contract"
+    );
   }
 
-  modifier onlyOracleOfApplication(bytes32 _aId) {
-    Application storage a = applications[_aId];
+  function onlyApplicant(bytes32 _aId) internal {
+    require(
+      applications[_aId].applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
+      "Applicant invalid");
+  }
 
-    require(a.addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
-
-    _;
+  function onlyOracleOfApplication(bytes32 _aId) internal {
+    require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
 
   function feeCalculator(address _pgg) public view returns (IPropertyManagerFeeCalculator) {
@@ -168,6 +170,30 @@ contract NewPropertyManager is AbstractOracleApplication {
   }
 
   uint256 idCounter = 1;
+
+  function cvApprove(bytes32 _applicationId) external  {
+    onlyCVM();
+    Application storage a = applications[_applicationId];
+
+    require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
+
+    CVPendingApplicationIds.remove(_applicationId);
+    CVApprovedApplicationIds.add(_applicationId);
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
+
+  // TODO: what to do with a payment?
+  function cvReject(bytes32 _applicationId) external {
+    onlyCVM();
+    Application storage a = applications[_applicationId];
+
+    require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
+
+    CVPendingApplicationIds.remove(_applicationId);
+
+    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+  }
 
   function submit(
     ISpaceGeoDataRegistry.SpaceTokenType _tokenType,
@@ -264,7 +290,6 @@ contract NewPropertyManager is AbstractOracleApplication {
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
-    ISpaceGeoDataRegistry.SpaceTokenType _newTokenType,
     bytes32 _newCredentialsHash,
     bytes32 _newLedgerIdentifier,
     string calldata _newDataLink,
@@ -272,6 +297,7 @@ contract NewPropertyManager is AbstractOracleApplication {
     uint256[] calldata _newContour,
     int256 _newHighestPoint,
     uint256 _newCustomArea,
+    ISpaceGeoDataRegistry.SpaceTokenType _newTokenType,
     bytes32 _aId,
     uint256 _resubmissionFeeInGalt
   )
@@ -314,7 +340,7 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     assignLockedStatus(_aId);
 
-    changeApplicationStatus(a, ApplicationStatus.SUBMITTED);
+    changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
   }
 
   function assignLockedStatus(bytes32 _aId) internal {
@@ -387,8 +413,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     bytes32 _credentialsHash
   )
     external
-    onlyOracleOfApplication(_aId)
   {
+    onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
 
     require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
@@ -413,11 +439,13 @@ contract NewPropertyManager is AbstractOracleApplication {
 
     if (allApproved) {
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
-      mintToken(a);
+      NewPropertyManagerLib.mintToken(ggr, a, address(this));
+      emit NewSpaceToken(a.applicant, a.spaceTokenId, _aId);
     }
   }
 
-  function claimSpaceToken(bytes32 _aId) external onlyApplicant(_aId) {
+  function claimSpaceToken(bytes32 _aId) external  {
+    onlyApplicant(_aId);
     Application storage a = applications[_aId];
     require(
       a.status == ApplicationStatus.APPROVED,
@@ -428,32 +456,13 @@ contract NewPropertyManager is AbstractOracleApplication {
     ggr.getSpaceToken().transferFrom(address(this), a.applicant, a.spaceTokenId);
   }
 
-  function mintToken(Application storage a) internal {
-    ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
-
-    uint256 spaceTokenId = ISpaceToken(ggr.getSpaceTokenAddress()).mint(address(this));
-
-    a.spaceTokenId = spaceTokenId;
-    Details storage d = a.details;
-
-    spaceGeoData.setSpaceTokenType(spaceTokenId, d.tokenType);
-    spaceGeoData.setSpaceTokenContour(spaceTokenId, d.contour);
-    spaceGeoData.setSpaceTokenHighestPoint(spaceTokenId, d.highestPoint);
-    spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);
-    spaceGeoData.setSpaceTokenArea(spaceTokenId, d.area, d.areaSource);
-    spaceGeoData.setSpaceTokenLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
-    spaceGeoData.setSpaceTokenDataLink(spaceTokenId, d.dataLink);
-
-    emit NewSpaceToken(a.applicant, spaceTokenId, a.id);
-  }
-
   function reject(
     bytes32 _aId,
     string calldata _message
   )
     external
-    onlyOracleOfApplication(_aId)
   {
+    onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
@@ -472,8 +481,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     string calldata _message
   )
     external
-    onlyOracleOfApplication(_aId)
   {
+    onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
     uint256 len = a.assignedOracleTypes.length;
@@ -494,7 +503,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function close(bytes32 _aId) external onlyApplicant(_aId) {
+  function close(bytes32 _aId) external  {
+    onlyApplicant(_aId);
     Application storage a = applications[_aId];
 
     require(
@@ -508,8 +518,8 @@ contract NewPropertyManager is AbstractOracleApplication {
     bytes32 _aId
   )
     external
-    onlyOracleOfApplication(_aId)
   {
+    onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
     uint256 reward = a.assignedRewards[senderOracleType];
@@ -657,17 +667,6 @@ contract NewPropertyManager is AbstractOracleApplication {
     _a.status = _status;
   }
 
-  function isCredentialsHashValid(
-    bytes32 _id,
-    bytes32 _hash
-  )
-    external
-    view
-    returns (bool)
-  {
-    return (_hash == applications[_id].details.credentialsHash);
-  }
-
   /**
    * @dev Get common application details
    */
@@ -735,37 +734,39 @@ contract NewPropertyManager is AbstractOracleApplication {
   /**
    * @dev Get application details
    */
-//  function getApplicationDetails(
-//    bytes32 _id
-//  )
-//    external
-//    view
-//    returns (
-//      bytes32 credentialsHash,
-//      bytes32 ledgerIdentifier,
-//      int256 level,
-//      uint256 area,
-//      ISpaceGeoDataRegistry.AreaSource areaSource,
-//      uint256[] memory contour,
-//      string memory description,
-//      int256[] memory heights
-//    )
-//  {
-//    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-//
-//    Application storage m = applications[_id];
-//
-//    return (
-//      m.details.credentialsHash,
-//      m.details.ledgerIdentifier,
-//      m.details.level,
-//      m.details.area,
-//      m.details.areaSource,
-//      m.details.contour,
-//      m.details.description,
-//      m.details.heights
-//    );
-//  }
+  function getApplicationDetails(
+    bytes32 _id
+  )
+    external
+    view
+    returns (
+      bytes32 credentialsHash,
+      ISpaceGeoDataRegistry.SpaceTokenType tokenType,
+      uint256[] memory contour,
+      int256 highestPoint,
+      ISpaceGeoDataRegistry.AreaSource areaSource,
+      uint256 area,
+      bytes32 ledgerIdentifier,
+      string memory humanAddress,
+      string memory dataLink
+    )
+  {
+    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
+
+    Application storage m = applications[_id];
+
+    return (
+      m.details.credentialsHash,
+      m.details.tokenType,
+      m.details.contour,
+      m.details.highestPoint,
+      m.details.areaSource,
+      m.details.area,
+      m.details.ledgerIdentifier,
+      m.details.humanAddress,
+      m.details.dataLink
+    );
+  }
 
   function getApplicationOperator(bytes32 _aId) public view returns (address) {
     return applications[_aId].operator;
@@ -818,5 +819,22 @@ contract NewPropertyManager is AbstractOracleApplication {
       applications[_aId].validationStatus[_oracleType],
       applications[_aId].oracleTypeMessages[_oracleType]
     );
+  }
+
+  function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory) {
+    return applications[_applicationId].details.contour;
+  }
+
+  function getCVData(bytes32 _applicationId)
+    external
+    view
+    returns (
+      IContourModifierApplication.ContourModificationType contourModificationType,
+      uint256 spaceTokenId,
+      uint256[] memory contour
+    )
+  {
+    contourModificationType = IContourModifierApplication.ContourModificationType.ADD;
+    contour = applications[_applicationId].details.contour;
   }
 }

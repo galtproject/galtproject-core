@@ -122,12 +122,11 @@ contract MockAddContourApplication is IContourModifierApplication {
     returns (
       IContourModifierApplication.ContourModificationType contourModificationType,
       uint256 spaceTokenId,
-      uint256[] memory contourToAdd,
-      uint256[] memory contourToRemove
+      uint256[] memory contour
     )
   {
     contourModificationType = IContourModifierApplication.ContourModificationType.ADD;
-    contourToAdd = applications[_applicationId].contour;
+    contour = applications[_applicationId].contour;
   }
 
   function isCVApplicationPending(bytes32 _applicationId) public view returns (bool) {

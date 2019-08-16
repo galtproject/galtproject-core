@@ -14,7 +14,11 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "./NewPropertyManager.sol";
+import "./AbstractApplication.sol";
+import "../interfaces/ISpaceToken.sol";
+import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 
 
 library NewPropertyManagerLib {
@@ -22,9 +26,9 @@ library NewPropertyManagerLib {
 
   function rejectApplicationHelper(
     NewPropertyManager.Application storage _a,
-    string memory _message
+    string calldata _message
   )
-    internal
+    external
   {
     require(
       _a.status == NewPropertyManager.ApplicationStatus.SUBMITTED,
@@ -41,5 +45,26 @@ library NewPropertyManagerLib {
 
     bytes32 senderOracleType = _a.addressOracleTypes[msg.sender];
     _a.oracleTypeMessages[senderOracleType] = _message;
+  }
+
+  function mintToken(
+    GaltGlobalRegistry _ggr,
+    NewPropertyManager.Application storage _a,
+    address _to
+  ) external {
+    ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress());
+
+    uint256 spaceTokenId = ISpaceToken(_ggr.getSpaceTokenAddress()).mint(_to);
+
+    _a.spaceTokenId = spaceTokenId;
+    NewPropertyManager.Details storage d = _a.details;
+
+    spaceGeoData.setSpaceTokenType(spaceTokenId, d.tokenType);
+    spaceGeoData.setSpaceTokenContour(spaceTokenId, d.contour);
+    spaceGeoData.setSpaceTokenHighestPoint(spaceTokenId, d.highestPoint);
+    spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);
+    spaceGeoData.setSpaceTokenArea(spaceTokenId, d.area, d.areaSource);
+    spaceGeoData.setSpaceTokenLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
+    spaceGeoData.setSpaceTokenDataLink(spaceTokenId, d.dataLink);
   }
 }

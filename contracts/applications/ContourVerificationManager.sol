@@ -869,7 +869,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   function isSelfUpdateCase(uint256 _aId, uint256 _existingTokenId) public view returns (bool) {
     Application storage a = verificationQueue[_aId];
-    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
     if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
 
       return (spaceTokenId ==_existingTokenId);
