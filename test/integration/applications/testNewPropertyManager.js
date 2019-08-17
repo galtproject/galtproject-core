@@ -346,7 +346,104 @@ contract('NewPropertyManager', accounts => {
       assert.notEqual(this.aId, undefined);
     });
 
-    describe('#submit() Galt', () => {
+    describe('#submit()', () => {
+      beforeEach(async function() {
+        this.fee = ether(26);
+        await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
+      });
+
+      describe('custom area checks', () => {
+        beforeEach(async function() {
+          this.fee = await this.newPropertyManager.getSubmissionFeeByArea(
+            this.pggConfigX.address,
+            Currency.GALT,
+            ether(600)
+          );
+          assert.equal(this.fee, ether(5));
+
+          await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
+        });
+
+        it('should deny custom area for a LAND_PLOT token submission', async function() {
+          await assertRevert(
+            this.newPropertyManager.submit(
+              SpaceTokenType.LAND_PLOT,
+              this.dataLink,
+              this.humanAddress,
+              771000,
+              this.credentials,
+              this.ledgerIdentifier,
+              this.contour,
+              123,
+              this.pggConfigX.address,
+              ether(5),
+              { from: alice }
+            ),
+            "Can't use custom area for LAND_PLOT type"
+          );
+        });
+
+        it('should require custom area for a BUILDING token submission', async function() {
+          await assertRevert(
+            this.newPropertyManager.submit(
+              SpaceTokenType.BUILDING,
+              this.dataLink,
+              this.humanAddress,
+              771000,
+              this.credentials,
+              this.ledgerIdentifier,
+              this.contour,
+              0,
+              this.pggConfigX.address,
+              ether(5),
+              { from: alice }
+            ),
+            'Provide custom are value'
+          );
+        });
+
+        it('should allow both custom area and contract calculated area for a ROOM token submission', async function() {
+          await this.geodesicMock.calculateContourArea(this.contour);
+          const area = await this.geodesicMock.setSpaceTokenArea(this.contour);
+          assert.equal(area.toString(10), ether(3000).toString(10));
+          const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
+            this.pggConfigX.address,
+            Currency.GALT,
+            area
+          );
+
+          await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
+          this.newPropertyManager.submit(
+            SpaceTokenType.ROOM,
+            this.dataLink,
+            this.humanAddress,
+            771000,
+            this.credentials,
+            this.ledgerIdentifier,
+            this.contour,
+            0,
+            this.pggConfigX.address,
+            expectedFee,
+            { from: alice }
+          );
+
+          await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
+          this.newPropertyManager.submit(
+            SpaceTokenType.ROOM,
+            this.dataLink,
+            this.humanAddress,
+            771000,
+            this.credentials,
+            this.ledgerIdentifier,
+            this.contour,
+            123123,
+            this.pggConfigX.address,
+            this.fee,
+            { from: alice }
+          );
+        });
+      });
+
       it('should provide methods to create and read an application', async function() {
         const res1 = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res1.status, ApplicationStatus.CONTOUR_VERIFICATION);
@@ -369,13 +466,6 @@ contract('NewPropertyManager', accounts => {
         for (let i = 0; i < res3.length; i++) {
           assert.equal(res3[i].toString(10), this.contour[i]);
         }
-      });
-    });
-
-    describe('#submit() with area calculated by geodesic contract', () => {
-      beforeEach(async function() {
-        this.fee = ether(26);
-        await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
       });
 
       it('should submit applications in galt', async function() {
@@ -506,35 +596,6 @@ contract('NewPropertyManager', accounts => {
           res = await this.newPropertyManager.getApplicationOracle(aId, PM_LAWYER);
           assert.equal(res.reward.toString(), '10857600000000000000');
         });
-      });
-    });
-
-    describe('#submit() with area provided by the applicant', () => {
-      beforeEach(async function() {
-        this.fee = await this.newPropertyManager.getSubmissionFeeByArea(
-          this.pggConfigX.address,
-          Currency.GALT,
-          ether(600)
-        );
-        assert.equal(this.fee, ether(5));
-
-        await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
-      });
-
-      it('should submit applications in galt', async function() {
-        await this.newPropertyManager.submit(
-          SpaceTokenType.BUILDING,
-          this.dataLink,
-          this.humanAddress,
-          771000,
-          this.credentials,
-          this.ledgerIdentifier,
-          this.contour,
-          123,
-          this.pggConfigX.address,
-          ether(5),
-          { from: alice }
-        );
       });
     });
 
