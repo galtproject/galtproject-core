@@ -64,6 +64,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     uint256 requiredConfirmations;
     uint256 approvalCount;
     address rejecter;
+    bool executed;
 
     Rewards rewards;
     Currency currency;
@@ -186,9 +187,11 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     Application storage a = verificationQueue[_aId];
 
     require(a.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status");
+    require(a.executed == false, "Already executed");
     require(a.approvalTimeoutInitiatedAt.add(approvalTimeout) < block.timestamp, "Expect APPROVAL_TIMEOUT status");
 
     a.status = Status.APPROVED;
+    a.executed = true;
 
     IContourModifierApplication(a.applicationContract).cvApprove(a.externalApplicationId);
   }
@@ -197,6 +200,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     Application storage a = verificationQueue[_aId];
 
     require(a.status == Status.REJECTED, "Expect REJECTED status");
+    require(a.executed == false, "Already executed");
+    a.executed = true;
 
     IContourModifierApplication(a.applicationContract).cvReject(a.externalApplicationId);
   }

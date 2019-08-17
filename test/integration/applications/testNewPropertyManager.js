@@ -111,6 +111,8 @@ contract('NewPropertyManager', accounts => {
     oracleModifier,
     spaceReputationAccountingAddress,
     unlocker,
+    minter,
+    geoDataManager,
     alice,
     bob,
     charlie,
@@ -213,12 +215,15 @@ contract('NewPropertyManager', accounts => {
         from: coreTeam
       }
     );
+    await this.acl.setRole(bytes32('SPACE_MINTER'), minter, true, { from: coreTeam });
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), geoDataManager, true, { from: coreTeam });
     await this.acl.setRole(bytes32('PGG_REGISTRAR'), this.pggFactory.address, true, { from: coreTeam });
     await this.acl.setRole(bytes32('ORACLE_MODIFIER'), oracleModifier, true, { from: coreTeam });
     await this.acl.setRole(bytes32('FEE_COLLECTOR'), feeMixerAddress, true, { from: coreTeam });
     await this.acl.setRole(bytes32('CONTOUR_VERIFIER'), this.contourVerificationManager.address, true, {
       from: coreTeam
     });
+    await this.acl.setRole(bytes32('CV_SLASHER'), this.contourVerificationManager.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
     await this.contourVerifiers.deposit(ether(200), { from: v1 });
@@ -599,31 +604,229 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
+    describe('#resubmit() after CV reject', () => {
+      beforeEach(async function() {
+        assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
+
+        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+      });
+
+      describe('after cv reject', () => {
+        it('should be able to be approved after a second cv reveiw', async function() {
+          let res = await this.spaceToken.mint(alice, { from: minter });
+          const tokenId1 = res.logs[0].args.tokenId.toNumber();
+
+          const rawContour1 = ['dr5qvnpd300r', 'dr5qvnp655pq', 'dr5qvnp3g3w0', 'dr5qvnp9cnpt'];
+          const contour1 = rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
+          const rawContour4 = ['dr5qvnp6hfwt', 'dr5qvnp6h46c', 'dr5qvnp3gdwu', 'dr5qvnp3u57s'];
+          const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
+
+          await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
+
+          await this.geodesicMock.calculateContourArea(contour4);
+          const area = await this.geodesicMock.setSpaceTokenArea(contour4);
+          assert.equal(area.toString(10), ether(4000).toString(10));
+          const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
+            this.pggConfigX.address,
+            Currency.GALT,
+            area
+          );
+
+          await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
+          res = await this.newPropertyManager.submit(
+            SpaceTokenType.LAND_PLOT,
+            this.dataLink,
+            this.humanAddress,
+            771000,
+            this.credentials,
+            this.ledgerIdentifier,
+            contour4,
+            0,
+            this.pggConfigX.address,
+            expectedFee,
+            {
+              from: alice
+            }
+          );
+
+          this.aId = res.logs[0].args.applicationId;
+          assert.notEqual(this.aId, undefined);
+
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+            from: alice
+          });
+          const cvId1 = res.logs[0].args.applicationId;
+
+          await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+            cvId1,
+            v3,
+            tokenId1,
+            0,
+            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            { from: o3 }
+          );
+          await this.contourVerificationManager.pushRejection(cvId1);
+
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+
+          const newCredentiasHash = web3.utils.keccak256('AnotherPerson');
+          const newLedgerIdentifier = bytes32('foo-123');
+          const newDataLink = 'new-test-dataLink';
+          const newHumanAddress = 'beyondTheHouse';
+          const newHighestPoint = 44000;
+
+          // resubmit
+          await this.newPropertyManager.resubmit(
+            newCredentiasHash,
+            newLedgerIdentifier,
+            newDataLink,
+            newHumanAddress,
+            this.contour2,
+            newHighestPoint,
+            // customArea
+            0,
+            SpaceTokenType.LAND_PLOT,
+            this.aId,
+            0,
+            {
+              from: alice
+            }
+          );
+
+          // submit CV again
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+            from: alice
+          });
+          const cvId2 = res.logs[0].args.applicationId;
+
+          // v1 and v2 were slashed
+          await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
+          await this.contourVerifiers.deposit(ether(200), { from: v1 });
+
+          await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
+          await this.contourVerifiers.deposit(ether(200), { from: v2 });
+
+          await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+          await this.contourVerificationManager.approve(cvId2, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+          await assertRevert(this.contourVerificationManager.pushRejection(cvId1), 'Already executed');
+          await assertRevert(this.contourVerificationManager.pushApproval(cvId1), 'Expect APPROVAL_TIMEOUT status');
+
+          await evmIncreaseTime(3600 * 9);
+          await assertRevert(this.contourVerificationManager.pushRejection(cvId2), 'Expect REJECTED status');
+          await this.contourVerificationManager.pushApproval(cvId2);
+
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.PENDING);
+        });
+      });
+    });
+
     describe('#close()', () => {
       beforeEach(async function() {
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-        const res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
-          from: alice
-        });
-        const cvId1 = res.logs[0].args.applicationId;
-
-        await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
-        await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
-        await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
-        await evmIncreaseTime(3600 * 9);
-        await this.contourVerificationManager.pushApproval(cvId1);
       });
 
-      describe('with status REVERTED', () => {
+      describe('after cv reject', () => {
         it('should change status to CLOSED', async function() {
+          let res = await this.spaceToken.mint(alice, { from: minter });
+          const tokenId1 = res.logs[0].args.tokenId.toNumber();
+
+          const rawContour1 = ['dr5qvnpd300r', 'dr5qvnp655pq', 'dr5qvnp3g3w0', 'dr5qvnp9cnpt'];
+          const contour1 = rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
+          const rawContour4 = ['dr5qvnp6hfwt', 'dr5qvnp6h46c', 'dr5qvnp3gdwu', 'dr5qvnp3u57s'];
+          const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
+
+          await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
+
+          await this.geodesicMock.calculateContourArea(contour4);
+          const area = await this.geodesicMock.setSpaceTokenArea(contour4);
+          assert.equal(area.toString(10), ether(4000).toString(10));
+          const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
+            this.pggConfigX.address,
+            Currency.GALT,
+            area
+          );
+
+          await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
+          res = await this.newPropertyManager.submit(
+            SpaceTokenType.LAND_PLOT,
+            this.dataLink,
+            this.humanAddress,
+            771000,
+            this.credentials,
+            this.ledgerIdentifier,
+            contour4,
+            0,
+            this.pggConfigX.address,
+            expectedFee,
+            {
+              from: alice
+            }
+          );
+
+          this.aId = res.logs[0].args.applicationId;
+          assert.notEqual(this.aId, undefined);
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+            from: alice
+          });
+          const cvId1 = res.logs[0].args.applicationId;
+
+          await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+            cvId1,
+            v3,
+            tokenId1,
+            0,
+            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            { from: o3 }
+          );
+          await this.contourVerificationManager.pushRejection(cvId1);
+
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+
+          await this.newPropertyManager.close(this.aId, { from: alice });
+
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.CLOSED);
+
+          // top-up verifier balances after slashing
+          await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
+          await this.contourVerifiers.deposit(ether(200), { from: v1 });
+
+          await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
+          await this.contourVerifiers.deposit(ether(200), { from: v2 });
+        });
+      });
+
+      describe('after oracle revert', () => {
+        it('should change status to CLOSED', async function() {
+          let res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+            from: alice
+          });
+          const cvId1 = res.logs[0].args.applicationId;
+
+          await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+          await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+          await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+          await evmIncreaseTime(3600 * 9);
+          await this.contourVerificationManager.pushApproval(cvId1);
           await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
           await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
           await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
           await this.newPropertyManager.close(this.aId, { from: alice });
 
-          const res = await this.newPropertyManager.getApplication(this.aId);
+          res = await this.newPropertyManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.CLOSED);
         });
       });
@@ -1780,13 +1983,7 @@ contract('NewPropertyManager', accounts => {
       // eslint-disable-next-line
       it('should transfer SpaceToken to the applicant', async function() {
         await this.newPropertyManager.claimSpaceToken(this.aId, { from: alice });
-
-        let res = await this.spaceToken.balanceOf(this.newPropertyManager.address);
-        assert.equal(res.toString(), 0);
-        res = await this.spaceToken.balanceOf(alice);
-        assert.equal(res.toString(), 1);
-        res = await this.spaceToken.ownerOf(this.spaceTokenId);
-        assert.equal(res, alice);
+        assert.equal(await this.spaceToken.ownerOf(this.spaceTokenId), alice);
       });
 
       it('should NOT transfer SpaceToken to non-applicant', async function() {

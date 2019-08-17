@@ -342,6 +342,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     assignLockedStatus(_aId);
 
+    CVPendingApplicationIds.add(_aId);
+
     changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
   }
 
