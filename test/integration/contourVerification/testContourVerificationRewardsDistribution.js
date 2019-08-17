@@ -177,9 +177,9 @@ contract('ContourVerification Reward Distribution', accounts => {
     await this.feeRegistry.setProtocolEthShare(33, { from: coreTeam });
     await this.feeRegistry.setProtocolGaltShare(13, { from: coreTeam });
 
-    this.contourVerificationSourceRegistry.addSource(this.newPropertyManager.address);
-    this.contourVerificationSourceRegistry.addSource(this.updatePropertyManager.address);
-    this.contourVerificationSourceRegistry.addSource(this.modifyPropertyManager.address);
+    await this.contourVerificationSourceRegistry.addSource(this.newPropertyManager.address);
+    await this.contourVerificationSourceRegistry.addSource(this.updatePropertyManager.address);
+    await this.contourVerificationSourceRegistry.addSource(this.modifyPropertyManager.address);
 
     await this.contourVerificationManager.setRequiredConfirmations(5);
 

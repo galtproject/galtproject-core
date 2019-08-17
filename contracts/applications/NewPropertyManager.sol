@@ -27,6 +27,8 @@ import "./NewPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IPGGRegistry.sol";
 import "./ContourVerifiableApplication.sol";
+import "./ContourVerificationManager.sol";
+import "../ACL.sol";
 
 
 contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableApplication {
@@ -52,7 +54,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   enum ApplicationStatus {
     NOT_EXISTS,
     CONTOUR_VERIFICATION,
-    SUBMITTED,
+    PENDING,
     APPROVED,
     REJECTED,
     REVERTED,
@@ -180,10 +182,9 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     CVPendingApplicationIds.remove(_applicationId);
     CVApprovedApplicationIds.add(_applicationId);
 
-    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+    changeApplicationStatus(a, ApplicationStatus.PENDING);
   }
 
-  // TODO: what to do with a payment?
   function cvReject(bytes32 _applicationId) external {
     onlyCVM();
     Application storage a = applications[_applicationId];
@@ -273,6 +274,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     emit ApplicationStatusChanged(_id, ApplicationStatus.CONTOUR_VERIFICATION);
 
     assignRequiredOracleTypesAndRewards(applications[_id]);
+    CVPendingApplicationIds.add(_id);
 
     return _id;
   }
@@ -387,7 +389,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
 
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
     require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock an oracle type not in PENDING status");
 
@@ -400,7 +402,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   function unlock(bytes32 _aId, bytes32 _oracleType) external onlyUnlocker {
     Application storage a = applications[_aId];
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
     require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");
     require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
@@ -418,7 +420,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     Application storage a = applications[_aId];
 
     require(a.details.credentialsHash == _credentialsHash, "Credentials don't match");
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
 
     bytes32 oracleType = a.addressOracleTypes[msg.sender];
 
@@ -439,6 +441,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     if (allApproved) {
       changeApplicationStatus(a, ApplicationStatus.APPROVED);
+      CVApprovedApplicationIds.remove(_aId);
       NewPropertyManagerLib.mintToken(ggr, a, address(this));
       emit NewSpaceToken(a.applicant, a.spaceTokenId, _aId);
     }
@@ -469,8 +472,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
-    // TODO: merge into the contract
     NewPropertyManagerLib.rejectApplicationHelper(a, _message);
+    CVApprovedApplicationIds.remove(_aId);
 
     changeValidationStatus(a, a.addressOracleTypes[msg.sender], ValidationStatus.REJECTED);
     changeApplicationStatus(a, ApplicationStatus.REJECTED);
@@ -487,7 +490,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
     uint256 len = a.assignedOracleTypes.length;
 
-    require(a.status == ApplicationStatus.SUBMITTED, "Application status should be SUBMITTED");
+    require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, senderOracleType);
     require(a.validationStatus[senderOracleType] == ValidationStatus.LOCKED, "Application should be locked first");
 
@@ -498,6 +501,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     }
 
     a.oracleTypeMessages[senderOracleType] = _message;
+
+    CVApprovedApplicationIds.remove(_aId);
 
     changeValidationStatus(a, senderOracleType, ValidationStatus.REVERTED);
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
@@ -685,8 +690,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       bytes32[] memory assignedOracleTypes
     )
   {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
     Application storage m = applications[_id];
 
     return (
@@ -717,8 +720,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       bool galtProtocolFeePaidOut
     )
   {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
     Application storage m = applications[_id];
 
     return (
@@ -751,8 +752,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       string memory dataLink
     )
   {
-    require(applications[_id].status != ApplicationStatus.NOT_EXISTS, "Application doesn't exist");
-
     Application storage m = applications[_id];
 
     return (

@@ -31,8 +31,8 @@ library NewPropertyManagerLib {
     external
   {
     require(
-      _a.status == NewPropertyManager.ApplicationStatus.SUBMITTED,
-      "Application status should be SUBMITTED");
+      _a.status == NewPropertyManager.ApplicationStatus.PENDING,
+      "Application status should be PENDING");
 
     uint256 len = _a.assignedOracleTypes.length;
 

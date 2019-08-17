@@ -119,7 +119,7 @@ contract('UpdatePropertyManager', (accounts) => {
     this.newLevel = 1;
     this.credentials = web3.utils.sha3(`Johnj$Galt$123456po`);
     this.ledgerIdentifier = web3.utils.utf8ToHex(this.initLedgerIdentifier);
-    this.description = 'test description';
+    this.dataLink = 'test dataLink';
 
     this.acl = await ACL.new({ from: coreTeam });
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
@@ -1164,7 +1164,7 @@ contract('UpdatePropertyManager', (accounts) => {
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
         const newLedgerIdentifier = bytes32('foo-123');
-        const newDescripton = 'new-test-description';
+        const newDescripton = 'new-test-dataLink';
 
         await this.updatePropertyManager.resubmit(this.aId, newLedgerIdentifier, newDescripton, [], [], 9, 3000, 0, {
           from: alice

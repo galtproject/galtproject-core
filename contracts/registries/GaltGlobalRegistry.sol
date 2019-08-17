@@ -46,6 +46,7 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
   bytes32 public constant SPACE_GEO_DATA_REGISTRY = bytes32("space_geo_data_registry");
   bytes32 public constant CONTOUR_VERIFICATION_SOURCE_REGISTRY = bytes32("contour_verification_registry");
+  bytes32 public constant CV_MANAGER = bytes32("cv_manager");
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
@@ -123,6 +124,11 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   function getSplitMergeAddress() external view returns (address) {
     require(contracts[SPLIT_MERGE] != ZERO_ADDRESS, "GGR: SPLIT_MERGE not set");
     return contracts[SPLIT_MERGE];
+  }
+
+  function getCVManagerAddress() external view returns (address) {
+    require(contracts[CV_MANAGER] != ZERO_ADDRESS, "GGR: CV_MANAGER not set");
+    return contracts[CV_MANAGER];
   }
 
   function getSpaceRAAddress() external view returns (address) {

@@ -193,6 +193,14 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     IContourModifierApplication(a.applicationContract).cvApprove(a.externalApplicationId);
   }
 
+  function pushRejection(uint256 _aId) external {
+    Application storage a = verificationQueue[_aId];
+
+    require(a.status == Status.REJECTED, "Expect REJECTED status");
+
+    IContourModifierApplication(a.applicationContract).cvReject(a.externalApplicationId);
+  }
+
   // Existing token intersection proofs
 
   // e-is-r
