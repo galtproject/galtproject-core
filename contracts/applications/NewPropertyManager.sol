@@ -826,6 +826,10 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     return applications[_applicationId].details.contour;
   }
 
+  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
+    return applications[_applicationId].details.highestPoint;
+  }
+
   function getCVData(bytes32 _applicationId)
     external
     view

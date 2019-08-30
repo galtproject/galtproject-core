@@ -13,6 +13,8 @@
 
 pragma solidity 0.5.10;
 
+import "../../registries/interfaces/ISpaceGeoDataRegistry.sol";
+
 
 // CVActive - the application was approved by Contour Verifiers and the decision can't be changed
 interface IContourModifierApplication {
@@ -27,6 +29,8 @@ interface IContourModifierApplication {
   function getCVPendingApplications() external view returns (bytes32[] memory applicationIds);
   function getCVApprovedApplications() external view returns (bytes32[] memory applicationIds);
   function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory);
+  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256);
+  function getCVSpaceTokenType(bytes32 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType);
   function getCVData(bytes32 _applicationId) external view returns (
     IContourModifierApplication.ContourModificationType contourModificationType,
     uint256 spaceTokenId,

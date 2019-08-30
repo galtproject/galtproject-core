@@ -287,7 +287,13 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(isSelfUpdateCase(_aId, _existingTokenId) == false, "Can't reject self-update action");
 
-    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_existingTokenId);
+    ISpaceGeoDataRegistry geoDataRegistry = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
+
+    uint256[] memory existingTokenContour = geoDataRegistry.getSpaceTokenContour(_existingTokenId);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getSpaceTokenType(_existingTokenId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
+
     bool intersects = _checkContourIntersects(
       _aId,
       existingTokenContour,
@@ -298,9 +304,82 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
-    require(intersects == true, "Contours don't intersect");
+
+    if (intersects == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
+        require(
+          _checkVerticalIntersects(_aId, existingTokenContour, existingTokenHighestPoint) == true,
+          "No intersection neither among contours nor among heights"
+        );
+      } else {
+        revert("Contours don't intersect");
+      }
+    }
 
     _executeReject(_aId, _reporter);
+  }
+
+  function _requireSameTokenType(uint256 _aId, ISpaceGeoDataRegistry.SpaceTokenType _existingSpaceTokenType) internal {
+    Application storage a = verificationQueue[_aId];
+    ISpaceGeoDataRegistry.SpaceTokenType verifyingSpaceTokenType = IContourModifierApplication(a.applicationContract).getCVSpaceTokenType(a.externalApplicationId);
+    require(_existingSpaceTokenType == verifyingSpaceTokenType, "Existing/Verifying space token types mismatch");
+  }
+
+  function _checkVerticalIntersects(
+    uint256 _aId,
+    uint256[] memory existingContour,
+    int256 eHP
+  )
+    internal
+    returns (bool)
+  {
+    Application storage a = verificationQueue[_aId];
+
+    IContourModifierApplication applicationContract = IContourModifierApplication(a.applicationContract);
+    uint256[] memory verifyingTokenContour = applicationContract.getCVContour(a.externalApplicationId);
+    int256 vHP = applicationContract.getCVHighestPoint(a.externalApplicationId);
+
+    int256 vLP = _getLowestElevation(verifyingTokenContour);
+    int256 eLP = _getLowestElevation(verifyingTokenContour);
+
+    if (eHP < vHP && eHP > vLP) {
+      return true;
+    }
+
+    if (vHP < eHP && vHP > eLP) {
+      return true;
+    }
+
+    if (eLP < vHP && eLP > vLP) {
+      return true;
+    }
+
+    if (vLP < eHP && vLP > eLP) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function _getLowestElevation(
+    uint256[] memory _contour
+  )
+    internal
+    view
+    returns (int256)
+  {
+    uint256 len = _contour.length;
+    int256 theLowest;
+
+    for (uint256 i = 0; i < len; i++) {
+      (int256 elevation,) = GeohashUtils.geohash5zToGeohash(_contour[i]);
+      if (elevation < theLowest) {
+        theLowest = elevation;
+      }
+    }
+
+    return theLowest;
   }
 
   // Existing token inclusion proofs
@@ -364,9 +443,12 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(isSelfUpdateCase(_aId, _existingTokenId) == false, "Can't reject self-update action");
 
-    // Existing Token
-    uint256[] memory existingTokenContour = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress())
-    .getSpaceTokenContour(_existingTokenId);
+    ISpaceGeoDataRegistry geoDataRegistry = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
+
+    uint256[] memory existingTokenContour = geoDataRegistry.getSpaceTokenContour(_existingTokenId);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getSpaceTokenType(_existingTokenId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
 
     bool isInside = _checkPointInsideContour(
       _aId,
@@ -374,7 +456,17 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
-    require(isInside == true, "Existing contour doesn't include verifying");
+    if (isInside == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
+        require(
+          _checkVerticalIntersects(_aId, existingTokenContour, existingTokenHighestPoint) == true,
+          "Contour inclusion/height intersection not found"
+        );
+      } else {
+        revert("Existing contour doesn't include verifying");
+      }
+    }
 
     _executeReject(_aId, _reporter);
   }
@@ -468,7 +560,11 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
     require(applicationContract.isCVApplicationApproved(_externalApplicationId), "Not in CVApplicationApproved list");
 
-    require(_checkContourIntersects(
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = applicationContract.getCVSpaceTokenType(_externalApplicationId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
+
+    bool intersects = _checkContourIntersects(
       _aId,
       applicationContract.getCVContour(_externalApplicationId),
       _existingContourSegmentFirstPointIndex,
@@ -477,7 +573,22 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPointIndex,
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
-    ), "Contours don't intersect");
+    );
+
+    if (intersects == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        require(
+          _checkVerticalIntersects(
+            _aId,
+            applicationContract.getCVContour(_externalApplicationId),
+            applicationContract.getCVHighestPoint(_externalApplicationId)
+          ) == true,
+          "No intersection neither among contours nor among heights"
+        );
+      } else {
+        revert("Contours don't intersect");
+      }
+    }
 
     _executeReject(_aId, _reporter);
   }
@@ -551,13 +662,31 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
     require(applicationContract.isCVApplicationApproved(_externalApplicationId), "Not in CVApplicationApproved list");
 
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = applicationContract.getCVSpaceTokenType(_externalApplicationId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
+
     bool isInside = _checkPointInsideContour(
       _aId,
       applicationContract.getCVContour(_externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
-    require(isInside == true, "Existing contour doesn't include verifying");
+
+    if (isInside == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        require(
+          _checkVerticalIntersects(
+            _aId,
+            applicationContract.getCVContour(_externalApplicationId),
+            applicationContract.getCVHighestPoint(_externalApplicationId)
+          ) == true,
+          "No inclusion neither among contours nor among heights"
+        );
+      } else {
+        revert("Existing contour doesn't include verifying");
+      }
+    }
 
     _executeReject(_aId, _reporter);
   }
@@ -569,7 +698,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     uint256 _aId,
     address _verifier,
     address _applicationContract,
-    uint256 _existingApplicationId,
+    uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
     uint256 _existingContourSegmentSecondPoint,
@@ -580,25 +709,19 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     external
     onlyValidContourVerifier(_verifier)
   {
-    Application storage a = verificationQueue[_aId];
-    Application storage existingA = verificationQueue[_existingApplicationId];
-
     eligibleForCastingDecision(_aId, _verifier);
 
-    require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
-
-    require(_checkContourIntersects(
-        _aId,
-        IContourModifierApplication(_applicationContract).getCVContour(existingA.externalApplicationId),
-        _existingContourSegmentFirstPointIndex,
-        _existingContourSegmentFirstPoint,
-        _existingContourSegmentSecondPoint,
-        _verifyingContourSegmentFirstPointIndex,
-        _verifyingContourSegmentFirstPoint,
-        _verifyingContourSegmentSecondPoint
-      ), "Contours don't intersect");
-
-    _executeReject(_aId, _verifier);
+    _denyWithApplicationApprovedTimeoutContourIntersectionProof(
+      _aId,
+      _verifier,
+      _existingCVApplicationId,
+      _existingContourSegmentFirstPointIndex,
+      _existingContourSegmentFirstPoint,
+      _existingContourSegmentSecondPoint,
+      _verifyingContourSegmentFirstPointIndex,
+      _verifyingContourSegmentFirstPoint,
+      _verifyingContourSegmentSecondPoint
+    );
   }
 
   // at-is-f
@@ -615,34 +738,82 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   )
     external
   {
-    Application storage a = verificationQueue[_aId];
-    Application storage existingA = verificationQueue[_existingCVApplicationId];
-
     require(
-      a.status == Status.APPROVAL_TIMEOUT,
+      verificationQueue[_aId].status == Status.APPROVAL_TIMEOUT,
       "Expect APPROVAL_TIMEOUT status for reporting application"
-    );
-    require(
-      existingA.status == Status.APPROVAL_TIMEOUT,
-      "Expect APPROVAL_TIMEOUT status for existing application"
     );
     require(
       _existingCVApplicationId < _aId,
       "Existing application ID should be less than reporting ID"
     );
 
-    require(_checkContourIntersects(
-        _aId,
-        IContourModifierApplication(_applicationContract).getCVContour(existingA.externalApplicationId),
-        _existingContourSegmentFirstPointIndex,
-        _existingContourSegmentFirstPoint,
-        _existingContourSegmentSecondPoint,
-        _verifyingContourSegmentFirstPointIndex,
-        _verifyingContourSegmentFirstPoint,
-        _verifyingContourSegmentSecondPoint
-      ), "Contours don't intersect");
+    _denyWithApplicationApprovedTimeoutContourIntersectionProof(
+      _aId,
+      msg.sender,
+      _existingCVApplicationId,
+      _existingContourSegmentFirstPointIndex,
+      _existingContourSegmentFirstPoint,
+      _existingContourSegmentSecondPoint,
+      _verifyingContourSegmentFirstPointIndex,
+      _verifyingContourSegmentFirstPoint,
+      _verifyingContourSegmentSecondPoint
+    );
+  }
 
-    _executeReject(_aId, msg.sender);
+  // at-is-h
+  function _denyWithApplicationApprovedTimeoutContourIntersectionProof(
+    uint256 _aId,
+    address _reporter,
+    uint256 _existingCVApplicationId,
+    uint256 _existingContourSegmentFirstPointIndex,
+    uint256 _existingContourSegmentFirstPoint,
+    uint256 _existingContourSegmentSecondPoint,
+    uint256 _verifyingContourSegmentFirstPointIndex,
+    uint256 _verifyingContourSegmentFirstPoint,
+    uint256 _verifyingContourSegmentSecondPoint
+  )
+    internal
+  {
+    Application storage a = verificationQueue[_aId];
+    Application storage existingA = verificationQueue[_existingCVApplicationId];
+
+    require(
+      existingA.status == Status.APPROVAL_TIMEOUT,
+      "Expect APPROVAL_TIMEOUT status for existing application"
+    );
+
+    IContourModifierApplication existingApplicationContract = IContourModifierApplication(existingA.applicationContract);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
+
+    bool intersects = _checkContourIntersects(
+      _aId,
+      existingApplicationContract.getCVContour(existingA.externalApplicationId),
+      _existingContourSegmentFirstPointIndex,
+      _existingContourSegmentFirstPoint,
+      _existingContourSegmentSecondPoint,
+      _verifyingContourSegmentFirstPointIndex,
+      _verifyingContourSegmentFirstPoint,
+      _verifyingContourSegmentSecondPoint
+    );
+
+    if (intersects == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        require(
+          _checkVerticalIntersects(
+            _aId,
+            existingApplicationContract.getCVContour(existingA.externalApplicationId),
+            existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
+          ) == true,
+          "No intersection neither among contours nor among heights"
+        );
+      } else {
+        revert("Contours don't intersect");
+      }
+    }
+
+    _executeReject(_aId, _reporter);
   }
 
   // Approved (TIMEOUT) token inclusion proofs
@@ -658,22 +829,15 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     external
     onlyValidContourVerifier(_verifier)
   {
-    Application storage a = verificationQueue[_aId];
-    Application storage existingA = verificationQueue[_existingCVApplicationId];
-
     eligibleForCastingDecision(_aId, _verifier);
 
-    require(existingA.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status for existing application");
-
-    bool isInside = _checkPointInsideContour(
+    _denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
       _aId,
-      IContourModifierApplication(existingA.applicationContract).getCVContour(existingA.externalApplicationId),
+      _verifier,
+      _existingCVApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
-    require(isInside == true, "Existing contour doesn't include verifying");
-
-    _executeReject(_aId, _verifier);
   }
 
   // at-in-f
@@ -686,19 +850,47 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     external
   {
     Application storage a = verificationQueue[_aId];
-    Application storage existingA = verificationQueue[_existingCVApplicationId];
+
     require(
       a.status == Status.APPROVAL_TIMEOUT,
       "Expect APPROVAL_TIMEOUT status for reporting application"
     );
     require(
-      existingA.status == Status.APPROVAL_TIMEOUT,
-      "Expect APPROVAL_TIMEOUT status for existing application"
-    );
-    require(
       _existingCVApplicationId < _aId,
       "Existing application ID should be less than reporting ID"
     );
+
+    _denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
+      _aId,
+      msg.sender,
+      _existingCVApplicationId,
+      _verifyingContourPointIndex,
+      _verifyingContourPoint
+    );
+  }
+
+  // at-in-h
+  function _denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
+    uint256 _aId,
+    address _reporter,
+    uint256 _existingCVApplicationId,
+    uint256 _verifyingContourPointIndex,
+    uint256 _verifyingContourPoint
+  )
+    internal
+  {
+    Application storage a = verificationQueue[_aId];
+    Application storage existingA = verificationQueue[_existingCVApplicationId];
+
+    require(
+      existingA.status == Status.APPROVAL_TIMEOUT,
+      "Expect APPROVAL_TIMEOUT status for existing application"
+    );
+
+    IContourModifierApplication existingApplicationContract = IContourModifierApplication(existingA.applicationContract);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId);
+
+    _requireSameTokenType(_aId, existingSpaceTokenType);
 
     bool isInside = _checkPointInsideContour(
       _aId,
@@ -706,9 +898,23 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
-    require(isInside == true, "Existing contour doesn't include verifying");
 
-    _executeReject(_aId, msg.sender);
+    if (isInside == true) {
+      if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
+        require(
+          _checkVerticalIntersects(
+            _aId,
+            existingApplicationContract.getCVContour(existingA.externalApplicationId),
+            existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
+          ) == true,
+          "No inclusion neither among contours nor among heights"
+        );
+      } else {
+        revert("Existing contour doesn't include verifying");
+      }
+    }
+
+    _executeReject(_aId, _reporter);
   }
 
   function eligibleForCastingDecision(uint256 _aId, address _verifier) internal {
@@ -1043,5 +1249,4 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       r.verifierReward
     );
   }
-
 }
