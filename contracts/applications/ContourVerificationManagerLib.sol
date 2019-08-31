@@ -50,7 +50,7 @@ library ContourVerificationManagerLib {
 
     _requireSameTokenType(a, existingSpaceTokenType);
 
-    bool intersects = checkContourIntersects(
+    bool intersects = _checkContourIntersects(
       a,
       existingTokenContour,
       _existingContourSegmentFirstPointIndex,
@@ -65,7 +65,7 @@ library ContourVerificationManagerLib {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
         require(
-          checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
+          _checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
           "No intersection neither among contours nor among heights"
         );
       }
@@ -104,7 +104,7 @@ library ContourVerificationManagerLib {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
         require(
-          checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
+          _checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
           "Contour inclusion/height intersection not found"
         );
       }
@@ -137,7 +137,7 @@ library ContourVerificationManagerLib {
 
     uint256[] memory existingContour = applicationContract.getCVContour(_externalApplicationId);
 
-    if (checkContourIntersects(
+    if (_checkContourIntersects(
       a,
       existingContour,
       _existingContourSegmentFirstPointIndex,
@@ -149,7 +149,7 @@ library ContourVerificationManagerLib {
     ) == true) {
       if (applicationContract.getCVSpaceTokenType(_externalApplicationId) == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          checkVerticalIntersects(
+          _checkVerticalIntersects(
             a,
             existingContour,
             applicationContract.getCVHighestPoint(_externalApplicationId)
@@ -192,7 +192,7 @@ library ContourVerificationManagerLib {
     if (isInside == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          checkVerticalIntersects(
+          _checkVerticalIntersects(
             a,
             applicationContract.getCVContour(_externalApplicationId),
             applicationContract.getCVHighestPoint(_externalApplicationId)
@@ -236,7 +236,7 @@ library ContourVerificationManagerLib {
     if (isInside == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          checkVerticalIntersects(
+          _checkVerticalIntersects(
             a,
             existingApplicationContract.getCVContour(existingA.externalApplicationId),
             existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
@@ -271,13 +271,12 @@ library ContourVerificationManagerLib {
     );
 
     IContourModifierApplication existingApplicationContract = IContourModifierApplication(existingA.applicationContract);
-//    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId);
 
     _requireSameTokenType(a, existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId));
 
     uint256[] memory existingContour = existingApplicationContract.getCVContour(existingA.externalApplicationId);
 
-    if (checkContourIntersects(
+    if (_checkContourIntersects(
       a,
       existingContour,
       _existingContourSegmentFirstPointIndex,
@@ -289,7 +288,7 @@ library ContourVerificationManagerLib {
     ) == true) {
       if (existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId) == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          checkVerticalIntersects(
+          _checkVerticalIntersects(
             a,
             existingContour,
             existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
@@ -318,8 +317,35 @@ library ContourVerificationManagerLib {
     return geohash5Contour;
   }
 
-  function checkContourIntersects(
-//    uint256 _aId,
+  function getLatLonSegment(
+    uint256 _firstPointGeohash,
+    uint256 _secondPointGeohash
+  )
+    public
+    view
+    returns (int256[2][2] memory)
+  {
+    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
+    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
+
+    int256[2] memory first = int256[2]([lat1, lon1]);
+    int256[2] memory second = int256[2]([lat2, lon2]);
+
+    return int256[2][2]([first, second]);
+  }
+
+  function isSelfUpdateCase(ContourVerificationManager.Application storage a, uint256 _existingTokenId) public view returns (bool) {
+    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+    if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
+      return (spaceTokenId ==_existingTokenId);
+    }
+
+    return false;
+  }
+
+  // INTERNAL
+
+  function _checkContourIntersects(
     ContourVerificationManager.Application storage a,
     uint256[] memory _existingTokenContour,
     uint256 _existingContourSegmentFirstPointIndex,
@@ -338,7 +364,7 @@ library ContourVerificationManagerLib {
         _existingContourSegmentFirstPointIndex,
         _existingContourSegmentFirstPoint,
         _existingContourSegmentSecondPoint,
-          filterHeight(_existingTokenContour)
+        filterHeight(_existingTokenContour)
       ),
       "Invalid segment for existing token"
     );
@@ -388,23 +414,6 @@ library ContourVerificationManagerLib {
     return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, _existingTokenContour);
   }
 
-  function getLatLonSegment(
-    uint256 _firstPointGeohash,
-    uint256 _secondPointGeohash
-  )
-    public
-    view
-    returns (int256[2][2] memory)
-  {
-    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
-    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
-
-    int256[2] memory first = int256[2]([lat1, lon1]);
-    int256[2] memory second = int256[2]([lat2, lon2]);
-
-    return int256[2][2]([first, second]);
-  }
-
   function _contourHasSegment(
     uint256 _firstPointIndex,
     uint256 _firstPoint,
@@ -434,7 +443,7 @@ library ContourVerificationManagerLib {
     return true;
   }
 
-  function checkVerticalIntersects(
+  function _checkVerticalIntersects(
     ContourVerificationManager.Application storage a,
     uint256[] memory existingContour,
     int256 eHP
@@ -496,14 +505,5 @@ library ContourVerificationManagerLib {
   {
     ISpaceGeoDataRegistry.SpaceTokenType verifyingSpaceTokenType = IContourModifierApplication(a.applicationContract).getCVSpaceTokenType(a.externalApplicationId);
     require(_existingSpaceTokenType == verifyingSpaceTokenType, "Existing/Verifying space token types mismatch");
-  }
-
-  function isSelfUpdateCase(ContourVerificationManager.Application storage a, uint256 _existingTokenId) public view returns (bool) {
-    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
-    if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
-      return (spaceTokenId ==_existingTokenId);
-    }
-
-    return false;
   }
 }
