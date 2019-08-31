@@ -68,12 +68,10 @@ library ContourVerificationManagerLib {
           checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
           "No intersection neither among contours nor among heights"
         );
-      } else {
-        revert("Contours don't intersect");
       }
+    } else {
+      revert("Contours don't intersect");
     }
-
-//    _executeReject(_aId, _reporter);
   }
 
   // e-in-h
@@ -109,12 +107,10 @@ library ContourVerificationManagerLib {
           checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
           "Contour inclusion/height intersection not found"
         );
-      } else {
-        revert("Existing contour doesn't include verifying");
       }
+    } else {
+      revert("Existing contour doesn't include verifying");
     }
-
-//    _executeReject(_aId, _reporter);
   }
 
   // aa-is-h
@@ -160,12 +156,10 @@ library ContourVerificationManagerLib {
           ) == true,
           "No intersection neither among contours nor among heights"
         );
-      } else {
-        revert("Contours don't intersect");
       }
+    } else {
+      revert("Contours don't intersect");
     }
-
-//    _executeReject(_aId, _reporter);
   }
 
   // aa-in-h
@@ -205,12 +199,10 @@ library ContourVerificationManagerLib {
           ) == true,
           "No inclusion neither among contours nor among heights"
         );
-      } else {
-        revert("Existing contour doesn't include verifying");
       }
+    } else {
+      revert("Existing contour doesn't include verifying");
     }
-
-//    _executeReject(_aId, _reporter);
   }
 
   // at-in-h
@@ -251,12 +243,10 @@ library ContourVerificationManagerLib {
           ) == true,
           "No inclusion neither among contours nor among heights"
         );
-      } else {
-        revert("Existing contour doesn't include verifying");
       }
+    } else {
+      revert("Existing contour doesn't include verifying");
     }
-
-//    _executeReject(_aId, _reporter);
   }
 
   // at-is-h
@@ -306,12 +296,26 @@ library ContourVerificationManagerLib {
           ) == true,
           "No intersection neither among contours nor among heights"
         );
-      } else {
-        revert("Contours don't intersect");
       }
+    } else {
+      revert("Contours don't intersect");
+    }
+  }
+
+  function filterHeight(uint256[] memory _geohash5zContour)
+    public
+    pure
+    returns (uint256[] memory)
+  {
+    uint256 len = _geohash5zContour.length;
+    uint256[] memory geohash5Contour = new uint256[](len);
+
+    for (uint256 i = 0; i < len; i++) {
+      (,uint256 current) = GeohashUtils.geohash5zToGeohash(_geohash5zContour[i]);
+      geohash5Contour[i] = current;
     }
 
-//    _executeReject(_aId, _reporter);
+    return geohash5Contour;
   }
 
   function checkContourIntersects(
@@ -334,7 +338,7 @@ library ContourVerificationManagerLib {
         _existingContourSegmentFirstPointIndex,
         _existingContourSegmentFirstPoint,
         _existingContourSegmentSecondPoint,
-        _existingTokenContour
+          filterHeight(_existingTokenContour)
       ),
       "Invalid segment for existing token"
     );

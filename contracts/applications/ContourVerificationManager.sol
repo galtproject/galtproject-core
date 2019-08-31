@@ -16,12 +16,8 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
-import "@galtproject/geodesic/contracts/utils/SegmentUtils.sol";
-import "@galtproject/geodesic/contracts/utils/LandUtils.sol";
-import "@galtproject/geodesic/contracts/utils/PolygonUtils.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/ContourVerificationSourceRegistry.sol";
-import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/interfaces/IContourModifierApplication.sol";
 import "../ContourVerifiers.sol";
@@ -242,6 +238,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // e-is-f
@@ -276,6 +274,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   // Existing token inclusion proofs
@@ -303,6 +303,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // e-in-f
@@ -329,6 +331,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   // Application approved token intersection proofs
@@ -366,6 +370,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // aa-is-f
@@ -402,6 +408,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   // Application approved token inclusion proofs
@@ -409,28 +417,30 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // aa-in-r
   function rejectWithApplicationApprovedPointInclusionProof(
     uint256 _aId,
-    address _reporter,
+    address _verifier,
     address _applicationContract,
     bytes32 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
     external
-    onlyValidContourVerifier(_reporter)
+    onlyValidContourVerifier(_verifier)
   {
-    eligibleForCastingDecision(_aId, _reporter);
+    eligibleForCastingDecision(_aId, _verifier);
 
     Application storage a = verificationQueue[_aId];
 
     ContourVerificationManagerLib.denyWithApplicationApprovedPointInclusionProof(
       ggr,
       a,
-      _reporter,
+      _verifier,
       _applicationContract,
       _externalApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // aa-in-f
@@ -459,6 +469,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   // Approved (TIMEOUT) token intersection proofs
@@ -496,6 +508,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // at-is-f
@@ -536,6 +550,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourSegmentFirstPoint,
       _verifyingContourSegmentSecondPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   // Approved (TIMEOUT) token inclusion proofs
@@ -564,6 +580,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, _verifier);
   }
 
   // at-in-f
@@ -595,6 +613,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       _verifyingContourPointIndex,
       _verifyingContourPoint
     );
+
+    _executeReject(_aId, msg.sender);
   }
 
   function eligibleForCastingDecision(uint256 _aId, address _verifier) internal {
@@ -747,6 +767,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   }
 
   // GETTERS
+
+  function isSelfUpdateCase(uint256 _aId, uint256 _existingTokenId) public view returns (bool) {
+    return ContourVerificationManagerLib.isSelfUpdateCase(verificationQueue[_aId], _existingTokenId);
+  }
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod.ETH_AND_GALT;

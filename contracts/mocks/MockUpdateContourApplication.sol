@@ -24,13 +24,28 @@ contract MockUpdateContourApplication is MockAddContourApplication {
 
   constructor(GaltGlobalRegistry _ggr) public MockAddContourApplication(_ggr) {}
 
-  function submit(uint256 _spaceTokenId, uint256[] calldata _contour) external returns (bytes32) {
-    bytes32 applicationId = MockAddContourApplication.submit(_contour);
+  function submit(
+    uint256 _spaceTokenId,
+    uint256[] memory _contour,
+    uint256 _highestPoint,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
+  )
+    public
+    returns (bytes32)
+  {
+    bytes32 applicationId = MockAddContourApplication.submit(_contour, _highestPoint, _spaceTokenType);
     applicationIdToSpaceTokenId[applicationId] = _spaceTokenId;
     return applicationId;
   }
 
-  function submit(uint256[] memory _contour) public returns (bytes32) {
+  function submit(
+    uint256[] memory _contour,
+    uint256 _highestPoint,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
+  )
+    public
+    returns (bytes32)
+  {
     revert("Specify token ID as a first argument");
   }
 

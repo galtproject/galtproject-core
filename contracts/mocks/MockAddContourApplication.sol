@@ -40,6 +40,8 @@ contract MockAddContourApplication is IContourModifierApplication {
 
   struct Application {
     uint256[] contour;
+    uint256 highestPoint;
+    ISpaceGeoDataRegistry.SpaceTokenType spaceTokenType;
     ApplicationStatus status;
   }
 
@@ -60,12 +62,21 @@ contract MockAddContourApplication is IContourModifierApplication {
     _;
   }
 
-  function submit(uint256[] memory _contour) public returns (bytes32) {
+  function submit(
+    uint256[] memory _contour,
+    uint256 _highestPoint,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
+  )
+    public
+    returns (bytes32)
+  {
     bytes32 id = keccak256(abi.encode(_contour));
     Application storage a = applications[id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Already exists");
 
     a.contour = _contour;
+    a.highestPoint = _highestPoint;
+    a.spaceTokenType = _spaceTokenType;
     a.status = ApplicationStatus.CONTOUR_VERIFICATION;
     CVPendingApplicationIds.add(id);
 

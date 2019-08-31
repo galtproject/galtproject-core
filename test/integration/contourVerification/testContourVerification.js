@@ -8,16 +8,19 @@ const MockUpdateContourApplication = artifacts.require('./MockUpdateContourAppli
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const ContourVerificationManager = artifacts.require('./ContourVerificationManager.sol');
+const ContourVerificationManagerLib = artifacts.require('./ContourVerificationManagerLib.sol');
 const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 const ContourVerificationSourceRegistry = artifacts.require('./ContourVerificationSourceRegistry.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const PolygonUtils = artifacts.require('./PolygonUtils.sol');
+const GeohashUtils = artifacts.require('./GeohashUtils.sol');
 const galt = require('@galtproject/utils');
 
 const Web3 = require('web3');
 
 ContourVerifiers.numberFormat = 'String';
 ContourVerificationManager.numberFormat = 'String';
+ContourVerificationManagerLib.numberFormat = 'String';
 GaltToken.numberFormat = 'String';
 
 const {
@@ -55,6 +58,13 @@ const CVStatus = {
   APPROVAL_TIMEOUT: 2,
   APPROVED: 3,
   REJECTED: 4
+};
+
+const SpaceTokenType = {
+  NULL: 0,
+  LAND_PLOT: 1,
+  BUILDING: 2,
+  ROOM: 3
 };
 
 const Currency = {
@@ -138,9 +148,17 @@ contract('ContourVerification', accounts => {
 
     this.landUtils = await LandUtils.new();
     PolygonUtils.link('LandUtils', this.landUtils.address);
+
     this.polygonUtils = await PolygonUtils.new();
-    ContourVerificationManager.link('LandUtils', this.landUtils.address);
-    ContourVerificationManager.link('PolygonUtils', this.polygonUtils.address);
+
+    this.geohashUtils = await GeohashUtils.new();
+
+    ContourVerificationManagerLib.link('LandUtils', this.landUtils.address);
+    ContourVerificationManagerLib.link('PolygonUtils', this.polygonUtils.address);
+    ContourVerificationManagerLib.link('GeohashUtils', this.geohashUtils.address);
+    this.contourVerificationManagerLib = await ContourVerificationManagerLib.new();
+
+    ContourVerificationManager.link('ContourVerificationManagerLib', this.contourVerificationManagerLib.address);
 
     this.contourVerificationSourceRegistry = await ContourVerificationSourceRegistry.new({ from: coreTeam });
     this.contourVerificationManager = await ContourVerificationManager.new({ from: coreTeam });
@@ -233,7 +251,7 @@ contract('ContourVerification', accounts => {
       await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
 
       // Create a new NewPropertyManager application
-      res = await this.newPropertyManager.submit(this.contour4);
+      res = await this.newPropertyManager.submit(this.contour4, 6, SpaceTokenType.LAND_PLOT);
       const aId = res.logs[0].args.applicationId;
 
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -281,10 +299,13 @@ contract('ContourVerification', accounts => {
       describe('existing token', () => {
         beforeEach(async function() {
           await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+            from: geoDateManagement
+          });
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          const res = await this.newPropertyManager.submit(this.contour2);
+          const res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -309,7 +330,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with existing token intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -335,7 +356,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with existing token inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -359,7 +380,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow catching invalid approvals with existing token intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -396,7 +417,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow catching invalid approvals with existing token inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -432,7 +453,7 @@ contract('ContourVerification', accounts => {
 
       describe('application approved contour', () => {
         beforeEach(async function() {
-          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1);
+          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
           this.existingAId = aId;
 
@@ -452,7 +473,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          let res = await this.newPropertyManager.submit(this.contour3);
+          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -480,7 +501,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -509,7 +530,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -535,7 +556,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow catching invalid approvals with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -576,7 +597,7 @@ contract('ContourVerification', accounts => {
 
         // eslint-disable-next-line max-len
         it('should allow catching invalid approvals with contour in another application contract inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -614,7 +635,7 @@ contract('ContourVerification', accounts => {
 
       describe('approved timeout contour', () => {
         beforeEach(async function() {
-          let res = await this.newPropertyManager.submit(this.contour1);
+          let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
           this.existingAId = aId;
 
@@ -632,7 +653,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          let res = await this.newPropertyManager.submit(this.contour3);
+          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -660,7 +681,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -709,7 +730,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -751,7 +772,7 @@ contract('ContourVerification', accounts => {
 
         // eslint-disable-next-line max-len
         it('should allow catching invalid approval with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -828,7 +849,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2);
+          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -887,10 +908,11 @@ contract('ContourVerification', accounts => {
       describe('existing contours', () => {
         beforeEach(async function() {
           await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
         });
 
         it('should deny rejecting with non-intersecting contour', async function() {
-          const res = await this.newPropertyManager.submit(this.contour2);
+          const res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -911,7 +933,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with existing token inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour4);
+          let res = await this.newPropertyManager.submit(this.contour4, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -935,7 +957,7 @@ contract('ContourVerification', accounts => {
 
       describe('application approved contour', () => {
         beforeEach(async function() {
-          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1);
+          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
           this.existingAId = aId;
 
@@ -955,7 +977,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          let res = await this.newPropertyManager.submit(this.contour3);
+          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -979,7 +1001,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract cinclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour4);
+          let res = await this.newPropertyManager.submit(this.contour4, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1005,7 +1027,7 @@ contract('ContourVerification', accounts => {
 
       describe('approved timeout contour', () => {
         beforeEach(async function() {
-          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1);
+          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
           this.existingAId = aId;
 
@@ -1023,7 +1045,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          let res = await this.newPropertyManager.submit(this.contour3);
+          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1046,7 +1068,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour4);
+          let res = await this.newPropertyManager.submit(this.contour4, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1096,7 +1118,7 @@ contract('ContourVerification', accounts => {
       const tokenId3 = res.logs[0].args.tokenId.toNumber();
       await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
 
-      res = await this.updatePropertyManager.submit(tokenId1, this.contour5);
+      res = await this.updatePropertyManager.submit(tokenId1, this.contour5, 42, SpaceTokenType.LAND_PLOT);
       const aId = res.logs[0].args.applicationId;
 
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1137,15 +1159,17 @@ contract('ContourVerification', accounts => {
         let res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId2 = res.logs[0].args.tokenId.toNumber();
         await this.spaceGeoData.setSpaceTokenContour(this.tokenId2, this.contour1, { from: geoDateManagement });
+        await this.spaceGeoData.setSpaceTokenType(this.tokenId2, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
         await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour3, { from: geoDateManagement });
+        await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
       });
 
       it('should allow rejecting only with another existing token intersection proof', async function() {
         // Create a new UpdatePropertyManager application
-        let res = await this.updatePropertyManager.submit(this.tokenId2, this.contour5);
+        let res = await this.updatePropertyManager.submit(this.tokenId2, this.contour5, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1188,7 +1212,7 @@ contract('ContourVerification', accounts => {
 
       it('should allow rejecting only with another existing token inclusion proof', async function() {
         // Create a new UpdatePropertyManager application
-        let res = await this.updatePropertyManager.submit(this.tokenId2, this.contour5);
+        let res = await this.updatePropertyManager.submit(this.tokenId2, this.contour5, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1238,7 +1262,7 @@ contract('ContourVerification', accounts => {
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
         await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour3, { from: geoDateManagement });
 
-        res = await this.updatePropertyManager.submit(this.tokenId2, this.contour1);
+        res = await this.updatePropertyManager.submit(this.tokenId2, this.contour1, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;
         this.existingAId = aId;
 
@@ -1259,7 +1283,7 @@ contract('ContourVerification', accounts => {
 
       it('should allow rejecting only with another approved contour intersection proof', async function() {
         // Create a new UpdatePropertyManager application
-        let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour5);
+        let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour5, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1290,7 +1314,7 @@ contract('ContourVerification', accounts => {
 
       it('should allow rejecting only with another approved contour inclusion proof', async function() {
         // Create a new UpdatePropertyManager application
-        let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour5);
+        let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour5, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1348,7 +1372,7 @@ contract('ContourVerification', accounts => {
   // T-H (Tail-Head)
   describe('queue', () => {
     beforeEach(async function() {
-      const res = await this.newPropertyManager.submit(this.contour4);
+      const res = await this.newPropertyManager.submit(this.contour4, 42, SpaceTokenType.LAND_PLOT);
       this.aId = res.logs[0].args.applicationId;
     });
 
