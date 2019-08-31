@@ -114,6 +114,14 @@ contract MockAddContourApplication is IContourModifierApplication {
     return applications[_applicationId].contour;
   }
 
+  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
+    return 42;
+  }
+
+  function getCVSpaceTokenType(bytes32 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+    return ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT;
+  }
+
   function getCVData(
     bytes32 _applicationId
   )
