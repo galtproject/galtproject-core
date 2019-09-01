@@ -26,7 +26,6 @@ GaltToken.numberFormat = 'String';
 const {
   ether,
   deploySpaceGeoDataLight,
-  assertGaltBalanceChanged,
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
@@ -65,11 +64,6 @@ const SpaceTokenType = {
   LAND_PLOT: 1,
   BUILDING: 2,
   ROOM: 3
-};
-
-const Currency = {
-  ETH: 0,
-  GALT: 1
 };
 
 contract('ContourVerification', accounts => {
@@ -555,6 +549,7 @@ contract('ContourVerification', accounts => {
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
         });
 
+        // eslint-disable-next-line max-len
         it('should allow catching invalid approvals with contour in another application contract intersection proof', async function() {
           let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
@@ -908,7 +903,9 @@ contract('ContourVerification', accounts => {
       describe('existing contours', () => {
         beforeEach(async function() {
           await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
+          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+            from: geoDateManagement
+          });
         });
 
         it('should deny rejecting with non-intersecting contour', async function() {
