@@ -27,7 +27,7 @@ contract MockUpdateContourApplication is MockAddContourApplication {
   function submit(
     uint256 _spaceTokenId,
     uint256[] memory _contour,
-    uint256 _highestPoint,
+    int256 _highestPoint,
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public
@@ -40,7 +40,7 @@ contract MockUpdateContourApplication is MockAddContourApplication {
 
   function submit(
     uint256[] memory _contour,
-    uint256 _highestPoint,
+    int256 _highestPoint,
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public

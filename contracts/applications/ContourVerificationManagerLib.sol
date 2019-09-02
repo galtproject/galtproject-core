@@ -310,8 +310,7 @@ library ContourVerificationManagerLib {
     uint256[] memory geohash5Contour = new uint256[](len);
 
     for (uint256 i = 0; i < len; i++) {
-      (,uint256 current) = GeohashUtils.geohash5zToGeohash(_geohash5zContour[i]);
-      geohash5Contour[i] = current;
+      geohash5Contour[i] = GeohashUtils.geohash5zToGeohash5(_geohash5zContour[i]);
     }
 
     return geohash5Contour;
@@ -364,7 +363,7 @@ library ContourVerificationManagerLib {
         _existingContourSegmentFirstPointIndex,
         _existingContourSegmentFirstPoint,
         _existingContourSegmentSecondPoint,
-        filterHeight(_existingTokenContour)
+        _existingTokenContour
       ),
       "Invalid segment for existing token"
     );
@@ -386,8 +385,14 @@ library ContourVerificationManagerLib {
     );
 
     return SegmentUtils.segmentsIntersect(
-      getLatLonSegment(_existingContourSegmentFirstPoint, _existingContourSegmentSecondPoint),
-      getLatLonSegment(_verifyingContourSegmentFirstPoint, _verifyingContourSegmentSecondPoint)
+      getLatLonSegment(
+        GeohashUtils.geohash5zToGeohash5(_existingContourSegmentFirstPoint),
+        GeohashUtils.geohash5zToGeohash5(_existingContourSegmentSecondPoint)
+      ),
+      getLatLonSegment(
+        GeohashUtils.geohash5zToGeohash5(_verifyingContourSegmentFirstPoint),
+        GeohashUtils.geohash5zToGeohash5(_verifyingContourSegmentSecondPoint)
+      )
     );
   }
 
@@ -411,7 +416,10 @@ library ContourVerificationManagerLib {
       "Invalid point of verifying token"
     );
 
-    return PolygonUtils.isInsideWithoutCache(_verifyingContourPoint, _existingTokenContour);
+    return PolygonUtils.isInsideWithoutCache(
+      GeohashUtils.geohash5zToGeohash5(_verifyingContourPoint),
+      filterHeight(_existingTokenContour)
+    );
   }
 
   function _contourHasSegment(
@@ -488,7 +496,7 @@ library ContourVerificationManagerLib {
     int256 theLowest;
 
     for (uint256 i = 0; i < len; i++) {
-      (int256 elevation,) = GeohashUtils.geohash5zToGeohash(_contour[i]);
+      int256 elevation = GeohashUtils.geohash5zToHeight(_contour[i]);
       if (elevation < theLowest) {
         theLowest = elevation;
       }

@@ -26,8 +26,7 @@ import "../SpaceToken.sol";
 contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   using SafeMath for uint256;
 
-  // TODO: set MIN_CONTOUR_GEOHASH_PRECISION 12
-  uint256 public constant MIN_CONTOUR_GEOHASH_PRECISION = 1;
+  uint256 public constant MIN_CONTOUR_GEOHASH_PRECISION = 12;
   uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
@@ -100,8 +99,9 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
     for (uint256 i = 0; i < _contour.length; i++) {
       require(_contour[i] > 0, "Contour element geohash should not be a zero");
+
       require(
-        GeohashUtils.geohash5Precision(_contour[i]) >= MIN_CONTOUR_GEOHASH_PRECISION,
+        GeohashUtils.geohash5Precision(GeohashUtils.geohash5zToGeohash5(_contour[i])) >= MIN_CONTOUR_GEOHASH_PRECISION,
         "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision"
       );
     }

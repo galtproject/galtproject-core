@@ -40,7 +40,7 @@ contract MockAddContourApplication is IContourModifierApplication {
 
   struct Application {
     uint256[] contour;
-    uint256 highestPoint;
+    int256 highestPoint;
     ISpaceGeoDataRegistry.SpaceTokenType spaceTokenType;
     ApplicationStatus status;
   }
@@ -64,7 +64,7 @@ contract MockAddContourApplication is IContourModifierApplication {
 
   function submit(
     uint256[] memory _contour,
-    uint256 _highestPoint,
+    int256 _highestPoint,
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public
@@ -126,11 +126,11 @@ contract MockAddContourApplication is IContourModifierApplication {
   }
 
   function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
-    return 42;
+    return applications[_applicationId].highestPoint;
   }
 
   function getCVSpaceTokenType(bytes32 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
-    return ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT;
+    return applications[_applicationId].spaceTokenType;
   }
 
   function getCVData(
