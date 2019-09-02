@@ -41,16 +41,6 @@ contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
     emit SetSpaceTokenContour(_spaceTokenId, _geohashesContour);
   }
 
-  function setSpaceTokenHeights(uint256 _packageTokenId, int256[] memory _heightsList) public {
-    require(
-      _heightsList.length == getSpaceTokenContour(_packageTokenId).length,
-      "Number of height elements should be equal contour length"
-    );
-
-    spaceTokens[_packageTokenId].heights = _heightsList;
-    emit SetSpaceTokenHeights(_packageTokenId, _heightsList);
-  }
-
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) public {
     spaceTokens[_spaceTokenId].area = _area;
     spaceTokens[_spaceTokenId].areaSource = _areaSource;
@@ -59,15 +49,20 @@ contract SpaceGeoDataRegistrySandbox is SpaceGeoDataRegistry {
 
   function setSpaceToken(
     uint256 _spaceTokenId,
-    uint256[] memory _geohashesContour,
-    int256[] memory _heightsList,
+    uint256[] memory _contour,
+    int256  _highestPoint,
     uint256 _area,
     AreaSource _areaSource
   )
     public
   {
-    setSpaceTokenContour(_spaceTokenId, _geohashesContour);
-    setSpaceTokenHeights(_spaceTokenId, _heightsList);
-    setSpaceTokenArea(_spaceTokenId, _area, _areaSource);
+    spaceTokens[_spaceTokenId].contour = _contour;
+    spaceTokens[_spaceTokenId].highestPoint = _highestPoint;
+    spaceTokens[_spaceTokenId].area = _area;
+    spaceTokens[_spaceTokenId].areaSource = _areaSource;
+
+    emit SetSpaceTokenContour(_spaceTokenId, _contour);
+    emit SetSpaceTokenHighestPoint(_spaceTokenId, _highestPoint);
+    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 }

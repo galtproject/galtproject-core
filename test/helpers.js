@@ -166,11 +166,14 @@ const Helpers = {
     }
     assert.fail('Expected INVALID (0xfe) not received');
   },
-  async assertRevert(promise) {
+  async assertRevert(promise, msg = '') {
     try {
       await promise;
     } catch (error) {
       const revert = error.message.search('revert') >= 0;
+      if (msg.length > 0) {
+        assert(error.message.search(msg) >= 0, `Expected throw with "${msg}" message, got "${error}" instead`);
+      }
       assert(revert, `Expected throw, got '${error}' instead`);
       return;
     }

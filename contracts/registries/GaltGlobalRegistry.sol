@@ -45,10 +45,14 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
   bytes32 public constant SPACE_LOCKER_REGISTRY = bytes32("space_locker_registry");
   bytes32 public constant GALT_LOCKER_REGISTRY = bytes32("galt_locker_registry");
   bytes32 public constant SPACE_GEO_DATA_REGISTRY = bytes32("space_geo_data_registry");
+  bytes32 public constant CONTOUR_VERIFICATION_SOURCE_REGISTRY = bytes32("contour_verification_registry");
+  bytes32 public constant CV_MANAGER = bytes32("cv_manager");
 
   bytes32 public constant SPACE_RA = bytes32("space_ra");
   bytes32 public constant GALT_RA = bytes32("galt_ra");
   bytes32 public constant STAKE_TRACKER = bytes32("stake_tracker");
+
+  bytes32 public constant CONTOUR_VERIFIERS = bytes32("contour_verifiers");
 
   bytes32 public constant SPLIT_MERGE = bytes32("split_merge");
 
@@ -116,6 +120,11 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[SPLIT_MERGE];
   }
 
+  function getCVManagerAddress() external view returns (address) {
+    require(contracts[CV_MANAGER] != ZERO_ADDRESS, "GGR: CV_MANAGER not set");
+    return contracts[CV_MANAGER];
+  }
+
   function getSpaceRAAddress() external view returns (address) {
     require(contracts[SPACE_RA] != ZERO_ADDRESS, "GGR: SPACE_RA not set");
     return contracts[SPACE_RA];
@@ -131,9 +140,22 @@ contract GaltGlobalRegistry is OwnableAndInitializable {
     return contracts[STAKE_TRACKER];
   }
 
+  function getContourVerifiersAddress() external view returns (address) {
+    require(contracts[CONTOUR_VERIFIERS] != ZERO_ADDRESS, "GGR: CONTOUR_VERIFIERS not set");
+    return contracts[CONTOUR_VERIFIERS];
+  }
+
   function getSpaceGeoDataRegistryAddress() external view returns (address) {
     require(contracts[SPACE_GEO_DATA_REGISTRY] != ZERO_ADDRESS, "GGR: SPACE_GEO_DATA_REGISTRY not set");
     return contracts[SPACE_GEO_DATA_REGISTRY];
+  }
+
+  function getContourVerificationSourceRegistryAddress() external view returns (address) {
+    require(
+      contracts[CONTOUR_VERIFICATION_SOURCE_REGISTRY] != ZERO_ADDRESS,
+      "GGR: CONTOUR_VERIFICATION_SOURCE_REGISTRY not set"
+    );
+    return contracts[CONTOUR_VERIFICATION_SOURCE_REGISTRY];
   }
 
   function getSpaceSplitOperationFactoryAddress() external view returns (address) {

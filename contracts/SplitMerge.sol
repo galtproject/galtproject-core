@@ -99,40 +99,15 @@ contract SplitMerge is OwnableAndInitializable {
 
     reg.setSpaceTokenContour(_spaceTokenId, subjectContourOutput);
 
-    int256[] memory currentHeights = reg.getSpaceTokenHeights(_spaceTokenId);
-    int256 minHeight = currentHeights[0];
-
-    int256[] memory subjectPackageHeights = new int256[](subjectContourOutput.length);
-    for (uint i = 0; i < subjectContourOutput.length; i++) {
-      if (i + 1 > currentHeights.length) {
-        subjectPackageHeights[i] = minHeight;
-      } else {
-        if (subjectPackageHeights[i] < minHeight) {
-          minHeight = currentHeights[i];
-        }
-        subjectPackageHeights[i] = currentHeights[i];
-      }
-    }
-
-    reg.setSpaceTokenHeights(_spaceTokenId, subjectPackageHeights);
-
     spaceToken().transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
-    int256 originalLevel = reg.getSpaceTokenLevel(_spaceTokenId);
+    int256 originalHighestPoint = reg.getSpaceTokenHighestPoint(_spaceTokenId);
 
     for (uint256 j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken().mint(subjectTokenOwner);
 
       reg.setSpaceTokenContour(newPackageId, splitOperation.getResultContour(j));
       reg.setSpaceTokenArea(newPackageId, calculateTokenArea(newPackageId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
-
-      int256[] memory newTokenHeights = new int256[](reg.getSpaceTokenVertexCount(newPackageId));
-
-      uint256 len = reg.getSpaceTokenVertexCount(newPackageId);
-      for (uint256 k = 0; k < len; k++) {
-        newTokenHeights[k] = minHeight;
-      }
-      reg.setSpaceTokenHeights(newPackageId, newTokenHeights);
-      reg.setSpaceTokenLevel(newPackageId, originalLevel);
+      reg.setSpaceTokenHighestPoint(newPackageId, originalHighestPoint);
 
       emit NewSplitSpaceToken(newPackageId);
     }
@@ -171,10 +146,6 @@ contract SplitMerge is OwnableAndInitializable {
       reg.getSpaceTokenAreaSource(_destinationSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Merge available only for contract calculated token's area"
     );
-    require(
-      reg.getSpaceTokenLevel(_sourceSpaceTokenId) == reg.getSpaceTokenLevel(_destinationSpaceTokenId),
-      "Space tokens levels should be equal"
-    );
     checkMergeContours(
       reg.getSpaceTokenContour(_sourceSpaceTokenId),
       reg.getSpaceTokenContour(_destinationSpaceTokenId),
@@ -183,18 +154,8 @@ contract SplitMerge is OwnableAndInitializable {
 
     reg.setSpaceTokenContour(_destinationSpaceTokenId, _destinationSpaceContour);
 
-    int256[] memory sourcePackageHeights = reg.getSpaceTokenHeights(_sourceSpaceTokenId);
-    int256[] memory destinationPackageHeights = reg.getSpaceTokenHeights(_destinationSpaceTokenId);
-    int256[] memory packageHeights = new int256[](_destinationSpaceContour.length);
-    uint256 len = _destinationSpaceContour.length;
-    for (uint256 i = 0; i < len; i++) {
-      if (i + 1 > sourcePackageHeights.length) {
-        packageHeights[i] = destinationPackageHeights[i - sourcePackageHeights.length];
-      } else {
-        packageHeights[i] = sourcePackageHeights[i];
-      }
-    }
-    reg.setSpaceTokenHeights(_destinationSpaceTokenId, packageHeights);
+    int256 sourcePackageHighestPoint = reg.getSpaceTokenHighestPoint(_sourceSpaceTokenId);
+    reg.setSpaceTokenHighestPoint(_destinationSpaceTokenId, sourcePackageHighestPoint);
     reg.setSpaceTokenArea(
       _destinationSpaceTokenId,
       calculateTokenArea(_destinationSpaceTokenId),

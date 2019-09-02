@@ -83,7 +83,7 @@ contract('UpdateOracleManager', (accounts) => {
       'QmSrPmbaUKA3ZodhzPWZnpFgcPMFWF4QsxXbkWfEptTBJd'
     ];
     this.attachedDocumentsBytes32 = this.attachedDocuments.map(galt.ipfsHashToBytes32);
-    this.description = '';
+    this.dataLink = '';
 
     this.galtToken = await GaltToken.new({ from: coreTeam });
     this.newOracle = await NewOracleManager.new({ from: coreTeam });
