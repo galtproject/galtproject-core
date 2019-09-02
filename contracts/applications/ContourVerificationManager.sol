@@ -100,15 +100,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   constructor () public {}
 
   function initialize(
-    GaltGlobalRegistry _ggr
-  )
-    public
-    isInitializer
-  {
-    ggr = _ggr;
-  }
-
-  function initialize(
     GaltGlobalRegistry _ggr,
     uint256 _requiredConfirmations,
     uint256 _approvalTimeout
