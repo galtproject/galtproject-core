@@ -89,7 +89,7 @@ Object.freeze(Currency);
 Object.freeze(AreaSource);
 
 // eslint-disable-next-line
-contract('UpdatePropertyManager', (accounts) => {
+contract.skip('UpdatePropertyManager', (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,

@@ -61,7 +61,7 @@ library NewPropertyManagerLib {
     _a.spaceTokenId = spaceTokenId;
     NewPropertyManager.Details storage d = _a.details;
 
-    spaceGeoData.setSpaceTokenType(spaceTokenId, d.tokenType);
+    spaceGeoData.setSpaceTokenType(spaceTokenId, d.spaceTokenType);
     spaceGeoData.setSpaceTokenContour(spaceTokenId, d.contour);
     spaceGeoData.setSpaceTokenHighestPoint(spaceTokenId, d.highestPoint);
     spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);

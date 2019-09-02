@@ -12,6 +12,7 @@ const PGGOracleStakeAccounting = artifacts.require('./PGGOracleStakeAccounting.s
 const StakeTracker = artifacts.require('./StakeTracker.sol');
 const SharedMultiSigWallet = artifacts.require('./SharedMultiSigWallet.sol');
 const ContourVerificationManager = artifacts.require('./ContourVerificationManager.sol');
+const ContourVerificationManagerLib = artifacts.require('./ContourVerificationManagerLib.sol');
 const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 const ContourVerificationSourceRegistry = artifacts.require('./ContourVerificationSourceRegistry.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
@@ -154,9 +155,14 @@ contract('NewPropertyManager', accounts => {
 
     this.landUtils = await LandUtils.new();
     PolygonUtils.link('LandUtils', this.landUtils.address);
+
     this.polygonUtils = await PolygonUtils.new();
-    ContourVerificationManager.link('LandUtils', this.landUtils.address);
-    ContourVerificationManager.link('PolygonUtils', this.polygonUtils.address);
+
+    ContourVerificationManagerLib.link('LandUtils', this.landUtils.address);
+    ContourVerificationManagerLib.link('PolygonUtils', this.polygonUtils.address);
+    this.contourVerificationManagerLib = await ContourVerificationManagerLib.new();
+
+    ContourVerificationManager.link('ContourVerificationManagerLib', this.contourVerificationManagerLib.address);
 
     this.contourVerificationSourceRegistry = await ContourVerificationSourceRegistry.new({ from: coreTeam });
     this.contourVerificationManager = await ContourVerificationManager.new({ from: coreTeam });
@@ -622,6 +628,7 @@ contract('NewPropertyManager', accounts => {
           const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
 
           await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
+          await this.spaceGeoData.setSpaceTokenType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
           await this.geodesicMock.calculateContourArea(contour4);
           const area = await this.geodesicMock.setSpaceTokenArea(contour4);
@@ -746,6 +753,7 @@ contract('NewPropertyManager', accounts => {
           const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
 
           await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
+          await this.spaceGeoData.setSpaceTokenType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
           await this.geodesicMock.calculateContourArea(contour4);
           const area = await this.geodesicMock.setSpaceTokenArea(contour4);

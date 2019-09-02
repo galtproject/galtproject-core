@@ -104,7 +104,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   struct Details {
     bytes32 credentialsHash;
 
-    ISpaceGeoDataRegistry.SpaceTokenType tokenType;
+    ISpaceGeoDataRegistry.SpaceTokenType spaceTokenType;
 
     uint256[] contour;
     int256 highestPoint;
@@ -197,7 +197,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function submit(
-    ISpaceGeoDataRegistry.SpaceTokenType _tokenType,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
     string calldata _dataLink,
     string calldata _humanAddress,
     int256 _highestPoint,
@@ -213,7 +213,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     returns (bytes32)
   {
     pggRegistry().requireValidPgg(_pgg);
-    _checkSubmissionParams(_tokenType, _highestPoint, _contour, _customArea);
+    _checkSubmissionParams(_spaceTokenType, _highestPoint, _contour, _customArea);
 
     bytes32 _id = bytes32(idCounter);
     idCounter++;
@@ -264,7 +264,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     a.details.humanAddress = _humanAddress;
     a.details.dataLink = _dataLink;
     a.details.contour = _contour;
-    a.details.tokenType = _tokenType;
+    a.details.spaceTokenType = _spaceTokenType;
     a.pgg = _pgg;
 
     applicationsArray.push(_id);
@@ -338,7 +338,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     d.dataLink = _newDataLink;
     d.ledgerIdentifier = _newLedgerIdentifier;
     d.credentialsHash = _newCredentialsHash;
-    d.tokenType = _newTokenType;
+    d.spaceTokenType = _newTokenType;
 
     assignLockedStatus(_aId);
 
@@ -554,7 +554,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function _checkSubmissionParams(
-    ISpaceGeoDataRegistry.SpaceTokenType _tokenType,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
     int256 _highestPoint,
     uint256[] memory _contour,
     uint256 _customArea
@@ -566,11 +566,11 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       "Number of contour elements should be between 3 and 50"
     );
 
-    if (_tokenType == ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT) {
+    if (_spaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT) {
       require(_customArea == 0, "Can't use custom area for LAND_PLOT type");
     }
 
-    if (_tokenType == ISpaceGeoDataRegistry.SpaceTokenType.BUILDING) {
+    if (_spaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.BUILDING) {
       require(_customArea > 0, "Provide custom are value");
     }
   }
@@ -744,7 +744,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     view
     returns (
       bytes32 credentialsHash,
-      ISpaceGeoDataRegistry.SpaceTokenType tokenType,
+      ISpaceGeoDataRegistry.SpaceTokenType spaceTokenType,
       uint256[] memory contour,
       int256 highestPoint,
       ISpaceGeoDataRegistry.AreaSource areaSource,
@@ -758,7 +758,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     return (
       m.details.credentialsHash,
-      m.details.tokenType,
+      m.details.spaceTokenType,
       m.details.contour,
       m.details.highestPoint,
       m.details.areaSource,
@@ -767,10 +767,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       m.details.humanAddress,
       m.details.dataLink
     );
-  }
-
-  function getApplicationOperator(bytes32 _aId) public view returns (address) {
-    return applications[_aId].operator;
   }
 
   /**
@@ -828,6 +824,14 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
     return applications[_applicationId].details.highestPoint;
+  }
+
+  function getCVSpaceTokenType(bytes32 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+    return applications[_aId].details.spaceTokenType;
+  }
+
+  function getApplicationOperator(bytes32 _aId) public view returns (address) {
+    return applications[_aId].operator;
   }
 
   function getCVData(bytes32 _applicationId)

@@ -78,7 +78,7 @@ Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 
 // eslint-disable-next-line
-contract("ModifySpaceGeoDataManager", (accounts) => {
+contract.skip("ModifySpaceGeoDataManager", (accounts) => {
   const [
     coreTeam,
     feeMixerAddress,
