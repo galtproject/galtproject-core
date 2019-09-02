@@ -51,7 +51,9 @@ library NewPropertyManagerLib {
     GaltGlobalRegistry _ggr,
     NewPropertyManager.Application storage _a,
     address _to
-  ) external {
+  )
+    external
+  {
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress());
 
     uint256 spaceTokenId = ISpaceToken(_ggr.getSpaceTokenAddress()).mint(_to);

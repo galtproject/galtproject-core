@@ -222,7 +222,8 @@ library ContourVerificationManagerLib {
     );
 
     IContourModifierApplication existingApplicationContract = IContourModifierApplication(existingA.applicationContract);
-    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = existingApplicationContract
+      .getCVSpaceTokenType(existingA.externalApplicationId);
 
     _requireSameTokenType(a, existingSpaceTokenType);
 
@@ -334,9 +335,13 @@ library ContourVerificationManagerLib {
   }
 
   function isSelfUpdateCase(ContourVerificationManager.Application storage a, uint256 _existingTokenId) public view returns (bool) {
-    (IContourModifierApplication.ContourModificationType modificationType, uint256 spaceTokenId,) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+    (
+      IContourModifierApplication.ContourModificationType modificationType,
+      uint256 spaceTokenId,
+    ) = IContourModifierApplication(a.applicationContract).getCVData(a.externalApplicationId);
+
     if (modificationType == IContourModifierApplication.ContourModificationType.UPDATE) {
-      return (spaceTokenId ==_existingTokenId);
+      return (spaceTokenId == _existingTokenId);
     }
 
     return false;
@@ -435,7 +440,7 @@ library ContourVerificationManagerLib {
     require(len > 0, "Empty contour");
     require(_firstPointIndex < len, "Invalid existing coord index");
 
-    if(_contour[_firstPointIndex] != _firstPoint) {
+    if (_contour[_firstPointIndex] != _firstPoint) {
       return false;
     }
 
@@ -444,7 +449,7 @@ library ContourVerificationManagerLib {
       secondPointIndex = 0;
     }
 
-    if(_contour[secondPointIndex] != _secondPoint) {
+    if (_contour[secondPointIndex] != _secondPoint) {
       return false;
     }
 
@@ -511,7 +516,8 @@ library ContourVerificationManagerLib {
   )
     internal
   {
-    ISpaceGeoDataRegistry.SpaceTokenType verifyingSpaceTokenType = IContourModifierApplication(a.applicationContract).getCVSpaceTokenType(a.externalApplicationId);
+    ISpaceGeoDataRegistry.SpaceTokenType verifyingSpaceTokenType = IContourModifierApplication(a.applicationContract)
+      .getCVSpaceTokenType(a.externalApplicationId);
     require(_existingSpaceTokenType == verifyingSpaceTokenType, "Existing/Verifying space token types mismatch");
   }
 }

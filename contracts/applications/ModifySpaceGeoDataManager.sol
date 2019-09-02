@@ -168,7 +168,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     }
 
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
-//    spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
+    spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
 //    spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
 //    spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
 //    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);

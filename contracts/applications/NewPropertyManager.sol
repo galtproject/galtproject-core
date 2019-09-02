@@ -173,7 +173,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   uint256 idCounter = 1;
 
-  function cvApprove(bytes32 _applicationId) external  {
+  function cvApprove(bytes32 _applicationId) external {
     onlyCVM();
     Application storage a = applications[_applicationId];
 
@@ -449,7 +449,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     }
   }
 
-  function claimSpaceToken(bytes32 _aId) external  {
+  function claimSpaceToken(bytes32 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
     require(
@@ -510,7 +510,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function close(bytes32 _aId) external  {
+  function close(bytes32 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
 
