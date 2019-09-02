@@ -57,12 +57,13 @@ initHelperArtifacts(artifacts);
 
 const ApplicationStatus = {
   NOT_EXISTS: 0,
-  CONTOUR_VERIFICATION: 1,
-  PENDING: 2,
-  APPROVED: 3,
-  REJECTED: 4,
-  REVERTED: 5,
-  CLOSED: 6
+  PARTIALLY_SUBMITTED: 1,
+  CONTOUR_VERIFICATION: 2,
+  PENDING: 3,
+  APPROVED: 4,
+  REJECTED: 5,
+  REVERTED: 6,
+  CLOSED: 7
 };
 
 const ValidationStatus = {
@@ -339,11 +340,7 @@ contract('NewPropertyManager', accounts => {
       await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
       const res = await this.newPropertyManager.submit(
         SpaceTokenType.LAND_PLOT,
-        this.dataLink,
-        this.humanAddress,
         771000,
-        this.credentials,
-        this.ledgerIdentifier,
         this.contour,
         0,
         this.pggConfigX.address,
@@ -355,6 +352,41 @@ contract('NewPropertyManager', accounts => {
 
       this.aId = res.logs[0].args.applicationId;
       assert.notEqual(this.aId, undefined);
+
+      await this.newPropertyManager.attachMoreSubmissionData(
+        this.aId,
+        frank,
+        this.dataLink,
+        this.humanAddress,
+        this.credentials,
+        this.ledgerIdentifier,
+        { from: alice }
+      );
+    });
+
+    it('should provide methods to create and read an application', async function() {
+      const res = await this.newPropertyManager.getApplication(this.aId);
+      assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
+      assert.equal(res.applicant, alice);
+      assert.equal(res.beneficiary, frank);
+      assert.equal(parseInt(res.createdAt, 10) > 0, true);
+
+      const res2 = await this.newPropertyManager.getApplicationDetails(this.aId);
+      assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
+      assert.equal(res2.dataLink, this.dataLink);
+      assert.equal(res2.areaSource, AreaSource.CONTRACT);
+      assert.equal(res2.humanAddress, this.humanAddress);
+      assert.equal(res2.highestPoint, 771000);
+      assert.equal(parseInt(res2.area, 10) > 0, true);
+
+      const res3 = await this.spaceGeoData.getSpaceTokenContour(
+        '0x0000000000000000000000000000000000000000000000000000000000000000'
+      );
+
+      // assertions
+      for (let i = 0; i < res3.length; i++) {
+        assert.equal(res3[i].toString(10), this.contour[i]);
+      }
     });
 
     describe('#submit()', () => {
@@ -379,11 +411,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               123,
               this.pggConfigX.address,
@@ -398,11 +426,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.BUILDING,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               this.pggConfigX.address,
@@ -426,11 +450,7 @@ contract('NewPropertyManager', accounts => {
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
           this.newPropertyManager.submit(
             SpaceTokenType.ROOM,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             this.contour,
             0,
             this.pggConfigX.address,
@@ -441,11 +461,7 @@ contract('NewPropertyManager', accounts => {
           await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
           this.newPropertyManager.submit(
             SpaceTokenType.ROOM,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             this.contour,
             123123,
             this.pggConfigX.address,
@@ -455,38 +471,10 @@ contract('NewPropertyManager', accounts => {
         });
       });
 
-      it('should provide methods to create and read an application', async function() {
-        const res1 = await this.newPropertyManager.getApplication(this.aId);
-        assert.equal(res1.status, ApplicationStatus.CONTOUR_VERIFICATION);
-        assert.equal(res1.applicant, alice);
-        assert.equal(parseInt(res1.createdAt, 10) > 0, true);
-
-        const res2 = await this.newPropertyManager.getApplicationDetails(this.aId);
-        assert.equal(web3.utils.hexToUtf8(res2.ledgerIdentifier), this.initLedgerIdentifier);
-        assert.equal(res2.dataLink, this.dataLink);
-        assert.equal(res2.areaSource, AreaSource.CONTRACT);
-        assert.equal(res2.humanAddress, this.humanAddress);
-        assert.equal(res2.highestPoint, 771000);
-        assert.equal(parseInt(res2.area, 10) > 0, true);
-
-        const res3 = await this.spaceGeoData.getSpaceTokenContour(
-          '0x0000000000000000000000000000000000000000000000000000000000000000'
-        );
-
-        // assertions
-        for (let i = 0; i < res3.length; i++) {
-          assert.equal(res3[i].toString(10), this.contour[i]);
-        }
-      });
-
       it('should submit applications in galt', async function() {
         await this.newPropertyManager.submit(
           SpaceTokenType.LAND_PLOT,
-          this.dataLink,
-          this.humanAddress,
           771000,
-          this.credentials,
-          this.ledgerIdentifier,
           this.contour,
           0,
           this.pggConfigX.address,
@@ -519,11 +507,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               pggDisabledGalt.config.address,
@@ -536,11 +520,7 @@ contract('NewPropertyManager', accounts => {
         it('should split fee between GaltSpace and Oracle', async function() {
           const res = await this.newPropertyManager.submit(
             SpaceTokenType.LAND_PLOT,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             this.contour,
             0,
             this.pggConfigX.address,
@@ -558,11 +538,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               this.pggConfigX.address,
@@ -578,11 +554,7 @@ contract('NewPropertyManager', accounts => {
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
           let res = await this.newPropertyManager.submit(
             SpaceTokenType.LAND_PLOT,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             this.contour,
             0,
             this.pggConfigX.address,
@@ -592,7 +564,7 @@ contract('NewPropertyManager', accounts => {
           const aId = res.logs[0].args.applicationId;
 
           res = await this.newPropertyManager.getApplicationRewards(aId);
-          assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
+          assert.equal(res.status, ApplicationStatus.PARTIALLY_SUBMITTED);
           assert.equal(res.currency, Currency.GALT);
 
           assert.equal(res.oraclesReward, 22620000000000000000);
@@ -642,11 +614,7 @@ contract('NewPropertyManager', accounts => {
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
           res = await this.newPropertyManager.submit(
             SpaceTokenType.LAND_PLOT,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             contour4,
             0,
             this.pggConfigX.address,
@@ -658,6 +626,16 @@ contract('NewPropertyManager', accounts => {
 
           this.aId = res.logs[0].args.applicationId;
           assert.notEqual(this.aId, undefined);
+
+          await this.newPropertyManager.attachMoreSubmissionData(
+            this.aId,
+            frank,
+            this.dataLink,
+            this.humanAddress,
+            this.credentials,
+            this.ledgerIdentifier,
+            { from: alice }
+          );
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
           res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
@@ -696,7 +674,6 @@ contract('NewPropertyManager', accounts => {
             newHighestPoint,
             // customArea
             0,
-            SpaceTokenType.LAND_PLOT,
             this.aId,
             0,
             {
@@ -767,11 +744,7 @@ contract('NewPropertyManager', accounts => {
           await this.galtToken.approve(this.newPropertyManager.address, expectedFee, { from: alice });
           res = await this.newPropertyManager.submit(
             SpaceTokenType.LAND_PLOT,
-            this.dataLink,
-            this.humanAddress,
             771000,
-            this.credentials,
-            this.ledgerIdentifier,
             contour4,
             0,
             this.pggConfigX.address,
@@ -783,6 +756,17 @@ contract('NewPropertyManager', accounts => {
 
           this.aId = res.logs[0].args.applicationId;
           assert.notEqual(this.aId, undefined);
+
+          await this.newPropertyManager.attachMoreSubmissionData(
+            this.aId,
+            frank,
+            this.dataLink,
+            this.humanAddress,
+            this.credentials,
+            this.ledgerIdentifier,
+            { from: alice }
+          );
+
           res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
             from: alice
           });
@@ -867,7 +851,6 @@ contract('NewPropertyManager', accounts => {
       const newDataLink = 'new-test-dataLink';
       const newHumanAddress = 'beyondTheHouse';
       const newHighestPoint = 44000;
-      const newCustomArea = 9;
 
       describe('contour changed', () => {
         beforeEach(async function() {
@@ -891,7 +874,6 @@ contract('NewPropertyManager', accounts => {
             newHighestPoint,
             // customArea
             0,
-            SpaceTokenType.LAND_PLOT,
             this.aId,
             this.fee,
             { from: alice }
@@ -912,7 +894,6 @@ contract('NewPropertyManager', accounts => {
               newHighestPoint,
               // customArea
               0,
-              SpaceTokenType.LAND_PLOT,
               this.aId,
               this.fee,
               { from: alice, value: '123' }
@@ -940,7 +921,6 @@ contract('NewPropertyManager', accounts => {
             newHighestPoint,
             // customArea
             0,
-            SpaceTokenType.LAND_PLOT,
             this.aId,
             0,
             { from: alice }
@@ -965,8 +945,7 @@ contract('NewPropertyManager', accounts => {
           this.contour2,
           newHighestPoint,
           // customArea
-          newCustomArea,
-          SpaceTokenType.ROOM,
+          0,
           this.aId,
           0,
           {
@@ -977,8 +956,8 @@ contract('NewPropertyManager', accounts => {
         res = await this.newPropertyManager.getApplicationDetails(this.aId);
         assert.equal(res.credentialsHash, newCredentiasHash);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
-        assert.equal(res.areaSource, AreaSource.USER_INPUT);
-        assert.equal(res.area, newCustomArea);
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
+        assert.equal(res.area, ether(3000));
         assert.equal(res.dataLink, newDataLink);
         assert.equal(res.humanAddress, newHumanAddress);
         assert.equal(res.highestPoint, newHighestPoint);
@@ -1000,8 +979,7 @@ contract('NewPropertyManager', accounts => {
           this.contour2,
           newHighestPoint,
           // customArea
-          newCustomArea,
-          SpaceTokenType.ROOM,
+          0,
           this.aId,
           0,
           {
@@ -1010,8 +988,8 @@ contract('NewPropertyManager', accounts => {
         );
 
         res = await this.newPropertyManager.getApplicationDetails(this.aId);
-        assert.equal(res.area, 9);
-        assert.equal(res.areaSource, AreaSource.USER_INPUT);
+        assert.equal(res.area, ether(3000));
+        assert.equal(res.areaSource, AreaSource.CONTRACT);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
         assert.equal(res.dataLink, newDataLink);
       });
@@ -1031,11 +1009,7 @@ contract('NewPropertyManager', accounts => {
         await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
         res = await this.newPropertyManager.submit(
           SpaceTokenType.LAND_PLOT,
-          this.dataLink,
-          this.humanAddress,
           771000,
-          this.credentials,
-          this.ledgerIdentifier,
           this.contour,
           0,
           this.pggConfigX.address,
@@ -1045,6 +1019,16 @@ contract('NewPropertyManager', accounts => {
           }
         );
         this.aId = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.attachMoreSubmissionData(
+          this.aId,
+          frank,
+          this.dataLink,
+          this.humanAddress,
+          this.credentials,
+          this.ledgerIdentifier,
+          { from: alice }
+        );
 
         res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
@@ -1156,7 +1140,8 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    it('should allow galt application pipeline for applications from shared multiSig', async function() {
+    // SKIPPED: multisig acts only as a beneficiary
+    it.skip('should allow galt application pipeline for applications from shared multiSig', async function() {
       // approve galts
       const approveData = this.galtToken.contract.methods
         .approve(this.newPropertyManager.address, this.fee)
@@ -1169,18 +1154,7 @@ contract('NewPropertyManager', accounts => {
 
       // submit application
       const submitData = this.newPropertyManager.contract.methods
-        .submit(
-          SpaceTokenType.LAND_PLOT,
-          this.dataLink,
-          this.humanAddress,
-          771000,
-          this.credentials,
-          this.ledgerIdentifier,
-          this.contour,
-          0,
-          this.pggConfigX.address,
-          this.fee
-        )
+        .submit(SpaceTokenType.LAND_PLOT, 771000, this.contour, 0, this.pggConfigX.address, this.fee)
         .encodeABI();
       res = await this.sharedMultiSig.submitTransaction(this.newPropertyManager.address, 0, submitData, {
         from: alice
@@ -1195,7 +1169,7 @@ contract('NewPropertyManager', accounts => {
 
       // assert id is correct
       res = await this.newPropertyManager.getApplication(this.aId);
-      assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
+      assert.equal(res.status, ApplicationStatus.PARTIALLY_SUBMITTED);
 
       // cv
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1257,11 +1231,7 @@ contract('NewPropertyManager', accounts => {
 
       let res = await this.newPropertyManager.submit(
         SpaceTokenType.LAND_PLOT,
-        this.dataLink,
-        this.humanAddress,
         771000,
-        this.credentials,
-        this.ledgerIdentifier,
         this.contour,
         0,
         this.pggConfigX.address,
@@ -1273,6 +1243,16 @@ contract('NewPropertyManager', accounts => {
       );
 
       this.aId = res.logs[0].args.applicationId;
+
+      await this.newPropertyManager.attachMoreSubmissionData(
+        this.aId,
+        frank,
+        this.dataLink,
+        this.humanAddress,
+        this.credentials,
+        this.ledgerIdentifier,
+        { from: alice }
+      );
 
       res = await this.newPropertyManager.getApplication(this.aId);
       this.packageTokenId = res.packageTokenId;
@@ -1312,11 +1292,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               pggDisabledEth.config.address,
@@ -1333,11 +1309,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               this.pggConfigX.address,
@@ -1354,11 +1326,7 @@ contract('NewPropertyManager', accounts => {
           await assertRevert(
             this.newPropertyManager.submit(
               SpaceTokenType.LAND_PLOT,
-              this.dataLink,
-              this.humanAddress,
               771000,
-              this.credentials,
-              this.ledgerIdentifier,
               this.contour,
               0,
               this.pggConfigX.address,
@@ -1432,10 +1400,34 @@ contract('NewPropertyManager', accounts => {
 
     describe('#resubmit()', () => {
       beforeEach(async function() {
+        let res = await this.newPropertyManager.submit(
+          SpaceTokenType.ROOM,
+          771000,
+          this.contour,
+          123,
+          this.pggConfigX.address,
+          0,
+          {
+            from: alice,
+            value: this.fee
+          }
+        );
+
+        this.aId = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.attachMoreSubmissionData(
+          this.aId,
+          frank,
+          this.dataLink,
+          this.humanAddress,
+          this.credentials,
+          this.ledgerIdentifier,
+          { from: alice }
+        );
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-        let res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+        res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
           from: alice
         });
         const cvId1 = res.logs[0].args.applicationId;
@@ -1465,7 +1457,7 @@ contract('NewPropertyManager', accounts => {
       it('should change old details data with a new', async function() {
         let res = await this.newPropertyManager.getApplicationDetails(this.aId);
         assert.equal(res.credentialsHash, this.credentials);
-        assert.equal(res.areaSource, AreaSource.CONTRACT);
+        assert.equal(res.areaSource, AreaSource.USER_INPUT);
         assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
 
         await this.newPropertyManager.resubmit(
@@ -1477,7 +1469,6 @@ contract('NewPropertyManager', accounts => {
           newHighestPoint,
           // customArea
           newCustomArea,
-          SpaceTokenType.ROOM,
           this.aId,
           0,
           {
@@ -1519,7 +1510,6 @@ contract('NewPropertyManager', accounts => {
             newHighestPoint,
             // customArea
             0,
-            SpaceTokenType.LAND_PLOT,
             this.aId,
             0,
             {
@@ -1537,7 +1527,6 @@ contract('NewPropertyManager', accounts => {
           newHighestPoint,
           // customArea
           0,
-          SpaceTokenType.LAND_PLOT,
           this.aId,
           0,
           {
@@ -1562,7 +1551,6 @@ contract('NewPropertyManager', accounts => {
           newHighestPoint,
           // customArea
           0,
-          SpaceTokenType.LAND_PLOT,
           this.aId,
           0,
           {
@@ -1634,11 +1622,7 @@ contract('NewPropertyManager', accounts => {
       it('should push an application id to the oracles list for caching', async function() {
         let res = await this.newPropertyManager.submit(
           SpaceTokenType.BUILDING,
-          this.dataLink,
-          this.humanAddress,
           771000,
-          this.credentials,
-          this.ledgerIdentifier,
           this.contour,
           123,
           this.pggConfigX.address,
@@ -1648,7 +1632,19 @@ contract('NewPropertyManager', accounts => {
             value: ether(2)
           }
         );
+
         const a1Id = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.attachMoreSubmissionData(
+          a1Id,
+          frank,
+          this.dataLink,
+          this.humanAddress,
+          this.credentials,
+          this.ledgerIdentifier,
+          { from: charlie }
+        );
+
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
         res = await this.contourVerificationManager.submit(this.newPropertyManager.address, a1Id, {
           from: alice
@@ -1667,11 +1663,7 @@ contract('NewPropertyManager', accounts => {
         // submit second
         res = await this.newPropertyManager.submit(
           SpaceTokenType.BUILDING,
-          this.dataLink,
-          this.humanAddress,
           771000,
-          this.credentials,
-          this.ledgerIdentifier,
           this.contour,
           123,
           this.pggConfigX.address,
@@ -1682,6 +1674,17 @@ contract('NewPropertyManager', accounts => {
           }
         );
         const a2Id = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.attachMoreSubmissionData(
+          a2Id,
+          frank,
+          this.dataLink,
+          this.humanAddress,
+          this.credentials,
+          this.ledgerIdentifier,
+          { from: charlie }
+        );
+
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
         res = await this.contourVerificationManager.submit(this.newPropertyManager.address, a2Id, {
           from: alice
@@ -1991,7 +1994,7 @@ contract('NewPropertyManager', accounts => {
       // eslint-disable-next-line
       it('should transfer SpaceToken to the applicant', async function() {
         await this.newPropertyManager.claimSpaceToken(this.aId, { from: alice });
-        assert.equal(await this.spaceToken.ownerOf(this.spaceTokenId), alice);
+        assert.equal(await this.spaceToken.ownerOf(this.spaceTokenId), frank);
       });
 
       it('should NOT transfer SpaceToken to non-applicant', async function() {
@@ -2118,7 +2121,8 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    it('should allow eth application pipeline for applications from shared multiSig', async function() {
+    // SKIPPED: multisig acts only as a beneficiary
+    it.skip('should allow eth application pipeline for applications from shared multiSig', async function() {
       // submit application
       const submitData = this.newPropertyManager.contract.methods
         .submit(
