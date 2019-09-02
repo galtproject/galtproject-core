@@ -13,7 +13,6 @@ const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 const ContourVerificationSourceRegistry = artifacts.require('./ContourVerificationSourceRegistry.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const PolygonUtils = artifacts.require('./PolygonUtils.sol');
-const GeohashUtils = artifacts.require('./GeohashUtils.sol');
 const galt = require('@galtproject/utils');
 
 const Web3 = require('web3');
@@ -145,11 +144,8 @@ contract('ContourVerification of ROOM types', accounts => {
 
     this.polygonUtils = await PolygonUtils.new();
 
-    this.geohashUtils = await GeohashUtils.new();
-
     ContourVerificationManagerLib.link('LandUtils', this.landUtils.address);
     ContourVerificationManagerLib.link('PolygonUtils', this.polygonUtils.address);
-    ContourVerificationManagerLib.link('GeohashUtils', this.geohashUtils.address);
     this.contourVerificationManagerLib = await ContourVerificationManagerLib.new();
 
     ContourVerificationManager.link('ContourVerificationManagerLib', this.contourVerificationManagerLib.address);

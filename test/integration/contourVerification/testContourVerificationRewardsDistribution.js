@@ -8,6 +8,7 @@ const MockUpdateContourApplication = artifacts.require('./MockUpdateContourAppli
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const ContourVerificationManager = artifacts.require('./ContourVerificationManager.sol');
+const ContourVerificationManagerLib = artifacts.require('./ContourVerificationManagerLib.sol');
 const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 const ContourVerificationSourceRegistry = artifacts.require('./ContourVerificationSourceRegistry.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
@@ -60,6 +61,13 @@ const CVStatus = {
 const Currency = {
   ETH: 0,
   GALT: 1
+};
+
+const SpaceTokenType = {
+  NULL: 0,
+  LAND_PLOT: 1,
+  BUILDING: 2,
+  ROOM: 3
 };
 
 contract('ContourVerification Reward Distribution', accounts => {
@@ -118,9 +126,14 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     this.landUtils = await LandUtils.new();
     PolygonUtils.link('LandUtils', this.landUtils.address);
+
     this.polygonUtils = await PolygonUtils.new();
-    ContourVerificationManager.link('LandUtils', this.landUtils.address);
-    ContourVerificationManager.link('PolygonUtils', this.polygonUtils.address);
+
+    ContourVerificationManagerLib.link('LandUtils', this.landUtils.address);
+    ContourVerificationManagerLib.link('PolygonUtils', this.polygonUtils.address);
+    this.contourVerificationManagerLib = await ContourVerificationManagerLib.new();
+
+    ContourVerificationManager.link('ContourVerificationManagerLib', this.contourVerificationManagerLib.address);
 
     this.contourVerificationSourceRegistry = await ContourVerificationSourceRegistry.new({ from: coreTeam });
     this.contourVerificationManager = await ContourVerificationManager.new({ from: coreTeam });
@@ -435,7 +448,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     await this.spaceToken.mint(alice, { from: minter });
 
     // Create a new NewPropertyManager application
-    let res = await this.newPropertyManager.submit(this.contour1);
+    let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
 
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -474,6 +487,9 @@ contract('ContourVerification Reward Distribution', accounts => {
 
   async function rejectExistingIntersection(numberOfApprovalsBeforeReject) {
     await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+      from: geoDateManagement
+    });
     await reject.call(this, numberOfApprovalsBeforeReject, async function() {
       await this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
         0,
@@ -491,7 +507,7 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectApplicationApprovedIntersection(numberOfApprovalsBeforeReject) {
-    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1);
+    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
@@ -529,7 +545,7 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectApplicationApprovedTimeoutIntersection(numberOfApprovalsBeforeReject) {
-    let res = await this.newPropertyManager.submit(this.contour1);
+    let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
@@ -566,6 +582,9 @@ contract('ContourVerification Reward Distribution', accounts => {
 
   async function rejectExistingInclusion(numberOfApprovalsBeforeReject) {
     await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+      from: geoDateManagement
+    });
     await reject.call(this, numberOfApprovalsBeforeReject, async function() {
       await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
         0,
@@ -579,7 +598,7 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectApplicationApprovedInclusion(numberOfApprovalsBeforeReject) {
-    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1);
+    let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
@@ -613,7 +632,7 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectApplicationApprovedTimeoutInclusion(numberOfApprovalsBeforeReject) {
-    let res = await this.newPropertyManager.submit(this.contour1);
+    let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
 
@@ -646,7 +665,7 @@ contract('ContourVerification Reward Distribution', accounts => {
   async function reject(numberOfApprovalsBeforeReject, rejectFunction) {
     assert.equal(numberOfApprovalsBeforeReject <= 6, true, 'Too many numberOfApprovalsBeforeReject');
 
-    let res = await this.newPropertyManager.submit(this.contour2);
+    let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
 
     await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
