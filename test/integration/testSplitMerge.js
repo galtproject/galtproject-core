@@ -19,7 +19,7 @@ const { assertRevert, deploySpaceGeoData, initHelperArtifacts, clearLibCache } =
 
 initHelperArtifacts(artifacts);
 
-contract('SplitMerge', ([coreTeam, alice]) => {
+contract.skip('SplitMerge', ([coreTeam, alice]) => {
   before(clearLibCache);
   const areaAccurancy = 7;
 
