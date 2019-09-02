@@ -53,6 +53,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   enum ApplicationStatus {
     NOT_EXISTS,
+    PARTIALLY_SUBMITTED,
     CONTOUR_VERIFICATION,
     PENDING,
     APPROVED,
@@ -74,7 +75,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     bytes32 id;
     address pgg;
     address applicant;
-    address operator;
+    address beneficiary;
     uint256 spaceTokenId;
     uint256 createdAt;
     Details details;
@@ -137,9 +138,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function onlyApplicant(bytes32 _aId) internal {
-    require(
-      applications[_aId].applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
-      "Applicant invalid");
+    require(applications[_aId].applicant == msg.sender, "Applicant invalid");
   }
 
   function onlyOracleOfApplication(bytes32 _aId) internal {
@@ -156,18 +155,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
-  }
-
-  function approveOperator(bytes32 _aId, address _to) external {
-    Application storage a = applications[_aId];
-    require(
-      msg.sender == a.applicant ||
-      (a.status == ApplicationStatus.REJECTED && a.addressOracleTypes[msg.sender] != 0x0),
-      "Unable to approve"
-    );
-    require(_to != a.applicant, "Unable to approve to the same account");
-
-    a.operator = _to;
   }
 
   uint256 idCounter = 1;
@@ -197,11 +184,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
   function submit(
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
-    string calldata _dataLink,
-    string calldata _humanAddress,
     int256 _highestPoint,
-    bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier,
     uint256[] calldata _contour,
     uint256 _customArea,
     address _pgg,
@@ -250,18 +233,14 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
         "Incorrect msg.value passed in");
     }
 
-    a.status = ApplicationStatus.CONTOUR_VERIFICATION;
+    a.status = ApplicationStatus.PARTIALLY_SUBMITTED;
     a.id = _id;
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
 
     calculateAndStoreFee(a, a.rewards.totalPaidFee);
 
-    a.details.ledgerIdentifier = _ledgerIdentifier;
-    a.details.credentialsHash = _credentialsHash;
     a.details.highestPoint = _highestPoint;
-    a.details.humanAddress = _humanAddress;
-    a.details.dataLink = _dataLink;
     a.details.contour = _contour;
     a.details.spaceTokenType = _spaceTokenType;
     a.pgg = _pgg;
@@ -270,12 +249,36 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     applicationsByApplicant[msg.sender].push(_id);
 
     emit NewApplication(msg.sender, _id);
-    emit ApplicationStatusChanged(_id, ApplicationStatus.CONTOUR_VERIFICATION);
+    emit ApplicationStatusChanged(_id, ApplicationStatus.PARTIALLY_SUBMITTED);
 
     assignRequiredOracleTypesAndRewards(applications[_id]);
     CVPendingApplicationIds.add(_id);
 
     return _id;
+  }
+
+  function attachMoreSubmissionData(
+    bytes32 _aId,
+    address _beneficiary,
+    string calldata _dataLink,
+    string calldata _humanAddress,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier
+  )
+    external
+  {
+    Application storage a = applications[_aId];
+
+    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.status == ApplicationStatus.PARTIALLY_SUBMITTED, "Application already exists");
+
+    a.beneficiary = _beneficiary;
+    a.details.humanAddress = _humanAddress;
+    a.details.dataLink = _dataLink;
+    a.details.ledgerIdentifier = _ledgerIdentifier;
+    a.details.credentialsHash = _credentialsHash;
+
+    changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
   }
 
   /**
@@ -298,7 +301,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     uint256[] calldata _newContour,
     int256 _newHighestPoint,
     uint256 _newCustomArea,
-    ISpaceGeoDataRegistry.SpaceTokenType _newTokenType,
     bytes32 _aId,
     uint256 _resubmissionFeeInGalt
   )
@@ -309,17 +311,13 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     Details storage d = a.details;
 
     _checkSubmissionParams(
-      _newTokenType,
+      d.spaceTokenType,
       _newHighestPoint,
       _newContour,
       _newCustomArea
     );
-    require(
-      a.applicant == msg.sender || getApplicationOperator(_aId) == msg.sender,
-      "Applicant invalid");
-    require(
-      a.status == ApplicationStatus.REVERTED,
-      "Application status should be REVERTED");
+    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
 
     checkResubmissionPayment(a, _resubmissionFeeInGalt, _newContour);
 
@@ -337,7 +335,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     d.dataLink = _newDataLink;
     d.ledgerIdentifier = _newLedgerIdentifier;
     d.credentialsHash = _newCredentialsHash;
-    d.spaceTokenType = _newTokenType;
 
     assignLockedStatus(_aId);
 
@@ -457,7 +454,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     emit ClaimSpaceToken(_aId, a.spaceTokenId);
 
-    ggr.getSpaceToken().transferFrom(address(this), a.applicant, a.spaceTokenId);
+    ggr.getSpaceToken().transferFrom(address(this), a.beneficiary, a.spaceTokenId);
   }
 
   function reject(
@@ -682,6 +679,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     view
     returns (
       uint256 createdAt,
+      address beneficiary,
       address applicant,
       address pgg,
       uint256 spaceTokenId,
@@ -694,6 +692,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     return (
       m.createdAt,
+      m.beneficiary,
       m.applicant,
       m.pgg,
       m.spaceTokenId,
@@ -828,8 +827,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     return applications[_aId].details.spaceTokenType;
   }
 
-  function getApplicationOperator(bytes32 _aId) public view returns (address) {
-    return applications[_aId].operator;
+  function getApplicationBeneficiary(bytes32 _aId) public view returns (address) {
+    return applications[_aId].beneficiary;
   }
 
   function getCVData(bytes32 _applicationId)
