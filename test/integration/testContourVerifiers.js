@@ -3,30 +3,20 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const PGGRegistry = artifacts.require('./PGGRegistry.sol');
-const LockerRegistry = artifacts.require('./LockerRegistry.sol');
-const SpaceLockerFactory = artifacts.require('./SpaceLockerFactory.sol');
 const MockApplication = artifacts.require('./MockApplication.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 
+const galt = require('@galtproject/utils');
 const Web3 = require('web3');
 
 ContourVerifiers.numberFormat = 'String';
 GaltToken.numberFormat = 'String';
 
-const {
-  ether,
-  deploySpaceGeoDataLight,
-  assertRevert,
-  initHelperWeb3,
-  initHelperArtifacts,
-  paymentMethods
-} = require('../helpers');
-const { deployPGGFactory, buildPGG } = require('../deploymentHelpers');
+const { ether, deploySpaceGeoDataLight, assertRevert, initHelperWeb3, initHelperArtifacts } = require('../helpers');
 
 const { web3 } = SpaceRA;
-const galt = require('@galtproject/utils');
 
 const { utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
@@ -35,7 +25,7 @@ initHelperWeb3(web3);
 initHelperArtifacts(artifacts);
 
 contract('ContourVerifiers', accounts => {
-  const [coreTeam, minter, alice, bob, charlie, v1, v2, v3, v4, geoDateManagement] = accounts;
+  const [coreTeam, minter, alice, bob, charlie, geoDateManagement] = accounts;
 
   before(async function() {
     this.ggr = await GaltGlobalRegistry.new({ from: coreTeam });
