@@ -3,7 +3,7 @@ const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
 const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const PGGRegistry = artifacts.require('./PGGRegistry.sol');
-const MockApplication = artifacts.require('./MockApplication.sol');
+const MockAddContourApplication = artifacts.require('./MockAddContourApplication.sol');
 const SpaceRA = artifacts.require('./SpaceRA.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
@@ -50,9 +50,7 @@ contract('ContourVerifiers', accounts => {
     this.spaceGeoData = await deploySpaceGeoDataLight(this.ggr);
     this.galtToken = await GaltToken.new({ from: coreTeam });
 
-    this.newPropertyManager = await MockApplication.new({ from: coreTeam });
-    this.updatePropertyManager = await MockApplication.new({ from: coreTeam });
-    this.modifyPropertyManager = await MockApplication.new({ from: coreTeam });
+    this.newPropertyManager = await MockAddContourApplication.new(this.ggr.address, { from: coreTeam });
     this.contourVerifiers = await ContourVerifiers.new({ from: coreTeam });
 
     await this.contourVerifiers.initialize(this.ggr.address, ether(200));
@@ -127,11 +125,11 @@ contract('ContourVerifiers', accounts => {
       assert.equal(await this.contourVerifiers.isVerifierValid(alice, bob), true);
     });
 
-    it('should return false when a checkin a wrong oeprator address', async function() {
+    it('should return false when a checkin a wrong operator address', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
       await this.contourVerifiers.deposit(ether(300), { from: alice });
 
-      assert.equal(await this.contourVerifiers.isVerifierValid(alice, charlie), true);
+      assert.equal(await this.contourVerifiers.isVerifierValid(alice, charlie), false);
     });
   });
 
