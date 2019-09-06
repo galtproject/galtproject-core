@@ -287,7 +287,7 @@ contract('ContourVerification of ROOM types', accounts => {
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
       });
 
-      describe('existing token', () => {
+      describe.only('existing token', () => {
         beforeEach(async function() {
           // 20-30
           await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, addElevationToContour(20, this.contour1), {
@@ -355,9 +355,11 @@ contract('ContourVerification of ROOM types', accounts => {
                 addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
                 addElevationToGeohash5(20, 'dr5qvnpd300r'),
                 0,
-                addElevationToGeohash5(20, 'dr5qvnpd0eqs'),
-                addElevationToGeohash5(20, 'dr5qvnpd5npy')
-              )
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                addElevationToGeohash5(-5, 'dr5qvnpd5npy'),
+                { from: o2 }
+              ),
+              'No intersection neither among contours nor among heights'
             );
           });
 
@@ -654,9 +656,14 @@ contract('ContourVerification of ROOM types', accounts => {
         });
       });
 
-      describe.skip('application approved contour', () => {
+      describe.only('application approved contour', () => {
         beforeEach(async function() {
-          let res = await this.updatePropertyManager.submit(this.tokenId1, this.contour1, 42, SpaceTokenType.ROOM);
+          let res = await this.updatePropertyManager.submit(
+            this.tokenId1,
+            addElevationToContour(20, this.contour1),
+            30,
+            SpaceTokenType.ROOM
+          );
           const aId = res.logs[0].args.applicationId;
           this.existingAId = aId;
 
@@ -675,61 +682,464 @@ contract('ContourVerification of ROOM types', accounts => {
           await this.contourVerificationManager.pushApproval(cvId1);
         });
 
-        it('should deny rejecting with non-intersecting contours', async function() {
-          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+        describe('intersection proofs', () => {
+          it('should deny rejecting with (NON-IS contours AND IS heights)', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(25, this.contour3),
+              35,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId1 = res.logs[0].args.applicationId;
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId1 = res.logs[0].args.applicationId;
 
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
-          await assertRevert(
-            this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
-              cvId1,
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+            await assertRevert(
+              this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
+                cvId1,
+                v2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                1,
+                addElevationToGeohash5(25, 'dr5qvnp3ewcv'),
+                addElevationToGeohash5(25, 'dr5qvnp37vs4'),
+                { from: o2 }
+              )
+            );
+          });
+
+          it('should deny rejecting with (IS contours AND NON-IS heights)', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(-5, this.contour2),
+              10,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId1 = res.logs[0].args.applicationId;
+
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(cvId1, v4, { from: o4 });
+            await assertRevert(
+              this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
+                cvId1,
+                v2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                addElevationToGeohash5(-5, 'dr5qvnpd5npy'),
+                { from: o2 }
+              ),
+              'No intersection neither among contours nor among heights'
+            );
+          });
+
+          // eslint-disable-next-line max-len
+          it('should allow rejecting with contour in another application contract', async function() {
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
+              cvId2,
               v2,
               this.updatePropertyManager.address,
               this.existingAId,
               3,
-              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
+              addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+              addElevationToGeohash5(20, 'dr5qvnpd300r'),
               0,
-              galtUtils.geohashToNumber('dr5qvnp9c7b2').toString(10),
-              galtUtils.geohashToNumber('dr5qvnp99ddh').toString(10),
+              addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
+              addElevationToGeohash5(25, 'dr5qvnpd5npy'),
               { from: o2 }
-            )
-          );
+            );
+
+            await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
+
+          it('should deny catching invalid approvals with (NON-IS contours AND IS heights)', async function() {
+            // 25-35
+            const contour = addElevationToContour(25, this.contour3);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
+                cvId2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                1,
+                addElevationToGeohash5(25, 'dr5qvnp3ewcv'),
+                addElevationToGeohash5(25, 'dr5qvnp37vs4'),
+                { from: charlie }
+              ),
+              "Contours don't intersect"
+            );
+          });
+
+          it('should deny catching invalid approvals with (IS contours AND NON-IS heights)', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(-5, this.contour2),
+              10,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
+                cvId2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                addElevationToGeohash5(-5, 'dr5qvnpd5npy'),
+                { from: charlie }
+              ),
+              'No intersection neither among contours nor among heights'
+            );
+          });
+
+          it('should allow catching invalid approvals', async function() {
+            // 25-35
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
+              cvId2,
+              this.updatePropertyManager.address,
+              this.existingAId,
+              3,
+              addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+              addElevationToGeohash5(20, 'dr5qvnpd300r'),
+              0,
+              addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
+              addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+              { from: charlie }
+            );
+
+            await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
         });
 
-        it('should allow rejecting with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+        describe('inclusion proofs', () => {
+          it('should deny rejecting with (NON-IN point AND IN heights)', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(25, this.contour2),
+              35,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-          await this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
-            cvId2,
-            v2,
-            this.updatePropertyManager.address,
-            this.existingAId,
-            3,
-            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
-            0,
-            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
-            { from: o2 }
-          );
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
-          await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
+            await assertRevert(
+              this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
+                cvId2,
+                v2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                1,
+                addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+                { from: o2 }
+              ),
+              "Existing contour doesn't include verifying"
+            );
+          });
+
+          it('should deny rejecting with (IN point AND NON-IN heights)', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(35, this.contour2),
+              45,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+
+            await assertRevert(
+              this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
+                cvId2,
+                v2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                0,
+                addElevationToGeohash5(35, 'dr5qvnpd0eqs'),
+                { from: o2 }
+              ),
+              'No inclusion neither among contours nor among heights'
+            );
+          });
+
+          it('should allow rejecting', async function() {
+            // 25-35
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(25, this.contour2),
+              35,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+
+            await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
+              cvId2,
+              v2,
+              this.updatePropertyManager.address,
+              this.existingAId,
+              0,
+              addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
+              { from: o2 }
+            );
+
+            await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
+
+          it('should deny catching invalid approvals with (NON-IN point AND IN heights)', async function() {
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
+                cvId2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                1,
+                addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+                { from: charlie }
+              ),
+              "Existing contour doesn't include verifying"
+            );
+          });
+
+          it('should deny catching invalid approvals with (IN point AND NON-IN heights)', async function() {
+            const contour = addElevationToContour(-5, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 10, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
+                cvId2,
+                this.updatePropertyManager.address,
+                this.existingAId,
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                { from: charlie }
+              ),
+              'No inclusion neither among contours nor among heights'
+            );
+          });
+
+          // eslint-disable-next-line max-len
+          it('should allow catching invalid approvals', async function() {
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(cvId2);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
+              cvId2,
+              this.updatePropertyManager.address,
+              this.existingAId,
+              0,
+              addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
+              { from: charlie }
+            );
+
+            await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
         });
 
         it('should allow rejecting with contour in another application contract inclusion proof', async function() {
@@ -756,47 +1166,6 @@ contract('ContourVerification of ROOM types', accounts => {
           );
 
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
-        });
-
-        // eslint-disable-next-line max-len
-        it('should allow catching invalid approvals with contour in another application contract intersection proof', async function() {
-          let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
-
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-
-          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
-          await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
-
-          await evmIncreaseTime(3600 * 4);
-
-          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
-
-          res = await this.contourVerificationManager.getApplication(cvId2);
-          assert.equal(res.approvalCount, 3);
-          assert.equal(res.action, 0);
-          assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
-
-          await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
-            cvId2,
-            this.updatePropertyManager.address,
-            this.existingAId,
-            3,
-            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
-            0,
-            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
-            { from: charlie }
-          );
-
-          await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
         });
 
         // eslint-disable-next-line max-len
