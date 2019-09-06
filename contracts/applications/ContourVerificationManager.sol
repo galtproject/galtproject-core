@@ -759,6 +759,18 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   // GETTERS
 
+  function checkVerticalIntersects(
+    uint256 _aId,
+    uint256[] calldata _existingContour,
+    int256 _eHP
+  )
+    external
+    view
+    returns (bool)
+  {
+    return ContourVerificationManagerLib.checkForRoomVerticalIntersection(verificationQueue[_aId], _existingContour, _eHP);
+  }
+
   function isSelfUpdateCase(uint256 _aId, uint256 _existingTokenId) public view returns (bool) {
     return ContourVerificationManagerLib.isSelfUpdateCase(verificationQueue[_aId], _existingTokenId);
   }

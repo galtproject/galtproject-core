@@ -13,7 +13,7 @@ const ContourVerifiers = artifacts.require('./ContourVerifiers.sol');
 const ContourVerificationSourceRegistry = artifacts.require('./ContourVerificationSourceRegistry.sol');
 const LandUtils = artifacts.require('./LandUtils.sol');
 const PolygonUtils = artifacts.require('./PolygonUtils.sol');
-const galt = require('@galtproject/utils');
+const galtUtils = require('@galtproject/utils');
 
 const Web3 = require('web3');
 
@@ -31,6 +31,7 @@ const {
   evmIncreaseTime,
   paymentMethods
 } = require('../../helpers');
+const { addElevationToContour, addElevationToGeohash5 } = require('../../galtHelpers');
 
 const { web3 } = SpaceRA;
 
@@ -118,15 +119,15 @@ contract('ContourVerification of ROOM types', accounts => {
     // 40.594784, -73.949705 dr5qvnp3ybpq
     // 40.594778, -73.949744 dr5qvnp3wp47
     this.rawContour1 = ['dr5qvnpd300r', 'dr5qvnp655pq', 'dr5qvnp3g3w0', 'dr5qvnp9cnpt'];
-    this.contour1 = this.rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.contour1 = this.rawContour1.map(galtUtils.geohashToNumber).map(a => a.toString(10));
     this.rawContour2 = ['dr5qvnpd0eqs', 'dr5qvnpd5npy', 'dr5qvnp9grz7', 'dr5qvnpd100z'];
-    this.contour2 = this.rawContour2.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.contour2 = this.rawContour2.map(galtUtils.geohashToNumber).map(a => a.toString(10));
     this.rawContour3 = ['dr5qvnp9c7b2', 'dr5qvnp3ewcv', 'dr5qvnp37vs4', 'dr5qvnp99ddh'];
-    this.contour3 = this.rawContour3.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.contour3 = this.rawContour3.map(galtUtils.geohashToNumber).map(a => a.toString(10));
     this.rawContour4 = ['dr5qvnp6hfwt', 'dr5qvnp6h46c', 'dr5qvnp3gdwu', 'dr5qvnp3u57s'];
-    this.contour4 = this.rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.contour4 = this.rawContour4.map(galtUtils.geohashToNumber).map(a => a.toString(10));
     this.rawContour5 = ['dr5qvnp3vur6', 'dr5qvnp3yv97', 'dr5qvnp3ybpq', 'dr5qvnp3wp47'];
-    this.contour5 = this.rawContour5.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.contour5 = this.rawContour5.map(galtUtils.geohashToNumber).map(a => a.toString(10));
 
     await this.acl.initialize();
     await this.ggr.initialize();
@@ -286,18 +287,6 @@ contract('ContourVerification of ROOM types', accounts => {
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
       });
 
-      function addElevationToContour(height, contour) {
-        const resultingContour = [];
-        for (let i = 0; i < contour.length; i++) {
-          resultingContour[i] = galt.geohash5ToGeohash5z(height, contour[i]);
-        }
-        return resultingContour;
-      }
-
-      function addElevationToGeohash5(height, geohash5) {
-        return galt.geohash5ToGeohash5z(height, galt.geohashToNumber(geohash5).toString(10));
-      }
-
       describe('existing token', () => {
         beforeEach(async function() {
           // 20-30
@@ -312,51 +301,83 @@ contract('ContourVerification of ROOM types', accounts => {
           });
         });
 
-        it('should deny rejecting with (NON-IS contours AND IS heights)', async function() {
-          const res = await this.newPropertyManager.submit(
-            addElevationToContour(25, this.contour2),
-            35,
-            SpaceTokenType.ROOM
-          );
-          const aId = res.logs[0].args.applicationId;
+        describe('intersection proofs', () => {
+          it('should deny rejecting with (NON-IS contours AND IS heights)', async function() {
+            const res = await this.newPropertyManager.submit(
+              addElevationToContour(25, this.contour3),
+              35,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(0, v4, { from: o4 });
-          await assertRevert(
-            this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-              0,
-              v2,
-              this.tokenId3,
-              3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
-              0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
-              galt.geohashToNumber('dr5qvnp99ddh').toString(10),
-              { from: o2 }
-            )
-          );
-        });
+            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await assertRevert(
+              this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
+                0,
+                v2,
+                this.tokenId3,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                1,
+                addElevationToGeohash5(25, 'dr5qvnp3ewcv'),
+                addElevationToGeohash5(25, 'dr5qvnp37vs4'),
+                { from: o2 }
+              ),
+              "Contours don't intersect"
+            );
+          });
 
-        it('should deny rejecting with (IS contours AND NON-IS heights)', async function() {
-          let res = await this.newPropertyManager.submit(
-            addElevationToContour(-5, this.contour2),
-            10,
-            SpaceTokenType.ROOM
-          );
-          const aId = res.logs[0].args.applicationId;
+          it('should deny rejecting with (IS contours AND NON-IS heights)', async function() {
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(-5, this.contour2),
+              10,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(0, v4, { from: o4 });
-          await assertRevert(
-            this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await assertRevert(
+              this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
+                cvId2,
+                v2,
+                this.tokenId3,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                0,
+                addElevationToGeohash5(20, 'dr5qvnpd0eqs'),
+                addElevationToGeohash5(20, 'dr5qvnpd5npy')
+              )
+            );
+          });
+
+          it('should allow rejecting with existing token intersection proof', async function() {
+            // 25-35
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            assert.equal(await this.spaceGeoData.getSpaceTokenType(this.tokenId3), SpaceTokenType.ROOM);
+            assert.equal(await this.newPropertyManager.getCVSpaceTokenType(aId), SpaceTokenType.ROOM);
+
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
               cvId2,
               v2,
               this.tokenId3,
@@ -364,139 +385,272 @@ contract('ContourVerification of ROOM types', accounts => {
               addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
               addElevationToGeohash5(20, 'dr5qvnpd300r'),
               0,
-              addElevationToGeohash5(20, 'dr5qvnpd0eqs'),
-              addElevationToGeohash5(20, 'dr5qvnpd5npy')
-            )
-          );
+              addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
+              addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+              { from: o2 }
+            );
+            await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
+
+          it('should deny catching invalid approvals with (NON-IS contours AND IS heights)', async function() {
+            // 25-35
+            const contour = addElevationToContour(25, this.contour3);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(0);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithExistingContourIntersectionProof(
+                cvId2,
+                this.tokenId3,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                1,
+                addElevationToGeohash5(25, 'dr5qvnp3ewcv'),
+                addElevationToGeohash5(25, 'dr5qvnp37vs4'),
+                { from: charlie }
+              ),
+              "Contours don't intersect"
+            );
+          });
+
+          it('should deny catching invalid approvals with (IS contours AND NON-IS heights)', async function() {
+            // -5-10
+            const contour = addElevationToContour(-5, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 10, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
+
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+
+            await evmIncreaseTime(3600 * 4);
+
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(0);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            assert.equal(
+              await this.contourVerificationManager.checkVerticalIntersects(
+                cvId2,
+                addElevationToContour(20, this.contour1),
+                30
+              ),
+              false
+            );
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithExistingContourIntersectionProof(
+                cvId2,
+                this.tokenId3,
+                3,
+                addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
+                addElevationToGeohash5(20, 'dr5qvnpd300r'),
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                addElevationToGeohash5(-5, 'dr5qvnpd5npy'),
+                { from: charlie }
+              ),
+              'No intersection neither among contours nor among heights'
+            );
+          });
         });
 
-        it('should allow rejecting with existing token intersection proof', async function() {
-          // 25-35
-          const contour = addElevationToContour(25, this.contour2);
-          let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+        describe('inclusion proofs', () => {
+          it('should deny rejecting with (NON-IN point AND IN heights)', async function() {
+            // 25-35
+            const res = await this.newPropertyManager.submit(
+              addElevationToContour(25, this.contour2),
+              35,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(0, v4, { from: o4 });
 
-          assert.equal(await this.spaceGeoData.getSpaceTokenType(this.tokenId3), SpaceTokenType.ROOM);
-          assert.equal(await this.newPropertyManager.getCVSpaceTokenType(aId), SpaceTokenType.ROOM);
+            await assertRevert(
+              this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+                0,
+                v2,
+                this.tokenId3,
+                1,
+                addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+                { from: o2 }
+              ),
+              "Existing contour doesn't include verifying"
+            );
+          });
 
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-          await this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-            cvId2,
-            v2,
-            this.tokenId3,
-            3,
-            addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
-            addElevationToGeohash5(20, 'dr5qvnpd300r'),
-            0,
-            addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
-            addElevationToGeohash5(25, 'dr5qvnpd5npy'),
-            { from: o2 }
-          );
-          await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
-        });
+          it('should deny rejecting with (IN point AND NON-IN heights)', async function() {
+            let res = await this.newPropertyManager.submit(
+              addElevationToContour(-5, this.contour2),
+              10,
+              SpaceTokenType.ROOM
+            );
+            const aId = res.logs[0].args.applicationId;
 
-        it('should allow rejecting with existing token inclusion proof', async function() {
-          const contour = addElevationToContour(25, this.contour2);
-          let res = await this.newPropertyManager.submit(contour, 42, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await assertRevert(
+              this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+                cvId2,
+                v2,
+                this.tokenId3,
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                { from: o2 }
+              ),
+              'Contour inclusion/height intersection not found'
+            );
+          });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          it('should allow rejecting with existing token inclusion proof', async function() {
+            // 25-35
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
 
-          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-            0,
-            v2,
-            this.tokenId3,
-            3,
-            addElevationToGeohash5(25, 'dr5qvnpd100z'),
-            { from: o2 }
-          );
-          await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
-        });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-        it('should allow catching invalid approvals with existing token intersection proof', async function() {
-          const contour = addElevationToContour(15, this.contour2);
-          let res = await this.newPropertyManager.submit(contour, 25, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
+              0,
+              v2,
+              this.tokenId3,
+              3,
+              addElevationToGeohash5(25, 'dr5qvnpd100z'),
+              { from: o2 }
+            );
+            await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
+          });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          it('should deny catching invalid approvals with (NON-IN point AND IN heights)', async function() {
+            const contour = addElevationToContour(25, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 35, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
 
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
-          await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await evmIncreaseTime(3600 * 4);
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
 
-          res = await this.contourVerificationManager.getApplication(0);
-          assert.equal(res.approvalCount, 3);
-          assert.equal(res.action, 0);
-          assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+            await evmIncreaseTime(3600 * 4);
 
-          await this.contourVerificationManager.reportInvalidApprovalWithExistingContourIntersectionProof(
-            cvId2,
-            this.tokenId3,
-            3,
-            addElevationToGeohash5(20, 'dr5qvnp9cnpt'),
-            addElevationToGeohash5(20, 'dr5qvnpd300r'),
-            0,
-            addElevationToGeohash5(15, 'dr5qvnpd0eqs'),
-            addElevationToGeohash5(15, 'dr5qvnpd5npy'),
-            { from: charlie }
-          );
-          await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
-        });
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
 
-        it('should allow catching invalid approvals with existing token inclusion proof', async function() {
-          const contour = addElevationToContour(15, this.contour2);
-          let res = await this.newPropertyManager.submit(contour, 42, SpaceTokenType.ROOM);
-          const aId = res.logs[0].args.applicationId;
+            res = await this.contourVerificationManager.getApplication(0);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
-          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
+                0,
+                this.tokenId3,
+                1,
+                addElevationToGeohash5(25, 'dr5qvnpd5npy'),
+                { from: charlie }
+              ),
+              "Existing contour doesn't include verifying"
+            );
+          });
 
-          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
-          const cvId2 = res.logs[0].args.applicationId;
-          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          it('should deny catching invalid approvals with (IN point AND NON-IN heights)', async function() {
+            const contour = addElevationToContour(-5, this.contour2);
+            let res = await this.newPropertyManager.submit(contour, 0, SpaceTokenType.ROOM);
+            const aId = res.logs[0].args.applicationId;
 
-          assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
-          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
-          await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
-          await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
+            await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await evmIncreaseTime(3600 * 4);
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
+            assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-          assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
+            assert.equal(await this.contourVerifiers.isVerifierValid(v2, o2), true);
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
+            await this.contourVerificationManager.approve(cvId2, v3, { from: o3 });
 
-          res = await this.contourVerificationManager.getApplication(0);
-          assert.equal(res.approvalCount, 3);
-          assert.equal(res.action, 0);
-          assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+            await evmIncreaseTime(3600 * 4);
 
-          await this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
-            0,
-            this.tokenId3,
-            3,
-            addElevationToGeohash5(15, 'dr5qvnpd100z'),
-            { from: charlie }
-          );
-          await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
+            assert.equal(
+              await this.newPropertyManager.getApplicationStatus(aId),
+              ApplicationStatus.CONTOUR_VERIFICATION
+            );
+
+            res = await this.contourVerificationManager.getApplication(0);
+            assert.equal(res.approvalCount, 3);
+            assert.equal(res.action, 0);
+            assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
+
+            await assertRevert(
+              this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
+                0,
+                this.tokenId3,
+                0,
+                addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
+                { from: charlie }
+              ),
+              'Contour inclusion/height intersection not found'
+            );
+          });
         });
       });
 
@@ -539,11 +693,11 @@ contract('ContourVerification of ROOM types', accounts => {
               this.updatePropertyManager.address,
               this.existingAId,
               3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
               0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
-              galt.geohashToNumber('dr5qvnp99ddh').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9c7b2').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp99ddh').toString(10),
               { from: o2 }
             )
           );
@@ -567,11 +721,11 @@ contract('ContourVerification of ROOM types', accounts => {
             this.updatePropertyManager.address,
             this.existingAId,
             3,
-            galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galt.geohashToNumber('dr5qvnpd300r').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
             { from: o2 }
           );
 
@@ -597,7 +751,7 @@ contract('ContourVerification of ROOM types', accounts => {
             this.updatePropertyManager.address,
             this.existingAId,
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: o2 }
           );
 
@@ -634,11 +788,11 @@ contract('ContourVerification of ROOM types', accounts => {
             this.updatePropertyManager.address,
             this.existingAId,
             3,
-            galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galt.geohashToNumber('dr5qvnpd300r').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
             { from: charlie }
           );
 
@@ -675,7 +829,7 @@ contract('ContourVerification of ROOM types', accounts => {
             this.updatePropertyManager.address,
             this.existingAId,
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: charlie }
           );
 
@@ -720,11 +874,11 @@ contract('ContourVerification of ROOM types', accounts => {
               this.updatePropertyManager.address,
               this.existingAId,
               3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
               0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
-              galt.geohashToNumber('dr5qvnp99ddh').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9c7b2').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp99ddh').toString(10),
               { from: o2 }
             )
           );
@@ -755,11 +909,11 @@ contract('ContourVerification of ROOM types', accounts => {
               this.newPropertyManager.address,
               this.existingAId,
               3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
               0,
-              galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-              galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
               { from: o2 }
             )
           );
@@ -769,11 +923,11 @@ contract('ContourVerification of ROOM types', accounts => {
             this.newPropertyManager.address,
             this.cvId1,
             3,
-            galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galt.geohashToNumber('dr5qvnpd300r').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
             { from: o2 }
           );
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -804,7 +958,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.updatePropertyManager.address,
               this.existingAId,
               0,
-              galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
               { from: o2 }
             )
           );
@@ -814,7 +968,7 @@ contract('ContourVerification of ROOM types', accounts => {
             v2,
             this.cvId1,
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: o2 }
           );
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -859,11 +1013,11 @@ contract('ContourVerification of ROOM types', accounts => {
               this.newPropertyManager.address,
               this.existingAId,
               3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
               0,
-              galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-              galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
               { from: o2 }
             )
           );
@@ -873,11 +1027,11 @@ contract('ContourVerification of ROOM types', accounts => {
               this.newPropertyManager.address,
               cvId2,
               0,
-              galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-              galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
               3,
-              galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-              galt.geohashToNumber('dr5qvnpd300r').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+              galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
               { from: charlie }
             ),
             'Existing application ID should be less than reporting ID'
@@ -888,11 +1042,11 @@ contract('ContourVerification of ROOM types', accounts => {
             this.newPropertyManager.address,
             this.cvId1,
             3,
-            galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
-            galt.geohashToNumber('dr5qvnpd300r').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd300r').toString(10),
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
-            galt.geohashToNumber('dr5qvnpd5npy').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd5npy').toString(10),
             { from: charlie }
           );
           await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -933,7 +1087,7 @@ contract('ContourVerification of ROOM types', accounts => {
             cvId2,
             this.cvId1,
             0,
-            galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: charlie }
           );
           await afterReportChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -978,7 +1132,7 @@ contract('ContourVerification of ROOM types', accounts => {
               v2,
               this.tokenId3,
               2,
-              galt.geohashToNumber('dr5qvnp9grz7').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp9grz7').toString(10),
               { from: o2 }
             )
           );
@@ -1000,7 +1154,7 @@ contract('ContourVerification of ROOM types', accounts => {
             v2,
             this.tokenId3,
             1,
-            galt.geohashToNumber('dr5qvnp6h46c').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp6h46c').toString(10),
             { from: o2 }
           );
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId);
@@ -1046,7 +1200,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.updatePropertyManager.address,
               this.existingAId,
               0,
-              galt.geohashToNumber('dr5qvnp3ewcv').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp3ewcv').toString(10),
               { from: o2 }
             )
           );
@@ -1070,7 +1224,7 @@ contract('ContourVerification of ROOM types', accounts => {
             this.updatePropertyManager.address,
             this.existingAId,
             0,
-            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp6hfwt').toString(10),
             { from: o2 }
           );
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -1113,7 +1267,7 @@ contract('ContourVerification of ROOM types', accounts => {
               v2,
               this.cvId1,
               0,
-              galt.geohashToNumber('dr5qvnp3ewcv').toString(10),
+              galtUtils.geohashToNumber('dr5qvnp3ewcv').toString(10),
               { from: o2 }
             )
           );
@@ -1146,7 +1300,7 @@ contract('ContourVerification of ROOM types', accounts => {
             v2,
             this.cvId1,
             0,
-            galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp6hfwt').toString(10),
             { from: o2 }
           );
           await afterRejectChecks.call(this, this.newPropertyManager, aId, cvId2);
@@ -1238,11 +1392,11 @@ contract('ContourVerification of ROOM types', accounts => {
             v2,
             this.tokenId2,
             3,
-            galt.geohashToNumber('dr5qvnp3g3w0').toString(10),
-            galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp3g3w0').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
             1,
-            galt.geohashToNumber('dr5qvnp3yv97').toString(10),
-            galt.geohashToNumber('dr5qvnp3ybpq').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp3yv97').toString(10),
+            galtUtils.geohashToNumber('dr5qvnp3ybpq').toString(10),
             { from: o2 }
           ),
           "Can't reject self-update action"
@@ -1252,11 +1406,11 @@ contract('ContourVerification of ROOM types', accounts => {
           v2,
           this.tokenId3,
           0,
-          galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
-          galt.geohashToNumber('dr5qvnp3ewcv').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp9c7b2').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3ewcv').toString(10),
           1,
-          galt.geohashToNumber('dr5qvnp3yv97').toString(10),
-          galt.geohashToNumber('dr5qvnp3ybpq').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3yv97').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3ybpq').toString(10),
           { from: o2 }
         );
         await afterRejectChecks.call(this, this.updatePropertyManager, aId, cvId);
@@ -1281,7 +1435,7 @@ contract('ContourVerification of ROOM types', accounts => {
             v2,
             this.tokenId2,
             3,
-            galt.geohashToNumber('dr5qvnpd100z').toString(10),
+            galtUtils.geohashToNumber('dr5qvnpd100z').toString(10),
             { from: o2 }
           ),
           "Can't reject self-update action"
@@ -1291,7 +1445,7 @@ contract('ContourVerification of ROOM types', accounts => {
           v2,
           this.tokenId3,
           3,
-          galt.geohashToNumber('dr5qvnp3wp47').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3wp47').toString(10),
           { from: o2 }
         );
 
@@ -1353,11 +1507,11 @@ contract('ContourVerification of ROOM types', accounts => {
           this.updatePropertyManager.address,
           this.existingAId,
           2,
-          galt.geohashToNumber('dr5qvnp3g3w0').toString(10),
-          galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3g3w0').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp9cnpt').toString(10),
           3,
-          galt.geohashToNumber('dr5qvnp3wp47').toString(10),
-          galt.geohashToNumber('dr5qvnp3vur6').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3wp47').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3vur6').toString(10),
           { from: o2 }
         );
 
@@ -1384,7 +1538,7 @@ contract('ContourVerification of ROOM types', accounts => {
           this.updatePropertyManager.address,
           this.existingAId,
           1,
-          galt.geohashToNumber('dr5qvnp3yv97').toString(10),
+          galtUtils.geohashToNumber('dr5qvnp3yv97').toString(10),
           { from: o2 }
         );
 

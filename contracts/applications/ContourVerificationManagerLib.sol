@@ -65,7 +65,7 @@ library ContourVerificationManagerLib {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
         require(
-          _checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
+          checkForRoomVerticalIntersection(a, existingTokenContour, existingTokenHighestPoint) == true,
           "No intersection neither among contours nor among heights"
         );
       }
@@ -104,7 +104,7 @@ library ContourVerificationManagerLib {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
         require(
-          _checkVerticalIntersects(a, existingTokenContour, existingTokenHighestPoint) == true,
+          checkForRoomVerticalIntersection(a, existingTokenContour, existingTokenHighestPoint) == true,
           "Contour inclusion/height intersection not found"
         );
       }
@@ -149,7 +149,7 @@ library ContourVerificationManagerLib {
     ) == true) {
       if (applicationContract.getCVSpaceTokenType(_externalApplicationId) == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          _checkVerticalIntersects(
+          checkForRoomVerticalIntersection(
             a,
             existingContour,
             applicationContract.getCVHighestPoint(_externalApplicationId)
@@ -192,7 +192,7 @@ library ContourVerificationManagerLib {
     if (isInside == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          _checkVerticalIntersects(
+          checkForRoomVerticalIntersection(
             a,
             applicationContract.getCVContour(_externalApplicationId),
             applicationContract.getCVHighestPoint(_externalApplicationId)
@@ -237,7 +237,7 @@ library ContourVerificationManagerLib {
     if (isInside == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          _checkVerticalIntersects(
+          checkForRoomVerticalIntersection(
             a,
             existingApplicationContract.getCVContour(existingA.externalApplicationId),
             existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
@@ -289,7 +289,7 @@ library ContourVerificationManagerLib {
     ) == true) {
       if (existingApplicationContract.getCVSpaceTokenType(existingA.externalApplicationId) == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
         require(
-          _checkVerticalIntersects(
+          checkForRoomVerticalIntersection(
             a,
             existingContour,
             existingApplicationContract.getCVHighestPoint(existingA.externalApplicationId)
@@ -456,21 +456,26 @@ library ContourVerificationManagerLib {
     return true;
   }
 
-  function _checkVerticalIntersects(
+  function checkForRoomVerticalIntersection(
     ContourVerificationManager.Application storage a,
     uint256[] memory existingContour,
     int256 eHP
   )
-    internal
+    public
+    view
     returns (bool)
   {
     IContourModifierApplication applicationContract = IContourModifierApplication(a.applicationContract);
     uint256[] memory verifyingTokenContour = applicationContract.getCVContour(a.externalApplicationId);
     int256 vHP = applicationContract.getCVHighestPoint(a.externalApplicationId);
 
-    int256 vLP = _getLowestElevation(verifyingTokenContour);
-    int256 eLP = _getLowestElevation(verifyingTokenContour);
+    int256 vLP = getLowestElevation(verifyingTokenContour);
+    int256 eLP = getLowestElevation(existingContour);
 
+    return checkVerticalIntersection(eHP, eLP, vHP, vLP);
+  }
+
+  function checkVerticalIntersection(int256 eHP, int256 eLP, int256 vHP, int256 vLP) public pure returns (bool) {
     if (eHP < vHP && eHP > vLP) {
       return true;
     }
@@ -490,17 +495,19 @@ library ContourVerificationManagerLib {
     return false;
   }
 
-  function _getLowestElevation(
+  function getLowestElevation(
     uint256[] memory _contour
   )
-    internal
-    view
+    public
+    pure
     returns (int256)
   {
     uint256 len = _contour.length;
-    int256 theLowest;
+    require(len > 2, "Empty contour passed in");
 
-    for (uint256 i = 0; i < len; i++) {
+    int256 theLowest = GeohashUtils.geohash5zToHeight(_contour[0]);
+
+    for (uint256 i = 1; i < len; i++) {
       int256 elevation = GeohashUtils.geohash5zToHeight(_contour[i]);
       if (elevation < theLowest) {
         theLowest = elevation;
