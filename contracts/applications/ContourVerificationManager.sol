@@ -470,7 +470,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithApplicationApprovedTimeoutContourIntersectionProof(
     uint256 _aId,
     address _verifier,
-    address _applicationContract,
     uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
@@ -506,7 +505,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // at-is-f
   function reportInvalidApprovalWithApplicationApprovedTimeoutContourIntersectionProof(
     uint256 _aId,
-    address _applicationContract,
     uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
