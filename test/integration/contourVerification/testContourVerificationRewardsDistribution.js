@@ -567,7 +567,6 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
         cvId2,
         v2,
-        this.newPropertyManager.address,
         this.cvId1,
         3,
         galt.geohashToNumber('dr5qvnp9cnpt').toString(10),

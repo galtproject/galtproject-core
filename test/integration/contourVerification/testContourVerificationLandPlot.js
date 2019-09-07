@@ -658,7 +658,6 @@ contract('ContourVerification', accounts => {
             this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
               cvId2,
               v2,
-              this.updatePropertyManager.address,
               this.existingAId,
               3,
               galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
@@ -707,7 +706,6 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
             cvId2,
             v2,
-            this.newPropertyManager.address,
             this.cvId1,
             3,
             galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
@@ -811,7 +809,6 @@ contract('ContourVerification', accounts => {
           await assertRevert(
             this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutContourIntersectionProof(
               this.cvId1,
-              this.newPropertyManager.address,
               cvId2,
               0,
               galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
@@ -826,7 +823,6 @@ contract('ContourVerification', accounts => {
           // eslint-disable-next-line max-len
           await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutContourIntersectionProof(
             cvId2,
-            this.newPropertyManager.address,
             this.cvId1,
             3,
             galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
