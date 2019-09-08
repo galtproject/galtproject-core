@@ -234,7 +234,7 @@ library ContourVerificationManagerLib {
 
     bool isInside = _checkPointInsideContour(
       a,
-        _inclusion,
+      _inclusion,
       IContourModifierApplication(existingA.applicationContract).getCVContour(existingA.externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
