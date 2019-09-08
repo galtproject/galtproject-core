@@ -1617,10 +1617,7 @@ contract('ContourVerification', accounts => {
   }
 
   async function afterReportChecks(applicationContract, aId, cvId, numberOfApprovals = 3) {
-    await assertRevert(
-      this.contourVerificationManager.approve(cvId, v3, { from: o3 }),
-      'Invalid operator'
-    );
+    await assertRevert(this.contourVerificationManager.approve(cvId, v3, { from: o3 }), 'Invalid operator');
     assert.equal(await this.contourVerifiers.slashedRewards(charlie), ether(174 * numberOfApprovals));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
