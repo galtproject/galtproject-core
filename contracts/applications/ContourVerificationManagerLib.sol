@@ -78,6 +78,7 @@ library ContourVerificationManagerLib {
   function denyWithExistingPointInclusionProof(
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
+    ContourVerificationManager.Inclusion _inclusion,
     address _reporter,
     uint256 _existingTokenId,
     uint256 _verifyingContourPointIndex,
@@ -96,6 +97,7 @@ library ContourVerificationManagerLib {
 
     bool isInside = _checkPointInsideContour(
       a,
+      _inclusion,
       existingTokenContour,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -166,6 +168,7 @@ library ContourVerificationManagerLib {
   function denyWithApplicationApprovedPointInclusionProof(
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
+    ContourVerificationManager.Inclusion _inclusion,
     address _reporter,
     address _applicationContract,
     bytes32 _externalApplicationId,
@@ -184,6 +187,7 @@ library ContourVerificationManagerLib {
 
     bool isInside = _checkPointInsideContour(
       a,
+      _inclusion,
       applicationContract.getCVContour(_externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -209,6 +213,7 @@ library ContourVerificationManagerLib {
   function denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Application storage existingA,
+    ContourVerificationManager.Inclusion _inclusion,
     address _reporter,
     uint256 _existingCVApplicationId,
     uint256 _verifyingContourPointIndex,
@@ -229,6 +234,7 @@ library ContourVerificationManagerLib {
 
     bool isInside = _checkPointInsideContour(
       a,
+        _inclusion,
       IContourModifierApplication(existingA.applicationContract).getCVContour(existingA.externalApplicationId),
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -403,9 +409,10 @@ library ContourVerificationManagerLib {
 
   function _checkPointInsideContour(
     ContourVerificationManager.Application storage a,
+    ContourVerificationManager.Inclusion _inclusion,
     uint256[] memory _existingTokenContour,
-    uint256 _verifyingContourPointIndex,
-    uint256 _verifyingContourPoint
+    uint256 contourPointIndex,
+    uint256 _contourPoint
   )
     internal
     returns (bool)
@@ -416,15 +423,29 @@ library ContourVerificationManagerLib {
     applicationContract.isCVApplicationPending(a.externalApplicationId);
     uint256[] memory verifyingTokenContour = applicationContract.getCVContour(a.externalApplicationId);
 
-    require(
-      verifyingTokenContour[_verifyingContourPointIndex] == _verifyingContourPoint,
-      "Invalid point of verifying token"
-    );
+    if (_inclusion == ContourVerificationManager.Inclusion.EXISTING_INSIDE_VERIFYING) {
+      require(
+        _existingTokenContour[contourPointIndex] == _contourPoint,
+        "Invalid point of verifying token"
+      );
 
-    return PolygonUtils.isInsideWithoutCache(
-      GeohashUtils.geohash5zToGeohash5(_verifyingContourPoint),
-      filterHeight(_existingTokenContour)
-    );
+      return PolygonUtils.isInsideWithoutCache(
+        GeohashUtils.geohash5zToGeohash5(_contourPoint),
+        filterHeight(verifyingTokenContour)
+      );
+
+    } else {
+      require(
+        verifyingTokenContour[contourPointIndex] == _contourPoint,
+        "Invalid point of verifying token"
+      );
+
+      return PolygonUtils.isInsideWithoutCache(
+        GeohashUtils.geohash5zToGeohash5(_contourPoint),
+        filterHeight(_existingTokenContour)
+      );
+
+    }
   }
 
   function _contourHasSegment(
