@@ -17,7 +17,6 @@ import "./interfaces/IContourModifierApplication.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
-
 contract ContourVerifiableApplication is IContourModifierApplication {
   using ArraySet for ArraySet.Bytes32Set;
 
