@@ -183,7 +183,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(a.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status");
     require(a.executed == false, "Already executed");
-    require(a.approvalTimeoutInitiatedAt.add(approvalTimeout) < block.timestamp, "Expect APPROVAL_TIMEOUT status");
+    require(
+      a.approvalTimeoutInitiatedAt.add(approvalTimeout) < block.timestamp,
+      "Timeout period has not passed yet"
+    );
 
     a.status = Status.APPROVED;
     a.executed = true;

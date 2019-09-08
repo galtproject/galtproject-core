@@ -267,7 +267,7 @@ contract('ContourVerification', accounts => {
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0));
+      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
@@ -300,7 +300,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          const res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
+          const res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -316,11 +316,12 @@ contract('ContourVerification', accounts => {
               3,
               galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
               galt.geohashToNumber('dr5qvnpd300r').toString(10),
-              0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
+              3,
               galt.geohashToNumber('dr5qvnp99ddh').toString(10),
+              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
               { from: o2 }
-            )
+            ),
+            "Contours don't intersect"
           );
         });
 
@@ -489,11 +490,12 @@ contract('ContourVerification', accounts => {
               3,
               galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
               galt.geohashToNumber('dr5qvnpd300r').toString(10),
-              0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
+              3,
               galt.geohashToNumber('dr5qvnp99ddh').toString(10),
+              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
               { from: o2 }
-            )
+            ),
+            "Contours don't intersect"
           );
         });
 
@@ -667,15 +669,16 @@ contract('ContourVerification', accounts => {
             this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
               cvId2,
               v2,
-              this.existingAId,
+              this.cvId1,
               3,
               galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
               galt.geohashToNumber('dr5qvnpd300r').toString(10),
-              0,
-              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
+              3,
               galt.geohashToNumber('dr5qvnp99ddh').toString(10),
+              galt.geohashToNumber('dr5qvnp9c7b2').toString(10),
               { from: o2 }
-            )
+            ),
+            "Contours don't intersect"
           );
         });
 
@@ -710,7 +713,8 @@ contract('ContourVerification', accounts => {
               galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
               galt.geohashToNumber('dr5qvnpd5npy').toString(10),
               { from: o2 }
-            )
+            ),
+            'Not in CVApplicationApproved list'
           );
           await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
             cvId2,
@@ -755,7 +759,8 @@ contract('ContourVerification', accounts => {
               0,
               galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
               { from: o2 }
-            )
+            ),
+            'Not in CVApplicationApproved list'
           );
 
           await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
@@ -803,9 +808,8 @@ contract('ContourVerification', accounts => {
           assert.equal(res, false);
 
           await assertRevert(
-            this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
+            this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
               cvId2,
-              v2,
               this.newPropertyManager.address,
               this.existingAId,
               3,
@@ -814,8 +818,9 @@ contract('ContourVerification', accounts => {
               0,
               galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
               galt.geohashToNumber('dr5qvnpd5npy').toString(10),
-              { from: o2 }
-            )
+              { from: charlie }
+            ),
+            'Not in CVApplicationApproved list'
           );
           await assertRevert(
             this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutContourIntersectionProof(
@@ -931,7 +936,8 @@ contract('ContourVerification', accounts => {
                 2,
                 galt.geohashToNumber('dr5qvnp9grz7').toString(10),
                 { from: o2 }
-              )
+              ),
+              "Existing contour doesn't include verifying"
             );
           });
 
@@ -985,7 +991,8 @@ contract('ContourVerification', accounts => {
                 1,
                 galt.geohashToNumber('dr5qvnpd5npy').toString(10),
                 { from: o2 }
-              )
+              ),
+              "Existing contour doesn't include verifying"
             );
           });
 
@@ -1387,7 +1394,7 @@ contract('ContourVerification', accounts => {
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0));
+      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
@@ -1593,7 +1600,10 @@ contract('ContourVerification', accounts => {
   });
 
   async function afterRejectChecks(applicationContract, aId, cvId) {
-    await assertRevert(this.contourVerificationManager.approve(1, v3, { from: o3 }));
+    await assertRevert(
+      this.contourVerificationManager.approve(cvId, v3, { from: o3 }),
+      'ID mismatches with the current'
+    );
     assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
@@ -1607,7 +1617,11 @@ contract('ContourVerification', accounts => {
   }
 
   async function afterReportChecks(applicationContract, aId, cvId, numberOfApprovals = 3) {
-    await assertRevert(this.contourVerificationManager.approve(cvId, v3, { from: o3 }));
+    await assertRevert(
+      this.contourVerificationManager.approve(cvId, v3, { from: o3 }),
+      'Invalid operator'
+      // 'ID mismatches with the current'
+    );
     assert.equal(await this.contourVerifiers.slashedRewards(charlie), ether(174 * numberOfApprovals));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
