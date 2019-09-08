@@ -268,7 +268,7 @@ contract('ContourVerification of ROOM types', accounts => {
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0));
+      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
@@ -1838,7 +1838,8 @@ contract('ContourVerification of ROOM types', accounts => {
                 0,
                 addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
                 { from: o2 }
-              )
+              ),
+              'fuck'
             );
 
             await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
@@ -2002,7 +2003,10 @@ contract('ContourVerification of ROOM types', accounts => {
   });
 
   async function afterRejectChecks(applicationContract, aId, cvId) {
-    await assertRevert(this.contourVerificationManager.approve(1, v3, { from: o3 }));
+    await assertRevert(
+      this.contourVerificationManager.approve(cvId, v3, { from: o3 }),
+      'ID mismatches with the current'
+    );
     assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(174));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
@@ -2016,7 +2020,7 @@ contract('ContourVerification of ROOM types', accounts => {
   }
 
   async function afterReportChecks(applicationContract, aId, cvId, numberOfApprovals = 3) {
-    await assertRevert(this.contourVerificationManager.approve(cvId, v3, { from: o3 }));
+    await assertRevert(this.contourVerificationManager.approve(cvId, v3, { from: o3 }), 'Invalid operator');
     assert.equal(await this.contourVerifiers.slashedRewards(charlie), ether(174 * numberOfApprovals));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 

@@ -1620,7 +1620,6 @@ contract('ContourVerification', accounts => {
     await assertRevert(
       this.contourVerificationManager.approve(cvId, v3, { from: o3 }),
       'Invalid operator'
-      // 'ID mismatches with the current'
     );
     assert.equal(await this.contourVerifiers.slashedRewards(charlie), ether(174 * numberOfApprovals));
     assert.equal(await applicationContract.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
