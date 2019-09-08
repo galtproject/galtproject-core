@@ -70,6 +70,11 @@ const SpaceTokenType = {
   ROOM: 3
 };
 
+const Inclusion = {
+  VERIFYING_INSIDE_EXISTING: 0,
+  EXISTING_INSIDE_VERIFYING: 1
+};
+
 contract('ContourVerification Reward Distribution', accounts => {
   const [
     coreTeam,
@@ -588,6 +593,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
         0,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.tokenId3,
         3,
         galt.geohashToNumber('dr5qvnpd100z').toString(10),
@@ -621,6 +627,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
         cvId2,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.updatePropertyManager.address,
         this.existingAId,
         0,
@@ -653,6 +660,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
         cvId2,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.cvId1,
         0,
         galt.geohashToNumber('dr5qvnpd0eqs').toString(10),

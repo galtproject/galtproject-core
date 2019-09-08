@@ -366,6 +366,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
             0,
             v2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.tokenId3,
             3,
             galt.geohashToNumber('dr5qvnpd100z').toString(10),
@@ -438,6 +439,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
             0,
             this.tokenId3,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             3,
             galt.geohashToNumber('dr5qvnpd100z').toString(10),
             { from: charlie }
@@ -540,6 +542,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
             cvId2,
             v2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.updatePropertyManager.address,
             this.existingAId,
             0,
@@ -618,6 +621,7 @@ contract('ContourVerification', accounts => {
 
           await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
             cvId2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.updatePropertyManager.address,
             this.existingAId,
             0,
@@ -745,6 +749,7 @@ contract('ContourVerification', accounts => {
             this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
               cvId2,
               v2,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               this.updatePropertyManager.address,
               this.existingAId,
               0,
@@ -756,6 +761,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
             cvId2,
             v2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.cvId1,
             0,
             galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
@@ -874,6 +880,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
             cvId2,
             this.cvId1,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             0,
             galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
             { from: charlie }
@@ -1468,6 +1475,7 @@ contract('ContourVerification', accounts => {
           this.contourVerificationManager.rejectWithExistingPointInclusionProof(
             cvId,
             v2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.tokenId2,
             3,
             galt.geohashToNumber('dr5qvnpd100z').toString(10),
@@ -1478,6 +1486,7 @@ contract('ContourVerification', accounts => {
         await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
           cvId,
           v2,
+          Inclusion.VERIFYING_INSIDE_EXISTING,
           this.tokenId3,
           3,
           galt.geohashToNumber('dr5qvnp3wp47').toString(10),
@@ -1570,6 +1579,7 @@ contract('ContourVerification', accounts => {
         await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
           cvId2,
           v2,
+          Inclusion.VERIFYING_INSIDE_EXISTING,
           this.updatePropertyManager.address,
           this.existingAId,
           1,

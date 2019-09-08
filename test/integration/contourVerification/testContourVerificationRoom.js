@@ -66,6 +66,11 @@ const SpaceTokenType = {
   ROOM: 3
 };
 
+const Inclusion = {
+  VERIFYING_INSIDE_EXISTING: 0,
+  EXISTING_INSIDE_VERIFYING: 1
+};
+
 contract('ContourVerification of ROOM types', accounts => {
   const [
     coreTeam,
@@ -564,6 +569,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
                 0,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.tokenId3,
                 1,
                 addElevationToGeohash5(25, 'dr5qvnpd5npy'),
@@ -591,6 +597,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.tokenId3,
                 0,
                 addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
@@ -618,6 +625,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
               0,
               v2,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               this.tokenId3,
               3,
               addElevationToGeohash5(25, 'dr5qvnpd100z'),
@@ -658,6 +666,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
                 0,
                 this.tokenId3,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 1,
                 addElevationToGeohash5(25, 'dr5qvnpd5npy'),
                 { from: charlie }
@@ -698,6 +707,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
                 0,
                 this.tokenId3,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 0,
                 addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
                 { from: charlie }
@@ -737,6 +747,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
               0,
               this.tokenId3,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               0,
               addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
               { from: charlie }
@@ -1037,6 +1048,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.updatePropertyManager.address,
                 this.existingAId,
                 1,
@@ -1069,6 +1081,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.updatePropertyManager.address,
                 this.existingAId,
                 0,
@@ -1100,6 +1113,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
               cvId2,
               v2,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               this.updatePropertyManager.address,
               this.existingAId,
               0,
@@ -1141,6 +1155,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await assertRevert(
               this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
                 cvId2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.updatePropertyManager.address,
                 this.existingAId,
                 1,
@@ -1182,6 +1197,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await assertRevert(
               this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
                 cvId2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.updatePropertyManager.address,
                 this.existingAId,
                 0,
@@ -1223,6 +1239,7 @@ contract('ContourVerification of ROOM types', accounts => {
 
             await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
               cvId2,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               this.updatePropertyManager.address,
               this.existingAId,
               0,
@@ -1250,6 +1267,7 @@ contract('ContourVerification of ROOM types', accounts => {
           await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
             cvId2,
             v2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.updatePropertyManager.address,
             this.existingAId,
             0,
@@ -1287,6 +1305,7 @@ contract('ContourVerification of ROOM types', accounts => {
 
           await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
             cvId2,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             this.updatePropertyManager.address,
             this.existingAId,
             0,
@@ -1711,6 +1730,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.cvId1,
                 0,
                 addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
@@ -1744,6 +1764,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.cvId1,
                 1,
                 addElevationToGeohash5(25, 'dr5qvnpd5npy'),
@@ -1777,6 +1798,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.cvId1,
                 0,
                 addElevationToGeohash5(45, 'dr5qvnpd0eqs'),
@@ -1810,6 +1832,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
                 cvId2,
                 v2,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.updatePropertyManager.address,
                 this.existingAId,
                 0,
@@ -1821,6 +1844,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
               cvId2,
               v2,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               this.cvId1,
               0,
               addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
@@ -1868,6 +1892,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
                 cvId2,
                 this.cvId1,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 1,
                 addElevationToGeohash5(15, 'dr5qvnpd5npy'),
                 { from: charlie }
@@ -1916,6 +1941,7 @@ contract('ContourVerification of ROOM types', accounts => {
               this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
                 cvId2,
                 this.cvId1,
+                Inclusion.VERIFYING_INSIDE_EXISTING,
                 0,
                 addElevationToGeohash5(-5, 'dr5qvnpd0eqs'),
                 { from: charlie }
@@ -1963,6 +1989,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
               cvId2,
               this.cvId1,
+              Inclusion.VERIFYING_INSIDE_EXISTING,
               0,
               addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
               { from: charlie }
