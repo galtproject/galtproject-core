@@ -70,6 +70,11 @@ const SpaceTokenType = {
   ROOM: 3
 };
 
+const Inclusion = {
+  VERIFYING_INSIDE_EXISTING: 0,
+  EXISTING_INSIDE_VERIFYING: 1
+};
+
 contract('ContourVerification Reward Distribution', accounts => {
   const [
     coreTeam,
@@ -253,8 +258,14 @@ contract('ContourVerification Reward Distribution', accounts => {
       const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
 
       await this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 });
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }));
-      await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
+      await assertRevert(
+        this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }),
+        'Reward has already paid out'
+      );
+      await assertRevert(
+        this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }),
+        'Not voted on the application'
+      );
       await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
       const v1BalanceAfter = await this.galtToken.balanceOf(v1);
@@ -473,7 +484,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
     // too early
-    await assertRevert(this.contourVerificationManager.pushApproval(0));
+    await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
 
     await evmIncreaseTime(3600 * 5);
 
@@ -567,7 +578,6 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
         cvId2,
         v2,
-        this.newPropertyManager.address,
         this.cvId1,
         3,
         galt.geohashToNumber('dr5qvnp9cnpt').toString(10),
@@ -589,6 +599,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
         0,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.tokenId3,
         3,
         galt.geohashToNumber('dr5qvnpd100z').toString(10),
@@ -622,6 +633,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
         cvId2,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.updatePropertyManager.address,
         this.existingAId,
         0,
@@ -654,6 +666,7 @@ contract('ContourVerification Reward Distribution', accounts => {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
         cvId2,
         v2,
+        Inclusion.VERIFYING_INSIDE_EXISTING,
         this.cvId1,
         0,
         galt.geohashToNumber('dr5qvnpd0eqs').toString(10),
@@ -696,7 +709,11 @@ contract('ContourVerification Reward Distribution', accounts => {
     assert.equal(res.status, CVStatus.PENDING);
 
     await rejectFunction.call(this, cvId2);
-    await assertRevert(this.contourVerificationManager.approve(cvId2, v3, { from: o3 }));
+    const v3stillActive = await this.contourVerifiers.isVerifierValid(v3, o3);
+    await assertRevert(
+      this.contourVerificationManager.approve(cvId2, v3, { from: o3 }),
+      v3stillActive ? 'ID mismatches with the current' : 'Invalid operator'
+    );
     const slashedReward = 174;
     assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(slashedReward * numberOfApprovalsBeforeReject));
 
@@ -709,12 +726,13 @@ contract('ContourVerification Reward Distribution', accounts => {
     assert.equal(res.action, 0);
     assert.equal(res.status, CVStatus.REJECTED);
 
-    // too early
-    await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
+    // already rejected
+    await assertRevert(this.contourVerificationManager.pushApproval(cvId2), 'Expect APPROVAL_TIMEOUT status');
 
     await evmIncreaseTime(3600 * 5);
 
-    await assertRevert(this.contourVerificationManager.pushApproval(cvId2));
+    // surprisingly still rejected
+    await assertRevert(this.contourVerificationManager.pushApproval(cvId2), 'Expect APPROVAL_TIMEOUT status');
 
     assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
@@ -735,8 +753,14 @@ contract('ContourVerification Reward Distribution', accounts => {
     const v4BalanceBefore = await this.galtToken.balanceOf(v4);
     let mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
 
-    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId, v4, { from: o1 }));
-    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(cvId, v2, { from: o2 }));
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(cvId, v4, { from: o1 }),
+      'Invalid operator'
+    );
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(cvId, v2, { from: o2 }),
+      'Expect APPROVED status'
+    );
     await this.contourVerificationManager.claimVerifierRejectionReward(cvId, v2, { from: o2 });
     await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
     await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
@@ -763,7 +787,10 @@ contract('ContourVerification Reward Distribution', accounts => {
     assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
 
     mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-    await assertRevert(this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }));
+    await assertRevert(
+      this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }),
+      'Only FEE_COLLECTOR role allowed'
+    );
     await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
     await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
     mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);

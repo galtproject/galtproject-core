@@ -42,6 +42,11 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     MODIFY
   }
 
+  enum Inclusion {
+    VERIFYING_INSIDE_EXISTING,
+    EXISTING_INSIDE_VERIFYING
+  }
+
   enum Status {
     NULL,
     PENDING,
@@ -178,7 +183,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
     require(a.status == Status.APPROVAL_TIMEOUT, "Expect APPROVAL_TIMEOUT status");
     require(a.executed == false, "Already executed");
-    require(a.approvalTimeoutInitiatedAt.add(approvalTimeout) < block.timestamp, "Expect APPROVAL_TIMEOUT status");
+    require(
+      a.approvalTimeoutInitiatedAt.add(approvalTimeout) < block.timestamp,
+      "Timeout period has not passed yet"
+    );
 
     a.status = Status.APPROVED;
     a.executed = true;
@@ -275,6 +283,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithExistingPointInclusionProof(
     uint256 _aId,
     address _verifier,
+    Inclusion _inclusion,
     uint256 _existingTokenId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
@@ -289,6 +298,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingPointInclusionProof(
       ggr,
       a,
+      _inclusion,
       _verifier,
       _existingTokenId,
       _verifyingContourPointIndex,
@@ -302,6 +312,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function reportInvalidApprovalWithExistingPointInclusionProof(
     uint256 _aId,
     uint256 _existingTokenId,
+    Inclusion _inclusion,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -317,6 +328,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingPointInclusionProof(
       ggr,
       a,
+      _inclusion,
       msg.sender,
       _existingTokenId,
       _verifyingContourPointIndex,
@@ -409,6 +421,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithApplicationApprovedPointInclusionProof(
     uint256 _aId,
     address _verifier,
+    Inclusion _inclusion,
     address _applicationContract,
     bytes32 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
@@ -424,6 +437,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedPointInclusionProof(
       ggr,
       a,
+      _inclusion,
       _verifier,
       _applicationContract,
       _externalApplicationId,
@@ -437,6 +451,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // aa-in-f
   function reportInvalidApprovalWithApplicationApprovedPointInclusionProof(
     uint256 _aId,
+    Inclusion _inclusion,
     address _applicationContract,
     bytes32 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
@@ -454,6 +469,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedPointInclusionProof(
       ggr,
       a,
+      _inclusion,
       msg.sender,
       _applicationContract,
       _externalApplicationId,
@@ -470,7 +486,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithApplicationApprovedTimeoutContourIntersectionProof(
     uint256 _aId,
     address _verifier,
-    address _applicationContract,
     uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
@@ -506,7 +521,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // at-is-f
   function reportInvalidApprovalWithApplicationApprovedTimeoutContourIntersectionProof(
     uint256 _aId,
-    address _applicationContract,
     uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
@@ -551,6 +565,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function rejectWithApplicationApprovedTimeoutPointInclusionProof(
     uint256 _aId,
     address _verifier,
+    Inclusion _inclusion,
     uint256 _existingCVApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
@@ -566,6 +581,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
       a,
       existingA,
+      _inclusion,
       _verifier,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
@@ -578,6 +594,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // at-in-f
   function reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
     uint256 _aId,
+    Inclusion _inclusion,
     uint256 _existingCVApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
@@ -599,6 +616,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
       a,
       existingA,
+      _inclusion,
       msg.sender,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
@@ -758,6 +776,18 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   }
 
   // GETTERS
+
+  function checkVerticalIntersects(
+    uint256 _aId,
+    uint256[] calldata _existingContour,
+    int256 _eHP
+  )
+    external
+    view
+    returns (bool)
+  {
+    return ContourVerificationManagerLib.checkForRoomVerticalIntersection(verificationQueue[_aId], _existingContour, _eHP);
+  }
 
   function isSelfUpdateCase(uint256 _aId, uint256 _existingTokenId) public view returns (bool) {
     return ContourVerificationManagerLib.isSelfUpdateCase(verificationQueue[_aId], _existingTokenId);
