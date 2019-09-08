@@ -99,12 +99,18 @@ const SpaceTokenType = {
   ROOM: 3
 };
 
+const Inclusion = {
+  VERIFYING_INSIDE_EXISTING: 0,
+  EXISTING_INSIDE_VERIFYING: 1
+};
+
 Object.freeze(ApplicationStatus);
 Object.freeze(ValidationStatus);
 Object.freeze(PaymentMethods);
 Object.freeze(Currency);
 Object.freeze(AreaSource);
 Object.freeze(SpaceTokenType);
+Object.freeze(Inclusion);
 
 contract('NewPropertyManager', accounts => {
   const [
@@ -648,6 +654,7 @@ contract('NewPropertyManager', accounts => {
           await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
             cvId1,
             v3,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             tokenId1,
             0,
             galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
@@ -777,6 +784,7 @@ contract('NewPropertyManager', accounts => {
           await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
             cvId1,
             v3,
+            Inclusion.VERIFYING_INSIDE_EXISTING,
             tokenId1,
             0,
             galt.geohashToNumber('dr5qvnp6hfwt').toString(10),
