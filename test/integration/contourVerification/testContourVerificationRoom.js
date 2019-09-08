@@ -1839,7 +1839,7 @@ contract('ContourVerification of ROOM types', accounts => {
                 addElevationToGeohash5(25, 'dr5qvnpd0eqs'),
                 { from: o2 }
               ),
-              'fuck'
+              'Not in CVApplicationApproved list'
             );
 
             await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
