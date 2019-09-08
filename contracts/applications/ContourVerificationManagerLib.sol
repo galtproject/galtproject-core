@@ -411,7 +411,7 @@ library ContourVerificationManagerLib {
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Inclusion _inclusion,
     uint256[] memory _existingTokenContour,
-    uint256 contourPointIndex,
+    uint256 _contourPointIndex,
     uint256 _contourPoint
   )
     internal
@@ -425,7 +425,7 @@ library ContourVerificationManagerLib {
 
     if (_inclusion == ContourVerificationManager.Inclusion.EXISTING_INSIDE_VERIFYING) {
       require(
-        _existingTokenContour[contourPointIndex] == _contourPoint,
+        _existingTokenContour[_contourPointIndex] == _contourPoint,
         "Invalid point of verifying token"
       );
 
@@ -436,7 +436,7 @@ library ContourVerificationManagerLib {
 
     } else {
       require(
-        verifyingTokenContour[contourPointIndex] == _contourPoint,
+        verifyingTokenContour[_contourPointIndex] == _contourPoint,
         "Invalid point of verifying token"
       );
 
