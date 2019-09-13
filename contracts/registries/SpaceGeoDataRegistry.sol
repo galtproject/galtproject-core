@@ -27,7 +27,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   using SafeMath for uint256;
 
   uint256 public constant MIN_CONTOUR_GEOHASH_PRECISION = 12;
-  uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 100;
+  uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 350;
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
 
