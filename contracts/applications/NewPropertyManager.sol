@@ -154,18 +154,18 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function onlyApplicant(bytes32 _aId) internal {
-    require(applications[_aId].applicant == msg.sender, "Applicant invalid");
+    require(applications[_aId].applicant == msg.sender, "Invalid applicant");
   }
 
   function onlyOracleOfApplication(bytes32 _aId) internal {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
 
-  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
+  function minimalApplicationFeeEth(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
 
-  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
+  function minimalApplicationFeeGalt(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
   }
 
@@ -217,19 +217,19 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function submit(
-      address _pgg,
-      ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
-      uint256 _customArea,
-      address _beneficiary,
-      string calldata _dataLink,
-      string calldata _humanAddress,
-      bytes32 _credentialsHash,
-      bytes32 _ledgerIdentifier,
-      uint256 _submissionFeeInGalt
-)
-      external
-      payable
-      returns (bytes32)
+    address _pgg,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
+    uint256 _customArea,
+    address _beneficiary,
+    string calldata _dataLink,
+    string calldata _humanAddress,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
+    uint256 _submissionFeeInGalt
+  )
+    external
+    payable
+    returns (bytes32)
   {
     pggRegistry().requireValidPgg(_pgg);
 
@@ -304,8 +304,9 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       "Contour vertex count should be between 3 and 350"
     );
 
-    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.applicant == msg.sender, "Invalid applicant");
     require(
+      /* solium-disable-next-line */
       a.status == ApplicationStatus.PARTIALLY_SUBMITTED
       || a.status == ApplicationStatus.PARTIALLY_RESUBMITTED
       || a.status == ApplicationStatus.CV_REJECTED,
@@ -348,7 +349,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     Application storage a = applications[_aId];
     Details storage d = a.details;
 
-    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.applicant == msg.sender, "Invalid applicant");
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
 
     _checkResubmissionPayment(a, _resubmissionFeeInGalt);
@@ -381,18 +382,17 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   )
     internal
   {
-    Currency currency = a.currency;
     uint256 fee;
     uint256 minimalFee;
 
     if (a.currency == Currency.GALT) {
       require(msg.value == 0, "ETH payment not expected");
       fee = _resubmissionFeeInGalt;
-      minimalFee = minimalApplicationFeeEth(a.pgg);
+      minimalFee = minimalApplicationFeeGalt(a.pgg);
     } else {
       require(_resubmissionFeeInGalt == 0, "GALT payment not expected");
       fee = msg.value;
-      minimalFee = minimalApplicationFeeGalt(a.pgg);
+      minimalFee = minimalApplicationFeeEth(a.pgg);
     }
 
     uint256 totalPaid = a.rewards.latestCommittedFee.add(fee);
@@ -476,8 +476,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatus.APPROVED,
-      "Application status should be APPROVED");
+      a.status == ApplicationStatus.STORED,
+      "Application status should be STORED");
 
     emit ClaimSpaceToken(_aId, a.spaceTokenId);
 

@@ -339,7 +339,7 @@ contract('NewPropertyManager', accounts => {
     await this.acl.setRole(bytes32('SPACE_MINTER'), this.newPropertyManager.address, true, { from: coreTeam });
   });
 
-  describe.only('application pipeline for GALT payment method', () => {
+  describe('application pipeline for GALT payment method', () => {
     before(async function() {
       this.fee = ether(50);
     });
@@ -811,7 +811,7 @@ contract('NewPropertyManager', accounts => {
           assert.sameMembers(res.contour, newContour);
         });
 
-        it('should reject on payment both in ETH and GALT', async function() {
+        it('should reject ETH payment', async function() {
           await assertRevert(
             this.newPropertyManager.resubmit(
               this.aId,
@@ -822,7 +822,7 @@ contract('NewPropertyManager', accounts => {
               newHumanAddress,
               // customArea
               123,
-              this.fee,
+              0,
               { from: alice, value: '123' }
             ),
             'ETH payment not expected'
@@ -830,24 +830,6 @@ contract('NewPropertyManager', accounts => {
 
           const res = await this.newPropertyManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.REVERTED);
-        });
-
-        it('should accept a resubmission without payment', async function() {
-          await this.newPropertyManager.resubmit(
-            this.aId,
-            true,
-            newCredentiasHash,
-            newLedgerIdentifier,
-            newDataLink,
-            newHumanAddress,
-            // customArea
-            123,
-            0,
-            { from: alice }
-          );
-
-          const res = await this.newPropertyManager.getApplication(this.aId);
-          assert.equal(res.status, ApplicationStatus.PARTIALLY_RESUBMITTED);
         });
       });
 
@@ -1105,27 +1087,20 @@ contract('NewPropertyManager', accounts => {
 
   describe('application pipeline for ETH', () => {
     before(async function() {
-      await this.geodesicMock.calculateContourArea(this.contour);
-      const area = await this.geodesicMock.setSpaceTokenArea(this.contour);
-      assert.equal(area.toString(10), ether(3000).toString(10));
-      const expectedFee = await this.newPropertyManager.getSubmissionFeeByArea(
-        this.pggConfigX.address,
-        Currency.ETH,
-        area
-      );
-      assert.equal(expectedFee, ether(1.5));
-      this.fee = ether(2);
+      this.fee = ether(20);
     });
 
     beforeEach(async function() {
-      await this.galtToken.approve(this.newPropertyManager.address, this.fee, { from: alice });
-
       let res = await this.newPropertyManager.submit(
-        SpaceTokenType.LAND_PLOT,
-        771000,
-        this.contour,
-        0,
         this.pggConfigX.address,
+        SpaceTokenType.LAND_PLOT,
+        // area
+        123,
+        frank,
+        this.dataLink,
+        this.humanAddress,
+        this.credentials,
+        this.ledgerIdentifier,
         0,
         {
           from: alice,
@@ -1134,19 +1109,15 @@ contract('NewPropertyManager', accounts => {
       );
 
       this.aId = res.logs[0].args.applicationId;
+      assert.notEqual(this.aId, undefined);
 
-      await this.newPropertyManager.attachMoreSubmissionData(
-        this.aId,
-        frank,
-        this.dataLink,
-        this.humanAddress,
-        this.credentials,
-        this.ledgerIdentifier,
-        { from: alice }
+      await assertRevert(
+        this.newPropertyManager.setContour(this.aId, 771000, this.contour, { from: bob }),
+        'Invalid applicant'
       );
+      await this.newPropertyManager.setContour(this.aId, 771000, this.contour, { from: alice });
 
       res = await this.newPropertyManager.getApplication(this.aId);
-      this.packageTokenId = res.packageTokenId;
       assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
     });
 
@@ -1182,77 +1153,92 @@ contract('NewPropertyManager', accounts => {
 
           await assertRevert(
             this.newPropertyManager.submit(
-              SpaceTokenType.LAND_PLOT,
-              771000,
-              this.contour,
-              0,
               pggDisabledEth.config.address,
+              SpaceTokenType.LAND_PLOT,
+              // area
+              123,
+              frank,
+              this.dataLink,
+              this.humanAddress,
+              this.credentials,
+              this.ledgerIdentifier,
               0,
               {
                 from: alice,
                 value: ether(40)
               }
-            )
+            ),
+            'Invalid payment type'
           );
         });
 
         it('should reject applications without payment', async function() {
           await assertRevert(
             this.newPropertyManager.submit(
-              SpaceTokenType.LAND_PLOT,
-              771000,
-              this.contour,
-              0,
               this.pggConfigX.address,
+              SpaceTokenType.LAND_PLOT,
+              // area
+              123,
+              frank,
+              this.dataLink,
+              this.humanAddress,
+              this.credentials,
+              this.ledgerIdentifier,
               0,
               {
                 from: alice,
                 value: 0
               }
-            )
+            ),
+            'Insufficient payment'
           );
         });
 
         it('should reject applications with payment less than required', async function() {
           await assertRevert(
             this.newPropertyManager.submit(
-              SpaceTokenType.LAND_PLOT,
-              771000,
-              this.contour,
-              0,
               this.pggConfigX.address,
+              SpaceTokenType.LAND_PLOT,
+              // area
+              123,
+              frank,
+              this.dataLink,
+              this.humanAddress,
+              this.credentials,
+              this.ledgerIdentifier,
               0,
               {
                 from: alice,
                 value: ether(1)
               }
-            )
+            ),
+            'Insufficient payment'
           );
         });
 
         it('should calculate corresponding oracle and coreTeam rewards in Eth', async function() {
           const res = await this.newPropertyManager.getApplicationRewards(this.aId);
           assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
-          assert.equal(res.oraclesReward, 1340000000000000000);
-          assert.equal(res.galtProtocolFee, 660000000000000000);
+          assert.equal(res.oraclesReward, 13400000000000000000);
+          assert.equal(res.galtProtocolFee, 6600000000000000000);
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.newPropertyManager.getApplicationRewards(this.aId);
           assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
           assert.equal(res.currency, Currency.ETH);
-          assert.equal(res.oraclesReward, 1340000000000000000);
+          assert.equal(res.oraclesReward, 13400000000000000000);
 
           res = await this.newPropertyManager.getApplication(this.aId);
           assert.sameMembers(res.assignedOracleTypes.map(hexToUtf8), [PM_SURVEYOR, PM_LAWYER].map(hexToUtf8));
 
           // 52%
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '696800000000000000');
+          assert.equal(res.reward.toString(), '6968000000000000000');
 
           // 48%
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
-          assert.equal(res.reward.toString(), '643200000000000000');
+          assert.equal(res.reward.toString(), '6432000000000000000');
         });
       });
     });
@@ -1272,19 +1258,26 @@ contract('NewPropertyManager', accounts => {
         await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
         await evmIncreaseTime(3600 * 9);
         await this.contourVerificationManager.pushApproval(cvId1);
-      });
-
-      it('should change status to CLOSED', async function() {
         await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
         await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
         await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
+        // timeout is 240
+      });
 
-        let res = await this.newPropertyManager.getApplication(this.aId);
-        assert.equal(res.status, ApplicationStatus.REVERTED);
-
+      it('should immediately change status to CLOSED on the applicant call', async function() {
         await this.newPropertyManager.close(this.aId, { from: alice });
 
-        res = await this.newPropertyManager.getApplication(this.aId);
+        const res = await this.newPropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.CLOSED);
+      });
+
+      it('should expect a timeout if called by non-applicant', async function() {
+        await evmIncreaseTime(230);
+        await assertRevert(this.newPropertyManager.close(this.aId, { from: bob }), 'Timeout has not passed yet');
+        await evmIncreaseTime(20);
+        await this.newPropertyManager.close(this.aId, { from: bob });
+
+        const res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.CLOSED);
       });
     });
@@ -1292,11 +1285,15 @@ contract('NewPropertyManager', accounts => {
     describe('#resubmit()', () => {
       beforeEach(async function() {
         let res = await this.newPropertyManager.submit(
-          SpaceTokenType.ROOM,
-          771000,
-          this.contour,
-          123,
           this.pggConfigX.address,
+          SpaceTokenType.LAND_PLOT,
+          // area
+          123,
+          frank,
+          this.dataLink,
+          this.humanAddress,
+          this.credentials,
+          this.ledgerIdentifier,
           0,
           {
             from: alice,
@@ -1306,15 +1303,7 @@ contract('NewPropertyManager', accounts => {
 
         this.aId = res.logs[0].args.applicationId;
 
-        await this.newPropertyManager.attachMoreSubmissionData(
-          this.aId,
-          frank,
-          this.dataLink,
-          this.humanAddress,
-          this.credentials,
-          this.ledgerIdentifier,
-          { from: alice }
-        );
+        await this.newPropertyManager.setContour(this.aId, 771000, this.contour, { from: alice });
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
@@ -1343,127 +1332,157 @@ contract('NewPropertyManager', accounts => {
       const newDataLink = 'new-test-dataLink';
       const newHumanAddress = 'beyondTheHouse';
       const newHighestPoint = 44000;
-      const newCustomArea = 9;
+      const newContour = ['sezu112c', 'sezu113b1', 'sezu114', 'sezu116'].map(galt.geohashToGeohash5);
 
-      it('should change old details data with a new', async function() {
-        let res = await this.newPropertyManager.getApplicationDetails(this.aId);
-        assert.equal(res.credentialsHash, this.credentials);
-        assert.equal(res.areaSource, AreaSource.USER_INPUT);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+      describe('contour changed', () => {
+        beforeEach(async function() {
+          this.fee = ether(1);
+        });
 
-        await this.newPropertyManager.resubmit(
-          newCredentiasHash,
-          newLedgerIdentifier,
-          newDataLink,
-          newHumanAddress,
-          this.contour2,
-          newHighestPoint,
-          // customArea
-          newCustomArea,
-          this.aId,
-          0,
-          {
-            from: alice
-          }
-        );
-
-        res = await this.newPropertyManager.getApplicationDetails(this.aId);
-        assert.equal(res.credentialsHash, newCredentiasHash);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
-        assert.equal(res.areaSource, AreaSource.USER_INPUT);
-        assert.equal(res.area, newCustomArea);
-        assert.equal(res.dataLink, newDataLink);
-        assert.equal(res.humanAddress, newHumanAddress);
-        assert.equal(res.highestPoint, newHighestPoint);
-        assert.sameMembers(res.contour, this.contour2);
-      });
-
-      it('should revert if additional payment required', async function() {
-        let res = await this.newPropertyManager.getApplication(this.aId);
-        assert.equal(res.status, ApplicationStatus.REVERTED);
-
-        // NOTICE: for 1.5 eth required we have already 2 eth paid as a fee
-        const newContour = ['sezu1', 'sezu2', 'sezu3', 'sezu4', 'sezu5'].map(galt.geohashToNumber);
-
-        await this.geodesicMock.calculateContourArea(newContour);
-        const area = await this.geodesicMock.setSpaceTokenArea(newContour);
-        assert.equal(area.toString(10), ether(5000).toString(10));
-        const fee = await this.newPropertyManager.getResubmissionFeeByArea(this.aId, area);
-        assert.equal(fee, ether(0.5));
-
-        await assertRevert(
-          this.newPropertyManager.resubmit(
+        it('could accept another ETH payment', async function() {
+          await this.newPropertyManager.resubmit(
+            this.aId,
+            true,
             newCredentiasHash,
             newLedgerIdentifier,
             newDataLink,
             newHumanAddress,
-            newContour,
-            newHighestPoint,
             // customArea
+            123,
             0,
+            { from: alice, value: 123 }
+          );
+
+          let res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.PARTIALLY_RESUBMITTED);
+
+          await this.newPropertyManager.setContour(this.aId, newHighestPoint, newContour, { from: alice });
+
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
+
+          res = await this.newPropertyManager.getApplicationDetails(this.aId);
+          assert.equal(res.credentialsHash, newCredentiasHash);
+          assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
+          assert.equal(res.areaSource, AreaSource.USER_INPUT);
+          assert.equal(res.area, 123);
+          assert.equal(res.dataLink, newDataLink);
+          assert.equal(res.humanAddress, newHumanAddress);
+          assert.equal(res.highestPoint, newHighestPoint);
+          assert.sameMembers(res.contour, newContour);
+
+          res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
+          assert.equal(res.oracle, bob);
+          assert.equal(res.status, ValidationStatus.LOCKED);
+
+          res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
+          assert.equal(res.oracle, dan);
+          assert.equal(res.status, ValidationStatus.LOCKED);
+        });
+
+        it('should reject on payment both in ETH and GALT', async function() {
+          await assertRevert(
+            this.newPropertyManager.resubmit(
+              this.aId,
+              true,
+              newCredentiasHash,
+              newLedgerIdentifier,
+              newDataLink,
+              newHumanAddress,
+              // customArea
+              123,
+              this.fee,
+              { from: alice, value: '123' }
+            ),
+            'GALT payment not expected'
+          );
+
+          const res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+
+        it('should reject on GALT payment', async function() {
+          await assertRevert(
+            this.newPropertyManager.resubmit(
+              this.aId,
+              true,
+              newCredentiasHash,
+              newLedgerIdentifier,
+              newDataLink,
+              newHumanAddress,
+              // customArea
+              123,
+              this.fee,
+              { from: alice }
+            ),
+            'GALT payment not expected'
+          );
+
+          const res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.REVERTED);
+        });
+
+        it('should accept a resubmission without payment', async function() {
+          await this.newPropertyManager.resubmit(
             this.aId,
+            true,
+            newCredentiasHash,
+            newLedgerIdentifier,
+            newDataLink,
+            newHumanAddress,
+            // customArea
+            123,
+            0,
+            { from: alice }
+          );
+
+          const res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.PARTIALLY_RESUBMITTED);
+        });
+      });
+
+      describe('contour doesnt changed', () => {
+        it('should change old details data with a new', async function() {
+          let res = await this.newPropertyManager.getApplicationDetails(this.aId);
+          assert.equal(res.credentialsHash, this.credentials);
+          assert.equal(res.areaSource, AreaSource.USER_INPUT);
+          assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), web3.utils.hexToUtf8(this.ledgerIdentifier));
+
+          await this.newPropertyManager.resubmit(
+            this.aId,
+            false,
+            newCredentiasHash,
+            newLedgerIdentifier,
+            newDataLink,
+            newHumanAddress,
+            // customArea
+            123,
             0,
             {
               from: alice
             }
-          )
-        );
+          );
 
-        await this.newPropertyManager.resubmit(
-          newCredentiasHash,
-          newLedgerIdentifier,
-          newDataLink,
-          newHumanAddress,
-          newContour,
-          newHighestPoint,
-          // customArea
-          0,
-          this.aId,
-          0,
-          {
-            from: alice,
-            value: ether(0.6)
-          }
-        );
+          res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.PENDING);
 
-        res = await this.newPropertyManager.getApplicationDetails(this.aId);
-        assert.equal(res.credentialsHash, newCredentiasHash);
-        assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
-      });
+          res = await this.newPropertyManager.getApplicationDetails(this.aId);
+          assert.equal(res.credentialsHash, newCredentiasHash);
+          assert.equal(web3.utils.hexToUtf8(res.ledgerIdentifier), 'foo-123');
+          assert.equal(res.areaSource, AreaSource.USER_INPUT);
+          assert.equal(res.area, 123);
+          assert.equal(res.dataLink, newDataLink);
+          assert.equal(res.humanAddress, newHumanAddress);
+          assert.equal(res.highestPoint, 771000);
+          assert.sameMembers(res.contour, this.contour);
 
-      it('should allow submit reverted application to the same oracle who reverted it', async function() {
-        const newContour = ['sezu1', 'sezu2', 'sezu3'].map(galt.geohashToNumber);
-        await this.newPropertyManager.resubmit(
-          newCredentiasHash,
-          newLedgerIdentifier,
-          newDataLink,
-          newHumanAddress,
-          newContour,
-          newHighestPoint,
-          // customArea
-          0,
-          this.aId,
-          0,
-          {
-            from: alice
-          }
-        );
+          res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
+          assert.equal(res.oracle, bob);
+          assert.equal(res.status, ValidationStatus.LOCKED);
 
-        let res = await this.newPropertyManager.getApplication(this.aId);
-        assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
-
-        res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-        assert.equal(res.oracle, bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
-
-        res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
-        assert.equal(res.oracle, dan);
-        assert.equal(res.status, ValidationStatus.LOCKED);
-      });
-
-      describe('when countour changed', () => {
-        beforeEach(async function() {
-          this.newContour = ['sezu112c', 'sezu113b1', 'sezu114'].map(galt.geohashToGeohash5);
+          res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
+          assert.equal(res.oracle, dan);
+          assert.equal(res.status, ValidationStatus.LOCKED);
         });
       });
     });
@@ -1512,29 +1531,25 @@ contract('NewPropertyManager', accounts => {
 
       it('should push an application id to the oracles list for caching', async function() {
         let res = await this.newPropertyManager.submit(
-          SpaceTokenType.BUILDING,
-          771000,
-          this.contour,
-          123,
           this.pggConfigX.address,
-          0,
-          {
-            from: charlie,
-            value: ether(2)
-          }
-        );
-
-        const a1Id = res.logs[0].args.applicationId;
-
-        await this.newPropertyManager.attachMoreSubmissionData(
-          a1Id,
+          SpaceTokenType.LAND_PLOT,
+          // area
+          123,
           frank,
           this.dataLink,
           this.humanAddress,
           this.credentials,
           this.ledgerIdentifier,
-          { from: charlie }
+          0,
+          {
+            from: charlie,
+            value: ether(7)
+          }
         );
+
+        const a1Id = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.setContour(a1Id, 771000, this.contour, { from: charlie });
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
         res = await this.contourVerificationManager.submit(this.newPropertyManager.address, a1Id, {
@@ -1553,28 +1568,24 @@ contract('NewPropertyManager', accounts => {
 
         // submit second
         res = await this.newPropertyManager.submit(
-          SpaceTokenType.BUILDING,
-          771000,
-          this.contour,
-          123,
           this.pggConfigX.address,
-          0,
-          {
-            from: charlie,
-            value: ether(2)
-          }
-        );
-        const a2Id = res.logs[0].args.applicationId;
-
-        await this.newPropertyManager.attachMoreSubmissionData(
-          a2Id,
+          SpaceTokenType.LAND_PLOT,
+          // area
+          123,
           frank,
           this.dataLink,
           this.humanAddress,
           this.credentials,
           this.ledgerIdentifier,
-          { from: charlie }
+          0,
+          {
+            from: charlie,
+            value: ether(7)
+          }
         );
+        const a2Id = res.logs[0].args.applicationId;
+
+        await this.newPropertyManager.setContour(a2Id, 771000, this.contour, { from: charlie });
 
         await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
         res = await this.contourVerificationManager.submit(this.newPropertyManager.address, a2Id, {
@@ -1609,14 +1620,14 @@ contract('NewPropertyManager', accounts => {
         assert.equal(res.status, ApplicationStatus.APPROVED);
       });
 
-      it.skip('should deny non-oracle to lock an application', async function() {
+      it('should deny non-oracle to lock an application', async function() {
         await assertRevert(this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: coreTeam }));
         const res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.PENDING);
       });
     });
 
-    describe('#unlock()', () => {
+    describe.skip('#unlock()', () => {
       before(async function() {
         await this.acl.setRole(bytes32('APPLICATION_UNLOCKER'), unlocker, true, { from: coreTeam });
       });
@@ -1880,6 +1891,14 @@ contract('NewPropertyManager', accounts => {
         await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
         res = await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
         this.spaceTokenId = res.logs[2].args.spaceTokenId;
+
+        res = await this.newPropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        await this.newPropertyManager.store(this.aId, { from: unauthorized });
+
+        res = await this.newPropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.STORED);
       });
 
       // eslint-disable-next-line
@@ -1914,10 +1933,14 @@ contract('NewPropertyManager', accounts => {
         await this.newPropertyManager.lock(this.aId, PM_LAWYER, { from: dan });
       });
 
-      describe('on approve', () => {
+      describe('on approve(->stored)', () => {
         beforeEach(async function() {
           await this.newPropertyManager.approve(this.aId, this.credentials, { from: bob });
           await this.newPropertyManager.approve(this.aId, this.credentials, { from: dan });
+          await this.newPropertyManager.store(this.aId, { from: unauthorized });
+
+          const res = await this.newPropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.STORED);
         });
 
         it('should allow shareholders claim reward', async function() {
@@ -1929,7 +1952,7 @@ contract('NewPropertyManager', accounts => {
           await this.newPropertyManager.claimOracleReward(this.aId, { from: dan });
 
           let res = await this.newPropertyManager.protocolFeesEth();
-          assert.equal(res, ether(0.66));
+          assert.equal(res, ether(6.6));
           await this.newPropertyManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
 
           const bobsFinalBalance = await web3.eth.getBalance(bob);
@@ -1937,16 +1960,16 @@ contract('NewPropertyManager', accounts => {
           const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '696800000000000000');
+          assert.equal(res.reward.toString(), '6968000000000000000');
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
-          assert.equal(res.reward.toString(), '643200000000000000');
+          assert.equal(res.reward.toString(), '6432000000000000000');
 
           res = await this.newPropertyManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '6600000000000000000');
 
-          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
-          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6432));
-          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(0.66));
+          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(6.968));
+          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(6.432));
+          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(6.6));
         });
       });
 
@@ -1967,20 +1990,20 @@ contract('NewPropertyManager', accounts => {
           const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           let res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '696800000000000000');
+          assert.equal(res.reward.toString(), '6968000000000000000');
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
-          assert.equal(res.reward.toString(), '643200000000000000');
+          assert.equal(res.reward.toString(), '6432000000000000000');
 
           res = await this.newPropertyManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '6600000000000000000');
 
-          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
-          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6432));
-          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(0.66));
+          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(6.968));
+          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(6.432));
+          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(6.6));
         });
       });
 
-      describe('on reject', () => {
+      describe('on close', () => {
         it('should allow oracles claim reward after reject', async function() {
           await this.newPropertyManager.revert(this.aId, 'dont like it', { from: bob });
           await this.newPropertyManager.close(this.aId, { from: alice });
@@ -1998,16 +2021,16 @@ contract('NewPropertyManager', accounts => {
           const orgsFinalBalance = new BN(await web3.eth.getBalance(feeMixerAddress));
 
           let res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-          assert.equal(res.reward.toString(), '696800000000000000');
+          assert.equal(res.reward.toString(), '6968000000000000000');
           res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_LAWYER);
-          assert.equal(res.reward.toString(), '643200000000000000');
+          assert.equal(res.reward.toString(), '6432000000000000000');
 
           res = await this.newPropertyManager.getApplicationRewards(this.aId);
-          assert.equal(res.galtProtocolFee.toString(), '660000000000000000');
+          assert.equal(res.galtProtocolFee.toString(), '6600000000000000000');
 
-          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(0.696));
-          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(0.6432));
-          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(0.66));
+          assertEthBalanceChanged(bobsInitialBalance, bobsFinalBalance, ether(6.968));
+          assertEthBalanceChanged(dansInitialBalance, dansFinalBalance, ether(6.432));
+          assertEthBalanceChanged(orgsInitialBalance, orgsFinalBalance, ether(6.6));
         });
       });
     });
