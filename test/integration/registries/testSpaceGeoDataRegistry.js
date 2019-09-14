@@ -1,25 +1,16 @@
-const PGGRegistry = artifacts.require('./PGGRegistry.sol');
-const ClaimManager = artifacts.require('./ClaimManager.sol');
-const GaltToken = artifacts.require('./GaltToken.sol');
 const ACL = artifacts.require('./ACL.sol');
-const FeeRegistry = artifacts.require('./FeeRegistry.sol');
 const SpaceGeoDataRegistry = artifacts.require('./SpaceGeoDataRegistry.sol');
 const GaltGlobalRegistry = artifacts.require('./GaltGlobalRegistry.sol');
 
 const Web3 = require('web3');
-const { initHelperWeb3, assertRevert, ether } = require('../../helpers');
-const { addElevationToContour, addElevationToGeohash5 } = require('../../galtHelpers');
 const galtUtils = require('@galtproject/utils');
 
-const web3 = new Web3(ClaimManager.web3.currentProvider);
+const { addElevationToContour } = require('../../galtHelpers');
 
 const { utf8ToHex } = Web3.utils;
 const bytes32 = utf8ToHex;
 
-initHelperWeb3(web3);
-
-// eslint-disable-next-line
-contract("PGGRegistry", (accounts) => {
+contract('SpaceGeoDataRegistry', accounts => {
   const [coreTeam] = accounts;
 
   beforeEach(async function() {
@@ -33,12 +24,14 @@ contract("PGGRegistry", (accounts) => {
     await this.registry.initialize(this.ggr.address);
 
     await this.ggr.setContract(await this.ggr.ACL(), this.acl.address, { from: coreTeam });
+    await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), coreTeam, true, { from: coreTeam });
   });
 
-  describe('register-unregister process', async function() {
-    it('should allow registering again after unregistration', async function() {
+  describe('contour', async function() {
+    // Parity client supports up to 350 with 8000000 gas, but here we use Ganache
+    it('should be able set 300 vertex length contour', async function() {
       const rawContour = [];
-      for (let i = 0; i < 350; i++) {
+      for (let i = 0; i < 300; i++) {
         rawContour.push('qwerqwerqwer');
       }
 
@@ -46,9 +39,7 @@ contract("PGGRegistry", (accounts) => {
 
       contour = addElevationToContour(123123, contour);
 
-      await this.acl.setRole(bytes32('GEO_DATA_MANAGER'), coreTeam, true, { from: coreTeam });
-      let res = await this.registry.setSpaceTokenContour(1, contour, { from: coreTeam });
-      console.log('res >>>', res);
+      await this.registry.setSpaceTokenContour(1, contour, { from: coreTeam });
     });
   });
 });
