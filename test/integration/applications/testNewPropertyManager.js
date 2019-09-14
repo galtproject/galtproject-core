@@ -120,7 +120,6 @@ contract('NewPropertyManager', accounts => {
     feeMixerAddress,
     oracleModifier,
     spaceReputationAccountingAddress,
-    unlocker,
     unauthorized,
     minter,
     geoDataManager,
@@ -698,6 +697,60 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
+    describe('#cancel()', () => {
+      beforeEach(async function() {
+        assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
+
+        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+        let res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+          from: alice
+        });
+        const cvId1 = res.logs[0].args.applicationId;
+
+        await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+        await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+        await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+        await evmIncreaseTime(3600 * 9);
+        await this.contourVerificationManager.pushApproval(cvId1);
+
+        res = await this.newPropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.PENDING);
+      });
+
+      it('should allow an applicant cancelling never locked application', async function() {
+        // timeout is 180
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(170);
+
+        // timeout still has not passed yet
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(20);
+
+        // now it's passed
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: frank }), 'Invalid applicant');
+
+        await this.newPropertyManager.cancel(this.aId, { from: alice });
+
+        await assertRevert(
+          this.newPropertyManager.cancel(this.aId, { from: alice }),
+          'Application status should be PENDING'
+        );
+
+        const aliceInitialBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
+        await this.newPropertyManager.claimApplicantFee(this.aId, { from: alice });
+        const aliceFinalBalance = new BN((await this.galtToken.balanceOf(alice)).toString(10));
+
+        assertEqualBN(aliceFinalBalance, aliceInitialBalance.add(new BN(ether(50))));
+
+        await assertRevert(
+          this.newPropertyManager.claimApplicantFee(this.aId, { from: alice }),
+          'Fee already paid out'
+        );
+      });
+    });
+
     describe('#close()', () => {
       beforeEach(async function() {
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
@@ -738,6 +791,9 @@ contract('NewPropertyManager', accounts => {
 
           const res = await this.newPropertyManager.getApplication(this.aId);
           assert.equal(res.status, ApplicationStatus.CLOSED);
+
+          await assertRevert(this.newPropertyManager.close(this.aId, { from: bob }));
+          await assertRevert(this.newPropertyManager.close(this.aId, { from: alice }));
         });
       });
     });
@@ -1487,6 +1543,81 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
+    describe('#cancel()', () => {
+      beforeEach(async function() {
+        assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
+
+        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+        let res = await this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, {
+          from: alice
+        });
+        const cvId1 = res.logs[0].args.applicationId;
+
+        await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+        await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+        await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+        await evmIncreaseTime(3600 * 9);
+        await this.contourVerificationManager.pushApproval(cvId1);
+
+        res = await this.newPropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.PENDING);
+      });
+
+      it('should allow an applicant cancelling never locked application', async function() {
+        // timeout is 180
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(170);
+
+        // timeout still has not passed yet
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(20);
+
+        // now it's passed
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: frank }), 'Invalid applicant');
+
+        await this.newPropertyManager.cancel(this.aId, { from: alice });
+
+        await assertRevert(
+          this.newPropertyManager.cancel(this.aId, { from: alice }),
+          'Application status should be PENDING'
+        );
+
+        const aliceInitialBalance = await web3.eth.getBalance(alice);
+        await this.newPropertyManager.claimApplicantFee(this.aId, { from: alice });
+        const aliceFinalBalance = await web3.eth.getBalance(alice);
+
+        assertEthBalanceChanged(aliceInitialBalance, aliceFinalBalance, ether(20));
+
+        await assertRevert(
+          this.newPropertyManager.claimApplicantFee(this.aId, { from: alice }),
+          'Fee already paid out'
+        );
+      });
+
+      it('should deny an applicant cancelling the application if it was locked once', async function() {
+        await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
+        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: bob });
+
+        // timeout is 180
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(170);
+
+        // timeout still has not passed yet
+        await assertRevert(this.newPropertyManager.cancel(this.aId, { from: alice }), 'Timeout has not passed yet');
+
+        await evmIncreaseTime(20);
+
+        // now it's passed, but since the application was locked before, you can't cancel it
+        await assertRevert(
+          this.newPropertyManager.cancel(this.aId, { from: alice }),
+          'The application has been already locked at least once'
+        );
+      });
+    });
+
     describe('#lock()', () => {
       beforeEach(async function() {
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
@@ -1627,11 +1758,7 @@ contract('NewPropertyManager', accounts => {
       });
     });
 
-    describe.skip('#unlock()', () => {
-      before(async function() {
-        await this.acl.setRole(bytes32('APPLICATION_UNLOCKER'), unlocker, true, { from: coreTeam });
-      });
-
+    describe('#unlock() for oracle roles in LOCKED status', () => {
       beforeEach(async function() {
         assert.equal(await this.contourVerificationSourceRegistry.hasSource(this.newPropertyManager.address), true);
 
@@ -1653,8 +1780,10 @@ contract('NewPropertyManager', accounts => {
         await this.newPropertyManager.lock(this.aId, PM_SURVEYOR, { from: bob });
       });
 
-      it('should allow corresponding ACL role unlocking an application under consideration', async function() {
-        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: unlocker });
+      // an oracle could unlock himself without any timeout
+      // anyone could unlock an oracle after timeout
+      it('should allow the oracle unlocking himself anytime', async function() {
+        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: bob });
 
         let res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.PENDING);
@@ -1662,17 +1791,48 @@ contract('NewPropertyManager', accounts => {
         res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
         assert.equal(res.oracle, zeroAddress);
         assert.equal(res.status, ValidationStatus.PENDING);
+
+        await assertRevert(
+          this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: bob }),
+          'Validation status should be LOCKED'
+        );
       });
 
-      it('should deny non-unlocker unlocking an application under consideration', async function() {
-        await assertRevert(this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice }));
+      it('should allow anyone unlocking an oracle after timeout', async function() {
+        // timeout is 360
+        await assertRevert(
+          this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice }),
+          'Timeout has not passed yet'
+        );
 
-        let res = await this.newPropertyManager.getApplication(this.aId);
+        await evmIncreaseTime(350);
+
+        // timeout still not passed yet
+        await assertRevert(
+          this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice }),
+          'Timeout has not passed yet'
+        );
+
+        let res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
+        assert.equal(res.oracle, bob);
+        assert.equal(res.status, ValidationStatus.LOCKED);
+
+        await evmIncreaseTime(20);
+
+        // not it's passed
+        await this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice });
+
+        res = await this.newPropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.PENDING);
 
         res = await this.newPropertyManager.getApplicationOracle(this.aId, PM_SURVEYOR);
-        assert.equal(res.oracle, bob);
-        assert.equal(res.status, ValidationStatus.LOCKED);
+        assert.equal(res.oracle, zeroAddress);
+        assert.equal(res.status, ValidationStatus.PENDING);
+
+        await assertRevert(
+          this.newPropertyManager.unlock(this.aId, PM_SURVEYOR, { from: alice }),
+          'Validation status should be LOCKED'
+        );
       });
     });
 

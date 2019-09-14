@@ -37,8 +37,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
-  bytes32 public constant APPLICATION_UNLOCKER = bytes32("application_unlocker");
-
   bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("PM_MINIMAL_FEE_ETH");
   bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PM_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
@@ -362,10 +360,12 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     _assignLockedStatus(_aId);
 
-    _changeApplicationStatus(
-      a,
-      _contourChanged ? ApplicationStatus.PARTIALLY_RESUBMITTED : ApplicationStatus.PENDING
-    );
+    if (_contourChanged) {
+      _changeApplicationStatus(a, ApplicationStatus.PARTIALLY_RESUBMITTED);
+    } else {
+      _changeApplicationStatus(a, ApplicationStatus.PENDING);
+      a.becomePendingAt = block.timestamp;
+    }
   }
 
   function _assignLockedStatus(bytes32 _aId) internal {
@@ -428,8 +428,12 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");
     require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
-    uint256 timeout = applicationCancelTimeout(a.pgg);
-    require(block.timestamp > a.lastLockedAt[_oracleType].add(timeout), "Timeout has not passed yet");
+    if (msg.sender != a.oracleTypeAddresses[_oracleType]) {
+      require(
+        block.timestamp > a.lastLockedAt[_oracleType].add(roleUnlockTimeout(a.pgg)),
+        "Timeout has not passed yet"
+      );
+    }
 
     a.oracleTypeAddresses[_oracleType] = address(0);
     _changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
@@ -553,7 +557,10 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
-    require(block.timestamp > a.becomePendingAt.add(roleUnlockTimeout(a.pgg)), "Timeout has not passed yet");
+    require(
+      block.timestamp > a.becomePendingAt.add(applicationCancelTimeout(a.pgg)),
+      "Timeout has not passed yet"
+    );
     require(a.lockedAtLeastOnce == false, "The application has been already locked at least once");
 
     _changeApplicationStatus(a, ApplicationStatus.CANCELLED);
