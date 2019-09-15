@@ -37,10 +37,14 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   bytes32 public constant PM_LAWYER_ORACLE_TYPE = bytes32("PM_LAWYER_ORACLE_TYPE");
   bytes32 public constant PM_SURVEYOR_ORACLE_TYPE = bytes32("PM_SURVEYOR_ORACLE_TYPE");
 
-  bytes32 public constant APPLICATION_UNLOCKER = bytes32("application_unlocker");
-
-  bytes32 public constant CONFIG_FEE_CALCULATOR = bytes32("PM_FEE_CALCULATOR");
+  bytes32 public constant CONFIG_MINIMAL_FEE_ETH = bytes32("PM_MINIMAL_FEE_ETH");
+  bytes32 public constant CONFIG_MINIMAL_FEE_GALT = bytes32("PM_MINIMAL_FEE_GALT");
   bytes32 public constant CONFIG_PAYMENT_METHOD = bytes32("PM_PAYMENT_METHOD");
+
+  bytes32 public constant CONFIG_APPLICATION_CANCEL_TIMEOUT = bytes32("PM_APPLICATION_CANCEL_TIMEOUT");
+  bytes32 public constant CONFIG_APPLICATION_CLOSE_TIMEOUT = bytes32("PM_APPLICATION_CLOSE_TIMEOUT");
+  bytes32 public constant CONFIG_ROLE_UNLOCK_TIMEOUT = bytes32("PM_ROLE_UNLOCK_TIMEOUT");
+
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
 
   event NewSpaceToken(address indexed applicant, uint256 spaceTokenId, bytes32 applicationId);
@@ -48,6 +52,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
   event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
   event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
+  event ApplicantFeeClaim(bytes32 indexed applicationId);
   event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
   event ClaimSpaceToken(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
 
@@ -55,10 +60,14 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     NOT_EXISTS,
     PARTIALLY_SUBMITTED,
     CONTOUR_VERIFICATION,
+    CANCELLED,
+    CV_REJECTED,
     PENDING,
     APPROVED,
     REJECTED,
     REVERTED,
+    PARTIALLY_RESUBMITTED,
+    STORED,
     CLOSED
   }
 
@@ -78,6 +87,9 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     address beneficiary;
     uint256 spaceTokenId;
     uint256 createdAt;
+    uint256 becomePendingAt;
+    uint256 becomeRevertedAt;
+    bool lockedAtLeastOnce;
     Details details;
     Rewards rewards;
     Currency currency;
@@ -90,6 +102,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     mapping(bytes32 => string) oracleTypeMessages;
     mapping(bytes32 => address) oracleTypeAddresses;
     mapping(address => bytes32) addressOracleTypes;
+    mapping(bytes32 => uint256) lastLockedAt;
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
@@ -99,6 +112,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     uint256 galtProtocolFee;
     uint256 latestCommittedFee;
     bool galtProtocolFeePaidOut;
+    bool applicantFeePaidOut;
   }
 
   struct Details {
@@ -138,15 +152,31 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   function onlyApplicant(bytes32 _aId) internal {
-    require(applications[_aId].applicant == msg.sender, "Applicant invalid");
+    require(applications[_aId].applicant == msg.sender, "Invalid applicant");
   }
 
   function onlyOracleOfApplication(bytes32 _aId) internal {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
 
-  function feeCalculator(address _pgg) public view returns (IPropertyManagerFeeCalculator) {
-    return IPropertyManagerFeeCalculator(address(uint160(uint256(pggConfigValue(_pgg, CONFIG_FEE_CALCULATOR)))));
+  function minimalApplicationFeeEth(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
+  }
+
+  function minimalApplicationFeeGalt(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_GALT));
+  }
+
+  function applicationCancelTimeout(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_APPLICATION_CANCEL_TIMEOUT));
+  }
+
+  function applicationCloseTimeout(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_APPLICATION_CLOSE_TIMEOUT));
+  }
+
+  function roleUnlockTimeout(address _pgg) public view returns (uint256) {
+    return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -165,10 +195,12 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
 
+    a.becomePendingAt = block.timestamp;
+
     CVPendingApplicationIds.remove(_applicationId);
     CVApprovedApplicationIds.add(_applicationId);
 
-    changeApplicationStatus(a, ApplicationStatus.PENDING);
+    _changeApplicationStatus(a, ApplicationStatus.PENDING);
   }
 
   function cvReject(bytes32 _applicationId) external {
@@ -179,15 +211,18 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     CVPendingApplicationIds.remove(_applicationId);
 
-    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+    _changeApplicationStatus(a, ApplicationStatus.CV_REJECTED);
   }
 
   function submit(
-    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
-    int256 _highestPoint,
-    uint256[] calldata _contour,
-    uint256 _customArea,
     address _pgg,
+    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
+    uint256 _customArea,
+    address _beneficiary,
+    string calldata _dataLink,
+    string calldata _humanAddress,
+    bytes32 _credentialsHash,
+    bytes32 _ledgerIdentifier,
     uint256 _submissionFeeInGalt
   )
     external
@@ -195,7 +230,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     returns (bytes32)
   {
     pggRegistry().requireValidPgg(_pgg);
-    _checkSubmissionParams(_spaceTokenType, _highestPoint, _contour, _customArea);
+
+    require(_customArea > 0, "Provide custom area value");
 
     bytes32 _id = bytes32(idCounter);
     idCounter++;
@@ -203,19 +239,12 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     Application storage a = applications[_id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
-    if (_customArea == 0) {
-      a.details.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
-      a.details.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_contour);
-    } else {
-      a.details.area = _customArea;
-      // Default a.areaSource is AreaSource.USER_INPUT
-    }
 
     // GALT
     if (_submissionFeeInGalt > 0) {
       requireValidPaymentType(_pgg, PaymentType.GALT);
       require(msg.value == 0, "Could not accept both ETH and GALT");
-      require(_submissionFeeInGalt >= getSubmissionFeeByArea(_pgg, Currency.GALT, a.details.area), "Incorrect fee passed in");
+      require(_submissionFeeInGalt >= minimalApplicationFeeGalt(_pgg), "Insufficient payment");
 
       require(ggr.getGaltToken().allowance(msg.sender, address(this)) >= _submissionFeeInGalt, "Insufficient allowance");
       ggr.getGaltToken().transferFrom(msg.sender, address(this), _submissionFeeInGalt);
@@ -228,9 +257,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       a.rewards.totalPaidFee = msg.value;
       // Default a.currency is Currency.ETH
 
-      require(
-        msg.value >= getSubmissionFeeByArea(_pgg, Currency.ETH, a.details.area),
-        "Incorrect msg.value passed in");
+      require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
     }
 
     a.status = ApplicationStatus.PARTIALLY_SUBMITTED;
@@ -238,12 +265,17 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
 
-    calculateAndStoreFee(a, a.rewards.totalPaidFee);
+    _calculateAndStoreFee(a, a.rewards.totalPaidFee);
 
-    a.details.highestPoint = _highestPoint;
-    a.details.contour = _contour;
-    a.details.spaceTokenType = _spaceTokenType;
     a.pgg = _pgg;
+    a.details.spaceTokenType = _spaceTokenType;
+    a.beneficiary = _beneficiary;
+    a.details.humanAddress = _humanAddress;
+    a.details.dataLink = _dataLink;
+    a.details.ledgerIdentifier = _ledgerIdentifier;
+    a.details.credentialsHash = _credentialsHash;
+    a.details.area = _customArea;
+    // Default a.areaSource is AreaSource.USER_INPUT
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -251,34 +283,40 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     emit NewApplication(msg.sender, _id);
     emit ApplicationStatusChanged(_id, ApplicationStatus.PARTIALLY_SUBMITTED);
 
-    assignRequiredOracleTypesAndRewards(applications[_id]);
-    CVPendingApplicationIds.add(_id);
+    _assignRequiredOracleTypesAndRewards(applications[_id]);
 
     return _id;
   }
 
-  function attachMoreSubmissionData(
+  function setContour(
     bytes32 _aId,
-    address _beneficiary,
-    string calldata _dataLink,
-    string calldata _humanAddress,
-    bytes32 _credentialsHash,
-    bytes32 _ledgerIdentifier
+    int256 _highestPoint,
+    uint256[] calldata _contour
   )
     external
   {
     Application storage a = applications[_aId];
 
-    require(a.applicant == msg.sender, "Applicant invalid");
-    require(a.status == ApplicationStatus.PARTIALLY_SUBMITTED, "Application already exists");
+    require(
+      _contour.length >= 3 && _contour.length <= 350,
+      "Contour vertex count should be between 3 and 350"
+    );
 
-    a.beneficiary = _beneficiary;
-    a.details.humanAddress = _humanAddress;
-    a.details.dataLink = _dataLink;
-    a.details.ledgerIdentifier = _ledgerIdentifier;
-    a.details.credentialsHash = _credentialsHash;
+    require(a.applicant == msg.sender, "Invalid applicant");
+    require(
+      /* solium-disable-next-line */
+      a.status == ApplicationStatus.PARTIALLY_SUBMITTED
+      || a.status == ApplicationStatus.PARTIALLY_RESUBMITTED
+      || a.status == ApplicationStatus.CV_REJECTED,
+      "Expect PARTIALLY_SUBMITTED or CV_REJECTED status"
+    );
 
-    changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
+    a.details.contour = _contour;
+    a.details.highestPoint = _highestPoint;
+
+    CVPendingApplicationIds.add(_aId);
+
+    _changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
   }
 
   /**
@@ -288,97 +326,80 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
    * @param _newCredentialsHash keccak256 of user credentials
    * @param _newLedgerIdentifier of a plot
    * @param _newDataLink of a plot
-   * @param _newContour array, empty if not changed
-   * @param _newHighestPoint array, empty if not changed
    * @param _newCustomArea int
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
+    bytes32 _aId,
+    bool _contourChanged,
     bytes32 _newCredentialsHash,
     bytes32 _newLedgerIdentifier,
     string calldata _newDataLink,
     string calldata _newHumanAddress,
-    uint256[] calldata _newContour,
-    int256 _newHighestPoint,
     uint256 _newCustomArea,
-    bytes32 _aId,
     uint256 _resubmissionFeeInGalt
   )
     external
     payable
   {
+    require(_newCustomArea > 0, "Provide custom area value");
+
     Application storage a = applications[_aId];
     Details storage d = a.details;
 
-    _checkSubmissionParams(
-      d.spaceTokenType,
-      _newHighestPoint,
-      _newContour,
-      _newCustomArea
-    );
-    require(a.applicant == msg.sender, "Applicant invalid");
+    require(a.applicant == msg.sender, "Invalid applicant");
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
 
-    checkResubmissionPayment(a, _resubmissionFeeInGalt, _newContour);
+    _checkResubmissionPayment(a, _resubmissionFeeInGalt);
 
-    if (_newCustomArea == 0) {
-      d.areaSource = ISpaceGeoDataRegistry.AreaSource.CONTRACT;
-      d.area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newContour);
-    } else {
-      d.area = _newCustomArea;
-      d.areaSource = ISpaceGeoDataRegistry.AreaSource.USER_INPUT;
-    }
-
-    d.highestPoint = _newHighestPoint;
-    d.contour = _newContour;
+    d.area = _newCustomArea;
     d.humanAddress = _newHumanAddress;
     d.dataLink = _newDataLink;
     d.ledgerIdentifier = _newLedgerIdentifier;
     d.credentialsHash = _newCredentialsHash;
 
-    assignLockedStatus(_aId);
+    _assignLockedStatus(_aId);
 
-    CVPendingApplicationIds.add(_aId);
-
-    changeApplicationStatus(a, ApplicationStatus.CONTOUR_VERIFICATION);
+    if (_contourChanged) {
+      _changeApplicationStatus(a, ApplicationStatus.PARTIALLY_RESUBMITTED);
+    } else {
+      _changeApplicationStatus(a, ApplicationStatus.PENDING);
+      a.becomePendingAt = block.timestamp;
+    }
   }
 
-  function assignLockedStatus(bytes32 _aId) internal {
+  function _assignLockedStatus(bytes32 _aId) internal {
     for (uint256 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
       if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
-        changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
+        _changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
       }
     }
   }
 
-  function checkResubmissionPayment(
+  function _checkResubmissionPayment(
     Application storage a,
-    uint256 _resubmissionFeeInGalt,
-    uint256[] memory _newSpaceTokenContour
+    uint256 _resubmissionFeeInGalt
   )
     internal
   {
-    Currency currency = a.currency;
     uint256 fee;
+    uint256 minimalFee;
 
     if (a.currency == Currency.GALT) {
       require(msg.value == 0, "ETH payment not expected");
       fee = _resubmissionFeeInGalt;
+      minimalFee = minimalApplicationFeeGalt(a.pgg);
     } else {
       require(_resubmissionFeeInGalt == 0, "GALT payment not expected");
       fee = msg.value;
+      minimalFee = minimalApplicationFeeEth(a.pgg);
     }
 
-    uint256 area = IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(_newSpaceTokenContour);
-    uint256 newMinimalFee = getSubmissionFeeByArea(a.pgg, a.currency, area);
-    uint256 alreadyPaid = a.rewards.latestCommittedFee;
+    uint256 totalPaid = a.rewards.latestCommittedFee.add(fee);
 
-    if (newMinimalFee > alreadyPaid) {
-      uint256 requiredPayment = newMinimalFee.sub(alreadyPaid);
-      require(fee >= requiredPayment, "Incorrect fee passed in");
-    }
+    require(totalPaid >= minimalFee, "Insufficient payment");
 
-    a.rewards.latestCommittedFee = alreadyPaid + fee;
+    a.rewards.latestCommittedFee = totalPaid;
   }
 
   // Application can be locked by an oracle type only once.
@@ -391,21 +412,31 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     require(a.oracleTypeAddresses[_oracleType] == address(0), "Oracle is already assigned on this oracle type");
     require(a.validationStatus[_oracleType] == ValidationStatus.PENDING, "Can't lock an oracle type not in PENDING status");
 
+    a.lockedAtLeastOnce = true;
+    a.lastLockedAt[_oracleType] = block.timestamp;
     a.oracleTypeAddresses[_oracleType] = msg.sender;
     a.addressOracleTypes[msg.sender] = _oracleType;
     applicationsByOracle[msg.sender].push(_aId);
 
-    changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
+    _changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function unlock(bytes32 _aId, bytes32 _oracleType) external onlyUnlocker {
+  function unlock(bytes32 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
+
     require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
     require(a.validationStatus[_oracleType] == ValidationStatus.LOCKED, "Validation status should be LOCKED");
     require(a.oracleTypeAddresses[_oracleType] != address(0), "Address should be already set");
 
+    if (msg.sender != a.oracleTypeAddresses[_oracleType]) {
+      require(
+        block.timestamp > a.lastLockedAt[_oracleType].add(roleUnlockTimeout(a.pgg)),
+        "Timeout has not passed yet"
+      );
+    }
+
     a.oracleTypeAddresses[_oracleType] = address(0);
-    changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
+    _changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
   function approve(
@@ -426,7 +457,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     require(a.oracleTypeAddresses[oracleType] == msg.sender, "Sender not assigned to this application");
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, oracleType);
 
-    changeValidationStatus(a, oracleType, ValidationStatus.APPROVED);
+    _changeValidationStatus(a, oracleType, ValidationStatus.APPROVED);
 
     uint256 len = a.assignedOracleTypes.length;
     bool allApproved = true;
@@ -438,7 +469,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     }
 
     if (allApproved) {
-      changeApplicationStatus(a, ApplicationStatus.APPROVED);
+      _changeApplicationStatus(a, ApplicationStatus.APPROVED);
       CVApprovedApplicationIds.remove(_aId);
       NewPropertyManagerLib.mintToken(ggr, a, address(this));
       emit NewSpaceToken(a.applicant, a.spaceTokenId, _aId);
@@ -449,8 +480,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
     require(
-      a.status == ApplicationStatus.APPROVED,
-      "Application status should be APPROVED");
+      a.status == ApplicationStatus.STORED,
+      "Application status should be STORED");
 
     emit ClaimSpaceToken(_aId, a.spaceTokenId);
 
@@ -473,8 +504,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     NewPropertyManagerLib.rejectApplicationHelper(a, _message);
     CVApprovedApplicationIds.remove(_aId);
 
-    changeValidationStatus(a, a.addressOracleTypes[msg.sender], ValidationStatus.REJECTED);
-    changeApplicationStatus(a, ApplicationStatus.REJECTED);
+    _changeValidationStatus(a, a.addressOracleTypes[msg.sender], ValidationStatus.REJECTED);
+    _changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
   function revert(
@@ -499,29 +530,78 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     }
 
     a.oracleTypeMessages[senderOracleType] = _message;
+    a.becomeRevertedAt = block.timestamp;
 
     CVApprovedApplicationIds.remove(_aId);
 
-    changeValidationStatus(a, senderOracleType, ValidationStatus.REVERTED);
-    changeApplicationStatus(a, ApplicationStatus.REVERTED);
+    _changeValidationStatus(a, senderOracleType, ValidationStatus.REVERTED);
+    _changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
   function close(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
+    if (msg.sender != a.applicant) {
+      require(
+        block.timestamp > a.becomeRevertedAt.add(applicationCloseTimeout(a.pgg)),
+        "Timeout has not passed yet"
+      );
+    }
+
+    _changeApplicationStatus(a, ApplicationStatus.CLOSED);
+  }
+
+  function cancel(bytes32 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
 
+    require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
     require(
-      a.status == ApplicationStatus.REVERTED,
-      "Application status should be REVERTED");
+      block.timestamp > a.becomePendingAt.add(applicationCancelTimeout(a.pgg)),
+      "Timeout has not passed yet"
+    );
+    require(a.lockedAtLeastOnce == false, "The application has been already locked at least once");
 
-    changeApplicationStatus(a, ApplicationStatus.CLOSED);
+    _changeApplicationStatus(a, ApplicationStatus.CANCELLED);
   }
 
-  function claimOracleReward(
-    bytes32 _aId
-  )
-    external
-  {
+  function store(bytes32 _aId) external {
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
+
+    ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
+
+    spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.details.contour);
+    spaceGeoData.setSpaceTokenHighestPoint(a.spaceTokenId, a.details.highestPoint);
+
+    _changeApplicationStatus(a, ApplicationStatus.STORED);
+  }
+
+  function claimApplicantFee(bytes32 _aId) external {
+    onlyApplicant(_aId);
+
+    Application storage a = applications[_aId];
+
+    require(a.status == ApplicationStatus.CANCELLED, "Application status should be CANCELLED");
+
+    require(a.rewards.applicantFeePaidOut == false, "Fee already paid out");
+
+    a.rewards.applicantFeePaidOut = true;
+
+    uint256 reward = a.rewards.totalPaidFee;
+
+    if (a.currency == Currency.ETH) {
+      msg.sender.transfer(reward);
+    } else if (a.currency == Currency.GALT) {
+      ggr.getGaltToken().transfer(msg.sender, reward);
+    }
+
+    emit ApplicantFeeClaim(_aId);
+  }
+
+  function claimOracleReward(bytes32 _aId) external {
     onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
@@ -529,8 +609,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
 
     /* solium-disable-next-line */
     require(
-      a.status == ApplicationStatus.APPROVED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
-      "Application status should be APPROVED, REJECTED or CLOSED");
+      a.status == ApplicationStatus.STORED || a.status == ApplicationStatus.REJECTED || a.status == ApplicationStatus.CLOSED,
+      "Application status should be STORED, REJECTED or CLOSED");
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, senderOracleType);
 
     require(reward > 0, "Reward is 0");
@@ -549,28 +629,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     emit OracleRewardClaim(_aId, msg.sender);
   }
 
-  function _checkSubmissionParams(
-    ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
-    int256 _highestPoint,
-    uint256[] memory _contour,
-    uint256 _customArea
-  )
-    internal
-  {
-    require(
-      _contour.length >= 3 && _contour.length <= 50,
-      "Number of contour elements should be between 3 and 50"
-    );
-
-    if (_spaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.LAND_PLOT) {
-      require(_customArea == 0, "Can't use custom area for LAND_PLOT type");
-    }
-
-    if (_spaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.BUILDING) {
-      require(_customArea > 0, "Provide custom are value");
-    }
-  }
-
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {
@@ -584,7 +642,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     }
   }
 
-  function calculateAndStoreFee(
+  function _calculateAndStoreFee(
     Application storage _a,
     uint256 _fee
   )
@@ -614,7 +672,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     _a.rewards.latestCommittedFee = _fee;
   }
 
-  function assignRequiredOracleTypesAndRewards(Application storage a) internal {
+  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
     assert(a.rewards.oraclesReward > 0);
 
     uint256 totalReward = 0;
@@ -636,7 +694,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       .div(100);
 
       a.assignedRewards[oracleType] = rewardShare;
-      changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
+      _changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
@@ -645,7 +703,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
     a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);
   }
 
-  function changeValidationStatus(
+  function _changeValidationStatus(
     Application storage _a,
     bytes32 _oracleType,
     ValidationStatus _status
@@ -658,7 +716,7 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
   }
 
   // NOTICE: the application should already persist in storage
-  function changeApplicationStatus(
+  function _changeApplicationStatus(
     Application storage _a,
     ApplicationStatus _status
   )
@@ -681,6 +739,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       uint256 createdAt,
       address beneficiary,
       address applicant,
+      uint256 becomePendingAt,
+      uint256 becomeRevertedAt,
       address pgg,
       uint256 spaceTokenId,
       ApplicationStatus status,
@@ -694,6 +754,8 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       m.createdAt,
       m.beneficiary,
       m.applicant,
+      m.becomePendingAt,
+      m.becomeRevertedAt,
       m.pgg,
       m.spaceTokenId,
       m.status,
@@ -764,32 +826,6 @@ contract NewPropertyManager is AbstractOracleApplication, ContourVerifiableAppli
       m.details.humanAddress,
       m.details.dataLink
     );
-  }
-
-  /**
-   * @dev A minimum fee to pass in to #submitApplication() method either in GALT or in ETH
-   */
-  function getSubmissionFeeByArea(address _pgg, Currency _currency, uint256 _area) public view returns (uint256) {
-    if (_currency == Currency.GALT) {
-      return feeCalculator(_pgg).calculateGaltFee(_area);
-    } else {
-      return feeCalculator(_pgg).calculateEthFee(_area);
-    }
-  }
-
-  /**
-   * @dev Fee to pass in to #resubmitApplication().
-   */
-  function getResubmissionFeeByArea(bytes32 _aId, uint256 _area) external view returns (uint256) {
-    Application storage a = applications[_aId];
-    uint256 newTotalFee = getSubmissionFeeByArea(a.pgg, a.currency, _area);
-    uint256 latest = a.rewards.latestCommittedFee;
-
-    if (newTotalFee <= latest) {
-      return 0;
-    } else {
-      return newTotalFee - latest;
-    }
   }
 
   function getApplicationOracle(

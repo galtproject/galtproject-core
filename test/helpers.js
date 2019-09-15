@@ -177,7 +177,7 @@ const Helpers = {
       assert(revert, `Expected throw, got '${error}' instead`);
       return;
     }
-    assert.fail('Expected throw not received');
+    assert.fail(`Expected throw not received: ${msg || 'without a message'}`);
   },
   assertEqualBN(actual, expected) {
     assert(actual instanceof BN, 'Actual value isn not a BN instance');
