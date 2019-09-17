@@ -119,7 +119,7 @@ Object.freeze(AreaSource);
 Object.freeze(SpaceTokenType);
 Object.freeze(Inclusion);
 
-contract('UpdatePropertyManager', accounts => {
+contract.only('UpdatePropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -547,8 +547,8 @@ contract('UpdatePropertyManager', accounts => {
             ether(60),
             { from: alice }
           );
-          this.aId = res.logs[0].args.applicationId;
-          const res4 = await this.updatePropertyManager.getApplicationRewards(this.aId);
+          const aId = res.logs[0].args.applicationId;
+          const res4 = await this.updatePropertyManager.getApplicationRewards(aId);
           assert.equal(res4.currency, Currency.GALT);
           assert.equal(res4.oraclesReward, '52200000000000000000');
           assert.equal(res4.galtProtocolFee, '7800000000000000000');
@@ -661,19 +661,19 @@ contract('UpdatePropertyManager', accounts => {
             }
           );
 
-          this.aId = res.logs[0].args.applicationId;
-          assert.notEqual(this.aId, undefined);
+          const aId = res.logs[0].args.applicationId;
+          assert.notEqual(aId, undefined);
 
-          await this.updatePropertyManager.setContour(this.aId, 771000, contour5, { from: alice });
+          await this.updatePropertyManager.setContour(aId, 771000, contour5, { from: alice });
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, this.aId, {
+          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, {
             from: alice
           });
           const cvId1 = res.logs[0].args.applicationId;
 
           assert.equal(SpaceTokenType.LAND_PLOT, await this.spaceGeoData.getSpaceTokenType(tokenId2));
-          assert.equal(SpaceTokenType.LAND_PLOT, await this.updatePropertyManager.getCVSpaceTokenType(this.aId));
+          assert.equal(SpaceTokenType.LAND_PLOT, await this.updatePropertyManager.getCVSpaceTokenType(aId));
 
           await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
           await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
@@ -700,12 +700,12 @@ contract('UpdatePropertyManager', accounts => {
           );
           await this.contourVerificationManager.pushRejection(cvId1);
 
-          res = await this.updatePropertyManager.getApplication(this.aId);
+          res = await this.updatePropertyManager.getApplication(aId);
           assert.equal(res.status, ApplicationStatus.CV_REJECTED);
 
           // resubmit
           await this.updatePropertyManager.setContour(
-            this.aId,
+            aId,
             // customArea
             678,
             contour5,
@@ -716,7 +716,7 @@ contract('UpdatePropertyManager', accounts => {
 
           // submit CV again
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
-          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, this.aId, {
+          res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, {
             from: alice
           });
           const cvId2 = res.logs[0].args.applicationId;
@@ -739,7 +739,7 @@ contract('UpdatePropertyManager', accounts => {
           await assertRevert(this.contourVerificationManager.pushRejection(cvId2), 'Expect REJECTED status');
           await this.contourVerificationManager.pushApproval(cvId2);
 
-          res = await this.updatePropertyManager.getApplication(this.aId);
+          res = await this.updatePropertyManager.getApplication(aId);
           assert.equal(res.status, ApplicationStatus.PENDING);
         });
       });
@@ -1227,10 +1227,6 @@ contract('UpdatePropertyManager', accounts => {
   });
 
   describe('application pipeline for ETH', () => {
-    before(async function() {
-      this.fee = ether(20);
-    });
-
     beforeEach(async function() {
       this.fee = ether(20);
 
@@ -1364,16 +1360,45 @@ contract('UpdatePropertyManager', accounts => {
           );
         });
 
+        it('should change status to PENDING if no contour or the highest point change required', async function() {
+          let res = await this.spaceToken.mint(alice, { from: minter });
+          const tokenId = res.logs[0].args.tokenId.toNumber();
+          await this.spaceToken.approve(this.updatePropertyManager.address, tokenId, { from: alice });
+          res = await this.updatePropertyManager.submit(
+            this.pggConfigX.address,
+            tokenId,
+            false,
+            // area
+            123,
+            this.dataLink,
+            this.humanAddress,
+            this.credentials,
+            this.ledgerIdentifier,
+            0,
+            {
+              from: alice,
+              value: this.fee
+            }
+          );
+          const aId = res.logs[0].args.applicationId;
+          res = await this.updatePropertyManager.getApplication(aId);
+          assert.equal(res.status, ApplicationStatus.PENDING);
+
+          await assertRevert(
+            this.updatePropertyManager.setContour(aId, 771000, this.contour, { from: alice }),
+            'setContour(): Incorrect status',
+            false
+          );
+        });
+
         it('should calculate corresponding oracle and coreTeam rewards in Eth', async function() {
           const res = await this.updatePropertyManager.getApplicationRewards(this.aId);
-          assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
           assert.equal(res.oraclesReward, 13400000000000000000);
           assert.equal(res.galtProtocolFee, 6600000000000000000);
         });
 
         it('should calculate oracle rewards according to their roles share', async function() {
           let res = await this.updatePropertyManager.getApplicationRewards(this.aId);
-          assert.equal(res.status, ApplicationStatus.CONTOUR_VERIFICATION);
           assert.equal(res.currency, Currency.ETH);
           assert.equal(res.oraclesReward, 13400000000000000000);
 

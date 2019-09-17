@@ -197,7 +197,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
       a.status == ApplicationStatus.PARTIALLY_SUBMITTED
       || a.status == ApplicationStatus.PARTIALLY_RESUBMITTED
       || a.status == ApplicationStatus.CV_REJECTED,
-      "Expect PARTIALLY_SUBMITTED or CV_REJECTED status"
+      "setContour(): Incorrect status"
     );
 
     a.details.contour = _contour;
