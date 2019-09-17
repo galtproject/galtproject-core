@@ -1,5 +1,5 @@
 const NewPropertyManager = artifacts.require('./NewPropertyManager.sol');
-const NewPropertyManagerLib = artifacts.require('./NewPropertyManagerLib.sol');
+const AbstractPropertyManagerLib = artifacts.require('./AbstractPropertyManagerLib.sol');
 const ACL = artifacts.require('./ACL.sol');
 const SpaceToken = artifacts.require('./SpaceToken.sol');
 const GaltToken = artifacts.require('./GaltToken.sol');
@@ -159,7 +159,7 @@ contract('NewPropertyManager', accounts => {
     await this.acl.initialize();
     await this.ggr.initialize();
 
-    this.newPropertyManagerLib = await NewPropertyManagerLib.new({ from: coreTeam });
+    this.newPropertyManagerLib = await AbstractPropertyManagerLib.new({ from: coreTeam });
 
     this.landUtils = await LandUtils.new();
     PolygonUtils.link('LandUtils', this.landUtils.address);
@@ -251,7 +251,7 @@ contract('NewPropertyManager', accounts => {
     await this.contourVerifiers.deposit(ether(200), { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
-    NewPropertyManager.link('NewPropertyManagerLib', this.newPropertyManagerLib.address);
+    NewPropertyManager.link('AbstractPropertyManagerLib', this.newPropertyManagerLib.address);
 
     this.newPropertyManager = await NewPropertyManager.new({ from: coreTeam });
     this.spaceToken = await SpaceToken.new(this.ggr.address, 'Space Token', 'SPACE', { from: coreTeam });
