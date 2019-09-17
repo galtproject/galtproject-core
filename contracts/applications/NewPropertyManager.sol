@@ -161,6 +161,7 @@ contract NewPropertyManager is AbstractPropertyManager {
   function _executeApproval(bytes32 _aId) internal {
     Application storage a = applications[_aId];
 
+    CVApprovedApplicationIds.remove(_aId);
     _changeApplicationStatus(a, ApplicationStatus.APPROVED);
 
     AbstractPropertyManagerLib.mintToken(ggr, a, address(this));

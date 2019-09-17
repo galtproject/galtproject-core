@@ -124,7 +124,6 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
     a.spaceTokenId = _spaceTokenId;
-
     _calculateAndStoreFee(a, a.rewards.totalPaidFee);
 
     a.pgg = _pgg;
@@ -134,6 +133,8 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     a.details.credentialsHash = _credentialsHash;
     a.details.area = _customArea;
     // Default a.areaSource is AreaSource.USER_INPUT
+
+    updateDetails[_id].withContourOrHighestPointChange = _changeContourOrHighestPoint;
 
     applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
@@ -158,13 +159,13 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     UpdateDetails storage uD = updateDetails[_aId];
     ApplicationStatus status = a.status;
 
-    // TODO: test all the cases
     /* solium-disable-next-line */
     require(
       status == ApplicationStatus.CLOSED ||
+      status == ApplicationStatus.CANCELLED ||
       status == ApplicationStatus.REJECTED ||
       status == ApplicationStatus.STORED,
-      "ApplicationStatus should one of REJECTED or APPROVED");
+      "withdrawSpaceToken(): invalid status");
 
     require(uD.tokenWithdrawn == false, "Token is already withdrawn");
 
@@ -179,10 +180,11 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   function _executeApproval(bytes32 _aId) internal {
     Application storage a = applications[_aId];
 
-    if (updateDetails[_aId].withContourOrHighestPointChange) {
-      _changeApplicationStatus(a, ApplicationStatus.STORED);
-    } else {
+    if (updateDetails[_aId].withContourOrHighestPointChange == true) {
+      CVApprovedApplicationIds.remove(_aId);
       _changeApplicationStatus(a, ApplicationStatus.APPROVED);
+    } else {
+      _changeApplicationStatus(a, ApplicationStatus.STORED);
     }
 
     AbstractPropertyManagerLib.updateGeoData(ggr, a, address(this));

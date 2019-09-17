@@ -358,7 +358,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     }
 
     if (allApproved) {
-      CVApprovedApplicationIds.remove(_aId);
       _executeApproval(_aId);
     }
   }

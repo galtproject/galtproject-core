@@ -119,7 +119,7 @@ Object.freeze(AreaSource);
 Object.freeze(SpaceTokenType);
 Object.freeze(Inclusion);
 
-contract.only('UpdatePropertyManager', accounts => {
+contract('UpdatePropertyManager', accounts => {
   const [
     coreTeam,
     feeMixerAddress,
@@ -1072,8 +1072,9 @@ contract.only('UpdatePropertyManager', accounts => {
         beforeEach(async function() {
           await this.updatePropertyManager.approve(this.aId, this.credentials, { from: bob });
           await this.updatePropertyManager.approve(this.aId, this.credentials, { from: dan });
+          const res = await this.updatePropertyManager.getApplication(this.aId);
+          assert.equal(res.status, ApplicationStatus.APPROVED);
           await this.updatePropertyManager.store(this.aId, { from: unauthorized });
-          // TODO: add plotmanager as minter role to geodatamanager
         });
 
         it('should allow shareholders claim reward', async function() {
@@ -1933,6 +1934,155 @@ contract.only('UpdatePropertyManager', accounts => {
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.REJECTED);
       });
+
+      it('should change status to STORED if there is no contour/highest point change required', async function() {
+        let res = await this.spaceToken.mint(alice, { from: minter });
+        const tokenId = res.logs[0].args.tokenId.toNumber();
+        await this.spaceToken.approve(this.updatePropertyManager.address, tokenId, { from: alice });
+
+        const ledgerIdentifier1 = web3.utils.utf8ToHex('ledger identifier 1');
+        const ledgerIdentifier2 = web3.utils.utf8ToHex('ledger identifier 2');
+
+        // TODO: setup existing fields
+        await this.spaceGeoData.setSpaceTokenType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenDataLink(tokenId, 'data link 1', { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenHumanAddress(tokenId, 'address 1', { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenLedgerIdentifier(tokenId, ledgerIdentifier1, {
+          from: geoDataManager
+        });
+
+        res = await this.updatePropertyManager.submit(
+          this.pggConfigX.address,
+          tokenId,
+          false,
+          // area
+          3344,
+          'data link 2',
+          'human address 2',
+          this.credentials,
+          ledgerIdentifier2,
+          0,
+          {
+            from: alice,
+            value: this.fee
+          }
+        );
+        const aId = res.logs[0].args.applicationId;
+
+        await this.updatePropertyManager.lock(aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lock(aId, PL_LAWYER, { from: dan });
+
+        await this.updatePropertyManager.approve(aId, this.credentials, { from: bob });
+        await this.updatePropertyManager.approve(aId, this.credentials, { from: dan });
+
+        res = await this.updatePropertyManager.getApplication(aId);
+        assert.equal(res.status, ApplicationStatus.STORED);
+
+        assert.equal(await this.spaceGeoData.getSpaceTokenArea(tokenId), 3344);
+        assert.equal(await this.spaceGeoData.getSpaceTokenDataLink(tokenId), 'data link 2');
+        assert.equal(await this.spaceGeoData.getSpaceTokenHumanAddress(tokenId), 'human address 2');
+        assert.equal(
+          web3.utils.hexToUtf8(await this.spaceGeoData.getSpaceTokenLedgerIdentifier(tokenId)),
+          'ledger identifier 2'
+        );
+      });
+
+      it('should change status to STORED after contour/height changed', async function() {
+        let res = await this.spaceToken.mint(alice, { from: minter });
+        const tokenId = res.logs[0].args.tokenId.toNumber();
+        await this.spaceToken.approve(this.updatePropertyManager.address, tokenId, { from: alice });
+
+        const rawContour3 = ['dr5qvnp9c7b2', 'dr5qvnp3ewcv', 'dr5qvnp37vs4', 'dr5qvnp99ddh'];
+        const contour3 = rawContour3.map(galt.geohashToNumber).map(a => a.toString(10));
+        const rawContour5 = ['dr5qvnp3vur6', 'dr5qvnp3yv97', 'dr5qvnp3ybpq', 'dr5qvnp3wp47'];
+        const contour5 = rawContour5.map(galt.geohashToNumber).map(a => a.toString(10));
+
+        const ledgerIdentifier1 = web3.utils.utf8ToHex('ledger identifier 1');
+        const ledgerIdentifier2 = web3.utils.utf8ToHex('ledger identifier 2');
+
+        await this.spaceGeoData.setSpaceTokenType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenHighestPoint(tokenId, 999888, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenContour(tokenId, contour3, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenDataLink(tokenId, 'data link 1', { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenHumanAddress(tokenId, 'address 1', { from: geoDataManager });
+        await this.spaceGeoData.setSpaceTokenLedgerIdentifier(tokenId, ledgerIdentifier1, {
+          from: geoDataManager
+        });
+
+        res = await this.updatePropertyManager.submit(
+          this.pggConfigX.address,
+          tokenId,
+          true,
+          // area
+          3344,
+          'data link 2',
+          'human address 2',
+          this.credentials,
+          ledgerIdentifier2,
+          0,
+          {
+            from: alice,
+            value: this.fee
+          }
+        );
+        const aId = res.logs[0].args.applicationId;
+
+        await this.updatePropertyManager.setContour(aId, 771000, contour5, { from: alice });
+
+        await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+        res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, {
+          from: alice
+        });
+        const cvId1 = res.logs[0].args.applicationId;
+
+        await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
+        await this.contourVerificationManager.approve(cvId1, v2, { from: o2 });
+        await this.contourVerificationManager.approve(cvId1, v3, { from: o3 });
+        await evmIncreaseTime(3600 * 9);
+        await this.contourVerificationManager.pushApproval(cvId1);
+
+        res = await this.updatePropertyManager.getApplication(aId);
+        assert.equal(res.status, ApplicationStatus.PENDING);
+
+        await this.updatePropertyManager.lock(aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lock(aId, PL_LAWYER, { from: dan });
+
+        await this.updatePropertyManager.approve(aId, this.credentials, { from: bob });
+        await this.updatePropertyManager.approve(aId, this.credentials, { from: dan });
+
+        // check APPROVED
+        res = await this.updatePropertyManager.getApplication(aId);
+        assert.equal(res.status, ApplicationStatus.APPROVED);
+
+        assert.equal(await this.spaceGeoData.getSpaceTokenArea(tokenId), 3344);
+        assert.equal(await this.spaceGeoData.getSpaceTokenDataLink(tokenId), 'data link 2');
+        assert.equal(await this.spaceGeoData.getSpaceTokenHumanAddress(tokenId), 'human address 2');
+        assert.equal(
+          web3.utils.hexToUtf8(await this.spaceGeoData.getSpaceTokenLedgerIdentifier(tokenId)),
+          'ledger identifier 2'
+        );
+
+        assert.equal(await this.spaceGeoData.getSpaceTokenHighestPoint(tokenId), 999888);
+
+        res = await this.spaceGeoData.getSpaceTokenContour(tokenId);
+
+        for (let i = 0; i < res.length; i++) {
+          assert.equal(res[i].toString(10), contour3[i]);
+        }
+
+        // check STORED
+        await this.updatePropertyManager.store(aId, { from: unauthorized });
+
+        assert.equal(await this.spaceGeoData.getSpaceTokenHighestPoint(tokenId), 771000);
+
+        res = await this.spaceGeoData.getSpaceTokenContour(tokenId);
+
+        for (let i = 0; i < res.length; i++) {
+          assert.equal(res[i].toString(10), contour5[i]);
+        }
+      });
     });
 
     describe('#revert()', () => {
@@ -2073,24 +2223,81 @@ contract.only('UpdatePropertyManager', accounts => {
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.PENDING);
+      });
 
+      it('should allow withdrawing from CANCELLED status', async function() {
+        await assertRevert(
+          this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice }),
+          'withdrawSpaceToken(): invalid status',
+          false
+        );
+
+        await evmIncreaseTime(190);
+
+        await this.updatePropertyManager.cancel(this.aId, { from: alice });
+
+        const res = await this.updatePropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.CANCELLED);
+
+        await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
+        assert.equal(await this.spaceToken.ownerOf(this.tokenId), alice);
+      });
+
+      it('should allow withdrawing from CLOSED status', async function() {
+        await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
+
+        await this.updatePropertyManager.revert(this.aId, PL_SURVEYOR, { from: bob });
+        await assertRevert(
+          this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice }),
+          'withdrawSpaceToken(): invalid status',
+          false
+        );
+
+        await evmIncreaseTime(250);
+
+        await this.updatePropertyManager.close(this.aId, { from: unauthorized });
+
+        const res = await this.updatePropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.CLOSED);
+
+        await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
+        assert.equal(await this.spaceToken.ownerOf(this.tokenId), alice);
+      });
+
+      it('should allow withdrawing from STORED status', async function() {
         await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
         await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
 
         await this.updatePropertyManager.approve(this.aId, this.credentials, { from: bob });
         await this.updatePropertyManager.approve(this.aId, this.credentials, { from: dan });
 
-        res = await this.updatePropertyManager.getApplication(this.aId);
+        let res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
+        await assertRevert(
+          this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice }),
+          'withdrawSpaceToken(): invalid status',
+          false
+        );
         await this.updatePropertyManager.store(this.aId, { from: unauthorized });
 
         res = await this.updatePropertyManager.getApplication(this.aId);
         assert.equal(res.status, ApplicationStatus.STORED);
+        await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
+        assert.equal(await this.spaceToken.ownerOf(this.tokenId), alice);
       });
 
-      // eslint-disable-next-line
-      it('should transfer SpaceToken to the applicant', async function() {
+      it('should allow withdrawing from REJECTED status', async function() {
+        await this.updatePropertyManager.lock(this.aId, PL_SURVEYOR, { from: bob });
+        await this.updatePropertyManager.lock(this.aId, PL_LAWYER, { from: dan });
+
+        await this.updatePropertyManager.approve(this.aId, this.credentials, { from: bob });
+        await this.updatePropertyManager.reject(this.aId, this.credentials, { from: dan });
+
+        const res = await this.updatePropertyManager.getApplication(this.aId);
+        assert.equal(res.status, ApplicationStatus.REJECTED);
+
         await this.updatePropertyManager.withdrawSpaceToken(this.aId, { from: alice });
         assert.equal(await this.spaceToken.ownerOf(this.tokenId), alice);
       });
