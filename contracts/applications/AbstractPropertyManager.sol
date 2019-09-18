@@ -34,12 +34,12 @@ import "../ACL.sol";
 contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiableApplication {
   using SafeMath for uint256;
 
-  event NewApplication(address indexed applicant, bytes32 applicationId);
-  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
-  event ValidationStatusChanged(bytes32 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
-  event OracleRewardClaim(bytes32 indexed applicationId, address indexed oracle);
-  event ApplicantFeeClaim(bytes32 indexed applicationId);
-  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  event NewApplication(address indexed applicant, uint256 applicationId);
+  event ApplicationStatusChanged(uint256 indexed applicationId, ApplicationStatus indexed status);
+  event ValidationStatusChanged(uint256 indexed applicationId, bytes32 indexed oracleType, ValidationStatus indexed status);
+  event OracleRewardClaim(uint256 indexed applicationId, address indexed oracle);
+  event ApplicantFeeClaim(uint256 indexed applicationId);
+  event GaltProtocolFeeAssigned(uint256 indexed applicationId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -66,7 +66,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   struct Application {
-    bytes32 id;
+    uint256 id;
     address pgg;
     address applicant;
     address beneficiary;
@@ -116,7 +116,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     string dataLink;
   }
 
-  mapping(bytes32 => Application) internal applications;
+  mapping(uint256 => Application) internal applications;
 
   constructor () public {}
 
@@ -136,11 +136,11 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     );
   }
 
-  function onlyApplicant(bytes32 _aId) internal {
+  function onlyApplicant(uint256 _aId) internal {
     require(applications[_aId].applicant == msg.sender, "Invalid applicant");
   }
 
-  function onlyOracleOfApplication(bytes32 _aId) internal {
+  function onlyOracleOfApplication(uint256 _aId) internal {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
 
@@ -150,9 +150,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   function applicationCloseTimeout(address _pgg) public view returns (uint256);
   function roleUnlockTimeout(address _pgg) public view returns (uint256);
 
-  uint256 idCounter = 1;
-
-  function cvApprove(bytes32 _applicationId) external {
+  function cvApprove(uint256 _applicationId) external {
     onlyCVM();
     Application storage a = applications[_applicationId];
 
@@ -166,7 +164,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.PENDING);
   }
 
-  function cvReject(bytes32 _applicationId) external {
+  function cvReject(uint256 _applicationId) external {
     onlyCVM();
     Application storage a = applications[_applicationId];
 
@@ -178,7 +176,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   function setContour(
-    bytes32 _aId,
+    uint256 _aId,
     int256 _highestPoint,
     uint256[] calldata _contour
   )
@@ -219,7 +217,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
-    bytes32 _aId,
+    uint256 _aId,
     bool _contourChanged,
     bytes32 _newCredentialsHash,
     bytes32 _newLedgerIdentifier,
@@ -257,7 +255,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     }
   }
 
-  function _assignLockedStatus(bytes32 _aId) internal {
+  function _assignLockedStatus(uint256 _aId) internal {
     for (uint256 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
       if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
         _changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
@@ -292,7 +290,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   // Application can be locked by an oracle type only once.
-  function lock(bytes32 _aId, bytes32 _oracleType) external {
+  function lock(uint256 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
     requireOracleActiveWithAssignedActiveOracleType(a.pgg, msg.sender, _oracleType);
@@ -310,7 +308,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
-  function unlock(bytes32 _aId, bytes32 _oracleType) external {
+  function unlock(uint256 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.PENDING, "Application status should be PENDING");
@@ -329,7 +327,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   function approve(
-    bytes32 _aId,
+    uint256 _aId,
     bytes32 _credentialsHash
   )
     external
@@ -362,12 +360,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     }
   }
 
-  function _executeApproval(bytes32 _aId) internal {
+  function _executeApproval(uint256 _aId) internal {
     revert("_executeApproval(): Not implemented");
   }
 
   function reject(
-    bytes32 _aId,
+    uint256 _aId,
     string calldata _message
   )
     external
@@ -387,7 +385,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   function revert(
-    bytes32 _aId,
+    uint256 _aId,
     string calldata _message
   )
     external
@@ -416,7 +414,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
-  function close(bytes32 _aId) external {
+  function close(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.REVERTED, "Application status should be REVERTED");
@@ -430,7 +428,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.CLOSED);
   }
 
-  function cancel(bytes32 _aId) external {
+  function cancel(uint256 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
 
@@ -444,7 +442,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.CANCELLED);
   }
 
-  function store(bytes32 _aId) external {
+  function store(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.APPROVED, "Application status should be APPROVED");
@@ -457,7 +455,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.STORED);
   }
 
-  function claimApplicantFee(bytes32 _aId) external {
+  function claimApplicantFee(uint256 _aId) external {
     onlyApplicant(_aId);
 
     Application storage a = applications[_aId];
@@ -479,7 +477,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     emit ApplicantFeeClaim(_aId);
   }
 
-  function claimOracleReward(bytes32 _aId) external {
+  function claimOracleReward(uint256 _aId) external {
     onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
     bytes32 senderOracleType = a.addressOracleTypes[msg.sender];
@@ -582,7 +580,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @dev Get common application details
    */
   function getApplication(
-    bytes32 _id
+    uint256 _id
   )
     external
     view
@@ -619,7 +617,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @dev Get application rewards-related information
    */
   function getApplicationRewards(
-    bytes32 _id
+    uint256 _id
   )
     external
     view
@@ -648,7 +646,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @dev Get application details
    */
   function getApplicationDetails(
-    bytes32 _id
+    uint256 _id
   )
     external
     view
@@ -680,7 +678,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   function getApplicationOracle(
-    bytes32 _aId,
+    uint256 _aId,
     bytes32 _oracleType
   )
     external
@@ -702,19 +700,19 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     );
   }
 
-  function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory) {
+  function getCVContour(uint256 _applicationId) external view returns (uint256[] memory) {
     return applications[_applicationId].details.contour;
   }
 
-  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
+  function getCVHighestPoint(uint256 _applicationId) external view returns (int256) {
     return applications[_applicationId].details.highestPoint;
   }
 
-  function getCVSpaceTokenType(bytes32 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+  function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return applications[_aId].details.spaceTokenType;
   }
 
-  function getApplicationBeneficiary(bytes32 _aId) public view returns (address) {
+  function getApplicationBeneficiary(uint256 _aId) public view returns (address) {
     return applications[_aId].beneficiary;
   }
 }

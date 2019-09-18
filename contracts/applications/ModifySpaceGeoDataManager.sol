@@ -53,7 +53,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     int256[] heights;
   }
 
-  mapping(bytes32 => ApplicationDetails) internal applicationDetails;
+  mapping(uint256 => ApplicationDetails) internal applicationDetails;
 
   constructor () public {}
 
@@ -95,9 +95,9 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   )
     external
     payable
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 id = _submit(_pgg, _applicationFeeInGalt);
+    uint256 id = nextId();
 
     ApplicationDetails storage aD = applicationDetails[id];
 
@@ -107,7 +107,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function proposeApproval(
-    bytes32 _cId,
+    uint256 _cId,
     string calldata _msg,
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
@@ -139,7 +139,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function verifyProposeApprovalInputs(
-    bytes32 _cId,
+    uint256 _cId,
     string memory _msg,
     uint256 _spaceTokenId,
     uint256[] memory _contour,
@@ -155,7 +155,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     pD = applicationDetails[_cId].proposalDetails[_proposeApproval(_cId, _msg)];
   }
 
-  function _execute(bytes32 _aId, bytes32 _pId) internal {
+  function _execute(uint256 _aId, bytes32 _pId) internal {
     ApplicationDetails storage aD = applicationDetails[_aId];
     ProposalDetails storage pD = aD.proposalDetails[_pId];
 
@@ -175,13 +175,13 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
 //    spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
   }
 
-  function _checkRewardCanBeClaimed(bytes32 _aId) internal returns (bool) {
+  function _checkRewardCanBeClaimed(uint256 _aId) internal returns (bool) {
     return true;
   }
 
   /** GETTERS **/
   function getApplicationDetails(
-    bytes32 _aId
+    uint256 _aId
   )
     external
     view
@@ -197,7 +197,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function getProposalDetails(
-    bytes32 _cId,
+    uint256 _cId,
     bytes32 _pId
   )
     external

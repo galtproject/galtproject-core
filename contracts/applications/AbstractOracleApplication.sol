@@ -20,7 +20,7 @@ contract AbstractOracleApplication is AbstractApplication {
 
   bytes32 public constant ROLE_APPLICATION_UNLOCKER = bytes32("APPLICATION_UNLOCKER");
 
-  mapping(address => bytes32[]) public applicationsByOracle;
+  mapping(address => uint256[]) public applicationsByOracle;
 
   modifier _anyOracle() {
     _;
@@ -34,7 +34,7 @@ contract AbstractOracleApplication is AbstractApplication {
 
   constructor() public {}
 
-  function claimOracleReward(bytes32 _aId) external;
+  function claimOracleReward(uint256 _aId) external;
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
 
@@ -58,7 +58,7 @@ contract AbstractOracleApplication is AbstractApplication {
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }
 
-  function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {
+  function getApplicationsByOracle(address _oracle) external view returns (uint256[] memory) {
     return applicationsByOracle[_oracle];
   }
 }

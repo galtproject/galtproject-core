@@ -39,7 +39,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     bytes32[] oracleTypes;
   }
 
-  mapping(bytes32 => OracleDetails) oracleDetails;
+  mapping(uint256 => OracleDetails) oracleDetails;
 
   constructor() public {}
 
@@ -91,14 +91,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     require(_descriptionHashes.length > 0, "Description hashes required");
     require(_oracleTypes.length > 0, "Oracle Types required");
 
-    bytes32 id = keccak256(
-      abi.encodePacked(
-        msg.sender,
-        _name,
-        _descriptionHashes,
-        block.number
-      )
-    );
+    uint256 id = nextId();
 
     OracleDetails memory o;
     o.addr = _oracleAddress;
@@ -114,7 +107,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     _submit(id, _pgg, _applicationFeeInGalt);
   }
 
-  function _execute(bytes32 _id) internal {
+  function _execute(uint256 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
 
@@ -126,7 +119,7 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   // GETTERS
 
   function getApplicationOracle(
-    bytes32 _id
+    uint256 _id
   )
     external
     view

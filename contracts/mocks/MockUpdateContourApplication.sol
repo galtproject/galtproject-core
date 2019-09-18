@@ -20,7 +20,7 @@ import "./MockAddContourApplication.sol";
 
 
 contract MockUpdateContourApplication is MockAddContourApplication {
-  mapping(bytes32 => uint256) public applicationIdToSpaceTokenId;
+  mapping(uint256 => uint256) public applicationIdToSpaceTokenId;
 
   constructor(GaltGlobalRegistry _ggr) public MockAddContourApplication(_ggr) {}
 
@@ -31,9 +31,9 @@ contract MockUpdateContourApplication is MockAddContourApplication {
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 applicationId = MockAddContourApplication.submit(_contour, _highestPoint, _spaceTokenType);
+    uint256 applicationId = MockAddContourApplication.submit(_contour, _highestPoint, _spaceTokenType);
     applicationIdToSpaceTokenId[applicationId] = _spaceTokenId;
     return applicationId;
   }
@@ -44,13 +44,13 @@ contract MockUpdateContourApplication is MockAddContourApplication {
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public
-    returns (bytes32)
+    returns (uint256)
   {
     revert("Specify token ID as a first argument");
   }
 
   function getCVData(
-    bytes32 _applicationId
+    uint256 _applicationId
   )
     external
     view

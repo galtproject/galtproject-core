@@ -39,8 +39,8 @@ contract NewPropertyManager is AbstractPropertyManager {
 
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
 
-  event NewSpaceToken(address indexed applicant, uint256 spaceTokenId, bytes32 applicationId);
-  event ClaimSpaceToken(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
+  event NewSpaceToken(address indexed applicant, uint256 spaceTokenId, uint256 applicationId);
+  event ClaimSpaceToken(uint256 indexed applicationId, uint256 indexed spaceTokenId);
 
   constructor () public {}
 
@@ -85,14 +85,13 @@ contract NewPropertyManager is AbstractPropertyManager {
   )
     external
     payable
-    returns (bytes32)
+    returns (uint256)
   {
     pggRegistry().requireValidPgg(_pgg);
 
     require(_customArea > 0, "Provide custom area value");
 
-    bytes32 _id = bytes32(idCounter);
-    idCounter++;
+    uint256 _id = nextId();
 
     Application storage a = applications[_id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
@@ -135,7 +134,6 @@ contract NewPropertyManager is AbstractPropertyManager {
     a.details.area = _customArea;
     // Default a.areaSource is AreaSource.USER_INPUT
 
-    applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
     emit NewApplication(msg.sender, _id);
@@ -146,7 +144,7 @@ contract NewPropertyManager is AbstractPropertyManager {
     return _id;
   }
 
-  function claimSpaceToken(bytes32 _aId) external {
+  function claimSpaceToken(uint256 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
     require(
@@ -158,7 +156,7 @@ contract NewPropertyManager is AbstractPropertyManager {
     ggr.getSpaceToken().transferFrom(address(this), a.beneficiary, a.spaceTokenId);
   }
 
-  function _executeApproval(bytes32 _aId) internal {
+  function _executeApproval(uint256 _aId) internal {
     Application storage a = applications[_aId];
 
     CVApprovedApplicationIds.remove(_aId);
@@ -199,15 +197,15 @@ contract NewPropertyManager is AbstractPropertyManager {
     a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);
   }
 
-  function getCVSpaceTokenType(bytes32 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+  function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return applications[_aId].details.spaceTokenType;
   }
 
-  function getApplicationBeneficiary(bytes32 _aId) public view returns (address) {
+  function getApplicationBeneficiary(uint256 _aId) public view returns (address) {
     return applications[_aId].beneficiary;
   }
 
-  function getCVData(bytes32 _applicationId)
+  function getCVData(uint256 _applicationId)
     external
     view
     returns (

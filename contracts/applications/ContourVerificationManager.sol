@@ -59,7 +59,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     uint256 id;
     Status status;
     address applicationContract;
-    bytes32 externalApplicationId;
+    uint256 externalApplicationId;
     uint256 approvalTimeoutInitiatedAt;
     address[] approvers;
     mapping(address => bool) verifierVoted;
@@ -133,7 +133,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   // USER INTERFACE
 
-  function submit(address _applicationContract, bytes32 _externalApplicationId) external {
+  function submit(address _applicationContract, uint256 _externalApplicationId) external {
     ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication(_applicationContract).isCVApplicationPending(_externalApplicationId);
@@ -345,7 +345,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     uint256 _aId,
     address _verifier,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
     uint256 _existingContourSegmentSecondPoint,
@@ -381,7 +381,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function reportInvalidApprovalWithApplicationApprovedContourIntersectionProof(
     uint256 _aId,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
     uint256 _existingContourSegmentSecondPoint,
@@ -423,7 +423,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     address _verifier,
     Inclusion _inclusion,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -453,7 +453,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     uint256 _aId,
     Inclusion _inclusion,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -803,7 +803,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     returns(
       Status status,
       address applicationContract,
-      bytes32 externalApplicationId,
+      uint256 externalApplicationId,
       uint256 approvalTimeoutInitiatedAt,
       Action action,
       uint256 requiredApprovals,
