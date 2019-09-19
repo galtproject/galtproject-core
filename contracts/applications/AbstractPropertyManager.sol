@@ -82,12 +82,19 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
     bytes32[] assignedOracleTypes;
 
+    // Mapping (oracleType => raward(ETH or GALT))
     mapping(bytes32 => uint256) assignedRewards;
+    // Mapping (oracleType => isPaidOut)
     mapping(bytes32 => bool) oracleTypeRewardPaidOut;
+    // Mapping (oracleType => message string)
     mapping(bytes32 => string) oracleTypeMessages;
+    // Mapping (oracleType => addressLockedTheOracleType)
     mapping(bytes32 => address) oracleTypeAddresses;
+    // Mapping (oracleAddress => oracleTypeLockedByTheAddress)
     mapping(address => bytes32) addressOracleTypes;
+    // Mapping (oracleType => lastLockedAtTimestamp)
     mapping(bytes32 => uint256) lastLockedAt;
+    // Mapping (oracleType => validationStatus)
     mapping(bytes32 => ValidationStatus) validationStatus;
   }
 
@@ -116,6 +123,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     string dataLink;
   }
 
+  // Mapping (applicationId => Application)
   mapping(uint256 => Application) internal applications;
 
   constructor () public {}
@@ -144,37 +152,101 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
 
-  function minimalApplicationFeeEth(address _pgg) public view returns (uint256);
-  function minimalApplicationFeeGalt(address _pgg) public view returns (uint256);
-  function applicationCancelTimeout(address _pgg) public view returns (uint256);
-  function applicationCloseTimeout(address _pgg) public view returns (uint256);
-  function roleUnlockTimeout(address _pgg) public view returns (uint256);
+  /**
+   * @title Minimal Application Fee in ETH.
+   * @notice Returns a minimal application fee in ETH for the given PGG address.
 
-  function cvApprove(uint256 _applicationId) external {
+   * @param _pgg Protocol Governance Group (PGG) address
+   * @returns minimal fee in ETH
+   */
+  function minimalApplicationFeeEth(address _pgg) public view returns (uint256);
+
+  /**
+   * @title Minimal Application Fee in GALT.
+   * @notice Returns a minimal application fee in GALT for the given PGG address.
+
+   * @param _pgg Protocol Governance Group (PGG) address
+   * @returns minimal fee in GALT
+   */
+  function minimalApplicationFeeGalt(address _pgg) public view returns (uint256);
+
+  /**
+   * @title Application Cancel Timeout.
+   * @notice Returns P*_APPLICATION_CANCEL_TIMEOUT for the given PGG address.
+   * @dev The value used by `#cancel()` method.
+
+   * @param _pgg Protocol Governance Group (PGG) address
+   * @returns timeout in seconds
+   */
+  function applicationCancelTimeout(address _pgg) public view returns (uint256);
+
+  /**
+   * @title Application Close Timeout.
+   * @notice Returns P*_APPLICATION_CLOSE_TIMEOUT for the given PGG address.
+   * @dev The value used by `#close()` method.
+
+   * @param _pgg Protocol Governance Group (PGG) address
+   * @returns timeout in seconds
+   */
+  function applicationCloseTimeout(address _pgg) public view returns (uint256);
+
+  /**
+   * @title Oracle Type Unlock Timeout.
+   * @notice Returns P*_ROLE_UNLOCK_TIMEOUT for the given PGG address.
+   * @dev The value used by `#unlock()` method.
+
+   * @param _pgg Protocol Governance Group (PGG) address
+   * @returns timeout in seconds
+   */
+  function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256);
+
+  /**
+   * @title Approve By Contour Verification.
+   * @notice Synchronizes Contour Verification application APPROVED status.
+   * @dev The method should be internally called by Contour Verification Manager contract #pushApproval() method.
+   *
+   * @param _aId application ID
+   */
+  function cvApprove(uint256 _aId) external {
     onlyCVM();
-    Application storage a = applications[_applicationId];
+    Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
 
     a.becomePendingAt = block.timestamp;
 
-    CVPendingApplicationIds.remove(_applicationId);
-    CVApprovedApplicationIds.add(_applicationId);
+    CVPendingApplicationIds.remove(_aId);
+    CVApprovedApplicationIds.add(_aId);
 
     _changeApplicationStatus(a, ApplicationStatus.PENDING);
   }
 
-  function cvReject(uint256 _applicationId) external {
+  /**
+   * @title Reject By Contour Verification.
+   * @notice Synchronizes Contour Verification application REJECTED status.
+   * @dev The method should be internally called by Contour Verification Manager contract #pushRejection() method.
+   *
+   * @param _aId application ID
+   */
+  function cvReject(uint256 _aId) external {
     onlyCVM();
-    Application storage a = applications[_applicationId];
+    Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
 
-    CVPendingApplicationIds.remove(_applicationId);
+    CVPendingApplicationIds.remove(_aId);
 
     _changeApplicationStatus(a, ApplicationStatus.CV_REJECTED);
   }
 
+  /**
+   * @title Set Contour.
+   * @notice Sets contour among with the highest point.
+   *
+   * @param _aId application ID
+   * @param _highestPoint above the sea level (in centimeters)
+   * @param _contour array of geohash5z encoded points
+   */
   function setContour(
     uint256 _aId,
     int256 _highestPoint,
@@ -207,13 +279,19 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @dev Resubmit application after it was reverted
+   * @title Resubmit.
+   * @notice Resubmits the application after it was reverted. If you don't want to change contour or the highest point,
+   *      you can resubmit it to PENDING status directly by setting `_contourChanged` to false. This will allow you to
+   *      skip going through the contour verification process again.
+   * @dev Resets all the oracle type statuses to LOCKED.
    *
-   * @param _aId application id
+   * @param _aId application ID
+   * @param _contourChanged switch to PARTIALLY_RESUBMITTED if true, PENDING otherwise
    * @param _newCredentialsHash keccak256 of user credentials
    * @param _newLedgerIdentifier of a plot
-   * @param _newDataLink of a plot
-   * @param _newCustomArea int
+   * @param _newDataLink IPLD address
+   * @param _newHumanAddress just a human readable address string
+   * @param _newCustomArea in sq. meters
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
@@ -289,7 +367,14 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     a.rewards.latestCommittedFee = totalPaid;
   }
 
-  // Application can be locked by an oracle type only once.
+  /**
+   * @title Lock.
+   * @notice Locks an application by specified `_oracleType`. Caller should have the assigned oracle type at the moment
+   *         of locking.
+   *
+   * @param _aId application ID
+   * @param _oracleType oracle type to lock application for
+   */
   function lock(uint256 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
@@ -308,6 +393,16 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeValidationStatus(a, _oracleType, ValidationStatus.LOCKED);
   }
 
+  /**
+   * @title Unlock.
+   * @notice Unlocks an application by specified `_oracleType`. This action could be called for LOCKED validation status
+   *         in 2 cases:
+   *         - immediately by the oracle who has already locked this `_oracleType`
+   *         - after `oracleTypeUnlockTimeout()` by anyone
+   *
+   * @param _aId application ID
+   * @param _oracleType oracle type to unlock
+   */
   function unlock(uint256 _aId, bytes32 _oracleType) external {
     Application storage a = applications[_aId];
 
@@ -317,7 +412,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
     if (msg.sender != a.oracleTypeAddresses[_oracleType]) {
       require(
-        block.timestamp > a.lastLockedAt[_oracleType].add(roleUnlockTimeout(a.pgg)),
+        block.timestamp > a.lastLockedAt[_oracleType].add(oracleTypeUnlockTimeout(a.pgg)),
         "Timeout has not passed yet"
       );
     }
@@ -364,6 +459,13 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     revert("_executeApproval(): Not implemented");
   }
 
+  /**
+   * @title Reject.
+   * @notice Rejects the application in case when an oracle has considered the applicant behaviour is  malicious.
+   *
+   * @param _aId application ID
+   * @param _message string with an explanation of reject
+   */
   function reject(
     uint256 _aId,
     string calldata _message
@@ -384,6 +486,15 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.REJECTED);
   }
 
+  /**
+   * @title Revert.
+   * @notice Reverts the application in case when an oracle has considered the application details are not comply
+   *         requirements and should be corrected by an applicant.
+   * @dev Uses external `AbstractPropertyManagerLib` helpers.
+   *
+   * @param _aId application ID
+   * @param _message string with an explanation of revert
+   */
   function revert(
     uint256 _aId,
     string calldata _message
@@ -414,6 +525,15 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.REVERTED);
   }
 
+  /**
+   * @title Close.
+   * @notice Closes an application in REVERTED status. Assigns rewards to the oracles who has locked the application.
+   *         Applicant can call this method anytime he want if he don't want to resubmit this application again.
+   *         If the applicant had not resubmitted the application during `applicationCloseTimeout()` anyone can call
+   *         `close()` method. Especially the oracles are incentivized doing that in order to receive their rewards.
+   *
+   * @param _aId application ID
+   */
   function close(uint256 _aId) external {
     Application storage a = applications[_aId];
 
@@ -428,6 +548,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.CLOSED);
   }
 
+  /**
+   * @title Cancel.
+   * @notice Cancels an application in PENDING status. Only the applicant is allowed to cancel his application.
+   *
+   * @param _aId application ID
+   */
   function cancel(uint256 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
@@ -442,6 +568,14 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.CANCELLED);
   }
 
+  /**
+   * @title Store.
+   * @notice Stores contour and the highest point into SpaceGeoDataRegistry.
+   * @dev This additional step is required to devote the whole transaction (and probably a block) for storing
+   *      large enough contour.
+   *
+   * @param _aId application ID
+   */
   function store(uint256 _aId) external {
     Application storage a = applications[_aId];
 
@@ -455,6 +589,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeApplicationStatus(a, ApplicationStatus.STORED);
   }
 
+  /**
+   * @title Claim Applicant Fee.
+   * @notice Refunds an application fee when the application status is CANCELLED.
+   *
+   * @param _aId application ID
+   */
   function claimApplicantFee(uint256 _aId) external {
     onlyApplicant(_aId);
 
@@ -477,6 +617,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     emit ApplicantFeeClaim(_aId);
   }
 
+  /**
+   * @title Claim Oracle Reward.
+   * @notice Transfers an oracle reward for a given application. Requires STORED, REJECTED, or CLOSED status.
+   *
+   * @param _aId application ID
+   */
   function claimOracleReward(uint256 _aId) external {
     onlyOracleOfApplication(_aId);
     Application storage a = applications[_aId];
@@ -577,10 +723,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @dev Get common application details
+   * @title Get Application General Information
+   *
+   * @param _aId application ID
    */
   function getApplication(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -597,7 +745,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
       bytes32[] memory assignedOracleTypes
     )
   {
-    Application storage m = applications[_id];
+    Application storage m = applications[_aId];
 
     return (
       m.createdAt,
@@ -614,10 +762,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @dev Get application rewards-related information
+   * @title Get Application Rewards Information
+   *
+   * @param _aId application ID
    */
   function getApplicationRewards(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -630,7 +780,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
       bool galtProtocolFeePaidOut
     )
   {
-    Application storage m = applications[_id];
+    Application storage m = applications[_aId];
 
     return (
       m.status,
@@ -643,10 +793,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @dev Get application details
+   * @title Get Application GeoData Details
+   *
+   * @param _aId application ID
    */
   function getApplicationDetails(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -662,7 +814,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
       string memory dataLink
     )
   {
-    Application storage m = applications[_id];
+    Application storage m = applications[_aId];
 
     return (
       m.details.credentialsHash,
@@ -677,6 +829,11 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     );
   }
 
+  /**
+   * @title Get Application Oracle Type Information
+   *
+   * @param _aId application ID
+   */
   function getApplicationOracle(
     uint256 _aId,
     bytes32 _oracleType
@@ -700,12 +857,12 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     );
   }
 
-  function getCVContour(uint256 _applicationId) external view returns (uint256[] memory) {
-    return applications[_applicationId].details.contour;
+  function getCVContour(uint256 _aId) external view returns (uint256[] memory) {
+    return applications[_aId].details.contour;
   }
 
-  function getCVHighestPoint(uint256 _applicationId) external view returns (int256) {
-    return applications[_applicationId].details.highestPoint;
+  function getCVHighestPoint(uint256 _aId) external view returns (int256) {
+    return applications[_aId].details.highestPoint;
   }
 
   function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {

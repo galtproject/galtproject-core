@@ -80,6 +80,25 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
+  /**
+   * @title Submit an New Application.
+   * @notice Submits an existing property information update application. Transfers the token to this contract so
+   *         the token transfer should be approved before the submission.
+   *         If you don't need to change a contour or the highest point, set `_changeContourOrHighestPoint` to false.
+   *         This will allow you to skip contour verification step and will assign the application status straight
+   *         to PENDING.
+   * @dev Assigns all the oracle type statuses to PENDING.
+   *
+   * @param _pgg address to submit application to
+   * @param _spaceTokenId to modify information for
+   * @param _changeContourOrHighestPoint true in case if these changes are required
+   * @param _customArea in sq. meters
+   * @param _newDataLink IPLD address
+   * @param _newHumanAddress just a human readable address string
+   * @param _newCredentialsHash keccak256 of user credentials
+   * @param _newLedgerIdentifier of a plot, for ex. a cadastral ID
+   * @param _resubmissionFeeInGalt or 0 if paid by ETH
+   */
   function submit(
     address _pgg,
     uint256 _spaceTokenId,
@@ -95,9 +114,9 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     payable
     returns (uint256)
   {
-    uint256 _id = _performSubmissionChecks(_pgg, _spaceTokenId, _customArea);
+    uint256 id = _performSubmissionChecks(_pgg, _spaceTokenId, _customArea);
 
-    Application storage a = applications[_id];
+    Application storage a = applications[id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
     // GALT
@@ -120,7 +139,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
       require(msg.value >= minimalApplicationFeeEth(_pgg), "Insufficient payment");
     }
 
-    a.id = _id;
+    a.id = id;
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
     a.spaceTokenId = _spaceTokenId;
@@ -134,11 +153,11 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     a.details.area = _customArea;
     // Default a.areaSource is AreaSource.USER_INPUT
 
-    updateDetails[_id].withContourOrHighestPointChange = _changeContourOrHighestPoint;
+    updateDetails[id].withContourOrHighestPointChange = _changeContourOrHighestPoint;
 
-    applicationsByApplicant[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(id);
 
-    emit NewApplication(msg.sender, _id);
+    emit NewApplication(msg.sender, id);
 
     if (_changeContourOrHighestPoint) {
       _changeApplicationStatus(a, ApplicationStatus.PARTIALLY_SUBMITTED);
@@ -146,11 +165,18 @@ contract UpdatePropertyManager is AbstractPropertyManager {
       _changeApplicationStatus(a, ApplicationStatus.PENDING);
     }
 
-    _assignRequiredOracleTypesAndRewards(applications[_id]);
+    _assignRequiredOracleTypesAndRewards(applications[id]);
 
-    return _id;
+    return id;
   }
 
+  /**
+   * @title Withdraw Space Token.
+   * @notice Transfers a Space token back to the applicant when the application status is set to the one of the finals:
+   *         STORED, REJECTED, CLOSED, or CANCELLED. Only the application applicant is allowed to call this method.
+   *
+   * @param _aId application ID
+   */
   function withdrawSpaceToken(uint256 _aId) external {
     onlyApplicant(_aId);
 
@@ -245,7 +271,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   // GETTERS
 
   function getUpdateDetails(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -254,7 +280,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
       bool tokenWithdrawn
     )
   {
-    UpdateDetails storage uD = updateDetails[_id];
+    UpdateDetails storage uD = updateDetails[_aId];
 
     return (
       uD.withContourOrHighestPointChange,
@@ -266,7 +292,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenType(applications[_aId].spaceTokenId);
   }
 
-  function getCVData(uint256 _applicationId)
+  function getCVData(uint256 _aId)
     external
     view
     returns (
@@ -276,7 +302,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     )
   {
     contourModificationType = IContourModifierApplication.ContourModificationType.UPDATE;
-    spaceTokenId = applications[_applicationId].spaceTokenId;
-    contour = applications[_applicationId].details.contour;
+    spaceTokenId = applications[_aId].spaceTokenId;
+    contour = applications[_aId].details.contour;
   }
 }
