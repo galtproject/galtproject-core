@@ -71,7 +71,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     return uint256(pggConfigValue(_pgg, CONFIG_APPLICATION_CLOSE_TIMEOUT));
   }
 
-  function roleUnlockTimeout(address _pgg) public view returns (uint256) {
+  function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
   }
 
