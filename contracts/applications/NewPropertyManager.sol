@@ -23,6 +23,9 @@ import "../ACL.sol";
 import "./AbstractPropertyManager.sol";
 
 
+/**
+ * @title New Property Registration Application.
+ */
 contract NewPropertyManager is AbstractPropertyManager {
   using SafeMath for uint256;
 
@@ -60,7 +63,7 @@ contract NewPropertyManager is AbstractPropertyManager {
     return uint256(pggConfigValue(_pgg, CONFIG_APPLICATION_CLOSE_TIMEOUT));
   }
 
-  function roleUnlockTimeout(address _pgg) public view returns (uint256) {
+  function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
   }
 
@@ -72,6 +75,20 @@ contract NewPropertyManager is AbstractPropertyManager {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
+  /**
+   * @notice Submits a new property registration application.
+   * @dev Assigns all the oracle type statuses to PENDING.
+   *
+   * @param _pgg address to submit application to
+   * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
+   * @param _customArea in sq. meters
+   * @param _beneficiary of the finally minted Space token
+   * @param _dataLink IPLD address
+   * @param _humanAddress just a human readable address string
+   * @param _credentialsHash keccak256 of user credentials
+   * @param _ledgerIdentifier of a plot, for ex. a cadastral ID
+   * @param _submissionFeeInGalt or 0 if paid by ETH
+   */
   function submit(
     address _pgg,
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType,
@@ -91,9 +108,9 @@ contract NewPropertyManager is AbstractPropertyManager {
 
     require(_customArea > 0, "Provide custom area value");
 
-    uint256 _id = nextId();
+    uint256 id = nextId();
 
-    Application storage a = applications[_id];
+    Application storage a = applications[id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
 
@@ -118,7 +135,7 @@ contract NewPropertyManager is AbstractPropertyManager {
     }
 
     a.status = ApplicationStatus.PARTIALLY_SUBMITTED;
-    a.id = _id;
+    a.id = id;
     a.applicant = msg.sender;
     a.createdAt = block.timestamp;
 
@@ -134,16 +151,21 @@ contract NewPropertyManager is AbstractPropertyManager {
     a.details.area = _customArea;
     // Default a.areaSource is AreaSource.USER_INPUT
 
-    applicationsByApplicant[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(id);
 
-    emit NewApplication(msg.sender, _id);
-    emit ApplicationStatusChanged(_id, ApplicationStatus.PARTIALLY_SUBMITTED);
+    emit NewApplication(msg.sender, id);
+    emit ApplicationStatusChanged(id, ApplicationStatus.PARTIALLY_SUBMITTED);
 
-    _assignRequiredOracleTypesAndRewards(applications[_id]);
+    _assignRequiredOracleTypesAndRewards(applications[id]);
 
-    return _id;
+    return id;
   }
 
+  /**
+   * @notice Transfers a minted Space token to the applicant when the application status is STORED.
+   *
+   * @param _aId application ID
+   */
   function claimSpaceToken(uint256 _aId) external {
     onlyApplicant(_aId);
     Application storage a = applications[_aId];
@@ -205,7 +227,7 @@ contract NewPropertyManager is AbstractPropertyManager {
     return applications[_aId].beneficiary;
   }
 
-  function getCVData(uint256 _applicationId)
+  function getCVData(uint256 _aId)
     external
     view
     returns (
@@ -215,6 +237,6 @@ contract NewPropertyManager is AbstractPropertyManager {
     )
   {
     contourModificationType = IContourModifierApplication.ContourModificationType.ADD;
-    contour = applications[_applicationId].details.contour;
+    contour = applications[_aId].details.contour;
   }
 }
