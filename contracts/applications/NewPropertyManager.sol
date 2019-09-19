@@ -23,6 +23,9 @@ import "../ACL.sol";
 import "./AbstractPropertyManager.sol";
 
 
+/**
+ * @title New Property Registration Application.
+ */
 contract NewPropertyManager is AbstractPropertyManager {
   using SafeMath for uint256;
 
@@ -73,7 +76,6 @@ contract NewPropertyManager is AbstractPropertyManager {
   }
 
   /**
-   * @title Submit a New Application.
    * @notice Submits a new property registration application.
    * @dev Assigns all the oracle type statuses to PENDING.
    *
@@ -81,11 +83,11 @@ contract NewPropertyManager is AbstractPropertyManager {
    * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
    * @param _customArea in sq. meters
    * @param _beneficiary of the finally minted Space token
-   * @param _newDataLink IPLD address
-   * @param _newHumanAddress just a human readable address string
-   * @param _newCredentialsHash keccak256 of user credentials
-   * @param _newLedgerIdentifier of a plot, for ex. a cadastral ID
-   * @param _resubmissionFeeInGalt or 0 if paid by ETH
+   * @param _dataLink IPLD address
+   * @param _humanAddress just a human readable address string
+   * @param _credentialsHash keccak256 of user credentials
+   * @param _ledgerIdentifier of a plot, for ex. a cadastral ID
+   * @param _submissionFeeInGalt or 0 if paid by ETH
    */
   function submit(
     address _pgg,
@@ -160,7 +162,6 @@ contract NewPropertyManager is AbstractPropertyManager {
   }
 
   /**
-   * @title Withdraw a Space Token.
    * @notice Transfers a minted Space token to the applicant when the application status is STORED.
    *
    * @param _aId application ID

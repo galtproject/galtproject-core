@@ -23,6 +23,9 @@ import "../registries/interfaces/IPGGRegistry.sol";
 import "./AbstractPropertyManager.sol";
 
 
+/**
+ * @title Update Property Information Application.
+ */
 contract UpdatePropertyManager is AbstractPropertyManager {
   using SafeMath for uint256;
 
@@ -81,7 +84,6 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   /**
-   * @title Submit an New Application.
    * @notice Submits an existing property information update application. Transfers the token to this contract so
    *         the token transfer should be approved before the submission.
    *         If you don't need to change a contour or the highest point, set `_changeContourOrHighestPoint` to false.
@@ -93,11 +95,11 @@ contract UpdatePropertyManager is AbstractPropertyManager {
    * @param _spaceTokenId to modify information for
    * @param _changeContourOrHighestPoint true in case if these changes are required
    * @param _customArea in sq. meters
-   * @param _newDataLink IPLD address
-   * @param _newHumanAddress just a human readable address string
-   * @param _newCredentialsHash keccak256 of user credentials
-   * @param _newLedgerIdentifier of a plot, for ex. a cadastral ID
-   * @param _resubmissionFeeInGalt or 0 if paid by ETH
+   * @param _dataLink IPLD address
+   * @param _humanAddress just a human readable address string
+   * @param _credentialsHash keccak256 of user credentials
+   * @param _ledgerIdentifier of a plot, for ex. a cadastral ID
+   * @param _submissionFeeInGalt or 0 if paid by ETH
    */
   function submit(
     address _pgg,
@@ -171,7 +173,6 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   /**
-   * @title Withdraw Space Token.
    * @notice Transfers a Space token back to the applicant when the application status is set to the one of the finals:
    *         STORED, REJECTED, CLOSED, or CANCELLED. Only the application applicant is allowed to call this method.
    *

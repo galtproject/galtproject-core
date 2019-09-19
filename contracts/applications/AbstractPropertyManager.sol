@@ -153,55 +153,49 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Minimal Application Fee in ETH.
    * @notice Returns a minimal application fee in ETH for the given PGG address.
 
    * @param _pgg Protocol Governance Group (PGG) address
-   * @returns minimal fee in ETH
+   * @return minimal fee in ETH
    */
   function minimalApplicationFeeEth(address _pgg) public view returns (uint256);
 
   /**
-   * @title Minimal Application Fee in GALT.
    * @notice Returns a minimal application fee in GALT for the given PGG address.
 
    * @param _pgg Protocol Governance Group (PGG) address
-   * @returns minimal fee in GALT
+   * @return minimal fee in GALT
    */
   function minimalApplicationFeeGalt(address _pgg) public view returns (uint256);
 
   /**
-   * @title Application Cancel Timeout.
    * @notice Returns P*_APPLICATION_CANCEL_TIMEOUT for the given PGG address.
    * @dev The value used by `#cancel()` method.
 
    * @param _pgg Protocol Governance Group (PGG) address
-   * @returns timeout in seconds
+   * @return timeout in seconds
    */
   function applicationCancelTimeout(address _pgg) public view returns (uint256);
 
   /**
-   * @title Application Close Timeout.
    * @notice Returns P*_APPLICATION_CLOSE_TIMEOUT for the given PGG address.
    * @dev The value used by `#close()` method.
 
    * @param _pgg Protocol Governance Group (PGG) address
-   * @returns timeout in seconds
+   * @return timeout in seconds
    */
   function applicationCloseTimeout(address _pgg) public view returns (uint256);
 
   /**
-   * @title Oracle Type Unlock Timeout.
    * @notice Returns P*_ROLE_UNLOCK_TIMEOUT for the given PGG address.
    * @dev The value used by `#unlock()` method.
 
    * @param _pgg Protocol Governance Group (PGG) address
-   * @returns timeout in seconds
+   * @return timeout in seconds
    */
   function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256);
 
   /**
-   * @title Approve By Contour Verification.
    * @notice Synchronizes Contour Verification application APPROVED status.
    * @dev The method should be internally called by Contour Verification Manager contract #pushApproval() method.
    *
@@ -222,7 +216,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Reject By Contour Verification.
    * @notice Synchronizes Contour Verification application REJECTED status.
    * @dev The method should be internally called by Contour Verification Manager contract #pushRejection() method.
    *
@@ -240,7 +233,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Set Contour.
    * @notice Sets contour among with the highest point.
    *
    * @param _aId application ID
@@ -279,7 +271,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Resubmit.
    * @notice Resubmits the application after it was reverted. If you don't want to change contour or the highest point,
    *      you can resubmit it to PENDING status directly by setting `_contourChanged` to false. This will allow you to
    *      skip going through the contour verification process again.
@@ -368,7 +359,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Lock.
    * @notice Locks an application by specified `_oracleType`. Caller should have the assigned oracle type at the moment
    *         of locking.
    *
@@ -394,7 +384,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Unlock.
    * @notice Unlocks an application by specified `_oracleType`. This action could be called for LOCKED validation status
    *         in 2 cases:
    *         - immediately by the oracle who has already locked this `_oracleType`
@@ -421,6 +410,13 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _changeValidationStatus(a, _oracleType, ValidationStatus.PENDING);
   }
 
+  /**
+   * @notice Approves the application from the given oracle type. There are all role approvals are required to
+   *         change the application status to APPROVED(->STORED)
+   *
+   * @param _aId application ID
+   * @param _credentialsHash keccak256 hash, just to prevent accidental approvals
+   */
   function approve(
     uint256 _aId,
     bytes32 _credentialsHash
@@ -460,7 +456,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Reject.
    * @notice Rejects the application in case when an oracle has considered the applicant behaviour is  malicious.
    *
    * @param _aId application ID
@@ -487,7 +482,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Revert.
    * @notice Reverts the application in case when an oracle has considered the application details are not comply
    *         requirements and should be corrected by an applicant.
    * @dev Uses external `AbstractPropertyManagerLib` helpers.
@@ -526,7 +520,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Close.
    * @notice Closes an application in REVERTED status. Assigns rewards to the oracles who has locked the application.
    *         Applicant can call this method anytime he want if he don't want to resubmit this application again.
    *         If the applicant had not resubmitted the application during `applicationCloseTimeout()` anyone can call
@@ -549,7 +542,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Cancel.
    * @notice Cancels an application in PENDING status. Only the applicant is allowed to cancel his application.
    *
    * @param _aId application ID
@@ -569,7 +561,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Store.
    * @notice Stores contour and the highest point into SpaceGeoDataRegistry.
    * @dev This additional step is required to devote the whole transaction (and probably a block) for storing
    *      large enough contour.
@@ -590,7 +581,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Claim Applicant Fee.
    * @notice Refunds an application fee when the application status is CANCELLED.
    *
    * @param _aId application ID
@@ -618,8 +608,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Claim Oracle Reward.
-   * @notice Transfers an oracle reward for a given application. Requires STORED, REJECTED, or CLOSED status.
+   * @notice Transfers to an oracle his reward for a given application. Requires STORED, REJECTED, or CLOSED status.
    *
    * @param _aId application ID
    */
@@ -723,7 +712,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Get Application General Information
+   * @notice Returns application general information
    *
    * @param _aId application ID
    */
@@ -762,7 +751,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Get Application Rewards Information
+   * @notice Returns application rewards information
    *
    * @param _aId application ID
    */
@@ -793,7 +782,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Get Application GeoData Details
+   * @notice Returns application geodata details
    *
    * @param _aId application ID
    */
@@ -830,7 +819,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   /**
-   * @title Get Application Oracle Type Information
+   * @notice Returns application oracle type information
    *
    * @param _aId application ID
    */
