@@ -18,31 +18,31 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
 contract ContourVerifiableApplication is IContourModifierApplication {
-  using ArraySet for ArraySet.Bytes32Set;
+  using ArraySet for ArraySet.Uint256Set;
 
   bytes32 public constant ROLE_CONTOUR_VERIFIER_POOL = bytes32("CONTOUR_VERIFIER");
 
-  ArraySet.Bytes32Set internal CVPendingApplicationIds;
-  ArraySet.Bytes32Set internal CVApprovedApplicationIds;
+  ArraySet.Uint256Set internal CVPendingApplicationIds;
+  ArraySet.Uint256Set internal CVApprovedApplicationIds;
 
-  function cvApprove(bytes32 _applicationId) external;
-  function cvReject(bytes32 _applicationId) external;
+  function cvApprove(uint256 _applicationId) external;
+  function cvReject(uint256 _applicationId) external;
 
   // CV Getters
 
-  function getCVPendingApplications() external view returns (bytes32[] memory applicationIds) {
+  function getCVPendingApplications() external view returns (uint256[] memory applicationIds) {
     return CVPendingApplicationIds.elements();
   }
 
-  function getCVApprovedApplications() external view returns (bytes32[] memory applicationIds) {
+  function getCVApprovedApplications() external view returns (uint256[] memory applicationIds) {
     return CVApprovedApplicationIds.elements();
   }
 
-  function isCVApplicationPending(bytes32 _applicationId) external view returns (bool) {
+  function isCVApplicationPending(uint256 _applicationId) external view returns (bool) {
     return CVApprovedApplicationIds.has(_applicationId);
   }
 
-  function isCVApplicationApproved(bytes32 _applicationId) external view returns (bool) {
+  function isCVApplicationApproved(uint256 _applicationId) external view returns (bool) {
     return CVPendingApplicationIds.has(_applicationId);
   }
 }

@@ -30,8 +30,7 @@ contract AbstractApplication is Initializable {
   uint256 public protocolFeesEth;
   uint256 public protocolFeesGalt;
 
-  bytes32[] internal applicationsArray;
-  mapping(address => bytes32[]) public applicationsByApplicant;
+  mapping(address => uint256[]) public applicationsByApplicant;
 
   event ExecuteBytecode(bool success, address destination);
 
@@ -52,6 +51,8 @@ contract AbstractApplication is Initializable {
     GALT
   }
 
+  uint256 internal idCounter;
+
   constructor() public {}
 
   modifier onlyFeeCollector() {
@@ -71,6 +72,11 @@ contract AbstractApplication is Initializable {
   }
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod);
+
+  function nextId() internal returns (uint256) {
+    idCounter += 1;
+    return idCounter;
+  }
 
   function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
     PaymentMethod pm = paymentMethod(_pgg);
@@ -127,11 +133,7 @@ contract AbstractApplication is Initializable {
     return pggConfig(_pgg).applicationConfig(_key);
   }
 
-  function getAllApplications() external view returns (bytes32[] memory) {
-    return applicationsArray;
-  }
-
-  function getApplicationsByApplicant(address _applicant) external view returns (bytes32[] memory) {
+  function getApplicationsByApplicant(address _applicant) external view returns (uint256[] memory) {
     return applicationsByApplicant[_applicant];
   }
 }

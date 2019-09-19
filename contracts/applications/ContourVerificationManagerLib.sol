@@ -121,7 +121,7 @@ library ContourVerificationManagerLib {
     ContourVerificationManager.Application storage a,
     address _reporter,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
     uint256 _existingContourSegmentSecondPoint,
@@ -171,7 +171,7 @@ library ContourVerificationManagerLib {
     ContourVerificationManager.Inclusion _inclusion,
     address _reporter,
     address _applicationContract,
-    bytes32 _externalApplicationId,
+    uint256 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )

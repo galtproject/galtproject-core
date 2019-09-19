@@ -19,11 +19,11 @@ import "../registries/GaltGlobalRegistry.sol";
 
 
 contract MockAddContourApplication is IContourModifierApplication {
-  using ArraySet for ArraySet.Bytes32Set;
+  using ArraySet for ArraySet.Uint256Set;
 
   bytes32 public constant ROLE_CONTOUR_VERIFIER_POOL = bytes32("CONTOUR_VERIFIER");
 
-  event NewApplication(bytes32 indexed applicationId);
+  event NewApplication(uint256 indexed applicationId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -35,8 +35,8 @@ contract MockAddContourApplication is IContourModifierApplication {
     CLOSED
   }
 
-  ArraySet.Bytes32Set internal CVPendingApplicationIds;
-  ArraySet.Bytes32Set internal CVApprovedApplicationIds;
+  ArraySet.Uint256Set internal CVPendingApplicationIds;
+  ArraySet.Uint256Set internal CVApprovedApplicationIds;
 
   struct Application {
     uint256[] contour;
@@ -47,11 +47,13 @@ contract MockAddContourApplication is IContourModifierApplication {
 
   GaltGlobalRegistry public ggr;
 
+  uint256 internal idCounter = 1;
+
   constructor(GaltGlobalRegistry _ggr) public {
     ggr = _ggr;
   }
 
-  mapping(bytes32 => Application) internal applications;
+  mapping(uint256 => Application) internal applications;
 
   modifier onlyCVM() {
     require(
@@ -68,9 +70,10 @@ contract MockAddContourApplication is IContourModifierApplication {
     ISpaceGeoDataRegistry.SpaceTokenType _spaceTokenType
   )
     public
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 id = keccak256(abi.encode(_contour));
+    uint256 id = idCounter;
+    idCounter++;
     Application storage a = applications[id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Already exists");
 
@@ -85,7 +88,7 @@ contract MockAddContourApplication is IContourModifierApplication {
     return id;
   }
 
-  function cvApprove(bytes32 _applicationId) external onlyCVM {
+  function cvApprove(uint256 _applicationId) external onlyCVM {
     Application storage a = applications[_applicationId];
 
     require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
@@ -97,7 +100,7 @@ contract MockAddContourApplication is IContourModifierApplication {
   }
 
   // TODO: what to do with a payment?
-  function cvReject(bytes32 _applicationId) external onlyCVM {
+  function cvReject(uint256 _applicationId) external onlyCVM {
     Application storage a = applications[_applicationId];
 
     require(a.status == ApplicationStatus.CONTOUR_VERIFICATION, "Expect CONTOUR_VERIFICATION status");
@@ -108,33 +111,33 @@ contract MockAddContourApplication is IContourModifierApplication {
   }
 
   // GETTERS
-  function getApplicationStatus(bytes32 _applicationId) external view returns(ApplicationStatus) {
+  function getApplicationStatus(uint256 _applicationId) external view returns(ApplicationStatus) {
     return applications[_applicationId].status;
   }
 
   // CV GETTERS
-  function getCVPendingApplications() external view returns(bytes32[] memory) {
+  function getCVPendingApplications() external view returns(uint256[] memory) {
     return CVPendingApplicationIds.elements();
   }
 
-  function getCVApprovedApplications() external view returns(bytes32[] memory) {
+  function getCVApprovedApplications() external view returns(uint256[] memory) {
     return CVApprovedApplicationIds.elements();
   }
 
-  function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory) {
+  function getCVContour(uint256 _applicationId) external view returns (uint256[] memory) {
     return applications[_applicationId].contour;
   }
 
-  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256) {
+  function getCVHighestPoint(uint256 _applicationId) external view returns (int256) {
     return applications[_applicationId].highestPoint;
   }
 
-  function getCVSpaceTokenType(bytes32 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+  function getCVSpaceTokenType(uint256 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return applications[_applicationId].spaceTokenType;
   }
 
   function getCVData(
-    bytes32 _applicationId
+    uint256 _applicationId
   )
     external
     view
@@ -148,11 +151,11 @@ contract MockAddContourApplication is IContourModifierApplication {
     contour = applications[_applicationId].contour;
   }
 
-  function isCVApplicationPending(bytes32 _applicationId) public view returns (bool) {
+  function isCVApplicationPending(uint256 _applicationId) public view returns (bool) {
     return CVPendingApplicationIds.has(_applicationId);
   }
 
-  function isCVApplicationApproved(bytes32 _applicationId) public view returns (bool) {
+  function isCVApplicationApproved(uint256 _applicationId) public view returns (bool) {
     return CVApprovedApplicationIds.has(_applicationId);
   }
 }

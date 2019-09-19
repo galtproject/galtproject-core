@@ -56,7 +56,7 @@ contract ClaimManager is ArbitratorProposableApplication {
     uint256[] arbitratorFines;
   }
 
-  mapping(bytes32 => ApplicationDetails) internal applicationDetails;
+  mapping(uint256 => ApplicationDetails) internal applicationDetails;
 
   constructor () public {}
 
@@ -110,9 +110,9 @@ contract ClaimManager is ArbitratorProposableApplication {
   )
     external
     payable
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 id = _submit(_pgg, _applicationFeeInGalt);
+    uint256 id = _submit(_pgg, _applicationFeeInGalt);
 
     ApplicationDetails storage aD = applicationDetails[id];
 
@@ -128,7 +128,7 @@ contract ClaimManager is ArbitratorProposableApplication {
    * @param _cId Application ID
    */
   function proposeApproval(
-    bytes32 _cId,
+    uint256 _cId,
     string calldata _msg,
     uint256 _amount,
     address[] calldata _oracles,
@@ -158,7 +158,7 @@ contract ClaimManager is ArbitratorProposableApplication {
   }
 
   function verifyProposeApprovalInputs(
-    bytes32 _cId,
+    uint256 _cId,
     string memory _msg,
     address[] memory _oracles,
     bytes32[] memory _oracleTypes,
@@ -178,7 +178,7 @@ contract ClaimManager is ArbitratorProposableApplication {
     pD = applicationDetails[_cId].proposalDetails[_proposeApproval(_cId, _msg)];
   }
 
-  function verifyOraclesAreValid(bytes32 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
+  function verifyOraclesAreValid(uint256 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
     Application storage c = applications[_cId];
 
     require(
@@ -189,7 +189,7 @@ contract ClaimManager is ArbitratorProposableApplication {
     );
   }
 
-  function _execute(bytes32 _aId, bytes32 _pId) internal {
+  function _execute(uint256 _aId, bytes32 _pId) internal {
     ApplicationDetails storage aD = applicationDetails[_aId];
     ProposalDetails storage pD = aD.proposalDetails[_pId];
 
@@ -210,7 +210,7 @@ contract ClaimManager is ArbitratorProposableApplication {
     );
   }
 
-  function _checkRewardCanBeClaimed(bytes32 _aId) internal returns (bool) {
+  function _checkRewardCanBeClaimed(uint256 _aId) internal returns (bool) {
     Application storage a = applications[_aId];
     ApplicationDetails storage aD = applicationDetails[_aId];
     (, , , bool executed) = pggConfig(a.pgg).getMultiSig().transactions(aD.multiSigTransactionId);
@@ -219,7 +219,7 @@ contract ClaimManager is ArbitratorProposableApplication {
 
   /** GETTERS **/
   function getApplicationDetails(
-    bytes32 _aId
+    uint256 _aId
   )
     external
     view
@@ -239,7 +239,7 @@ contract ClaimManager is ArbitratorProposableApplication {
   }
 
   function getProposalDetails(
-    bytes32 _cId,
+    uint256 _cId,
     bytes32 _pId
   )
     external

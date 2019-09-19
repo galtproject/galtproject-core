@@ -23,19 +23,19 @@ interface IContourModifierApplication {
     UPDATE
   }
 
-  function cvApprove(bytes32 _applicationId) external;
-  function cvReject(bytes32 _applicationId) external;
+  function cvApprove(uint256 _applicationId) external;
+  function cvReject(uint256 _applicationId) external;
 
-  function getCVPendingApplications() external view returns (bytes32[] memory applicationIds);
-  function getCVApprovedApplications() external view returns (bytes32[] memory applicationIds);
-  function getCVContour(bytes32 _applicationId) external view returns (uint256[] memory);
-  function getCVHighestPoint(bytes32 _applicationId) external view returns (int256);
-  function getCVSpaceTokenType(bytes32 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType);
-  function getCVData(bytes32 _applicationId) external view returns (
+  function getCVPendingApplications() external view returns (uint256[] memory applicationIds);
+  function getCVApprovedApplications() external view returns (uint256[] memory applicationIds);
+  function getCVContour(uint256 _applicationId) external view returns (uint256[] memory);
+  function getCVHighestPoint(uint256 _applicationId) external view returns (int256);
+  function getCVSpaceTokenType(uint256 _applicationId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType);
+  function getCVData(uint256 _applicationId) external view returns (
     IContourModifierApplication.ContourModificationType contourModificationType,
     uint256 spaceTokenId,
     uint256[] memory contour
   );
-  function isCVApplicationPending(bytes32 _applicationId) external view returns (bool);
-  function isCVApplicationApproved(bytes32 _applicationId) external view returns (bool);
+  function isCVApplicationPending(uint256 _applicationId) external view returns (bool);
+  function isCVApplicationApproved(uint256 _applicationId) external view returns (bool);
 }

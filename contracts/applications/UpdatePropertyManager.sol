@@ -40,15 +40,15 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
   bytes32 public constant CONFIG_PREFIX = bytes32("PL");
 
-  event SpaceTokenTokenDeposit(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
-  event SpaceTokenTokenWithdrawal(bytes32 indexed applicationId, uint256 indexed spaceTokenId);
+  event SpaceTokenTokenDeposit(uint256 indexed applicationId, uint256 indexed spaceTokenId);
+  event SpaceTokenTokenWithdrawal(uint256 indexed applicationId, uint256 indexed spaceTokenId);
 
   struct UpdateDetails {
     bool withContourOrHighestPointChange;
     bool tokenWithdrawn;
   }
 
-  mapping(bytes32 => UpdateDetails) internal updateDetails;
+  mapping(uint256 => UpdateDetails) internal updateDetails;
 
   constructor () public {}
 
@@ -93,9 +93,9 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   )
     external
     payable
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 _id = _performSubmissionChecks(_pgg, _spaceTokenId, _customArea);
+    uint256 _id = _performSubmissionChecks(_pgg, _spaceTokenId, _customArea);
 
     Application storage a = applications[_id];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
@@ -136,7 +136,6 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
     updateDetails[_id].withContourOrHighestPointChange = _changeContourOrHighestPoint;
 
-    applicationsArray.push(_id);
     applicationsByApplicant[msg.sender].push(_id);
 
     emit NewApplication(msg.sender, _id);
@@ -152,7 +151,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     return _id;
   }
 
-  function withdrawSpaceToken(bytes32 _aId) external {
+  function withdrawSpaceToken(uint256 _aId) external {
     onlyApplicant(_aId);
 
     Application storage a = applications[_aId];
@@ -177,7 +176,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
   // INTERNAL
 
-  function _executeApproval(bytes32 _aId) internal {
+  function _executeApproval(uint256 _aId) internal {
     Application storage a = applications[_aId];
 
     if (updateDetails[_aId].withContourOrHighestPointChange == true) {
@@ -196,7 +195,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     uint256 _customArea
   )
     internal
-    returns (bytes32)
+    returns (uint256)
   {
     pggRegistry().requireValidPgg(_pgg);
     require(ggr.getSpaceToken().ownerOf(_spaceTokenId) == msg.sender, "Sender should own the provided token");
@@ -205,8 +204,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
     require(_customArea > 0, "Provide custom area value");
 
-    bytes32 _id = bytes32(idCounter);
-    idCounter++;
+    uint256 _id = nextId();
 
     emit SpaceTokenTokenDeposit(_id, _spaceTokenId);
 
@@ -247,7 +245,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   // GETTERS
 
   function getUpdateDetails(
-    bytes32 _id
+    uint256 _id
   )
     external
     view
@@ -264,11 +262,11 @@ contract UpdatePropertyManager is AbstractPropertyManager {
     );
   }
 
-  function getCVSpaceTokenType(bytes32 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
+  function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenType(applications[_aId].spaceTokenId);
   }
 
-  function getCVData(bytes32 _applicationId)
+  function getCVData(uint256 _applicationId)
     external
     view
     returns (

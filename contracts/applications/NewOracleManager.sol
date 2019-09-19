@@ -39,7 +39,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     bytes32[] oracleTypes;
   }
 
-  mapping(bytes32 => OracleDetails) oracleDetails;
+  mapping(uint256 => OracleDetails) oracleDetails;
 
   constructor() public {}
 
@@ -87,7 +87,10 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     external
     payable
   {
-    bytes32 id = _generateId(_oracleTypes, _descriptionHashes, _name);
+    require(_descriptionHashes.length > 0, "Description hashes required");
+    require(_oracleTypes.length > 0, "Oracle Types required");
+
+    uint256 id = nextId();
 
     _submit(id, _pgg, _applicationFeeInGalt);
 
@@ -100,21 +103,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
   }
 
-  function _generateId(bytes32[] memory _oracleTypes, bytes32[] memory _descriptionHashes, string memory _name) internal returns (bytes32) {
-    require(_descriptionHashes.length > 0, "Description hashes required");
-    require(_oracleTypes.length > 0, "Oracle Types required");
-
-    return keccak256(
-      abi.encodePacked(
-        msg.sender,
-        _name,
-        _descriptionHashes,
-        block.number
-      )
-    );
-  }
-
-  function _execute(bytes32 _id) internal {
+  function _execute(uint256 _id) internal {
     OracleDetails storage d = oracleDetails[_id];
     Application storage a = applications[_id];
 
@@ -126,7 +115,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   // GETTERS
 
   function getApplicationOracle(
-    bytes32 _id
+    uint256 _id
   )
     external
     view
