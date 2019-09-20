@@ -14,11 +14,11 @@
 pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "@galtproject/libs/contracts/collections/AddressLinkedList.sol";
+import "@galtproject/libs/contracts/collections/VotingLinkedList.sol";
 import "../PGGMultiSig.sol";
 import "../PGGOracleStakeAccounting.sol";
 import "../PGGArbitratorStakeAccounting.sol";
-import "../../collections/AddressLinkedList.sol";
-import "../../collections/VotingLinkedList.sol";
 import "../PGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
