@@ -17,6 +17,11 @@ import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 
 
+/**
+ * @title Contour Verification Source Registry.
+ * @notice Tracks contour verification sources.
+ * @dev Basically this is a list of the application contracts that modify SpaceGeoDataRegistry data.
+ */
 contract ContourVerificationSourceRegistry is OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
 

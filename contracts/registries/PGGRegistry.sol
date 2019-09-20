@@ -20,6 +20,11 @@ import "../pgg/interfaces/IPGGConfig.sol";
 import "../pgg/interfaces/IPGGMultiSig.sol";
 
 
+/**
+ * @title Protocol Governance Group Registry (PGG Registry).
+ * @notice Tracks all the valid PGGs.
+ * @dev  Each PGG is identified by it's PGGConfig contract address.
+ */
 contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
 

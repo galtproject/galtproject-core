@@ -20,10 +20,10 @@ import "../interfaces/IACL.sol";
 
 
 /**
- * Global registry of Galt Project contracts.
- *
- * Getters with `address` suffix return contract instances,
- * the rest of them return just an `address` primitive.
+ * @title Global registry of Galt Project contracts.
+ * @notice Serves as a primary address source for all protocol contracts.
+ * @dev Getters with `address` suffix return contract instances, the rest of them return just an `address` primitive.
+ *      Most contracts cache GGR address in their storage and use it to interact with other contracts.
  */
 contract GaltGlobalRegistry is OwnableAndInitializable {
   // solium-disable-next-line mixedcase

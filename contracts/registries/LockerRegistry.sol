@@ -19,6 +19,11 @@ import "./interfaces/ILockerRegistry.sol";
 import "./GaltGlobalRegistry.sol";
 
 
+/**
+ * @title Locker Registry.
+ * @notice Tracks all the valid lockers of a given type.
+ * @dev We use this contract in order to track both SpaceLockers and Galt Lockers.
+ */
 contract LockerRegistry is ILockerRegistry {
   using ArraySet for ArraySet.AddressSet;
 

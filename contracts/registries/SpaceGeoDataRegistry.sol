@@ -23,6 +23,10 @@ import "./interfaces/ISpaceGeoDataRegistry.sol";
 import "../SpaceToken.sol";
 
 
+/**
+ * @title Space Geo Data Registry.
+ * @notice Tracks geospatial information for SpaceTokens.
+ */
 contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   using SafeMath for uint256;
 
@@ -30,8 +34,6 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 350;
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
-
-  GaltGlobalRegistry internal ggr;
 
   event SetSpaceTokenType(uint256 indexed spaceTokenId, SpaceTokenType spaceTokenType);
   event SetSpaceTokenContour(uint256 indexed spaceTokenId, uint256[] contour);
@@ -45,11 +47,11 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   event DeleteSpaceTokenGeoData(uint256 indexed spaceTokenId, address indexed operator);
 
   struct SpaceToken {
-    // Type cannot be changed after token creation
+    // (LAND_PLOT,BUILDING,ROOM) Type cannot be changed after token creation
     SpaceTokenType spaceTokenType;
     // Geohash5z (x,y,z)
     uint256[] contour;
-    // Meters above the sea (z)
+    // Meters above the sea
     int256 highestPoint;
 
     // USER_INPUT or CONTRACT
@@ -61,10 +63,14 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     string humanAddress;
     string dataLink;
 
+    // Reserved for future use
     bytes32 vertexRootHash;
     string vertexStorageLink;
   }
 
+  GaltGlobalRegistry internal ggr;
+
+  // Mapping (spaceTokenId => spaceTokenDetails)
   mapping(uint256 => SpaceToken) internal spaceTokens;
 
   modifier onlyGeoDataManager() {
@@ -82,6 +88,11 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   // SETTERS
 
+  /**
+   * @notice Sets Space Token type.
+   * @param _spaceTokenId the same ID used in SpaceToken contract
+   * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
+   */
   function setSpaceTokenType(uint256 _spaceTokenId, SpaceTokenType _spaceTokenType) external onlyGeoDataManager {
     require(spaceTokens[_spaceTokenId].spaceTokenType == SpaceTokenType.NULL, "Token type already set");
 
@@ -90,6 +101,13 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     emit SetSpaceTokenType(_spaceTokenId, _spaceTokenType);
   }
 
+  /**
+   * @notice Sets Space Token contour.
+   * @dev Contours with large length could not be processed by SplitMerge operations. There also could be problems
+   *      with calculating their are on-chain.
+   * @param _spaceTokenId the same ID used in SpaceToken contract
+   * @param _contour geohash5z encoded bottom level contour (3 <= length <= 350)
+   */
   function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] calldata _contour) external onlyGeoDataManager {
     require(_contour.length >= 3, "Number of contour elements should be equal or greater than 3");
     require(
@@ -111,18 +129,34 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     emit SetSpaceTokenContour(_spaceTokenId, _contour);
   }
 
+  /**
+   * @notice Sets Space Token highest point.
+   * @param _spaceTokenId the same ID used in SpaceToken contract
+   * @param _highestPoint int256 in centimeters above the sea level
+   */
   function setSpaceTokenHighestPoint(uint256 _spaceTokenId, int256 _highestPoint) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].highestPoint = _highestPoint;
 
     emit SetSpaceTokenHighestPoint(_spaceTokenId, _highestPoint);
   }
 
+  /**
+   * @notice Sets Space Token human readable address.
+   * @param _spaceTokenId the same ID used in SpaceToken contract
+   * @param _humanAddress string like city, street, building number an so on
+   */
   function setSpaceTokenHumanAddress(uint256 _spaceTokenId, string calldata _humanAddress) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].humanAddress = _humanAddress;
 
     emit SetSpaceTokenHumanAddress(_spaceTokenId, _humanAddress);
   }
 
+  /**
+   * @notice Sets Space Token area.
+   * @param _spaceTokenId the same ID used in SpaceToken contract.
+   * @param _area uint256 in sq. meters
+   * @param _areaSource USER_INPUT for manual inputs and CONTRACT for on-chain calculated area
+   */
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].area = _area;
     spaceTokens[_spaceTokenId].areaSource = _areaSource;
@@ -130,12 +164,22 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
   }
 
+  /**
+   * @notice Sets Space Token ledger identifier.
+   * @param _spaceTokenId the same ID used in SpaceToken contract.
+   * @param _ledgerIdentifier cadastral ID
+   */
   function setSpaceTokenLedgerIdentifier(uint256 _spaceTokenId, bytes32 _ledgerIdentifier) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].ledgerIdentifier = _ledgerIdentifier;
 
     emit SetSpaceTokenLedgerIdentifier(_spaceTokenId, _ledgerIdentifier);
   }
 
+  /**
+   * @notice Sets Space Token data link.
+   * @param _spaceTokenId the same ID used in SpaceToken contract.
+   * @param _dataLink IPLD data address
+   */
   function setSpaceTokenDataLink(uint256 _spaceTokenId, string calldata _dataLink) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].dataLink = _dataLink;
 
@@ -154,6 +198,11 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
     emit SetSpaceTokenVertexStorageLink(_spaceTokenId, _vertexStorageLink);
   }
 
+  /**
+   * @notice Delete a Space Token data for ex. when the token was burned.
+   * @param _spaceTokenId the same ID used in SpaceToken contract.
+   * @dev Not sure if the token contour will be deleted or not
+   */
   function deleteSpaceTokenGeoData(uint256 _spaceTokenId) external onlyGeoDataManager {
     // TODO: test contour data emptied and wouldn't appear when token enabled again
     delete spaceTokens[_spaceTokenId];

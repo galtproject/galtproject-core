@@ -17,6 +17,10 @@ import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/IFeeRegistry.sol";
 
 
+/**
+ * @title Fee Registry.
+ * @notice Tracks fees and payment methods for protocol contracts.
+ */
 contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
   event SetEthFee(bytes32 indexed key, uint256 amount);
   event SetGaltFee(bytes32 indexed key, uint256 amount);
