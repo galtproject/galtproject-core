@@ -16,6 +16,7 @@ pragma solidity 0.5.10;
 import "./interfaces/IACL.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 
+
 /**
  * @title Access Control List.
  * @notice Tracks global-level permissions.
