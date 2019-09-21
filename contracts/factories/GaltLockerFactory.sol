@@ -20,20 +20,14 @@ import "../GaltLocker.sol";
 
 
 contract GaltLockerFactory {
+  bytes32 public constant FEE_KEY = bytes32("GALT_LOCKER_FACTORY");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+
   event NewGaltLocker(address indexed owner, address locker);
   event EthFeeWithdrawal(address indexed collector, uint256 amount);
   event GaltFeeWithdrawal(address indexed collector, uint256 amount);
 
-  bytes32 public constant FEE_KEY = bytes32("GALT_LOCKER_FACTORY");
-  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
-
-  GaltGlobalRegistry ggr;
-
-  constructor (
-    GaltGlobalRegistry _ggr
-  ) public {
-    ggr = _ggr;
-  }
+  GaltGlobalRegistry internal ggr;
 
   modifier onlyFeeCollector() {
     require(
@@ -43,14 +37,10 @@ contract GaltLockerFactory {
     _;
   }
 
-  function _acceptPayment() internal {
-    if (msg.value == 0) {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
-      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
-    } else {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
-      require(msg.value == fee, "Fee and msg.value not equal");
-    }
+  constructor (
+    GaltGlobalRegistry _ggr
+  ) public {
+    ggr = _ggr;
   }
 
   function build() external payable returns (IGaltLocker) {
@@ -80,5 +70,17 @@ contract GaltLockerFactory {
     galtToken.transfer(msg.sender, balance);
 
     emit GaltFeeWithdrawal(msg.sender, balance);
+  }
+
+  // INTERNAL
+
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
   }
 }

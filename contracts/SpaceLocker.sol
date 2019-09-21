@@ -42,12 +42,6 @@ contract SpaceLocker is ILocker, ISpaceLocker {
 
   ArraySet.AddressSet internal sras;
 
-  constructor(GaltGlobalRegistry _ggr, address _owner) public {
-    owner = _owner;
-
-    ggr = _ggr;
-  }
-
   modifier onlyOwner() {
     require(isOwner(), "Not the locker owner");
     _;
@@ -56,6 +50,12 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   modifier notBurned() {
     require(tokenBurned == false, "Token has already burned");
     _;
+  }
+
+  constructor(GaltGlobalRegistry _ggr, address _owner) public {
+    owner = _owner;
+
+    ggr = _ggr;
   }
 
   function deposit(uint256 _spaceTokenId) external onlyOwner {
@@ -102,7 +102,7 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   }
 
   /*
-   * @dev Burn token in case when it is stuck due some SRA misbehaviour
+   * @notice Burn token in case when it is stuck due some SRA misbehaviour
    * @param _spaceTokenIdHash keccak256 hash of the token ID to prevent accidental token burn
    */
   function burnToken(bytes32 _spaceTokenIdHash) external onlyOwner notBurned {
@@ -115,18 +115,6 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   }
 
   // GETTERS
-
-  function isMinted(address _sra) external returns (bool) {
-    return sras.has(_sra);
-  }
-
-  function getSras() external returns (address[] memory) {
-    return sras.elements();
-  }
-
-  function getSrasCount() external returns (uint256) {
-    return sras.size();
-  }
 
   function isOwner() public view returns (bool) {
     return msg.sender == owner;
@@ -150,5 +138,17 @@ contract SpaceLocker is ILocker, ISpaceLocker {
       tokenDeposited,
       tokenBurned
     );
+  }
+
+  function isMinted(address _sra) external returns (bool) {
+    return sras.has(_sra);
+  }
+
+  function getSras() external returns (address[] memory) {
+    return sras.elements();
+  }
+
+  function getSrasCount() external returns (uint256) {
+    return sras.size();
   }
 }

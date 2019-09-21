@@ -41,6 +41,9 @@ import "./pgg/PGGProposalManagerFactory.sol";
 
 
 contract PGGFactory is Initializable {
+  bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+
   event BuildPGGFirstStep(
     bytes32 indexed groupId,
     address pggConfig,
@@ -81,9 +84,6 @@ contract PGGFactory is Initializable {
     DONE
   }
 
-  bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
-  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
-
   struct PGGContractGroup {
     address creator;
     Step nextStep;
@@ -123,6 +123,14 @@ contract PGGFactory is Initializable {
 
   mapping(bytes32 => PGGContractGroup) internal pggs;
 
+  modifier onlyFeeCollector() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
+    _;
+  }
+
   constructor (
     GaltGlobalRegistry _ggr,
     PGGMultiSigFactory _pggMultiSigFactory,
@@ -147,14 +155,6 @@ contract PGGFactory is Initializable {
     pggProposalManagerFactory = _pggProposalManagerFactory;
 
     ggr = _ggr;
-  }
-
-  modifier onlyFeeCollector() {
-    require(
-      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
-      "Only FEE_COLLECTOR role allowed"
-    );
-    _;
   }
 
   function _acceptPayment() internal {
@@ -405,6 +405,8 @@ contract PGGFactory is Initializable {
     IERC20 galtToken = ggr.getGaltToken();
     galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
+
+  // GETTERS
 
   function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {
     PGGContractGroup storage g = pggs[_groupId];

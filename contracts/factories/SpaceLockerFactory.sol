@@ -32,12 +32,6 @@ contract SpaceLockerFactory is ISpaceLockerFactory {
 
   GaltGlobalRegistry internal ggr;
 
-  constructor (
-    GaltGlobalRegistry _ggr
-  ) public {
-    ggr = _ggr;
-  }
-
   modifier onlyFeeCollector() {
     require(
       ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
@@ -46,14 +40,10 @@ contract SpaceLockerFactory is ISpaceLockerFactory {
     _;
   }
 
-  function _acceptPayment() internal {
-    if (msg.value == 0) {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
-      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
-    } else {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
-      require(msg.value == fee, "Fee and msg.value not equal");
-    }
+  constructor (
+    GaltGlobalRegistry _ggr
+  ) public {
+    ggr = _ggr;
   }
 
   function build() external payable returns (ISpaceLocker) {
@@ -83,5 +73,17 @@ contract SpaceLockerFactory is ISpaceLockerFactory {
     galtToken.transfer(msg.sender, balance);
 
     emit GaltFeeWithdrawal(msg.sender, balance);
+  }
+
+  // INTERNAL
+
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
   }
 }

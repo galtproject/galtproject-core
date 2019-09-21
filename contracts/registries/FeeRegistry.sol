@@ -39,6 +39,8 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
   function initialize() public isInitializer {
   }
 
+  // EXTERNAL
+
   function setEthFee(bytes32 _key, uint256 _amount) external onlyOwner {
     ethFees[_key] = _amount;
 

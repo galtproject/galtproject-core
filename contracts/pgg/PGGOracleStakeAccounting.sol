@@ -26,6 +26,10 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
+  // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+  int256 public constant INT256_UPPER_LIMIT = 7237005577332262213973186563042994240829374041602535252466099000494570602495;
+
   event OracleStakeDeposit(
     address indexed oracle,
     bytes32 indexed oracleType,
@@ -49,15 +53,12 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
     mapping(bytes32 => uint256) oracleTypeStakesPositive;
   }
 
-  bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
-  // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-  int256 public constant INT256_UPPER_LIMIT = 7237005577332262213973186563042994240829374041602535252466099000494570602495;
-
   IPGGConfig pggConfig;
-  mapping(address => OracleTypes) oracleDetails;
 
   int256 internal totalStake;
   uint256 internal totalStakePositive;
+
+  mapping(address => OracleTypes) oracleDetails;
 
   modifier onlySlashManager {
     require(
@@ -75,6 +76,8 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
   {
     pggConfig = _pggConfig;
   }
+
+  // EXTERNAL
 
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
     _slash(_oracle, _oracleType, _amount);
@@ -155,6 +158,8 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, oracleTypeStakeAfter, oracleStakeAfter);
   }
+
+  // INTERNAL
 
   function _updateCheckpoints(address _oracle) internal {
     _updateValueAtNow(_cachedBalances[_oracle], oracleDetails[_oracle].totalStakesPositive);

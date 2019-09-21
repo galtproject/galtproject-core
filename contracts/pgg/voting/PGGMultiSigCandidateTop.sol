@@ -28,13 +28,13 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   using ArraySet for ArraySet.AddressSet;
   using AddressLinkedList for AddressLinkedList.Data;
 
-  event ReputationMint(address delegate, uint256 amount);
-  event ReputationBurn(address delegate, uint256 amount);
-  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
-
   uint256 public constant SPACE_REPUTATION_SHARE = 40;
   uint256 public constant GALT_REPUTATION_SHARE = 30;
   uint256 public constant STAKE_REPUTATION_SHARE = 30;
+
+  // limit for SpaceReputation delegation
+  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
+  uint256 private constant DECIMALS = 10**6;
 
   event Recalculate(
     address candidate,
@@ -59,12 +59,10 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     uint256 limit
   );
 
-  // limit for SpaceReputation delegation
-  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
-  uint256 private constant DECIMALS = 10**6;
+  event ReputationMint(address delegate, uint256 amount);
+  event ReputationBurn(address delegate, uint256 amount);
+  event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
 
-  // Candidate => isIgnored
-  mapping(address => bool) private ignoredCandidates;
 
   uint256 public totalWeight;
 
@@ -72,6 +70,9 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   AddressLinkedList.Data votingList;
 
   PGGConfig pggConfig;
+
+  // Candidate => isIgnored
+  mapping(address => bool) private ignoredCandidates;
 
   constructor(
     PGGConfig _pggConfig
@@ -83,6 +84,8 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     // FIX: should rely on pggConfig
     votingData.maxCount = _pggConfig.n();
   }
+
+  // EXTERNAL
 
   function recalculate(address _candidate) external {
     uint256 candidateWeightAfter = 0;
@@ -155,7 +158,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     ignoredCandidates[msg.sender] = _value;
   }
 
-  // Getters
+  // GETTERS
 
   function getCandidateWeight(address _candidate) public view returns (uint256) {
     uint256 candidateSpaceReputationShare = pggConfig.getDelegateSpaceVoting().shareOf(_candidate, DECIMALS);
@@ -254,6 +257,10 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
     return c;
   }
 
+  function getTopCandidateWeight(address _candidate) public view returns (uint256) {
+    return votingData.votes[_candidate];
+  }
+
   function getHolderWeights(
     address[] calldata _holders
   )
@@ -270,10 +277,6 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
 
     // return total * 100 / DECIMALS;
     return total;
-  }
-
-  function getTopCandidateWeight(address _candidate) public view returns (uint256) {
-    return votingData.votes[_candidate];
   }
 
   function isCandidateInList(address _candidate) external view returns (bool) {

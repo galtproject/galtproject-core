@@ -66,6 +66,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     ggr = _ggr;
   }
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -88,6 +90,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
+  // EXTERNAL
+
   function submit(
     address payable _pgg,
     bytes32[] calldata _documents,
@@ -107,7 +111,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function proposeApproval(
-    uint256 _cId,
+    uint256 _aId,
     string calldata _msg,
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
@@ -120,8 +124,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   )
     external
   {
-    ProposalDetails storage pD = verifyProposeApprovalInputs(
-      _cId,
+    ProposalDetails storage pD = _verifyProposeApprovalInputs(
+      _aId,
       _msg,
       _spaceTokenId,
       _contour,
@@ -138,8 +142,10 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     pD.heights = _heights;
   }
 
-  function verifyProposeApprovalInputs(
-    uint256 _cId,
+  // INTERNAL
+
+  function _verifyProposeApprovalInputs(
+    uint256 _aId,
     string memory _msg,
     uint256 _spaceTokenId,
     uint256[] memory _contour,
@@ -152,7 +158,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     require(_contour.length >= 3, "Contour sould have at least 3 vertices");
     require(_contour.length == _heights.length, "Contour length should be equal heights length");
 
-    pD = applicationDetails[_cId].proposalDetails[_proposeApproval(_cId, _msg)];
+    pD = applicationDetails[_aId].proposalDetails[_proposeApproval(_aId, _msg)];
   }
 
   function _execute(uint256 _aId, bytes32 _pId) internal {
@@ -176,10 +182,12 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function _checkRewardCanBeClaimed(uint256 _aId) internal returns (bool) {
+    // TODO: perform check
     return true;
   }
 
-  /** GETTERS **/
+  // GETTERS
+
   function getApplicationDetails(
     uint256 _aId
   )
@@ -197,7 +205,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function getProposalDetails(
-    uint256 _cId,
+    uint256 _aId,
     bytes32 _pId
   )
     external
@@ -213,7 +221,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
       int256[] memory heights
     )
   {
-    ProposalDetails storage p = applicationDetails[_cId].proposalDetails[_pId];
+    ProposalDetails storage p = applicationDetails[_aId].proposalDetails[_pId];
 
     return (
       p.spaceTokenId,

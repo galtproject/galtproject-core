@@ -96,6 +96,8 @@ contract ArbitratorProposableApplication is AbstractApplication {
     ggr = _ggr;
   }
 
+  // CONFIG GETTERS
+
   function _execute(uint256 _cId, bytes32 _pId) internal {
     revert("#_execute() not implemented");
   }

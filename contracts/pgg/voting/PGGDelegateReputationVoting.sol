@@ -25,6 +25,10 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  // limit for Reputation delegation
+  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
+  uint256 private constant DECIMALS = 10**6;
+
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
   event ReputationChanged(address _delegate, uint256 prevReputation, uint256 newReputation);
@@ -34,18 +38,6 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
     uint256 remainder,
     uint256 limit
   );
-
-  // limit for Reputation delegation
-  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
-  uint256 private constant DECIMALS = 10**6;
-
-  // Initially all reputation minted both to delegate and candidate balances
-  // Delegate => distribution details
-  mapping(address => Delegate) private delegatedReputation;
-  // Delegate => locked (in RA contract)
-  mapping(address => uint256) private lockedReputation;
-  // Candidate => balance
-  mapping(address => uint256) private reputationBalance;
 
   struct Delegate {
     mapping(address => uint256) distributedReputation;
@@ -57,6 +49,23 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
 
   IPGGConfig internal pggConfig;
 
+  // Initially all reputation minted both to delegate and candidate balances
+  // Delegate => distribution details
+  mapping(address => Delegate) private delegatedReputation;
+  // Delegate => locked (in RA contract)
+  mapping(address => uint256) private lockedReputation;
+  // Candidate => balance
+  mapping(address => uint256) private reputationBalance;
+
+  modifier onlySpaceReputationNotifier() {
+    require(
+      pggConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
+      "Invalid notifier"
+    );
+
+    _;
+  }
+
   constructor(
     IPGGConfig _pggConfig,
     bytes32 _roleSpaceReputationNotifier
@@ -67,14 +76,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
     roleReputationNotifier = _roleSpaceReputationNotifier;
   }
 
-  modifier onlySpaceReputationNotifier() {
-    require(
-      pggConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
-      "Invalid notifier"
-    );
-
-    _;
-  }
+  // EXTERNAL
 
   function grantReputation(address _candidate, uint256 _amount) external {
     require(lockedReputation[msg.sender] >= _amount, "Not enough reputation");
@@ -119,7 +121,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
     }
   }
 
-  // @dev SpaceOwner balance changed
+  // @notice SpaceOwner balance changed
   function onDelegateReputationChanged(
     address _delegate,
     uint256 _newLocked
@@ -190,6 +192,8 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
     _updateValueAtNow(_cachedTotalSupply, totalReputation);
   }
 
+  // INTERNAL
+
   function _revokeDelegatedReputation(address _delegate, uint256 _revokeAmount) internal {
     address[] memory candidatesToRevoke = delegatedReputation[_delegate].candidates.elements();
     uint256 len = candidatesToRevoke.length;
@@ -226,6 +230,8 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
       }
     }
   }
+
+  // GETTERS
 
   function totalSupply() external view returns(uint256) {
     return totalReputation;

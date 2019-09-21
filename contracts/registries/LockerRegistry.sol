@@ -27,26 +27,21 @@ import "./GaltGlobalRegistry.sol";
 contract LockerRegistry is ILockerRegistry {
   using ArraySet for ArraySet.AddressSet;
 
+  event AddLocker(address indexed locker, address indexed owner, address factory);
+
   struct Details {
     bool active;
     address factory;
   }
 
-  event AddLocker(address indexed locker, address indexed owner, address factory);
+  GaltGlobalRegistry internal ggr;
+  bytes32 public roleFactory;
 
   // Locker address => Details
   mapping(address => Details) public lockers;
 
   // Locker address => Details
   mapping(address => ArraySet.AddressSet) internal lockersByOwner;
-
-  GaltGlobalRegistry internal ggr;
-  bytes32 public roleFactory;
-
-  constructor (GaltGlobalRegistry _ggr, bytes32 _roleFactory) public {
-    ggr = _ggr;
-    roleFactory = _roleFactory;
-  }
 
   modifier onlyFactory() {
     require(
@@ -56,6 +51,13 @@ contract LockerRegistry is ILockerRegistry {
 
     _;
   }
+
+  constructor (GaltGlobalRegistry _ggr, bytes32 _roleFactory) public {
+    ggr = _ggr;
+    roleFactory = _roleFactory;
+  }
+
+  // EXTERNAL
 
   function addLocker(address _locker) external onlyFactory {
     Details storage locker = lockers[_locker];
@@ -74,11 +76,12 @@ contract LockerRegistry is ILockerRegistry {
     require(lockers[_locker].active, "Locker address is invalid");
   }
 
+  // GETTERS
+
   function isValid(address _locker) external view returns (bool) {
     return lockers[_locker].active;
   }
 
-  // GETTERS
   function getLockersListByOwner(address _owner) external view returns (address[] memory) {
     return lockersByOwner[_owner].elements();
   }

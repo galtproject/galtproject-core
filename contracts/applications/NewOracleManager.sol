@@ -52,6 +52,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     _initialize(_ggr);
   }
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -73,6 +75,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
+
+  // EXTERNAL
 
   function submit(
     address _pgg,
@@ -103,9 +107,11 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
   }
 
-  function _execute(uint256 _id) internal {
-    OracleDetails storage d = oracleDetails[_id];
-    Application storage a = applications[_id];
+  // INTERNAL
+
+  function _execute(uint256 _aId) internal {
+    OracleDetails storage d = oracleDetails[_aId];
+    Application storage a = applications[_aId];
 
     pggConfig(a.pgg)
       .getOracles()
@@ -115,7 +121,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   // GETTERS
 
   function getApplicationOracle(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -129,8 +135,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       bytes32[] memory oracleTypes
     )
   {
-    OracleDetails storage o = oracleDetails[_id];
-    Application storage a = applications[_id];
+    OracleDetails storage o = oracleDetails[_aId];
+    Application storage a = applications[_aId];
 
     return (
       a.pgg,

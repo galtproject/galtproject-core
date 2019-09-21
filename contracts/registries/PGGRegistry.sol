@@ -28,14 +28,11 @@ import "../pgg/interfaces/IPGGMultiSig.sol";
 contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
 
-  event AddPgg(address indexed registrar, address pggConfig);
-  event RemovePgg(address indexed unregistrar, address pggConfig);
-
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
   bytes32 public constant ROLE_PGG_UNREGISTRAR = bytes32("PGG_UNREGISTRAR");
 
-  mapping(address => ProtocolGovernanceGroup) public pggDetails;
-  ArraySet.AddressSet internal _pggs;
+  event AddPgg(address indexed registrar, address pggConfig);
+  event RemovePgg(address indexed unregistrar, address pggConfig);
 
   struct ProtocolGovernanceGroup {
     bool active;
@@ -44,10 +41,9 @@ contract PGGRegistry is IPGGRegistry, Initializable {
   }
 
   GaltGlobalRegistry internal ggr;
+  ArraySet.AddressSet internal _pggs;
 
-  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
-    ggr = _ggr;
-  }
+  mapping(address => ProtocolGovernanceGroup) public pggDetails;
 
   modifier onlyPggRegistrar() {
     require(
@@ -66,6 +62,12 @@ contract PGGRegistry is IPGGRegistry, Initializable {
 
     _;
   }
+
+  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
+    ggr = _ggr;
+  }
+
+  // EXTERNAL
 
   function addPgg(
     IPGGConfig _pggConfig
