@@ -15,7 +15,6 @@ pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGOracleStakeVoting.sol";
@@ -24,7 +23,6 @@ import "./interfaces/IPGGOracleStakeVoting.sol";
 contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
-  using AddressLinkedList for AddressLinkedList.Data;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
