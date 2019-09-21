@@ -22,15 +22,9 @@ import "../pgg/interfaces/IPGGConfig.sol";
 
 
 contract AbstractApplication is Initializable {
-  GaltGlobalRegistry internal ggr;
 
   bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
   bytes32 public constant ROLE_APPLICATION_BYTECODE_EXECUTOR = bytes32("APPLICATION_BYTECODE_EXECUTOR");
-
-  uint256 public protocolFeesEth;
-  uint256 public protocolFeesGalt;
-
-  mapping(address => uint256[]) public applicationsByApplicant;
 
   event ExecuteBytecode(bool success, address destination);
 
@@ -51,7 +45,14 @@ contract AbstractApplication is Initializable {
     GALT
   }
 
+  uint256 public protocolFeesEth;
+  uint256 public protocolFeesGalt;
+
   uint256 internal idCounter;
+
+  GaltGlobalRegistry internal ggr;
+
+  mapping(address => uint256[]) public applicationsByApplicant;
 
   constructor() public {}
 
@@ -71,22 +72,11 @@ contract AbstractApplication is Initializable {
     _;
   }
 
+  // CONFIG GETTERS
+
   function paymentMethod(address _pgg) public view returns (PaymentMethod);
 
-  function nextId() internal returns (uint256) {
-    idCounter += 1;
-    return idCounter;
-  }
-
-  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
-    PaymentMethod pm = paymentMethod(_pgg);
-
-    if (_paymentType == PaymentType.ETH) {
-      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.ETH_ONLY, "Invalid payment type");
-    } else if (_paymentType == PaymentType.GALT) {
-      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.GALT_ONLY, "Invalid payment type");
-    }
-  }
+  // EXTERNAL
 
   function executeBytecode(
     address _destination,
@@ -115,6 +105,25 @@ contract AbstractApplication is Initializable {
     protocolFeesGalt = 0;
   }
 
+  // INTERNAL
+
+  function nextId() internal returns (uint256) {
+    idCounter += 1;
+    return idCounter;
+  }
+
+  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
+    PaymentMethod pm = paymentMethod(_pgg);
+
+    if (_paymentType == PaymentType.ETH) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.ETH_ONLY, "Invalid payment type");
+    } else if (_paymentType == PaymentType.GALT) {
+      require(pm == PaymentMethod.ETH_AND_GALT || pm == PaymentMethod.GALT_ONLY, "Invalid payment type");
+    }
+  }
+
+  // INTERNAL GETTERS
+
   function getProtocolShares() internal view returns(uint256 ethFee, uint256 galtFee) {
     return IFeeRegistry(ggr.getFeeRegistryAddress()).getProtocolApplicationShares();
   }
@@ -132,6 +141,8 @@ contract AbstractApplication is Initializable {
   function pggConfigValue(address _pgg, bytes32 _key) internal view returns (bytes32) {
     return pggConfig(_pgg).applicationConfig(_key);
   }
+
+  // GETTERS
 
   function getApplicationsByApplicant(address _applicant) external view returns (uint256[] memory) {
     return applicationsByApplicant[_applicant];

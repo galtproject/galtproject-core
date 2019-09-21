@@ -55,6 +55,8 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
   constructor () public {}
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -82,6 +84,8 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
+
+  // EXTERNAL
 
   /**
    * @notice Submits an existing property information update application. Transfers the token to this contract so

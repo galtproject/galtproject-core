@@ -52,6 +52,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
     _initialize(_ggr);
   }
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -73,6 +75,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
+
+  // EXTERNAL
 
   function submit(
     address payable _pgg,
@@ -106,6 +110,8 @@ contract UpdateOracleManager is ArbitratorApprovableApplication {
 
     _submit(id, _pgg, _applicationFeeInGalt);
   }
+
+  // INTERNAL
 
   function _execute(uint256 _id) internal {
     OracleDetails storage d = oracleDetails[_id];

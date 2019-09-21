@@ -47,6 +47,8 @@ contract NewPropertyManager is AbstractPropertyManager {
 
   constructor () public {}
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) public view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -74,6 +76,8 @@ contract NewPropertyManager is AbstractPropertyManager {
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
+
+  // EXTERNAL
 
   /**
    * @notice Submits a new property registration application.
@@ -178,6 +182,8 @@ contract NewPropertyManager is AbstractPropertyManager {
     ggr.getSpaceToken().transferFrom(address(this), a.beneficiary, a.spaceTokenId);
   }
 
+  // INTERNAL
+
   function _executeApproval(uint256 _aId) internal {
     Application storage a = applications[_aId];
 
@@ -188,42 +194,44 @@ contract NewPropertyManager is AbstractPropertyManager {
     emit NewSpaceToken(a.applicant, a.spaceTokenId, _aId);
   }
 
-  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
-    assert(a.rewards.oraclesReward > 0);
+  function _assignRequiredOracleTypesAndRewards(Application storage _a) internal {
+    assert(_a.rewards.oraclesReward > 0);
 
     uint256 totalReward = 0;
 
-    a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
-    uint256 surveyorShare = oracleTypeShare(a.pgg, PM_SURVEYOR_ORACLE_TYPE);
-    uint256 lawyerShare = oracleTypeShare(a.pgg, PM_LAWYER_ORACLE_TYPE);
+    _a.assignedOracleTypes = [PM_SURVEYOR_ORACLE_TYPE, PM_LAWYER_ORACLE_TYPE];
+    uint256 surveyorShare = oracleTypeShare(_a.pgg, PM_SURVEYOR_ORACLE_TYPE);
+    uint256 lawyerShare = oracleTypeShare(_a.pgg, PM_LAWYER_ORACLE_TYPE);
     uint256[2] memory shares = [surveyorShare, lawyerShare];
 
     require(surveyorShare + lawyerShare == 100, "PM shares invalid setup");
 
-    uint256 len = a.assignedOracleTypes.length;
+    uint256 len = _a.assignedOracleTypes.length;
     for (uint256 i = 0; i < len; i++) {
-      bytes32 oracleType = a.assignedOracleTypes[i];
-      uint256 rewardShare = a
+      bytes32 oracleType = _a.assignedOracleTypes[i];
+      uint256 rewardShare = _a
         .rewards
         .oraclesReward
         .mul(shares[i])
         .div(100);
 
-      a.assignedRewards[oracleType] = rewardShare;
-      _changeValidationStatus(a, oracleType, ValidationStatus.PENDING);
+      _a.assignedRewards[oracleType] = rewardShare;
+      _changeValidationStatus(_a, oracleType, ValidationStatus.PENDING);
       totalReward = totalReward.add(rewardShare);
     }
 
-    assert(totalReward <= a.rewards.oraclesReward);
-    uint256 diff = a.rewards.oraclesReward - totalReward;
-    a.assignedRewards[a.assignedOracleTypes[0]] = a.assignedRewards[a.assignedOracleTypes[0]].add(diff);
+    assert(totalReward <= _a.rewards.oraclesReward);
+    uint256 diff = _a.rewards.oraclesReward - totalReward;
+    _a.assignedRewards[_a.assignedOracleTypes[0]] = _a.assignedRewards[_a.assignedOracleTypes[0]].add(diff);
   }
+
+  // GETTERS
 
   function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return applications[_aId].details.spaceTokenType;
   }
 
-  function getApplicationBeneficiary(uint256 _aId) public view returns (address) {
+  function getApplicationBeneficiary(uint256 _aId) external view returns (address) {
     return applications[_aId].beneficiary;
   }
 

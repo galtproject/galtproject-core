@@ -137,6 +137,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     ggr = _ggr;
   }
 
+  // MODIFIER-LIKE FUNCTIONS
+
   function onlyCVM() internal {
     require(
       ggr.getACL().hasRole(msg.sender, ROLE_CONTOUR_VERIFIER_POOL),
@@ -151,6 +153,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   function onlyOracleOfApplication(uint256 _aId) internal {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
+
+  // CONFIG GETTERS
 
   /**
    * @notice Returns a minimal application fee in ETH for the given PGG address.
@@ -194,6 +198,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @return timeout in seconds
    */
   function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256);
+
+  // EXTERNAL
 
   /**
    * @notice Synchronizes Contour Verification application APPROVED status.
@@ -324,40 +330,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     }
   }
 
-  function _assignLockedStatus(uint256 _aId) internal {
-    for (uint256 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
-      if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
-        _changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
-      }
-    }
-  }
-
-  function _checkResubmissionPayment(
-    Application storage a,
-    uint256 _resubmissionFeeInGalt
-  )
-    internal
-  {
-    uint256 fee;
-    uint256 minimalFee;
-
-    if (a.currency == Currency.GALT) {
-      require(msg.value == 0, "ETH payment not expected");
-      fee = _resubmissionFeeInGalt;
-      minimalFee = minimalApplicationFeeGalt(a.pgg);
-    } else {
-      require(_resubmissionFeeInGalt == 0, "GALT payment not expected");
-      fee = msg.value;
-      minimalFee = minimalApplicationFeeEth(a.pgg);
-    }
-
-    uint256 totalPaid = a.rewards.latestCommittedFee.add(fee);
-
-    require(totalPaid >= minimalFee, "Insufficient payment");
-
-    a.rewards.latestCommittedFee = totalPaid;
-  }
-
   /**
    * @notice Locks an application by specified `_oracleType`. Caller should have the assigned oracle type at the moment
    *         of locking.
@@ -449,10 +421,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     if (allApproved) {
       _executeApproval(_aId);
     }
-  }
-
-  function _executeApproval(uint256 _aId) internal {
-    revert("_executeApproval(): Not implemented");
   }
 
   /**
@@ -640,6 +608,15 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     emit OracleRewardClaim(_aId, msg.sender);
   }
 
+  // INTERNAL
+  function _executeApproval(uint256 _aId) internal {
+    revert("_executeApproval(): Not implemented");
+  }
+
+  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
+    revert("_assignRequiredOracleTypesAndRewards(): Not implemented");
+  }
+
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {
@@ -683,8 +660,38 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
     _a.rewards.latestCommittedFee = _fee;
   }
 
-  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
-    revert("_assignRequiredOracleTypesAndRewards(): Not implemented");
+  function _checkResubmissionPayment(
+    Application storage a,
+    uint256 _resubmissionFeeInGalt
+  )
+    internal
+  {
+    uint256 fee;
+    uint256 minimalFee;
+
+    if (a.currency == Currency.GALT) {
+      require(msg.value == 0, "ETH payment not expected");
+      fee = _resubmissionFeeInGalt;
+      minimalFee = minimalApplicationFeeGalt(a.pgg);
+    } else {
+      require(_resubmissionFeeInGalt == 0, "GALT payment not expected");
+      fee = msg.value;
+      minimalFee = minimalApplicationFeeEth(a.pgg);
+    }
+
+    uint256 totalPaid = a.rewards.latestCommittedFee.add(fee);
+
+    require(totalPaid >= minimalFee, "Insufficient payment");
+
+    a.rewards.latestCommittedFee = totalPaid;
+  }
+
+  function _assignLockedStatus(uint256 _aId) internal {
+    for (uint256 i = 0; i < applications[_aId].assignedOracleTypes.length; i++) {
+      if (applications[_aId].validationStatus[applications[_aId].assignedOracleTypes[i]] != ValidationStatus.LOCKED) {
+        _changeValidationStatus(applications[_aId], applications[_aId].assignedOracleTypes[i], ValidationStatus.LOCKED);
+      }
+    }
   }
 
   function _changeValidationStatus(
@@ -710,6 +717,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
     _a.status = _status;
   }
+
+  // GETTERS
 
   /**
    * @notice Returns application general information
@@ -856,9 +865,5 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
   function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
     return applications[_aId].details.spaceTokenType;
-  }
-
-  function getApplicationBeneficiary(uint256 _aId) public view returns (address) {
-    return applications[_aId].beneficiary;
   }
 }

@@ -22,21 +22,12 @@ contract AbstractOracleApplication is AbstractApplication {
 
   mapping(address => uint256[]) public applicationsByOracle;
 
-  modifier _anyOracle() {
-    _;
-  }
-
-  modifier onlyUnlocker() {
-    require(ggr.getACL().hasRole(msg.sender, ROLE_APPLICATION_UNLOCKER), "No permission to unlock");
-
-    _;
-  }
-
   constructor() public {}
 
   function claimOracleReward(uint256 _aId) external;
-
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
+
+  // INTERNAL
 
   function oracleTypeShare(address _pgg, bytes32 _oracleType) internal view returns (uint256) {
     uint256 val = uint256(pggConfigValue(_pgg, getOracleTypeShareKey(_oracleType)));
@@ -52,11 +43,14 @@ contract AbstractOracleApplication is AbstractApplication {
     bytes32 _role
   )
     internal
+    view
   {
     pggConfig(_pgg)
       .getOracles()
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }
+
+  // GETTERS
 
   function getApplicationsByOracle(address _oracle) external view returns (uint256[] memory) {
     return applicationsByOracle[_oracle];

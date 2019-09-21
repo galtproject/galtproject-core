@@ -69,6 +69,8 @@ contract ClaimManager is ArbitratorProposableApplication {
     ggr = _ggr;
   }
 
+  // CONFIG GETTERS
+
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
   }
@@ -90,6 +92,8 @@ contract ClaimManager is ArbitratorProposableApplication {
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
+
+  // EXTERNAL
 
   /**
    * @dev Submit a new claim.
@@ -125,10 +129,10 @@ contract ClaimManager is ArbitratorProposableApplication {
 
   /**
    * @dev Arbitrator makes approve proposal
-   * @param _cId Application ID
+   * @param _aId Application ID
    */
   function proposeApproval(
-    uint256 _cId,
+    uint256 _aId,
     string calldata _msg,
     uint256 _amount,
     address[] calldata _oracles,
@@ -139,8 +143,8 @@ contract ClaimManager is ArbitratorProposableApplication {
   )
     external
   {
-    ProposalDetails storage pD = verifyProposeApprovalInputs(
-      _cId,
+    ProposalDetails storage pD = _verifyProposeApprovalInputs(
+      _aId,
       _msg,
       _oracles,
       _oracleTypes,
@@ -157,8 +161,10 @@ contract ClaimManager is ArbitratorProposableApplication {
     pD.oracles = _oracles;
   }
 
-  function verifyProposeApprovalInputs(
-    uint256 _cId,
+  // INTERNAL
+
+  function _verifyProposeApprovalInputs(
+    uint256 _aId,
     string memory _msg,
     address[] memory _oracles,
     bytes32[] memory _oracleTypes,
@@ -173,13 +179,13 @@ contract ClaimManager is ArbitratorProposableApplication {
     require(_oracleTypes.length == _oracleFines.length, "OracleType/Fine arrays should be equal");
     require(_arbitrators.length == _arbitratorFines.length, "Arbitrator list/fines arrays should be equal");
     require(_oracles.length > 0 || _arbitratorFines.length > 0, "Either oracles or arbitrators should be fined");
-    verifyOraclesAreValid(_cId, _oracles, _oracleTypes);
+    _verifyOraclesAreValid(_aId, _oracles, _oracleTypes);
 
-    pD = applicationDetails[_cId].proposalDetails[_proposeApproval(_cId, _msg)];
+    pD = applicationDetails[_aId].proposalDetails[_proposeApproval(_aId, _msg)];
   }
 
-  function verifyOraclesAreValid(uint256 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
-    Application storage c = applications[_cId];
+  function _verifyOraclesAreValid(uint256 _aId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
+    Application storage c = applications[_aId];
 
     require(
       pggConfig(c.pgg)
@@ -217,7 +223,8 @@ contract ClaimManager is ArbitratorProposableApplication {
     return executed;
   }
 
-  /** GETTERS **/
+  // GETTERS
+
   function getApplicationDetails(
     uint256 _aId
   )
@@ -239,7 +246,7 @@ contract ClaimManager is ArbitratorProposableApplication {
   }
 
   function getProposalDetails(
-    uint256 _cId,
+    uint256 _aId,
     bytes32 _pId
   )
     external
@@ -252,7 +259,7 @@ contract ClaimManager is ArbitratorProposableApplication {
       uint256[] memory arbitratorFines
     )
   {
-    ProposalDetails storage p = applicationDetails[_cId].proposalDetails[_pId];
+    ProposalDetails storage p = applicationDetails[_aId].proposalDetails[_pId];
 
     return (
       p.oracles,

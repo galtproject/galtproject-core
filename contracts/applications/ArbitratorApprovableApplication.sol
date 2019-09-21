@@ -82,11 +82,23 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
   constructor() public {}
 
+  function _initialize(
+    GaltGlobalRegistry _ggr
+  )
+    internal
+  {
+    ggr = _ggr;
+  }
+
+  // CONFIG GETTERS
+
   function _execute(uint256) internal;
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256);
   function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256);
   function m(address _pgg) public view returns (uint256);
   function n(address _pgg) public view returns (uint256);
+
+  // EXTERNAL
 
   /**
    * @dev Any arbitrator locks an application if an empty slots available
@@ -127,7 +139,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     if (a.ayeCount == a.m) {
       a.status = ApplicationStatus.APPROVED;
       _execute(_aId);
-      calculateAndStoreAuditorRewards(a);
+      _calculateAndStoreAuditorRewards(a);
     }
   }
 
@@ -149,7 +161,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit Nay(_aId, a.ayeCount, a.nayCount, a.m);
 
     if (a.nayCount == a.m) {
-      calculateAndStoreAuditorRewards(a);
+      _calculateAndStoreAuditorRewards(a);
       a.status = ApplicationStatus.REJECTED;
     }
   }
@@ -176,6 +188,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit ArbitratorRewardClaim(_aId, msg.sender);
   }
 
+  // INTERNAL
+
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.rewards.currency == Currency.ETH) {
@@ -189,18 +203,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     }
   }
 
-  // INTERNALS
-
-  function _initialize(
-    GaltGlobalRegistry _ggr
-  )
-    internal
-  {
-    ggr = _ggr;
-  }
-
   function _submit(
-    uint256 _id,
+    uint256 _aId,
     address _pgg,
     uint256 _applicationFeeInGalt
   )
@@ -228,10 +232,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       currency = Currency.GALT;
     }
 
-    Application storage a = applications[_id];
+    Application storage a = applications[_aId];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
-    a.id = _id;
+    a.id = _aId;
     a.status = ApplicationStatus.SUBMITTED;
     a.pgg = _pgg;
     a.applicant = msg.sender;
@@ -241,15 +245,15 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     a.rewards.currency = currency;
 
-    calculateAndStoreFee(a, fee);
+    _calculateAndStoreFee(a, fee);
 
-    applicationsByApplicant[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(_aId);
 
-    emit NewApplication(msg.sender, _id);
-    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, _aId);
+    emit ApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
   }
 
-  function calculateAndStoreFee(
+  function _calculateAndStoreFee(
     Application storage _a,
     uint256 _fee
   )
@@ -278,17 +282,17 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
-  function calculateAndStoreAuditorRewards (Application storage c) internal {
-    uint256 len = c.arbitrators.size();
-    uint256 rewardSize = c.rewards.arbitratorsReward.div(len);
+  function _calculateAndStoreAuditorRewards(Application storage _a) internal {
+    uint256 len = _a.arbitrators.size();
+    uint256 rewardSize = _a.rewards.arbitratorsReward.div(len);
 
-    c.rewards.arbitratorReward = rewardSize;
+    _a.rewards.arbitratorReward = rewardSize;
   }
 
   // GETTERS
 
   function getApplication(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -303,7 +307,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       uint256 createdAt
     )
   {
-    Application storage m = applications[_id];
+    Application storage m = applications[_aId];
 
     return (
       m.status,
@@ -318,7 +322,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   }
 
   function getApplicationRewards(
-    uint256 _id
+    uint256 _aId
   )
     external
     view
@@ -329,7 +333,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       bool galtProtocolFeePaidOut
     )
   {
-    Rewards storage f = applications[_id].rewards;
+    Rewards storage f = applications[_aId].rewards;
 
     return (
       f.currency,
