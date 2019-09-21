@@ -45,11 +45,6 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     uint256 limit
   );
 
-  // Oracle address => Oracle details
-  mapping(address => Oracle) private oracles;
-  // Oracle Candidate => totalWeights
-  mapping(address => uint256) private _candidateReputation;
-
   struct Oracle {
     address candidate;
     uint256 reputation;
@@ -57,7 +52,12 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
   uint256 private _totalReputation;
 
-  IPGGConfig pggConfig;
+  IPGGConfig internal pggConfig;
+
+  // Oracle address => Oracle details
+  mapping(address => Oracle) private oracles;
+  // Oracle Candidate => totalWeights
+  mapping(address => uint256) private _candidateReputation;
 
   modifier onlyInternalRole(bytes32 _role) {
     require(
@@ -75,6 +75,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   {
     pggConfig = _pggConfig;
   }
+
+  // EXTERNAL
 
   // 'Oracle Stake Locking' accounting only inside this contract
   function vote(address _candidate) external {
@@ -135,6 +137,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     // _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
     _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].add(_oracleReputationAfter).sub(oracleReputationBefore);
   }
+
+  // GETTERS
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
     Oracle storage oracle = oracles[_oracle];

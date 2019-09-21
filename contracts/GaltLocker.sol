@@ -37,11 +37,6 @@ contract GaltLocker is ILocker, IGaltLocker {
   GaltGlobalRegistry private ggr;
   ArraySet.AddressSet private gras;
 
-  constructor(GaltGlobalRegistry _ggr, address _owner) public {
-    owner = _owner;
-    ggr = _ggr;
-  }
-
   modifier reputationAndBalanceEqual() {
     require(ggr.getGaltToken().balanceOf(address(this)) == reputation, "Reputation and balance are not equal");
     _;
@@ -50,6 +45,11 @@ contract GaltLocker is ILocker, IGaltLocker {
   modifier onlyOwner() {
     require(isOwner(), "Not the locker owner");
     _;
+  }
+
+  constructor(GaltGlobalRegistry _ggr, address _owner) public {
+    owner = _owner;
+    ggr = _ggr;
   }
 
   // deposit allowed only when there are no any gra in the minted list
@@ -106,6 +106,10 @@ contract GaltLocker is ILocker, IGaltLocker {
 
   // GETTERS
 
+  function isOwner() public view returns (bool) {
+    return msg.sender == owner;
+  }
+
   function isMinted(address _gra) external returns (bool) {
     return gras.has(_gra);
   }
@@ -116,9 +120,5 @@ contract GaltLocker is ILocker, IGaltLocker {
 
   function getGrasCount() external returns (uint256) {
     return gras.size();
-  }
-
-  function isOwner() public view returns (bool) {
-    return msg.sender == owner;
   }
 }

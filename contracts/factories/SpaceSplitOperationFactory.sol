@@ -22,7 +22,7 @@ import "../registries/GaltGlobalRegistry.sol";
 
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry internal ggr;
 
   constructor(GaltGlobalRegistry _ggr) public {
     ggr = _ggr;

@@ -264,6 +264,14 @@ contract PGGConfig is IPGGConfig {
     return keccak256(abi.encode(_destination, methodName));
   }
 
+  function hasExternalRole(bytes32 _role, address _address) public view returns(bool) {
+    return externalRoles[_role].has(_address);
+  }
+
+  function hasInternalRole(bytes32 _role, address _address) public view returns(bool) {
+    return internalRoles[_role].has(_address);
+  }
+
   function getMultiSig() external view returns (IPGGMultiSig) {
     address payable ms = address(uint160(contracts[MULTI_SIG_CONTRACT]));
     return IPGGMultiSig(ms);
@@ -303,13 +311,5 @@ contract PGGConfig is IPGGConfig {
 
   function getInternalRoles(bytes32 _role) external view returns(address[] memory) {
     return internalRoles[_role].elements();
-  }
-
-  function hasExternalRole(bytes32 _role, address _address) public view returns(bool) {
-    return externalRoles[_role].has(_address);
-  }
-
-  function hasInternalRole(bytes32 _role, address _address) public view returns(bool) {
-    return internalRoles[_role].has(_address);
   }
 }

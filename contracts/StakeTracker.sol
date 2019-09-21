@@ -39,6 +39,14 @@ contract StakeTracker is IStakeTracker, Initializable {
   // PGG => totalStaked
   mapping(address => uint256) internal _pggStakes;
 
+  modifier onlyValidOracleStakeAccounting(address _pgg) {
+    IPGGRegistry(ggr.getPggRegistryAddress())
+    .getPggConfig(_pgg)
+    .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
+
+    _;
+  }
+
   function initialize(
     GaltGlobalRegistry _ggr
   )
@@ -46,14 +54,6 @@ contract StakeTracker is IStakeTracker, Initializable {
     isInitializer
   {
     ggr = _ggr;
-  }
-
-  modifier onlyValidOracleStakeAccounting(address _pgg) {
-    IPGGRegistry(ggr.getPggRegistryAddress())
-      .getPggConfig(_pgg)
-      .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
-
-    _;
   }
 
   function onChange(address _pgg, uint256 _pggStakesAfter) external onlyValidOracleStakeAccounting(_pgg) {

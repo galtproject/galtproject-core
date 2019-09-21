@@ -61,9 +61,6 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     bytes response;
   }
 
-  mapping(bytes32 => uint256) public thresholds;
-  mapping(uint256 => Proposal) public proposals;
-
   Counters.Counter internal idCounter;
   GaltGlobalRegistry internal ggr;
 
@@ -73,6 +70,9 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
 
   // in percents (0 < threshold <= 100)
   uint256 public defaultThreshold;
+
+  mapping(bytes32 => uint256) public thresholds;
+  mapping(uint256 => Proposal) public proposals;
 
   modifier onlyValidPgg(address _pgg) {
     require(
@@ -110,6 +110,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     stakeSharePercent = 30;
   }
 
+  // EXTERNAL
+
   function setShares(uint256 _spaceShare, uint256 _galtShare, uint256 _stakeShare) external onlyGlobalGovernance {
     require(_spaceShare + _galtShare + _stakeShare == 100, "Share sum should be eq 100");
 
@@ -128,16 +130,6 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     require(_value > 0 && _value <= DECIMALS, "Invalid threshold value");
 
     thresholds[_marker] = _value;
-  }
-
-  function getMarker(address _destination, bytes memory _data) public view returns(bytes32 marker) {
-    bytes32 methodName;
-
-    assembly {
-      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
-    }
-
-    return keccak256(abi.encode(_destination, methodName));
   }
 
   function propose(
@@ -182,6 +174,8 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     execute(_proposalId);
   }
 
+  // INTERNAL
+
   function execute(uint256 _proposalId) internal {
     Proposal storage p = proposals[_proposalId];
 
@@ -199,6 +193,16 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
   }
 
   // GETTERS
+
+  function getMarker(address _destination, bytes memory _data) public view returns(bytes32 marker) {
+    bytes32 methodName;
+
+    assembly {
+      methodName := and(mload(add(_data, 0x20)), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+    }
+
+    return keccak256(abi.encode(_destination, methodName));
+  }
 
   function getProposalResponseAsErrorString(uint256 _proposalId) public view returns (string memory) {
     return string(proposals[_proposalId].response);
@@ -290,6 +294,32 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     );
   }
 
+  function calculateSupport(
+    uint256 _supportBySpace,
+    uint256 _supportByGalt,
+    uint256 _supportByStake,
+    uint256 _totalSpace,
+    uint256 _totalGalt,
+    uint256 _totalStake
+  )
+    public
+    view
+    returns(
+      uint256 spaceShare,
+      uint256 galtShare,
+      uint256 stakeShare,
+      uint256 totalSupport
+    )
+  {
+    assert(spaceSharePercent + galtSharePercent + stakeSharePercent == 100);
+
+    spaceShare = (_supportBySpace * DECIMALS * spaceSharePercent) / _totalSpace / 100;
+    galtShare = (_supportByGalt * DECIMALS * galtSharePercent) / _totalGalt / 100;
+    stakeShare = (_supportByStake * DECIMALS * stakeSharePercent) / _totalStake / 100;
+
+    totalSupport = (spaceShare + galtShare + stakeShare);
+  }
+
   function getPggWeight(
     address _pgg
   )
@@ -321,31 +351,5 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
     stake = stakeTracker.balanceOf(_pgg);
 
     (spaceShare, galtShare, stakeShare, weight) = calculateSupport(space, galt, stake, totalSpace, totalGalt, totalStake);
-  }
-
-  function calculateSupport(
-    uint256 _supportBySpace,
-    uint256 _supportByGalt,
-    uint256 _supportByStake,
-    uint256 _totalSpace,
-    uint256 _totalGalt,
-    uint256 _totalStake
-  )
-    public
-    view
-    returns(
-      uint256 spaceShare,
-      uint256 galtShare,
-      uint256 stakeShare,
-      uint256 totalSupport
-    )
-  {
-    assert(spaceSharePercent + galtSharePercent + stakeSharePercent == 100);
-
-    spaceShare = (_supportBySpace * DECIMALS * spaceSharePercent) / _totalSpace / 100;
-    galtShare = (_supportByGalt * DECIMALS * galtSharePercent) / _totalGalt / 100;
-    stakeShare = (_supportByStake * DECIMALS * stakeSharePercent) / _totalStake / 100;
-
-    totalSupport = (spaceShare + galtShare + stakeShare);
   }
 }

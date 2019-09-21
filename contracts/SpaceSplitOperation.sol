@@ -25,8 +25,6 @@ import "./registries/GaltGlobalRegistry.sol";
 contract SpaceSplitOperation is ISpaceSplitOperation {
   using WeilerAtherton for WeilerAtherton.State;
 
-  WeilerAtherton.State private weilerAtherton;
-
   event InitSplitOperation(address subjectTokenOwner, uint256 subjectTokenId, uint256[] subjectContour, uint256[] clippingContour);
 
   // TODO: use stages
@@ -44,7 +42,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   Stage public doneStage;
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry internal ggr;
 
   address public subjectTokenOwner;
   uint256 public subjectTokenId;
@@ -54,6 +52,8 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   uint256[] public subjectContourOutput;
   uint256[][] public resultContours;
 
+  WeilerAtherton.State private weilerAtherton;
+
   constructor(GaltGlobalRegistry _ggr, uint256 _subjectTokenId, uint256[] memory _clippingContour) public {
     ggr = _ggr;
     subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
@@ -62,13 +62,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     clippingContour = _clippingContour;
   }
 
-  function getSubjectContour() external view returns (uint256[] memory) {
-    return subjectContour;
-  }
-
-  function getClippingContour() external view returns (uint256[] memory) {
-    return clippingContour;
-  }
+  // EXTERNAL
 
   function init() external {
     require(doneStage == Stage.NONE, "doneStage should be NONE");
@@ -103,19 +97,6 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
   function prepareAllPolygons() external {
     prepareSubjectPolygon();
     prepareClippingPolygon();
-  }
-
-  function convertContourToPoints(uint256[] storage geohashesContour, PolygonUtils.CoorsPolygon storage resultPolygon) private {
-    require(resultPolygon.points.length == 0, "Contour already converted");
-
-    int256[2] memory point;
-    for (uint i = 0; i < geohashesContour.length; i++) {
-      point = geodesic().getCachedLatLonByGeohash(geohashesContour[i]);
-      if (point[0] == 0 && point[1] == 0) {
-        point = geodesic().cacheGeohashToLatLon(geohashesContour[i]);
-      }
-      resultPolygon.points.push(point);
-    }
   }
 
   function initSubjectPolygon() public {
@@ -190,34 +171,10 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     doneStage = Stage.INTERSECT_POINTS_ADD;
   }
 
-  function getPolygonsLengths() public view returns (uint256 resultPolygonsLength, uint256 subjectOutputPointsLength) {
-    resultPolygonsLength = weilerAtherton.resultPolygons.length;
-    subjectOutputPointsLength = weilerAtherton.subjectPolygonOutput.points.length;
-  }
-
-  function getResultPolygonLength(uint256 polygonIndex) public view returns (uint256) {
-    return weilerAtherton.resultPolygons[polygonIndex].points.length;
-  }
-
-  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public view returns (int256[2] memory) {
-    return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
-  }
-
-  function getSubjectPolygonOutputPoint(uint256 pointIndex) public view returns (int256[2] memory) {
-    return weilerAtherton.subjectPolygonOutput.points[pointIndex];
-  }
-
   function buildResultPolygon() public {
     require(doneStage == Stage.INTERSECT_POINTS_ADD, "doneStage should be SEGMENTS_ADD");
 
     weilerAtherton.buildResultPolygon();
-  }
-
-  function isBuildResultFinished() external view returns(bool) {
-    /* solium-disable-next-line */
-    return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
-    /* solium-disable-next-line */
-        && weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length;
   }
 
   function buildSubjectPolygonOutput() public {
@@ -240,20 +197,6 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     addIntersectedPoints();
     buildResultPolygon();
     buildSubjectPolygonOutput();
-  }
-
-  function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) private returns (uint256[] memory geohashContour) {
-    geohashContour = new uint256[](latLonPolygon.points.length);
-
-    uint256 geohash;
-    for (uint i = 0; i < latLonPolygon.points.length; i++) {
-      geohash = geodesic().getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
-      if (geohash == 0) {
-        geohash = geodesic().cacheLatLonToGeohash(latLonPolygon.points[i], 12);
-      }
-
-      geohashContour[i] = geohash;
-    }
   }
 
   function finishSubjectPolygon() public {
@@ -283,8 +226,71 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     finishClippingPolygons();
   }
 
+  // INTERNAL
+
   function geodesic() internal returns (IGeodesic) {
     return IGeodesic(ggr.getGeodesicAddress());
+  }
+
+  function convertPointsToContour(PolygonUtils.CoorsPolygon storage latLonPolygon) internal returns (uint256[] memory geohashContour) {
+    geohashContour = new uint256[](latLonPolygon.points.length);
+
+    uint256 geohash;
+    for (uint i = 0; i < latLonPolygon.points.length; i++) {
+      geohash = geodesic().getCachedGeohashByLatLon(latLonPolygon.points[i], 12);
+      if (geohash == 0) {
+        geohash = geodesic().cacheLatLonToGeohash(latLonPolygon.points[i], 12);
+      }
+
+      geohashContour[i] = geohash;
+    }
+  }
+
+  function convertContourToPoints(uint256[] storage geohashesContour, PolygonUtils.CoorsPolygon storage resultPolygon) internal {
+    require(resultPolygon.points.length == 0, "Contour already converted");
+
+    int256[2] memory point;
+    for (uint i = 0; i < geohashesContour.length; i++) {
+      point = geodesic().getCachedLatLonByGeohash(geohashesContour[i]);
+      if (point[0] == 0 && point[1] == 0) {
+        point = geodesic().cacheGeohashToLatLon(geohashesContour[i]);
+      }
+      resultPolygon.points.push(point);
+    }
+  }
+
+  // GETTERS
+
+  function getPolygonsLengths() public view returns (uint256 resultPolygonsLength, uint256 subjectOutputPointsLength) {
+    resultPolygonsLength = weilerAtherton.resultPolygons.length;
+    subjectOutputPointsLength = weilerAtherton.subjectPolygonOutput.points.length;
+  }
+
+  function getResultPolygonLength(uint256 polygonIndex) public view returns (uint256) {
+    return weilerAtherton.resultPolygons[polygonIndex].points.length;
+  }
+
+  function getResultPolygonPoint(uint256 polygonIndex, uint256 pointIndex) public view returns (int256[2] memory) {
+    return weilerAtherton.resultPolygons[polygonIndex].points[pointIndex];
+  }
+
+  function getSubjectPolygonOutputPoint(uint256 pointIndex) public view returns (int256[2] memory) {
+    return weilerAtherton.subjectPolygonOutput.points[pointIndex];
+  }
+
+  function getSubjectContour() external view returns (uint256[] memory) {
+    return subjectContour;
+  }
+
+  function getClippingContour() external view returns (uint256[] memory) {
+    return clippingContour;
+  }
+
+  function isBuildResultFinished() external view returns(bool) {
+    /* solium-disable-next-line */
+    return weilerAtherton.subjectPolygon.handledIntersectionPoints == weilerAtherton.subjectPolygon.intersectionPoints.length
+    /* solium-disable-next-line */
+    && weilerAtherton.clippingPolygon.handledIntersectionPoints == weilerAtherton.clippingPolygon.intersectionPoints.length;
   }
 
   function getResultContour(uint256 contourIndex) external view returns (uint256[] memory) {

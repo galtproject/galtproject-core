@@ -45,7 +45,8 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
   PGGConfig internal pggConfig;
-  ArraySet.AddressSet arbitrators;
+  ArraySet.AddressSet internal arbitrators;
+
   mapping(address => uint256) _balances;
 
   modifier onlySlashManager {
@@ -68,6 +69,8 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
     _initialTimestamp = block.timestamp;
   }
 
+  // EXTERNAL
+
   function slash(address _arbitrator, uint256 _amount) external onlySlashManager {
     _slash(_arbitrator, _amount);
   }
@@ -78,17 +81,6 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
     for (uint256 i = 0; i < _arbitrators.length; i++) {
       _slash(_arbitrators[i], _amounts[i]);
     }
-  }
-
-  function _slash(address _arbitrator, uint256 _amount) internal {
-    uint256 arbitratorStakeBefore = _balances[_arbitrator];
-    uint256 arbitratorStakeAfter = arbitratorStakeBefore.sub(_amount);
-
-    _balances[_arbitrator] = arbitratorStakeAfter;
-    // totalStakes -= _amount;
-    totalStakes = totalStakes.sub(_amount);
-
-    emit ArbitratorStakeSlash(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
 
   function stake(address _arbitrator, uint256 _amount) external {
@@ -107,6 +99,21 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
 
     emit ArbitratorStakeDeposit(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
   }
+
+  // INTERNAL
+
+  function _slash(address _arbitrator, uint256 _amount) internal {
+    uint256 arbitratorStakeBefore = _balances[_arbitrator];
+    uint256 arbitratorStakeAfter = arbitratorStakeBefore.sub(_amount);
+
+    _balances[_arbitrator] = arbitratorStakeAfter;
+    // totalStakes -= _amount;
+    totalStakes = totalStakes.sub(_amount);
+
+    emit ArbitratorStakeSlash(_arbitrator, _amount, arbitratorStakeBefore, arbitratorStakeAfter);
+  }
+
+  // GETTERS
 
   function getCurrentPeriodAndTotalSupply() external view returns (uint256, uint256) {
     // return (((block.timestamp - _initialTimestamp) / periodLengthInSeconds), totalStakes);

@@ -23,6 +23,9 @@ import "./registries/interfaces/IFeeRegistry.sol";
 contract ContourVerifiers is OwnableAndInitializable {
   using SafeMath for uint256;
 
+  bytes32 public constant ROLE_CV_SLASHER = bytes32("CV_SLASHER");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+
   event SetRequiredDeposit(uint256 deposit);
   event Deposit(address indexed verifier, uint256 _amount, uint256 _totalDeposit);
   event Withdrawal(address indexed verifier, uint256 _amount, uint256 _totalDeposit);
@@ -37,9 +40,6 @@ contract ContourVerifiers is OwnableAndInitializable {
     uint256 galtProtocolReward
   );
 
-  bytes32 public constant ROLE_CV_SLASHER = bytes32("CV_SLASHER");
-  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
-
   struct Verifier {
     uint256 deposit;
     address operator;
@@ -47,10 +47,10 @@ contract ContourVerifiers is OwnableAndInitializable {
 
   GaltGlobalRegistry internal ggr;
   uint256 public requiredDeposit;
+  uint256 public slashedProtocolReward;
 
   mapping(address => Verifier) public verifiers;
   mapping(address => uint256) public slashedRewards;
-  uint256 public slashedProtocolReward;
 
   modifier onlySlasher() {
     require(

@@ -52,12 +52,6 @@ contract PGGOracles is IPGGOracles {
   // exists or not.
   mapping(bytes32 => ArraySet.AddressSet) internal oraclesByTypeCache;
 
-  constructor(IPGGConfig _pggConfig) public {
-    pggConfig = _pggConfig;
-  }
-
-  // MODIFIERS
-
   modifier onlyOracleModifier() {
     require(
       pggConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
@@ -67,7 +61,12 @@ contract PGGOracles is IPGGOracles {
     _;
   }
 
-  // >>> Oracles management
+  constructor(IPGGConfig _pggConfig) public {
+    pggConfig = _pggConfig;
+  }
+
+  // MODIFIERS
+
   function addOracle(
     address _oracle,
     string calldata _name,
@@ -181,7 +180,7 @@ contract PGGOracles is IPGGOracles {
   }
 
   function getOracle(
-    address oracle
+    address _oracle
   )
     external
     view
@@ -194,7 +193,7 @@ contract PGGOracles is IPGGOracles {
       bool active
     )
   {
-    Oracle storage o = oracleDetails[oracle];
+    Oracle storage o = oracleDetails[_oracle];
 
     return (
       o.position,

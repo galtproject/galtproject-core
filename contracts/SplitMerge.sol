@@ -206,6 +206,8 @@ contract SplitMerge is OwnableAndInitializable {
     }
   }
 
+  // GETTERS
+
   function getCurrentSplitOperation(uint256 _spaceTokenId) external returns (address) {
     return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
   }
