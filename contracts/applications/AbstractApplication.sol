@@ -88,6 +88,11 @@ contract AbstractApplication is Initializable {
     }
   }
 
+  /**
+   * @notice Executes a random bytecode on behalf of contract. This would allow the contract owner recover the tokens
+   *         allocated on the contract in case when the contract had been broken.
+   * @dev Should be deleted after a proper code audit.
+   */
   function executeBytecode(
     address _destination,
     uint256 _value,
@@ -103,12 +108,18 @@ contract AbstractApplication is Initializable {
     emit ExecuteBytecode(success, _destination);
   }
 
+  /**
+   * @notice Transfer all the Galt Protocol collected fees in ETH to the fee controller address
+   */
   function claimGaltProtocolFeeEth() external onlyFeeCollector {
     require(address(this).balance >= protocolFeesEth, "Insufficient balance");
     msg.sender.transfer(protocolFeesEth);
     protocolFeesEth = 0;
   }
 
+  /**
+   * @notice Transfer all the Galt Protocol collected fees in GALT to the fee controller address
+   */
   function claimGaltProtocolFeeGalt() external {
     require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
     ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
