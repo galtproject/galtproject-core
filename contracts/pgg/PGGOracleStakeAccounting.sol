@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -19,11 +19,16 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGOracleStakeAccounting.sol";
 import "../interfaces/IStakeTracker.sol";
+import "../Checkpointable.sol";
 
 
-contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
+contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting, Checkpointable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
+
+  bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
+  // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+  int256 public constant INT256_UPPER_LIMIT = 7237005577332262213973186563042994240829374041602535252466099000494570602495;
 
   event OracleStakeDeposit(
     address indexed oracle,
@@ -48,15 +53,12 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     mapping(bytes32 => uint256) oracleTypeStakesPositive;
   }
 
-  bytes32 public constant ROLE_ORACLE_STAKE_SLASHER = bytes32("ORACLE_STAKE_SLASHER");
-  // represents 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-  int256 public constant INT256_UPPER_LIMIT = 7237005577332262213973186563042994240829374041602535252466099000494570602495;
-
   IPGGConfig pggConfig;
-  mapping(address => OracleTypes) oracleDetails;
 
   int256 internal totalStake;
   uint256 internal totalStakePositive;
+
+  mapping(address => OracleTypes) oracleDetails;
 
   modifier onlySlashManager {
     require(
@@ -74,6 +76,8 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
   {
     pggConfig = _pggConfig;
   }
+
+  // EXTERNAL
 
   function slash(address _oracle, bytes32 _oracleType, uint256 _amount) external onlySlashManager {
     _slash(_oracle, _oracleType, _amount);
@@ -115,6 +119,7 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     totalStake = totalStakeAfter;
 
     _updatePositiveValues(oracleDetails[_oracle], _oracleType, finalOracleTypeStake, finalOracleTotalStake, totalStakeAfter);
+    _updateCheckpoints(_oracle);
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
     IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
@@ -146,11 +151,19 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
     totalStake = totalStakeAfter;
 
     _updatePositiveValues(oracleDetails[_oracle], _oracleType, oracleTypeStakeAfter, oracleStakeAfter, totalStakeAfter);
+    _updateCheckpoints(_oracle);
 
     pggConfig.getOracleStakeVoting().onOracleStakeChanged(_oracle, oracleDetails[_oracle].totalStakesPositive);
     IStakeTracker(pggConfig.ggr().getStakeTrackerAddress()).onChange(address(pggConfig), totalStakePositive);
 
     emit OracleStakeDeposit(_oracle, _oracleType, _amount, oracleTypeStakeAfter, oracleStakeAfter);
+  }
+
+  // INTERNAL
+
+  function _updateCheckpoints(address _oracle) internal {
+    _updateValueAtNow(_cachedBalances[_oracle], oracleDetails[_oracle].totalStakesPositive);
+    _updateValueAtNow(_cachedTotalSupply, totalStakePositive);
   }
 
   function _updatePositiveValues(
@@ -238,5 +251,13 @@ contract PGGOracleStakeAccounting is IPGGOracleStakeAccounting {
 
   function positiveTypeStakeOf(address _oracle, bytes32 _oracleType) external view returns (uint256) {
     return oracleDetails[_oracle].oracleTypeStakesPositive[_oracleType];
+  }
+
+  function balanceOfAt(address _oracle, uint256 _blockNumber) external view returns (uint256) {
+    return _balanceOfAt(_oracle, _blockNumber);
+  }
+
+  function totalSupplyAt(uint256 _blockNumber) external view returns (uint256) {
+    return _totalSupplyAt(_blockNumber);
   }
 }

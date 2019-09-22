@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
@@ -20,18 +20,19 @@ import "../pgg/interfaces/IPGGConfig.sol";
 import "../pgg/interfaces/IPGGMultiSig.sol";
 
 
+/**
+ * @title Protocol Governance Group Registry (PGG Registry).
+ * @notice Tracks all the valid PGGs.
+ * @dev  Each PGG is identified by it's PGGConfig contract address.
+ */
 contract PGGRegistry is IPGGRegistry, Initializable {
   using ArraySet for ArraySet.AddressSet;
-
-  event AddPgg(address indexed registrar, address pggConfig);
-  event RemovePgg(address indexed unregistrar, address pggConfig);
 
   bytes32 public constant ROLE_PGG_REGISTRAR = bytes32("PGG_REGISTRAR");
   bytes32 public constant ROLE_PGG_UNREGISTRAR = bytes32("PGG_UNREGISTRAR");
 
-  // TODO: need to be a private?
-  mapping(address => ProtocolGovernanceGroup) public pggDetails;
-  ArraySet.AddressSet internal _pggs;
+  event AddPgg(address indexed registrar, address pggConfig);
+  event RemovePgg(address indexed unregistrar, address pggConfig);
 
   struct ProtocolGovernanceGroup {
     bool active;
@@ -40,10 +41,9 @@ contract PGGRegistry is IPGGRegistry, Initializable {
   }
 
   GaltGlobalRegistry internal ggr;
+  ArraySet.AddressSet internal _pggs;
 
-  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
-    ggr = _ggr;
-  }
+  mapping(address => ProtocolGovernanceGroup) public pggDetails;
 
   modifier onlyPggRegistrar() {
     require(
@@ -62,6 +62,12 @@ contract PGGRegistry is IPGGRegistry, Initializable {
 
     _;
   }
+
+  function initialize(GaltGlobalRegistry _ggr) public isInitializer {
+    ggr = _ggr;
+  }
+
+  // EXTERNAL
 
   function addPgg(
     IPGGConfig _pggConfig

@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -27,12 +27,12 @@ contract ArbitratorProposableApplication is AbstractApplication {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event NewApplication(address indexed applicant, bytes32 applicationId);
-  event NewProposal(address indexed arbitrator, bytes32 indexed applicationId, Action action, bytes32 proposalId);
-  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
-  event ArbitratorSlotTaken(bytes32 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
-  event ArbitratorRewardApplication(bytes32 indexed applicationId, address indexed oracle);
-  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  event NewApplication(address indexed applicant, uint256 applicationId);
+  event NewProposal(address indexed arbitrator, uint256 indexed applicationId, Action action, bytes32 proposalId);
+  event ApplicationStatusChanged(uint256 indexed applicationId, ApplicationStatus indexed status);
+  event ArbitratorSlotTaken(uint256 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
+  event ArbitratorRewardApplication(uint256 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(uint256 indexed applicationId);
 
   enum ApplicationStatus {
     NOT_EXISTS,
@@ -48,7 +48,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
   }
 
   struct Application {
-    bytes32 id;
+    uint256 id;
     address payable pgg;
     address applicant;
     bytes32 chosenProposal;
@@ -82,8 +82,8 @@ contract ArbitratorProposableApplication is AbstractApplication {
     string message;
   }
 
-  mapping(bytes32 => Application) internal applications;
-  mapping(address => bytes32[]) internal applicationByArbitrator;
+  mapping(uint256 => Application) internal applications;
+  mapping(address => uint256[]) internal applicationByArbitrator;
 
   constructor () public {}
 
@@ -96,11 +96,13 @@ contract ArbitratorProposableApplication is AbstractApplication {
     ggr = _ggr;
   }
 
-  function _execute(bytes32 _cId, bytes32 _pId) internal {
+  // CONFIG GETTERS
+
+  function _execute(uint256 _cId, bytes32 _pId) internal {
     revert("#_execute() not implemented");
   }
 
-  function _checkRewardCanBeClaimed(bytes32 _cId) internal returns (bool) {
+  function _checkRewardCanBeClaimed(uint256 _cId) internal returns (bool) {
     revert("#_checkRewardCanBeClaimed() not implemented");
   }
 
@@ -136,7 +138,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
     uint256 _applicationFeeInGalt
   )
     internal
-    returns (bytes32)
+    returns (uint256)
   {
     pggRegistry().requireValidPgg(_pgg);
 
@@ -160,13 +162,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
       currency = Currency.GALT;
     }
 
-    bytes32 id = keccak256(
-      abi.encodePacked(
-        msg.sender,
-        blockhash(block.number - 1),
-        applicationsArray.length
-      )
-    );
+    uint256 id = nextId();
 
     Application storage c = applications[id];
     require(applications[id].status == ApplicationStatus.NOT_EXISTS, "Application already exists");
@@ -182,7 +178,6 @@ contract ArbitratorProposableApplication is AbstractApplication {
 
     calculateAndStoreFee(c, fee);
 
-    applicationsArray.push(id);
     applicationsByApplicant[msg.sender].push(id);
 
     emit NewApplication(msg.sender, id);
@@ -195,7 +190,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
    * @dev Arbitrator locks a claim to work on
    * @param _cId Application ID
    */
-  function lock(bytes32 _cId) external {
+  function lock(uint256 _cId) external {
     Application storage c = applications[_cId];
 
     require(pggConfig(c.pgg).getMultiSig().isOwner(msg.sender), "Invalid arbitrator");
@@ -213,7 +208,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
    * @dev Arbitrator makes approve proposal
    * @param _cId Application ID
    */
-  function _proposeApproval(bytes32 _cId, string memory _msg) internal returns (bytes32 pId) {
+  function _proposeApproval(uint256 _cId, string memory _msg) internal returns (bytes32 pId) {
     Application storage c = applications[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -242,7 +237,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
    * @dev Arbitrator makes reject proposal
    * @param _cId Application ID
    */
-  function proposeReject(bytes32 _cId, string calldata _msg) external {
+  function proposeReject(uint256 _cId, string calldata _msg) external {
     Application storage c = applications[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -270,7 +265,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
    * @param _cId Application ID
    * @param _pId Proposal ID
    */
-  function vote(bytes32 _cId, bytes32 _pId) external {
+  function vote(uint256 _cId, bytes32 _pId) external {
     Application storage c = applications[_cId];
 
     require(c.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -295,7 +290,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
     }
   }
 
-  function claimArbitratorReward(bytes32 _cId) external {
+  function claimArbitratorReward(uint256 _cId) external {
     Application storage c = applications[_cId];
 
     require(
@@ -320,7 +315,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
     emit ArbitratorRewardApplication(_cId, msg.sender);
   }
 
-  function verifyOraclesAreValid(bytes32 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
+  function verifyOraclesAreValid(uint256 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
     Application storage c = applications[_cId];
 
     require(
@@ -403,7 +398,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
 
   /** GETTERS **/
   function getApplication(
-    bytes32 _cId
+    uint256 _cId
   )
     external
     view
@@ -433,7 +428,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
   }
 
   function getApplicationRewards(
-    bytes32 _cId
+    uint256 _cId
   )
     external
     view
@@ -454,7 +449,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
     );
   }
 
-  function getProposalList(bytes32 _cId) external view returns (bytes32[] memory) {
+  function getProposalList(uint256 _cId) external view returns (bytes32[] memory) {
     return applications[_cId].proposalList;
   }
 
@@ -463,12 +458,12 @@ contract ArbitratorProposableApplication is AbstractApplication {
    * @param _cId Application ID
    * @param _v arbitrator address
    */
-  function getVotedFor(bytes32 _cId, address _v) external view returns (bytes32) {
+  function getVotedFor(uint256 _cId, address _v) external view returns (bytes32) {
     return applications[_cId].votes[_v];
   }
 
   function getProposal(
-    bytes32 _cId,
+    uint256 _cId,
     bytes32 _pId
   )
     external
@@ -489,7 +484,7 @@ contract ArbitratorProposableApplication is AbstractApplication {
   }
 
   function getProposalVotes(
-    bytes32 _cId,
+    uint256 _cId,
     bytes32 _pId
   )
     external

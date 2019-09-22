@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 
 interface IPGGOracleStakeAccounting {
@@ -21,4 +21,6 @@ interface IPGGOracleStakeAccounting {
   function balanceOf(address _oracle) external view returns (int256);
   function typeStakeOf(address _oracle, bytes32 _oracleType) external view returns (int256);
   function isOracleStakeActive(address _oracle, bytes32 _oracleType) external view returns (bool);
+  function balanceOfAt(address _oracle, uint256 _blockNumber) external view returns (uint256);
+  function totalSupplyAt(uint256 _blockNumber) external view returns (uint256);
 }

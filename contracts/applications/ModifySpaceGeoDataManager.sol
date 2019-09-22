@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -53,7 +53,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     int256[] heights;
   }
 
-  mapping(bytes32 => ApplicationDetails) internal applicationDetails;
+  mapping(uint256 => ApplicationDetails) internal applicationDetails;
 
   constructor () public {}
 
@@ -65,6 +65,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   {
     ggr = _ggr;
   }
+
+  // CONFIG GETTERS
 
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
@@ -88,6 +90,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
+  // EXTERNAL
+
   function submit(
     address payable _pgg,
     bytes32[] calldata _documents,
@@ -95,9 +99,9 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   )
     external
     payable
-    returns (bytes32)
+    returns (uint256)
   {
-    bytes32 id = _submit(_pgg, _applicationFeeInGalt);
+    uint256 id = nextId();
 
     ApplicationDetails storage aD = applicationDetails[id];
 
@@ -107,7 +111,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function proposeApproval(
-    bytes32 _cId,
+    uint256 _aId,
     string calldata _msg,
     uint256 _spaceTokenId,
     bytes32 _ledgerIdentifier,
@@ -120,8 +124,8 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   )
     external
   {
-    ProposalDetails storage pD = verifyProposeApprovalInputs(
-      _cId,
+    ProposalDetails storage pD = _verifyProposeApprovalInputs(
+      _aId,
       _msg,
       _spaceTokenId,
       _contour,
@@ -138,8 +142,10 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     pD.heights = _heights;
   }
 
-  function verifyProposeApprovalInputs(
-    bytes32 _cId,
+  // INTERNAL
+
+  function _verifyProposeApprovalInputs(
+    uint256 _aId,
     string memory _msg,
     uint256 _spaceTokenId,
     uint256[] memory _contour,
@@ -152,10 +158,10 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
     require(_contour.length >= 3, "Contour sould have at least 3 vertices");
     require(_contour.length == _heights.length, "Contour length should be equal heights length");
 
-    pD = applicationDetails[_cId].proposalDetails[_proposeApproval(_cId, _msg)];
+    pD = applicationDetails[_aId].proposalDetails[_proposeApproval(_aId, _msg)];
   }
 
-  function _execute(bytes32 _aId, bytes32 _pId) internal {
+  function _execute(uint256 _aId, bytes32 _pId) internal {
     ApplicationDetails storage aD = applicationDetails[_aId];
     ProposalDetails storage pD = aD.proposalDetails[_pId];
 
@@ -169,19 +175,21 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
 
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
     spaceGeoData.setSpaceTokenContour(pD.spaceTokenId, pD.contour);
-    spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
-    spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
-    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);
-    spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
+//    spaceGeoData.setSpaceTokenHeights(pD.spaceTokenId, pD.heights);
+//    spaceGeoData.setSpaceTokenLevel(pD.spaceTokenId, pD.level);
+//    spaceGeoData.setSpaceTokenArea(pD.spaceTokenId, area, pD.areaSource);
+//    spaceGeoData.setSpaceTokenInfo(pD.spaceTokenId, pD.ledgerIdentifier, pD.description);
   }
 
-  function _checkRewardCanBeClaimed(bytes32 _aId) internal returns (bool) {
+  function _checkRewardCanBeClaimed(uint256 _aId) internal returns (bool) {
+    // TODO: perform check
     return true;
   }
 
-  /** GETTERS **/
+  // GETTERS
+
   function getApplicationDetails(
-    bytes32 _aId
+    uint256 _aId
   )
     external
     view
@@ -197,7 +205,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
   }
 
   function getProposalDetails(
-    bytes32 _cId,
+    uint256 _aId,
     bytes32 _pId
   )
     external
@@ -213,7 +221,7 @@ contract ModifySpaceGeoDataManager is ArbitratorProposableApplication {
       int256[] memory heights
     )
   {
-    ProposalDetails storage p = applicationDetails[_cId].proposalDetails[_pId];
+    ProposalDetails storage p = applicationDetails[_aId].proposalDetails[_pId];
 
     return (
       p.spaceTokenId,

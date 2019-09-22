@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "./AbstractApplication.sol";
 
@@ -20,23 +20,14 @@ contract AbstractOracleApplication is AbstractApplication {
 
   bytes32 public constant ROLE_APPLICATION_UNLOCKER = bytes32("APPLICATION_UNLOCKER");
 
-  mapping(address => bytes32[]) public applicationsByOracle;
-
-  modifier _anyOracle() {
-    _;
-  }
-
-  modifier onlyUnlocker() {
-    require(ggr.getACL().hasRole(msg.sender, ROLE_APPLICATION_UNLOCKER), "No permission to unlock");
-
-    _;
-  }
+  mapping(address => uint256[]) public applicationsByOracle;
 
   constructor() public {}
 
-  function claimOracleReward(bytes32 _aId) external;
-
+  function claimOracleReward(uint256 _aId) external;
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32);
+
+  // INTERNAL
 
   function oracleTypeShare(address _pgg, bytes32 _oracleType) internal view returns (uint256) {
     uint256 val = uint256(pggConfigValue(_pgg, getOracleTypeShareKey(_oracleType)));
@@ -52,13 +43,16 @@ contract AbstractOracleApplication is AbstractApplication {
     bytes32 _role
   )
     internal
+    view
   {
     pggConfig(_pgg)
       .getOracles()
       .requireOracleActiveWithAssignedActiveOracleType(_oracle, _role);
   }
 
-  function getApplicationsByOracle(address _oracle) external view returns (bytes32[] memory) {
+  // GETTERS
+
+  function getApplicationsByOracle(address _oracle) external view returns (uint256[] memory) {
     return applicationsByOracle[_oracle];
   }
 }

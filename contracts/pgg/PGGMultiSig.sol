@@ -11,16 +11,21 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/traits/Permissionable.sol";
-import "../vendor/MultiSigWallet/MultiSigWallet.sol";
+import "@galtproject/multisig/contracts/MultiSigWallet.sol";
 import "./PGGArbitratorStakeAccounting.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGMultiSig.sol";
 
 
 contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
+  bytes32 public constant PGG_ROLE_MULTI_SIG_PROPOSER = bytes32("PGG_MULTI_SIG_PROPOSER");
+
+  bytes32 public constant ROLE_ARBITRATOR_MANAGER = bytes32("arbitrator_manager");
+  bytes32 public constant ROLE_REVOKE_MANAGER = bytes32("revoke_manager");
+
   event NewOwners(address[] auditors, uint256 required, uint256 total);
   event RevokeOwners();
   event GaltRunningTotalIncrease(
@@ -30,11 +35,6 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
     uint256 totalArbitratorStakes,
     uint256 amount
   );
-
-  bytes32 public constant PGG_ROLE_MULTI_SIG_PROPOSER = bytes32("PGG_MULTI_SIG_PROPOSER");
-
-  bytes32 public constant ROLE_ARBITRATOR_MANAGER = bytes32("arbitrator_manager");
-  bytes32 public constant ROLE_REVOKE_MANAGER = bytes32("revoke_manager");
 
   PGGConfig public pggConfig;
 
@@ -146,7 +146,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
   /* solium-disable-next-line */
   function external_call(address destination, uint value, uint dataLength, bytes memory data) private returns (bool) {
     if (destination == pggConfig.ggr().getGaltTokenAddress()) {
-      checkGaltLimits(data);
+      _checkGaltLimits(data);
     }
 
     bool result;
@@ -168,7 +168,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
     return result;
   }
 
-  function checkGaltLimits(bytes memory data) internal {
+  function _checkGaltLimits(bytes memory data) internal {
     uint256 galtValue;
 
     assembly {
@@ -210,7 +210,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
   }
 
   function checkGaltLimitsExternal(bytes calldata data) external {
-    checkGaltLimits(data);
+    _checkGaltLimits(data);
   }
 
   // GETTERS

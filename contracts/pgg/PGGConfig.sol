@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -252,7 +252,7 @@ contract PGGConfig is IPGGConfig {
     emit SetGlobalProposalSupport(_globalProposalId, _isSupported);
   }
 
-  // GETTERS (TODO: replace contract getters with interfaces only)
+  // GETTERS
 
   function getThresholdMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
     bytes32 methodName;
@@ -262,6 +262,14 @@ contract PGGConfig is IPGGConfig {
     }
 
     return keccak256(abi.encode(_destination, methodName));
+  }
+
+  function hasExternalRole(bytes32 _role, address _address) public view returns(bool) {
+    return externalRoles[_role].has(_address);
+  }
+
+  function hasInternalRole(bytes32 _role, address _address) public view returns(bool) {
+    return internalRoles[_role].has(_address);
   }
 
   function getMultiSig() external view returns (IPGGMultiSig) {
@@ -303,13 +311,5 @@ contract PGGConfig is IPGGConfig {
 
   function getInternalRoles(bytes32 _role) external view returns(address[] memory) {
     return internalRoles[_role].elements();
-  }
-
-  function hasExternalRole(bytes32 _role, address _address) public view returns(bool) {
-    return externalRoles[_role].has(_address);
-  }
-
-  function hasInternalRole(bytes32 _role, address _address) public view returns(bool) {
-    return internalRoles[_role].has(_address);
   }
 }

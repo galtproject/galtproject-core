@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -39,7 +39,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     bytes32[] oracleTypes;
   }
 
-  mapping(bytes32 => OracleDetails) oracleDetails;
+  mapping(uint256 => OracleDetails) oracleDetails;
 
   constructor() public {}
 
@@ -51,6 +51,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   {
     _initialize(_ggr);
   }
+
+  // CONFIG GETTERS
 
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
     return uint256(pggConfigValue(_pgg, CONFIG_MINIMAL_FEE_ETH));
@@ -74,6 +76,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     return PaymentMethod(uint256(pggConfigValue(_pgg, CONFIG_PAYMENT_METHOD)));
   }
 
+  // EXTERNAL
+
   function submit(
     address _pgg,
     address _oracleAddress,
@@ -87,7 +91,10 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     external
     payable
   {
-    bytes32 id = _generateId(_oracleTypes, _descriptionHashes, _name);
+    require(_descriptionHashes.length > 0, "Description hashes required");
+    require(_oracleTypes.length > 0, "Oracle Types required");
+
+    uint256 id = nextId();
 
     _submit(id, _pgg, _applicationFeeInGalt);
 
@@ -100,23 +107,11 @@ contract NewOracleManager is ArbitratorApprovableApplication {
     o.addr = _oracleAddress;
   }
 
-  function _generateId(bytes32[] memory _oracleTypes, bytes32[] memory _descriptionHashes, string memory _name) internal returns (bytes32) {
-    require(_descriptionHashes.length > 0, "Description hashes required");
-    require(_oracleTypes.length > 0, "Oracle Types required");
+  // INTERNAL
 
-    return keccak256(
-      abi.encodePacked(
-        msg.sender,
-        _name,
-        _descriptionHashes,
-        block.number
-      )
-    );
-  }
-
-  function _execute(bytes32 _id) internal {
-    OracleDetails storage d = oracleDetails[_id];
-    Application storage a = applications[_id];
+  function _execute(uint256 _aId) internal {
+    OracleDetails storage d = oracleDetails[_aId];
+    Application storage a = applications[_aId];
 
     pggConfig(a.pgg)
       .getOracles()
@@ -126,7 +121,7 @@ contract NewOracleManager is ArbitratorApprovableApplication {
   // GETTERS
 
   function getApplicationOracle(
-    bytes32 _id
+    uint256 _aId
   )
     external
     view
@@ -140,8 +135,8 @@ contract NewOracleManager is ArbitratorApprovableApplication {
       bytes32[] memory oracleTypes
     )
   {
-    OracleDetails storage o = oracleDetails[_id];
-    Application storage a = applications[_id];
+    OracleDetails storage o = oracleDetails[_aId];
+    Application storage a = applications[_aId];
 
     return (
       a.pgg,

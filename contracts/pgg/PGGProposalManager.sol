@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
@@ -20,11 +20,15 @@ import "./PGGConfig.sol";
 
 
 contract PGGProposalManager is IPGGProposalManager {
+  using SafeMath for uint256;
   using Counters for Counters.Counter;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
 
   uint256 public constant DECIMALS = 10**6;
+  uint256 public constant SPACE_REPUTATION_SHARE = 40;
+  uint256 public constant GALT_REPUTATION_SHARE = 30;
+  uint256 public constant STAKE_REPUTATION_SHARE = 30;
 
   event NewProposal(uint256 proposalId, address indexed creator, address indexed destination, bytes32 marker);
   event Approve(uint256 ayeShare, uint256 threshold);
@@ -34,6 +38,7 @@ contract PGGProposalManager is IPGGProposalManager {
     NULL,
     ACTIVE,
     APPROVED,
+    EXECUTED,
     REJECTED
   }
 
@@ -44,10 +49,20 @@ contract PGGProposalManager is IPGGProposalManager {
   }
 
   struct ProposalVoting {
-    ProposalStatus status;
+    uint256 creationBlock;
+    uint256 creationTotalSpaceSupply;
+    uint256 creationTotalGaltSupply;
+    uint256 creationTotalStakeSupply;
     mapping(address => Choice) participants;
-    ArraySet.AddressSet ayes;
-    ArraySet.AddressSet nays;
+    ChoiceAccounting aye;
+    ChoiceAccounting nay;
+  }
+
+  struct ChoiceAccounting {
+    uint256 totalSpace;
+    uint256 totalGalt;
+    uint256 totalStake;
+    ArraySet.AddressSet voters;
   }
 
   struct Proposal {
@@ -58,9 +73,10 @@ contract PGGProposalManager is IPGGProposalManager {
     bytes32 marker;
     bytes data;
     string description;
-    bool executed;
     bytes response;
   }
+
+  PGGConfig internal pggConfig;
 
   Counters.Counter internal idCounter;
 
@@ -69,7 +85,6 @@ contract PGGProposalManager is IPGGProposalManager {
 
   mapping(uint256 => Proposal) public proposals;
   mapping(uint256 => ProposalVoting) internal _proposalVotings;
-  PGGConfig internal pggConfig;
 
   // Cache
   ArraySet.Uint256Set private _activeProposals;
@@ -77,8 +92,14 @@ contract PGGProposalManager is IPGGProposalManager {
   mapping(uint256 => address) private _proposalToSender;
 
   modifier onlyMember() {
-    // TODO: define
-    //    require(rsra.balanceOf(msg.sender) > 0, "Not valid member");
+    uint256 blockNumber = block.number - 1;
+    address member = msg.sender;
+
+    bool hasSpace = pggConfig.getDelegateSpaceVoting().balanceOfDelegate(member) > 0;
+    bool hasGalt = pggConfig.getDelegateGaltVoting().balanceOfDelegate(member) > 0;
+    bool hasStake = pggConfig.getOracleStakes().balanceOf(member) > 0;
+
+    require(hasSpace || hasGalt || hasStake, "Not a valid member");
 
     _;
   }
@@ -87,6 +108,8 @@ contract PGGProposalManager is IPGGProposalManager {
     pggConfig = _pggConfig;
   }
 
+  // EXTERNAL
+
   function propose(
     address _destination,
     uint256 _value,
@@ -94,6 +117,7 @@ contract PGGProposalManager is IPGGProposalManager {
     string calldata _description
   )
     external
+    onlyMember
     returns(uint256)
   {
     idCounter.increment();
@@ -112,33 +136,33 @@ contract PGGProposalManager is IPGGProposalManager {
     _activeProposalsBySender[msg.sender].add(id);
     _proposalToSender[id] = msg.sender;
 
-    _proposalVotings[id].status = ProposalStatus.ACTIVE;
+    proposals[id].status = ProposalStatus.ACTIVE;
+
+    _cacheTotalSupplyValues(id);
 
     emit NewProposal(id, msg.sender, _destination, p.marker);
 
     return id;
   }
 
-  function aye(uint256 _proposalId) external onlyMember {
-    require(_proposalVotings[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
+  function aye(uint256 _proposalId) external {
+    require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _aye(_proposalId, msg.sender);
   }
 
-  function nay(uint256 _proposalId) external onlyMember {
-    require(_proposalVotings[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
+  function nay(uint256 _proposalId) external {
+    require(proposals[_proposalId].status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     _nay(_proposalId, msg.sender);
   }
 
   function triggerApprove(uint256 _proposalId) external {
-    ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
-    require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    Proposal storage p = proposals[_proposalId];
+    require(p.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     uint256 support = getAyeShare(_proposalId);
     assert(support <= DECIMALS);
-
-    Proposal storage p = proposals[_proposalId];
 
     uint256 threshold = pggConfig.thresholds(p.marker);
     if (threshold > 0) {
@@ -147,20 +171,21 @@ contract PGGProposalManager is IPGGProposalManager {
       require(support >= pggConfig.defaultProposalThreshold(), "Default threshold doesn't reached yet");
     }
 
-    proposalVoting.status = ProposalStatus.APPROVED;
+    p.status = ProposalStatus.APPROVED;
 
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _approvedProposals.push(_proposalId);
 
-    _execute(_proposalId);
+    emit Approve(support, threshold);
+
+    execute(_proposalId);
   }
 
   function triggerReject(uint256 _proposalId) external {
-    ProposalVoting storage proposalVoting = _proposalVotings[_proposalId];
     Proposal storage p = proposals[_proposalId];
 
-    require(proposalVoting.status == ProposalStatus.ACTIVE, "Proposal isn't active");
+    require(p.status == ProposalStatus.ACTIVE, "Proposal isn't active");
 
     uint256 threshold = pggConfig.thresholds(p.marker);
     uint256 nayShare = getNayShare(_proposalId);
@@ -172,7 +197,8 @@ contract PGGProposalManager is IPGGProposalManager {
       require(nayShare >= pggConfig.defaultProposalThreshold(), "Threshold doesn't reached yet");
     }
 
-    proposalVoting.status = ProposalStatus.REJECTED;
+    p.status = ProposalStatus.REJECTED;
+
     _activeProposals.remove(_proposalId);
     _activeProposalsBySender[_proposalToSender[_proposalId]].remove(_proposalId);
     _rejectedProposals.push(_proposalId);
@@ -180,38 +206,88 @@ contract PGGProposalManager is IPGGProposalManager {
     emit Reject(nayShare, threshold);
   }
 
-  // INTERNAL
-
-  function _execute(uint256 _proposalId) internal {
+  function execute(uint256 _proposalId) public {
     Proposal storage p = proposals[_proposalId];
 
-    require(p.executed == false, "Already executed");
+    require(p.status == ProposalStatus.APPROVED, "Proposal isn't APPROVED");
+
+    p.status = ProposalStatus.EXECUTED;
 
     (bool ok, bytes memory response) = address(p.destination)
       .call
       .value(p.value)
       .gas(gasleft() - 50000)(p.data);
 
-    p.executed = ok;
+    if (ok == false) {
+      p.status = ProposalStatus.APPROVED;
+    }
+
     p.response = response;
   }
 
+  // INTERNAL
+
   function _aye(uint256 _proposalId, address _voter) internal {
-    if (_proposalVotings[_proposalId].participants[_voter] == Choice.NAY) {
-      _proposalVotings[_proposalId].nays.remove(_voter);
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+    uint256 blockNumber = pV.creationBlock;
+
+    uint256 spaceBalance = pggConfig.getDelegateSpaceVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 galtBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 stakeBalance = pggConfig.getOracleStakes().balanceOfAt(_voter, blockNumber);
+
+    if (pV.participants[_voter] == Choice.NAY) {
+      pV.nay.totalSpace = pV.nay.totalSpace.sub(spaceBalance);
+      pV.nay.totalGalt = pV.nay.totalGalt.sub(galtBalance);
+      pV.nay.totalStake = pV.nay.totalStake.sub(stakeBalance);
+      pV.nay.voters.remove(_voter);
     }
 
-    _proposalVotings[_proposalId].participants[_voter] = Choice.AYE;
-    _proposalVotings[_proposalId].ayes.add(_voter);
+    pV.aye.totalSpace = pV.aye.totalSpace.add(spaceBalance);
+    pV.aye.totalGalt = pV.aye.totalGalt.add(galtBalance);
+    pV.aye.totalStake = pV.aye.totalStake.add(stakeBalance);
+    pV.aye.voters.add(_voter);
+
+    pV.participants[_voter] = Choice.AYE;
   }
 
   function _nay(uint256 _proposalId, address _voter) internal {
-    if (_proposalVotings[_proposalId].participants[_voter] == Choice.AYE) {
-      _proposalVotings[_proposalId].ayes.remove(_voter);
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+    uint256 blockNumber = pV.creationBlock;
+
+    uint256 spaceBalance = pggConfig.getDelegateSpaceVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 galtBalance = pggConfig.getDelegateGaltVoting().balanceOfDelegateAt(_voter, blockNumber);
+    uint256 stakeBalance = pggConfig.getOracleStakes().balanceOfAt(_voter, blockNumber);
+
+    if (pV.participants[_voter] == Choice.AYE) {
+      pV.aye.totalSpace = pV.aye.totalSpace.sub(spaceBalance);
+      pV.aye.totalGalt = pV.aye.totalGalt.sub(galtBalance);
+      pV.aye.totalStake = pV.aye.totalStake.sub(stakeBalance);
+      pV.aye.voters.remove(_voter);
     }
 
-    _proposalVotings[_proposalId].participants[msg.sender] = Choice.NAY;
-    _proposalVotings[_proposalId].nays.add(msg.sender);
+    pV.nay.totalSpace = pV.nay.totalSpace.add(spaceBalance);
+    pV.nay.totalGalt = pV.nay.totalGalt.add(galtBalance);
+    pV.nay.totalStake = pV.nay.totalStake.add(stakeBalance);
+    pV.nay.voters.add(_voter);
+
+    pV.participants[_voter] = Choice.NAY;
+  }
+
+  function _cacheTotalSupplyValues(uint256 _id) internal {
+    ProposalVoting storage pV = _proposalVotings[_id];
+
+    uint256 blockNumber = block.number.sub(1);
+
+    uint256 totalSpaceSupply = pggConfig.getDelegateSpaceVoting().totalDelegateSupplyAt(blockNumber);
+    uint256 totalGaltSupply = pggConfig.getDelegateGaltVoting().totalDelegateSupplyAt(blockNumber);
+    uint256 totalStakeSupply = pggConfig.getOracleStakes().totalSupplyAt(blockNumber);
+
+    require((totalSpaceSupply + totalGaltSupply + totalStakeSupply) > 0, "Total reputation is 0");
+
+    pV.creationBlock = blockNumber;
+    pV.creationTotalSpaceSupply = totalSpaceSupply;
+    pV.creationTotalGaltSupply = totalGaltSupply;
+    pV.creationTotalStakeSupply = totalStakeSupply;
   }
 
   function _onNewProposal(uint256 _proposalId) internal {
@@ -220,44 +296,27 @@ contract PGGProposalManager is IPGGProposalManager {
     _proposalToSender[_proposalId] = msg.sender;
   }
 
-  // GETTERS
-  function getThreshold(uint256 _proposalId) external view returns (uint256) {
-    uint256 custom = pggConfig.thresholds(proposals[_proposalId].marker);
+  function getShare(ProposalVoting storage pV, ChoiceAccounting storage cA) internal view returns (uint256) {
+    uint256 spaceShare = 0;
+    uint256 glatShare = 0;
+    uint256 stakeShare = 0;
 
-    if (custom > 0) {
-      return custom;
-    } else {
-      return pggConfig.defaultProposalThreshold();
+    if (cA.totalSpace > 0) {
+      spaceShare = cA.totalSpace * DECIMALS * SPACE_REPUTATION_SHARE / pV.creationTotalSpaceSupply;
     }
+
+    if (cA.totalGalt > 0) {
+      glatShare = cA.totalGalt * DECIMALS * GALT_REPUTATION_SHARE / pV.creationTotalGaltSupply;
+    }
+
+    if (cA.totalStake > 0) {
+      stakeShare = cA.totalStake * DECIMALS * STAKE_REPUTATION_SHARE / pV.creationTotalStakeSupply;
+    }
+
+    return (spaceShare + glatShare + stakeShare) / 100;
   }
 
-  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return pggConfig
-      .getMultiSigCandidateTop()
-      .getHolderWeights(_proposalVotings[_proposalId].ayes.elements());
-  }
-
-  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
-    return pggConfig
-      .getMultiSigCandidateTop()
-      .getHolderWeights(_proposalVotings[_proposalId].nays.elements());
-  }
-
-  function getActiveProposals() public view returns (uint256[] memory) {
-    return _activeProposals.elements();
-  }
-
-  function getActiveProposalsCount() public view returns (uint256) {
-    return _activeProposals.size();
-  }
-
-  function getActiveProposalsBySender(address _sender) external view returns (uint256[] memory) {
-    return _activeProposalsBySender[_sender].elements();
-  }
-
-  function getActiveProposalsBySenderCount(address _sender) external view returns (uint256) {
-    return _activeProposalsBySender[_sender].size();
-  }
+  // GETTERS
 
   function getApprovedProposals() public view returns (uint256[] memory) {
     return _approvedProposals;
@@ -279,36 +338,126 @@ contract PGGProposalManager is IPGGProposalManager {
     return string(proposals[_proposalId].response);
   }
 
+  function getAyeShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+
+    return getShare(pV, pV.aye);
+  }
+
+  function getNayShare(uint256 _proposalId) public view returns (uint256 approvedShare) {
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+
+    return getShare(pV, pV.nay);
+  }
+
+  function getActiveProposals() public view returns (uint256[] memory) {
+    return _activeProposals.elements();
+  }
+
+  function getActiveProposalsCount() public view returns (uint256) {
+    return _activeProposals.size();
+  }
+
+  function getThreshold(uint256 _proposalId) external view returns (uint256) {
+    uint256 custom = pggConfig.thresholds(proposals[_proposalId].marker);
+
+    if (custom > 0) {
+      return custom;
+    } else {
+      return pggConfig.defaultProposalThreshold();
+    }
+  }
+
+  function getActiveProposalsBySender(address _sender) external view returns (uint256[] memory) {
+    return _activeProposalsBySender[_sender].elements();
+  }
+
+  function getActiveProposalsBySenderCount(address _sender) external view returns (uint256) {
+    return _activeProposalsBySender[_sender].size();
+  }
+
   function getProposalVoting(
     uint256 _proposalId
   )
     external
     view
     returns (
-      ProposalStatus status,
-      address[] memory ayes,
-      address[] memory nays
+      uint256 creationBlock,
+      uint256 creationTotalSpaceSupply,
+      uint256 creationTotalGaltSupply,
+      uint256 creationTotalStakeSupply
     )
   {
-    ProposalVoting storage p = _proposalVotings[_proposalId];
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
 
-    return (p.status, p.ayes.elements(), p.nays.elements());
+    return (
+      pV.creationBlock,
+      pV.creationTotalSpaceSupply,
+      pV.creationTotalGaltSupply,
+      pV.creationTotalStakeSupply
+    );
   }
 
-  function getProposalStatus(
+  function getProposalVotingAyeChoice(
     uint256 _proposalId
   )
     external
     view
     returns (
-      ProposalStatus status,
-      uint256 ayesCount,
-      uint256 naysCount
+      uint256 space,
+      uint256 galt,
+      uint256 stake,
+      address[] memory voters
     )
   {
-    ProposalVoting storage p = _proposalVotings[_proposalId];
+    ChoiceAccounting storage cA = _proposalVotings[_proposalId].aye;
 
-    return (p.status, p.ayes.size(), p.nays.size());
+    return (
+      cA.totalSpace,
+      cA.totalGalt,
+      cA.totalStake,
+      cA.voters.elements()
+    );
+  }
+
+  function getProposalVotingNayChoice(
+    uint256 _proposalId
+  )
+    external
+    view
+    returns (
+      uint256 space,
+      uint256 galt,
+      uint256 stake,
+      address[] memory voters
+    )
+  {
+    ChoiceAccounting storage cA = _proposalVotings[_proposalId].nay;
+
+    return (
+      cA.totalSpace,
+      cA.totalGalt,
+      cA.totalStake,
+      cA.voters.elements()
+    );
+  }
+
+  function getProposalVoters(
+    uint256 _proposalId
+  )
+    external
+    view
+    returns (
+      address[] memory ayes,
+      address[] memory nays
+    )
+  {
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+
+    return (
+      pV.aye.voters.elements(),
+      pV.nay.voters.elements()
+    );
   }
 
   function getParticipantProposalChoice(uint256 _proposalId, address _participant) external view returns (Choice) {

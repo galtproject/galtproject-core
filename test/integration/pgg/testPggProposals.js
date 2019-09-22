@@ -24,7 +24,8 @@ const ProposalStatus = {
   NULL: 0,
   ACTIVE: 1,
   APPROVED: 2,
-  REJECTED: 3
+  EXECUTED: 3,
+  REJECTED: 4
 };
 
 contract('PGG Proposals', accounts => {
@@ -156,6 +157,11 @@ contract('PGG Proposals', accounts => {
         await this.pgg.config.SET_THRESHOLD_SIGNATURE()
       );
       const proposeData = this.pgg.config.contract.methods.setThreshold(key, 420000).encodeABI();
+      await assertRevert(
+        this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
+          from: coreTeam
+        })
+      );
       let res = await this.pgg.proposalManager.propose(this.pgg.config.address, 0, proposeData, 'its better', {
         from: alice
       });
@@ -183,10 +189,9 @@ contract('PGG Proposals', accounts => {
 
       res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.description, 'its better');
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -237,10 +242,9 @@ contract('PGG Proposals', accounts => {
 
       res = await this.pgg.proposalManager.proposals(proposalId);
       assert.equal(res.description, 'its better');
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -287,10 +291,9 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.triggerApprove(proposalId);
 
       res = await this.pgg.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -337,10 +340,9 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.triggerApprove(proposalId);
 
       res = await this.pgg.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -388,11 +390,8 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.triggerApprove(proposalId);
 
       res = await this.pgg.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
       assert.equal(res.description, 'they cheated');
-
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
 
       res = await this.pgg.multiSig.getOwners();
       assert.sameMembers(res, []);
@@ -433,10 +432,9 @@ contract('PGG Proposals', accounts => {
       await this.pgg.proposalManager.triggerApprove(proposalId);
 
       res = await this.pgg.proposalManager.proposals(proposalId);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
 
-      res = await this.pgg.proposalManager.getProposalVoting(proposalId);
-      assert.equal(res.status, ProposalStatus.APPROVED);
+      res = await this.pgg.proposalManager.getProposalVoters(proposalId);
       assert.sameMembers(res.ayes, [alice, charlie]);
       assert.sameMembers(res.nays, [bob]);
 
@@ -479,7 +477,7 @@ contract('PGG Proposals', accounts => {
 
       assert.equal(res.destination, this.globalGovernance.address);
       assert.equal(res.value, 0);
-      assert.equal(res.executed, true);
+      assert.equal(res.status, ProposalStatus.EXECUTED);
       assert.equal(res.data, proposeData);
       assert.equal(res.description, 'its better');
 

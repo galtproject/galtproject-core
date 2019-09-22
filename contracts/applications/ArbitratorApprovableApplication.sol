@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
@@ -26,16 +26,16 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event NewApplication(address indexed applicant, bytes32 applicationId);
-  event ApplicationStatusChanged(bytes32 indexed applicationId, ApplicationStatus indexed status);
-  event ArbitratorSlotTaken(bytes32 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
-  event Aye(bytes32 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
-  event Nay(bytes32 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
-  event ArbitratorRewardClaim(bytes32 indexed applicationId, address indexed oracle);
-  event GaltProtocolFeeAssigned(bytes32 indexed applicationId);
+  event NewApplication(address indexed applicant, uint256 applicationId);
+  event ApplicationStatusChanged(uint256 indexed applicationId, ApplicationStatus indexed status);
+  event ArbitratorSlotTaken(uint256 indexed applicationId, uint256 slotsTaken, uint256 totalSlots);
+  event Aye(uint256 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
+  event Nay(uint256 indexed applicationId, uint256 indexed ayeCount, uint256 nayCount, uint256 threshold);
+  event ArbitratorRewardClaim(uint256 indexed applicationId, address indexed oracle);
+  event GaltProtocolFeeAssigned(uint256 indexed applicationId);
 
   struct Application {
-    bytes32 id;
+    uint256 id;
     address pgg;
     address applicant;
 
@@ -78,21 +78,33 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     bool galtProtocolFeePaidOut;
   }
 
-  mapping(bytes32 => Application) internal applications;
+  mapping(uint256 => Application) internal applications;
 
   constructor() public {}
 
-  function _execute(bytes32) internal;
+  function _initialize(
+    GaltGlobalRegistry _ggr
+  )
+    internal
+  {
+    ggr = _ggr;
+  }
+
+  // CONFIG GETTERS
+
+  function _execute(uint256) internal;
   function minimalApplicationFeeEth(address _pgg) internal view returns (uint256);
   function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256);
   function m(address _pgg) public view returns (uint256);
   function n(address _pgg) public view returns (uint256);
 
+  // EXTERNAL
+
   /**
    * @dev Any arbitrator locks an application if an empty slots available
    * @param _aId Application ID
    */
-  function lock(bytes32 _aId) external {
+  function lock(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     pggRegistry().requireValidPgg(a.pgg);
@@ -107,7 +119,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit ArbitratorSlotTaken(_aId, a.arbitrators.size(), n(a.pgg));
   }
 
-  function aye(bytes32 _aId) external {
+  function aye(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -125,13 +137,13 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit Aye(_aId, a.ayeCount, a.nayCount, a.m);
 
     if (a.ayeCount == a.m) {
-      _execute(_aId);
-      calculateAndStoreAuditorRewards(a);
       a.status = ApplicationStatus.APPROVED;
+      _execute(_aId);
+      _calculateAndStoreAuditorRewards(a);
     }
   }
 
-  function nay(bytes32 _aId) external {
+  function nay(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     require(a.status == ApplicationStatus.SUBMITTED, "SUBMITTED claim status required");
@@ -149,12 +161,12 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit Nay(_aId, a.ayeCount, a.nayCount, a.m);
 
     if (a.nayCount == a.m) {
-      calculateAndStoreAuditorRewards(a);
+      _calculateAndStoreAuditorRewards(a);
       a.status = ApplicationStatus.REJECTED;
     }
   }
 
-  function claimArbitratorReward(bytes32 _aId) external {
+  function claimArbitratorReward(uint256 _aId) external {
     Application storage a = applications[_aId];
 
     require(
@@ -176,6 +188,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     emit ArbitratorRewardClaim(_aId, msg.sender);
   }
 
+  // INTERNAL
+
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.rewards.currency == Currency.ETH) {
@@ -189,18 +203,8 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
     }
   }
 
-  // INTERNALS
-
-  function _initialize(
-    GaltGlobalRegistry _ggr
-  )
-    internal
-  {
-    ggr = _ggr;
-  }
-
   function _submit(
-    bytes32 _id,
+    uint256 _aId,
     address _pgg,
     uint256 _applicationFeeInGalt
   )
@@ -228,11 +232,10 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       currency = Currency.GALT;
     }
 
-    // TODO: use storage instead
-    Application storage a = applications[_id];
+    Application storage a = applications[_aId];
     require(a.status == ApplicationStatus.NOT_EXISTS, "Application already exists");
 
-    a.id = _id;
+    a.id = _aId;
     a.status = ApplicationStatus.SUBMITTED;
     a.pgg = _pgg;
     a.applicant = msg.sender;
@@ -242,16 +245,15 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
 
     a.rewards.currency = currency;
 
-    calculateAndStoreFee(a, fee);
+    _calculateAndStoreFee(a, fee);
 
-    applicationsArray.push(_id);
-    applicationsByApplicant[msg.sender].push(_id);
+    applicationsByApplicant[msg.sender].push(_aId);
 
-    emit NewApplication(msg.sender, _id);
-    emit ApplicationStatusChanged(_id, ApplicationStatus.SUBMITTED);
+    emit NewApplication(msg.sender, _aId);
+    emit ApplicationStatusChanged(_aId, ApplicationStatus.SUBMITTED);
   }
 
-  function calculateAndStoreFee(
+  function _calculateAndStoreFee(
     Application storage _a,
     uint256 _fee
   )
@@ -280,17 +282,17 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   }
 
   // NOTICE: in case 100 ether / 3, each arbitrator will receive 33.33... ether and 1 wei will remain on contract
-  function calculateAndStoreAuditorRewards (Application storage c) internal {
-    uint256 len = c.arbitrators.size();
-    uint256 rewardSize = c.rewards.arbitratorsReward.div(len);
+  function _calculateAndStoreAuditorRewards(Application storage _a) internal {
+    uint256 len = _a.arbitrators.size();
+    uint256 rewardSize = _a.rewards.arbitratorsReward.div(len);
 
-    c.rewards.arbitratorReward = rewardSize;
+    _a.rewards.arbitratorReward = rewardSize;
   }
 
   // GETTERS
 
   function getApplication(
-    bytes32 _id
+    uint256 _aId
   )
     external
     view
@@ -305,7 +307,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       uint256 createdAt
     )
   {
-    Application storage m = applications[_id];
+    Application storage m = applications[_aId];
 
     return (
       m.status,
@@ -320,7 +322,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
   }
 
   function getApplicationRewards(
-    bytes32 _id
+    uint256 _aId
   )
     external
     view
@@ -331,7 +333,7 @@ contract ArbitratorApprovableApplication is AbstractArbitratorApplication, Statu
       bool galtProtocolFeePaidOut
     )
   {
-    Rewards storage f = applications[_id].rewards;
+    Rewards storage f = applications[_aId].rewards;
 
     return (
       f.currency,

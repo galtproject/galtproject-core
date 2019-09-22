@@ -11,11 +11,10 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGOracleStakeVoting.sol";
@@ -24,7 +23,6 @@ import "./interfaces/IPGGOracleStakeVoting.sol";
 contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
-  using AddressLinkedList for AddressLinkedList.Data;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
@@ -45,11 +43,6 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     uint256 limit
   );
 
-  // Oracle address => Oracle details
-  mapping(address => Oracle) private oracles;
-  // Oracle Candidate => totalWeights
-  mapping(address => uint256) private _candidateReputation;
-
   struct Oracle {
     address candidate;
     uint256 reputation;
@@ -57,7 +50,12 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
 
   uint256 private _totalReputation;
 
-  IPGGConfig pggConfig;
+  IPGGConfig internal pggConfig;
+
+  // Oracle address => Oracle details
+  mapping(address => Oracle) private oracles;
+  // Oracle Candidate => totalWeights
+  mapping(address => uint256) private _candidateReputation;
 
   modifier onlyInternalRole(bytes32 _role) {
     require(
@@ -76,9 +74,11 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     pggConfig = _pggConfig;
   }
 
+  // EXTERNAL
+
   // 'Oracle Stake Locking' accounting only inside this contract
   function vote(address _candidate) external {
-    // TODO: check oracle is activev
+    pggConfig.getOracles().requireOracleActive(msg.sender);
 
     uint256 newReputation = uint256(pggConfig.getOracleStakes().balanceOf(msg.sender));
     require(newReputation > 0, "Reputation is 0");
@@ -135,6 +135,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
     // _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate] - reputationBefore + _reputationAfter;
     _candidateReputation[currentCandidate] = _candidateReputation[currentCandidate].add(_oracleReputationAfter).sub(oracleReputationBefore);
   }
+
+  // GETTERS
 
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation) {
     Oracle storage oracle = oracles[_oracle];

@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "../pgg/PGGMultiSig.sol";
 import "../registries/PGGRegistry.sol";
@@ -19,7 +19,7 @@ import "./AbstractApplication.sol";
 
 
 contract AbstractArbitratorApplication is AbstractApplication {
-  mapping(address => bytes32[]) public applicationsByArbitrator;
+  mapping(address => uint256[]) public applicationsByArbitrator;
 
   modifier anyArbitrator(address _pgg) {
     require(pggConfig(_pgg).getMultiSig().isOwner(msg.sender), "Not active arbitrator");
@@ -28,9 +28,9 @@ contract AbstractArbitratorApplication is AbstractApplication {
 
   constructor() public {}
 
-  function claimArbitratorReward(bytes32 _aId) external;
+  function claimArbitratorReward(uint256 _aId) external;
 
-  function getApplicationsByArbitrator(address _arbitrator) external view returns (bytes32[] memory) {
+  function getApplicationsByArbitrator(address _arbitrator) external view returns (uint256[] memory) {
     return applicationsByArbitrator[_arbitrator];
   }
 }

@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -25,8 +25,8 @@ contract GaltLocker is ILocker, IGaltLocker {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
-  event ReputationMint(address gra);
-  event ReputationBurn(address gra);
+  event ReputationMint(address indexed gra);
+  event ReputationBurn(address indexed gra);
   event Deposit(uint256 amount);
   event Withdrawal(uint256 amount);
   event TransferExtra(address indexed to, uint256 amount);
@@ -37,11 +37,6 @@ contract GaltLocker is ILocker, IGaltLocker {
   GaltGlobalRegistry private ggr;
   ArraySet.AddressSet private gras;
 
-  constructor(GaltGlobalRegistry _ggr, address _owner) public {
-    owner = _owner;
-    ggr = _ggr;
-  }
-
   modifier reputationAndBalanceEqual() {
     require(ggr.getGaltToken().balanceOf(address(this)) == reputation, "Reputation and balance are not equal");
     _;
@@ -50,6 +45,11 @@ contract GaltLocker is ILocker, IGaltLocker {
   modifier onlyOwner() {
     require(isOwner(), "Not the locker owner");
     _;
+  }
+
+  constructor(GaltGlobalRegistry _ggr, address _owner) public {
+    owner = _owner;
+    ggr = _ggr;
   }
 
   // deposit allowed only when there are no any gra in the minted list
@@ -106,6 +106,10 @@ contract GaltLocker is ILocker, IGaltLocker {
 
   // GETTERS
 
+  function isOwner() public view returns (bool) {
+    return msg.sender == owner;
+  }
+
   function isMinted(address _gra) external returns (bool) {
     return gras.has(_gra);
   }
@@ -116,9 +120,5 @@ contract GaltLocker is ILocker, IGaltLocker {
 
   function getGrasCount() external returns (uint256) {
     return gras.size();
-  }
-
-  function isOwner() public view returns (bool) {
-    return msg.sender == owner;
   }
 }

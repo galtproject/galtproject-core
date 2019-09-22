@@ -11,12 +11,16 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./interfaces/IFeeRegistry.sol";
 
 
+/**
+ * @title Fee Registry.
+ * @notice Tracks fees and payment methods for protocol contracts.
+ */
 contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
   event SetEthFee(bytes32 indexed key, uint256 amount);
   event SetGaltFee(bytes32 indexed key, uint256 amount);
@@ -34,6 +38,8 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
 
   function initialize() public isInitializer {
   }
+
+  // EXTERNAL
 
   function setEthFee(bytes32 _key, uint256 _amount) external onlyOwner {
     ethFees[_key] = _amount;

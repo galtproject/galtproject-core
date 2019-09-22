@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
@@ -39,6 +39,14 @@ contract StakeTracker is IStakeTracker, Initializable {
   // PGG => totalStaked
   mapping(address => uint256) internal _pggStakes;
 
+  modifier onlyValidOracleStakeAccounting(address _pgg) {
+    IPGGRegistry(ggr.getPggRegistryAddress())
+    .getPggConfig(_pgg)
+    .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
+
+    _;
+  }
+
   function initialize(
     GaltGlobalRegistry _ggr
   )
@@ -46,14 +54,6 @@ contract StakeTracker is IStakeTracker, Initializable {
     isInitializer
   {
     ggr = _ggr;
-  }
-
-  modifier onlyValidOracleStakeAccounting(address _pgg) {
-    IPGGRegistry(ggr.getPggRegistryAddress())
-      .getPggConfig(_pgg)
-      .hasExternalRole(MULTI_SIG_ROLE, msg.sender);
-
-    _;
   }
 
   function onChange(address _pgg, uint256 _pggStakesAfter) external onlyValidOracleStakeAccounting(_pgg) {

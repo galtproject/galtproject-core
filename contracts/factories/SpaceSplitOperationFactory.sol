@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "../interfaces/ISpaceSplitOperationFactory.sol";
 import "../interfaces/ISpaceToken.sol";
@@ -22,7 +22,7 @@ import "../registries/GaltGlobalRegistry.sol";
 
 contract SpaceSplitOperationFactory is ISpaceSplitOperationFactory {
 
-  GaltGlobalRegistry ggr;
+  GaltGlobalRegistry internal ggr;
 
   constructor(GaltGlobalRegistry _ggr) public {
     ggr = _ggr;

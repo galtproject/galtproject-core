@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
@@ -52,12 +52,6 @@ contract PGGOracles is IPGGOracles {
   // exists or not.
   mapping(bytes32 => ArraySet.AddressSet) internal oraclesByTypeCache;
 
-  constructor(IPGGConfig _pggConfig) public {
-    pggConfig = _pggConfig;
-  }
-
-  // MODIFIERS
-
   modifier onlyOracleModifier() {
     require(
       pggConfig.ggr().getACL().hasRole(msg.sender, ROLE_ORACLE_MODIFIER),
@@ -67,7 +61,12 @@ contract PGGOracles is IPGGOracles {
     _;
   }
 
-  // >>> Oracles management
+  constructor(IPGGConfig _pggConfig) public {
+    pggConfig = _pggConfig;
+  }
+
+  // MODIFIERS
+
   function addOracle(
     address _oracle,
     string calldata _name,
@@ -95,7 +94,6 @@ contract PGGOracles is IPGGOracles {
 
     for (uint256 i = 0; i < _oracleTypes.length; i++) {
       bytes32 _oracleType = _oracleTypes[i];
-      // TODO: check pggConfig for roleShare > 0
       o.assignedOracleTypes.add(_oracleType);
       oraclesByTypeCache[_oracleType].addSilent(_oracle);
 
@@ -182,23 +180,25 @@ contract PGGOracles is IPGGOracles {
   }
 
   function getOracle(
-    address oracle
+    address _oracle
   )
     external
     view
     returns (
       bytes32 position,
       string memory name,
+      string memory description,
       bytes32[] memory descriptionHashes,
       bytes32[] memory assignedOracleTypes,
       bool active
     )
   {
-    Oracle storage o = oracleDetails[oracle];
+    Oracle storage o = oracleDetails[_oracle];
 
     return (
       o.position,
       o.name,
+      o.description,
       o.descriptionHashes,
       o.assignedOracleTypes.elements(),
       o.active

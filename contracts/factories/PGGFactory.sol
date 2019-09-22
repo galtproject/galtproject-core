@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
@@ -41,32 +41,35 @@ import "./pgg/PGGProposalManagerFactory.sol";
 
 
 contract PGGFactory is Initializable {
+  bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
+  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
+
   event BuildPGGFirstStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggConfig,
     address pggMultiSig,
     address pggOracleStakeAccounting
   );
 
   event BuildPGGSecondStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggArbitratorStakeAccounting,
     address pggMultiSigCandidateTop
   );
 
-  event BuildPGGThirdStep();
-  event BuildPGGThirdStepDone();
+  event BuildPGGThirdStep(bytes32 indexed groupId);
+  event BuildPGGThirdStepDone(bytes32 indexed groupId);
   event BuildPGGFourthStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggDelegateSpaceVoting,
     address pggDelegateGaltVoting,
     address pggOracleStakeVoting
   );
-  event BuildPGGFifthStep();
-  event BuildPGGFifthStepDone();
+  event BuildPGGFifthStep(bytes32 indexed groupId);
+  event BuildPGGFifthStepDone(bytes32 indexed groupId);
 
   event BuildPGGSixthStep(
-    bytes32 groupId,
+    bytes32 indexed groupId,
     address pggOracles,
     address pggProposalManager
   );
@@ -80,9 +83,6 @@ contract PGGFactory is Initializable {
     SIXTH,
     DONE
   }
-
-  bytes32 public constant FEE_KEY = bytes32("PGG_FACTORY");
-  bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
 
   struct PGGContractGroup {
     address creator;
@@ -123,6 +123,14 @@ contract PGGFactory is Initializable {
 
   mapping(bytes32 => PGGContractGroup) internal pggs;
 
+  modifier onlyFeeCollector() {
+    require(
+      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
+      "Only FEE_COLLECTOR role allowed"
+    );
+    _;
+  }
+
   constructor (
     GaltGlobalRegistry _ggr,
     PGGMultiSigFactory _pggMultiSigFactory,
@@ -147,14 +155,6 @@ contract PGGFactory is Initializable {
     pggProposalManagerFactory = _pggProposalManagerFactory;
 
     ggr = _ggr;
-  }
-
-  modifier onlyFeeCollector() {
-    require(
-      ggr.getACL().hasRole(msg.sender, ROLE_FEE_COLLECTOR),
-      "Only FEE_COLLECTOR role allowed"
-    );
-    _;
   }
 
   function _acceptPayment() internal {
@@ -253,7 +253,7 @@ contract PGGFactory is Initializable {
     }
     g.pggConfig.removeInternalRole(address(this), g.pggConfig.APPLICATION_CONFIG_MANAGER());
 
-    emit BuildPGGThirdStep();
+    emit BuildPGGThirdStep(_groupId);
   }
 
   function buildThirdStepDone(
@@ -267,7 +267,7 @@ contract PGGFactory is Initializable {
 
     g.nextStep = Step.FOURTH;
 
-    emit BuildPGGThirdStepDone();
+    emit BuildPGGThirdStepDone(_groupId);
   }
 
   function buildFourthStep(
@@ -327,7 +327,7 @@ contract PGGFactory is Initializable {
 
     g.pggConfig.removeInternalRole(address(this), g.pggConfig.THRESHOLD_MANAGER());
 
-    emit BuildPGGFifthStep();
+    emit BuildPGGFifthStep(_groupId);
   }
 
   function buildFifthStepDone(
@@ -341,7 +341,7 @@ contract PGGFactory is Initializable {
 
     g.nextStep = Step.SIXTH;
 
-    emit BuildPGGFifthStepDone();
+    emit BuildPGGFifthStepDone(_groupId);
   }
 
   function buildSixthStep(
@@ -405,6 +405,8 @@ contract PGGFactory is Initializable {
     IERC20 galtToken = ggr.getGaltToken();
     galtToken.transfer(msg.sender, galtToken.balanceOf(address(this)));
   }
+
+  // GETTERS
 
   function getGroup(bytes32 _groupId) external view returns (Step nextStep, address creator) {
     PGGContractGroup storage g = pggs[_groupId];

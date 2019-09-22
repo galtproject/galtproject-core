@@ -11,20 +11,23 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../../collections/AddressLinkedList.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGDelegateReputationVoting.sol";
+import "../../Checkpointable.sol";
 
 
-contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
+contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpointable {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
-  using AddressLinkedList for AddressLinkedList.Data;
+
+  // limit for Reputation delegation
+  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
+  uint256 private constant DECIMALS = 10**6;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
@@ -36,18 +39,6 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     uint256 limit
   );
 
-  // limit for Reputation delegation
-  uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
-  uint256 private constant DECIMALS = 10**6;
-
-  // Initially all reputation minted both to delegate and candidate balances
-  // Delegate => distribution details
-  mapping(address => Delegate) private delegatedReputation;
-  // Delegate => locked (in RA contract)
-  mapping(address => uint256) private lockedReputation;
-  // Candidate => balance
-  mapping(address => uint256) private reputationBalance;
-
   struct Delegate {
     mapping(address => uint256) distributedReputation;
     ArraySet.AddressSet candidates;
@@ -57,6 +48,23 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
   uint256 public totalReputation;
 
   IPGGConfig internal pggConfig;
+
+  // Initially all reputation minted both to delegate and candidate balances
+  // Delegate => distribution details
+  mapping(address => Delegate) private delegatedReputation;
+  // Delegate => locked (in RA contract)
+  mapping(address => uint256) private lockedReputation;
+  // Candidate => balance
+  mapping(address => uint256) private reputationBalance;
+
+  modifier onlySpaceReputationNotifier() {
+    require(
+      pggConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
+      "Invalid notifier"
+    );
+
+    _;
+  }
 
   constructor(
     IPGGConfig _pggConfig,
@@ -68,14 +76,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     roleReputationNotifier = _roleSpaceReputationNotifier;
   }
 
-  modifier onlySpaceReputationNotifier() {
-    require(
-      pggConfig.ggr().getACL().hasRole(msg.sender, roleReputationNotifier),
-      "Invalid notifier"
-    );
-
-    _;
-  }
+  // EXTERNAL
 
   function grantReputation(address _candidate, uint256 _amount) external {
     require(lockedReputation[msg.sender] >= _amount, "Not enough reputation");
@@ -120,7 +121,7 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     }
   }
 
-  // @dev SpaceOwner balance changed
+  // @notice SpaceOwner balance changed
   function onDelegateReputationChanged(
     address _delegate,
     uint256 _newLocked
@@ -186,7 +187,12 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
 
       _revokeDelegatedReputation(_delegate, remainder);
     }
+
+    _updateValueAtNow(_cachedBalances[_delegate], lockedReputation[_delegate]);
+    _updateValueAtNow(_cachedTotalSupply, totalReputation);
   }
+
+  // INTERNAL
 
   function _revokeDelegatedReputation(address _delegate, uint256 _revokeAmount) internal {
     address[] memory candidatesToRevoke = delegatedReputation[_delegate].candidates.elements();
@@ -225,12 +231,18 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
     }
   }
 
+  // GETTERS
+
   function totalSupply() external view returns(uint256) {
     return totalReputation;
   }
 
   function balanceOf(address _candidate) external view returns(uint256) {
     return reputationBalance[_candidate];
+  }
+
+  function balanceOfDelegate(address _delegate) external view returns(uint256) {
+    return lockedReputation[_delegate];
   }
 
   function shareOf(address _candidate, uint256 _decimals) external view returns(uint256) {
@@ -251,5 +263,13 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting {
 
     // return (lockedReputation[_delegate] * _decimals) / totalReputation;
     return lockedReputation[_delegate].mul(_decimals).div(totalReputation);
+  }
+
+  function balanceOfDelegateAt(address _delegate, uint256 _blockNumber) external view returns (uint256) {
+    return _balanceOfAt(_delegate, _blockNumber);
+  }
+
+  function totalDelegateSupplyAt(uint256 _blockNumber) external view returns (uint256) {
+    return _totalSupplyAt(_blockNumber);
   }
 }

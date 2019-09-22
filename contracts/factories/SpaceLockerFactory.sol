@@ -11,7 +11,7 @@
  * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
  */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
@@ -23,20 +23,14 @@ import "../SpaceLocker.sol";
 
 
 contract SpaceLockerFactory is ISpaceLockerFactory {
-  event NewSpaceLocker(address owner, address locker);
-  event EthFeeWithdrawal(address collector, uint256 amount);
-  event GaltFeeWithdrawal(address collector, uint256 amount);
+  event NewSpaceLocker(address indexed owner, address locker);
+  event EthFeeWithdrawal(address indexed collector, uint256 amount);
+  event GaltFeeWithdrawal(address indexed collector, uint256 amount);
 
   bytes32 public constant FEE_KEY = bytes32("SPACE_LOCKER_FACTORY");
   bytes32 public constant ROLE_FEE_COLLECTOR = bytes32("FEE_COLLECTOR");
 
   GaltGlobalRegistry internal ggr;
-
-  constructor (
-    GaltGlobalRegistry _ggr
-  ) public {
-    ggr = _ggr;
-  }
 
   modifier onlyFeeCollector() {
     require(
@@ -46,14 +40,10 @@ contract SpaceLockerFactory is ISpaceLockerFactory {
     _;
   }
 
-  function _acceptPayment() internal {
-    if (msg.value == 0) {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
-      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
-    } else {
-      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
-      require(msg.value == fee, "Fee and msg.value not equal");
-    }
+  constructor (
+    GaltGlobalRegistry _ggr
+  ) public {
+    ggr = _ggr;
   }
 
   function build() external payable returns (ISpaceLocker) {
@@ -83,5 +73,17 @@ contract SpaceLockerFactory is ISpaceLockerFactory {
     galtToken.transfer(msg.sender, balance);
 
     emit GaltFeeWithdrawal(msg.sender, balance);
+  }
+
+  // INTERNAL
+
+  function _acceptPayment() internal {
+    if (msg.value == 0) {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getGaltFeeOrRevert(FEE_KEY);
+      ggr.getGaltToken().transferFrom(msg.sender, address(this), fee);
+    } else {
+      uint256 fee = IFeeRegistry(ggr.getFeeRegistryAddress()).getEthFeeOrRevert(FEE_KEY);
+      require(msg.value == fee, "Fee and msg.value not equal");
+    }
   }
 }
