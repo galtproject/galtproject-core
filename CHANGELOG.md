@@ -1,3 +1,11 @@
+## Galt Project Contracts [v0.12.0](https://github.com/galtspace/galtproject-contracts/tree/v0.12.0) (2019-09-21)
+
+- Contour Verification
+- Change NewPropertyManager application pipeline
+- Change UpdatePropertyManager application pipeline
+- Introduce SpaceToken types: LAND_PLOT, BUILDING and ROOM
+- Repository cleanup
+
 ## Galt Project Contracts [v0.10.0](https://github.com/galtspace/galtproject-contracts/tree/v0.10.0) (2019-06-26)
 
 - Adjust linter config
