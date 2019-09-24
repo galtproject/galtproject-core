@@ -14,13 +14,11 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
 import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../interfaces/ISpaceToken.sol";
 import "./GaltGlobalRegistry.sol";
 import "./interfaces/ISpaceGeoDataRegistry.sol";
-import "../SpaceToken.sol";
 
 
 /**

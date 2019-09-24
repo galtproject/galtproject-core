@@ -13,8 +13,6 @@
 
 pragma solidity 0.5.10;
 
-import "../pgg/PGGMultiSig.sol";
-import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 
 
