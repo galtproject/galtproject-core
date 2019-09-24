@@ -15,7 +15,7 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./PGGConfig.sol";
+import "./interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGArbitratorStakeAccounting.sol";
 
 
@@ -42,7 +42,7 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   uint256 public totalStakes;
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
-  PGGConfig internal pggConfig;
+  IPGGConfig internal pggConfig;
   ArraySet.AddressSet internal arbitrators;
 
   mapping(address => uint256) _balances;
@@ -57,7 +57,7 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   }
 
   constructor(
-    PGGConfig _pggConfig,
+    IPGGConfig _pggConfig,
     uint256 _periodLengthInSeconds
   )
     public

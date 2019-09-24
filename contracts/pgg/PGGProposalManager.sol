@@ -16,7 +16,8 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./PGGConfig.sol";
+import "./interfaces/IPGGConfig.sol";
+import "./interfaces/IPGGProposalManager.sol";
 
 
 contract PGGProposalManager is IPGGProposalManager {
@@ -76,7 +77,7 @@ contract PGGProposalManager is IPGGProposalManager {
     bytes response;
   }
 
-  PGGConfig internal pggConfig;
+  IPGGConfig internal pggConfig;
 
   Counters.Counter internal idCounter;
 
@@ -104,7 +105,7 @@ contract PGGProposalManager is IPGGProposalManager {
     _;
   }
 
-  constructor(PGGConfig _pggConfig) public {
+  constructor(IPGGConfig _pggConfig) public {
     pggConfig = _pggConfig;
   }
 
