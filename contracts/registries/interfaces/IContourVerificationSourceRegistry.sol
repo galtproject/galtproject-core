@@ -13,22 +13,11 @@
 
 pragma solidity 0.5.10;
 
-import "./AbstractApplication.sol";
 
-
-contract AbstractArbitratorApplication is AbstractApplication {
-  mapping(address => uint256[]) public applicationsByArbitrator;
-
-  modifier anyArbitrator(address _pgg) {
-    require(pggConfig(_pgg).getMultiSig().isOwner(msg.sender), "Not active arbitrator");
-    _;
-  }
-
-  constructor() public {}
-
-  function claimArbitratorReward(uint256 _aId) external;
-
-  function getApplicationsByArbitrator(address _arbitrator) external view returns (uint256[] memory) {
-    return applicationsByArbitrator[_arbitrator];
-  }
+interface IContourVerificationSourceRegistry {
+  function addSource(address _contract) external;
+  function removeSource(address _contract) external;
+  function all(address _contract) external view returns (address[] memory);
+  function hasSource(address _contract) external view returns (bool);
+  function requireValid(address _contract) external view;
 }

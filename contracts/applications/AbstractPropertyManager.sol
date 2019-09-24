@@ -14,21 +14,11 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../interfaces/ISpaceToken.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
-import "./interfaces/IPropertyManagerFeeCalculator.sol";
-import "./interfaces/IContourModifierApplication.sol";
-import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./AbstractPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IPGGRegistry.sol";
 import "./ContourVerifiableApplication.sol";
-import "./ContourVerificationManager.sol";
-import "../ACL.sol";
 
 
 contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiableApplication {

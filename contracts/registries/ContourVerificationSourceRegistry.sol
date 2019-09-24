@@ -15,6 +15,7 @@ pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
+import "./interfaces/IContourVerificationSourceRegistry.sol";
 
 
 /**
@@ -22,7 +23,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
  * @notice Tracks contour verification sources.
  * @dev Basically this is a list of the application contracts that modify SpaceGeoDataRegistry data.
  */
-contract ContourVerificationSourceRegistry is OwnableAndInitializable {
+contract ContourVerificationSourceRegistry is IContourVerificationSourceRegistry, OwnableAndInitializable {
   using ArraySet for ArraySet.AddressSet;
 
   event AddSource(address indexed source);

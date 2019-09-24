@@ -14,7 +14,6 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "./interfaces/IPGGConfig.sol";
@@ -25,7 +24,6 @@ import "./interfaces/IPGGProposalManager.sol";
 import "./voting/interfaces/IPGGDelegateReputationVoting.sol";
 import "./voting/interfaces/IPGGOracleStakeVoting.sol";
 import "./voting/interfaces/IPGGMultiSigCandidateTop.sol";
-import "./PGGMultiSig.sol";
 
 
 contract PGGConfig is IPGGConfig {

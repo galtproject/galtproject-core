@@ -18,9 +18,10 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "./registries/GaltGlobalRegistry.sol";
 import "./registries/interfaces/IFeeRegistry.sol";
+import "./interfaces/IContourVerifiers.sol";
 
 
-contract ContourVerifiers is OwnableAndInitializable {
+contract ContourVerifiers is IContourVerifiers, OwnableAndInitializable {
   using SafeMath for uint256;
 
   bytes32 public constant ROLE_CV_SLASHER = bytes32("CV_SLASHER");

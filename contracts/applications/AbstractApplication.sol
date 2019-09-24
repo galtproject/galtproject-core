@@ -13,7 +13,6 @@
 
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../registries/interfaces/IPGGRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";

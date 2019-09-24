@@ -15,7 +15,6 @@ pragma solidity 0.5.10;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./interfaces/IPGGMultiSigCandidateTop.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGOracleStakeVoting.sol";
 

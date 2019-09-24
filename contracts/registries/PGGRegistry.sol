@@ -17,7 +17,6 @@ import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "./interfaces/IPGGRegistry.sol";
 import "../pgg/interfaces/IPGGConfig.sol";
-import "../pgg/interfaces/IPGGMultiSig.sol";
 
 
 /**

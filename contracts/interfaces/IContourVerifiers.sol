@@ -13,22 +13,27 @@
 
 pragma solidity 0.5.10;
 
-import "./AbstractApplication.sol";
 
+interface IContourVerifiers {
+  // OWNER INTERFACE
 
-contract AbstractArbitratorApplication is AbstractApplication {
-  mapping(address => uint256[]) public applicationsByArbitrator;
+  function setRequiredDeposit(uint256 _requiredDeposit) external;
 
-  modifier anyArbitrator(address _pgg) {
-    require(pggConfig(_pgg).getMultiSig().isOwner(msg.sender), "Not active arbitrator");
-    _;
-  }
+  // SLASHER INTERFACE
 
-  constructor() public {}
+  function slash(address[] calldata _verifiers, address _beneficiary) external;
 
-  function claimArbitratorReward(uint256 _aId) external;
+  // USER INTERFACE
 
-  function getApplicationsByArbitrator(address _arbitrator) external view returns (uint256[] memory) {
-    return applicationsByArbitrator[_arbitrator];
-  }
+  function deposit(uint256 _amount) external;
+  function withdraw(uint256 _amount) external;
+
+  function setOperator(address _operator) external;
+
+  function claimSlashedReward() external;
+  function claimSlashedProtocolReward() external;
+
+  // GETTERS
+
+  function isVerifierValid(address _verifier, address _operator) external view returns (bool);
 }

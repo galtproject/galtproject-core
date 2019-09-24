@@ -14,10 +14,9 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "./AbstractApplication.sol";
 import "../interfaces/ISpaceToken.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
+import "../registries/GaltGlobalRegistry.sol";
 import "./AbstractPropertyManager.sol";
 
 
