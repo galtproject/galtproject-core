@@ -272,7 +272,7 @@ contract('UpdatePropertyManager', accounts => {
     applicationConfig[bytes32('PL_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
     applicationConfig[bytes32('PL_APPLICATION_CANCEL_TIMEOUT')] = numberToEvmWord(180);
     applicationConfig[bytes32('PL_APPLICATION_CLOSE_TIMEOUT')] = numberToEvmWord(240);
-    applicationConfig[bytes32('PL_ROLE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
+    applicationConfig[bytes32('PL_ORACLE_TYPE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
     applicationConfig[bytes32('PL_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
     // [52, 48],

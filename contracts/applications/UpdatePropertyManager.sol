@@ -36,7 +36,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
   bytes32 public constant CONFIG_APPLICATION_CANCEL_TIMEOUT = bytes32("PL_APPLICATION_CANCEL_TIMEOUT");
   bytes32 public constant CONFIG_APPLICATION_CLOSE_TIMEOUT = bytes32("PL_APPLICATION_CLOSE_TIMEOUT");
-  bytes32 public constant CONFIG_ROLE_UNLOCK_TIMEOUT = bytes32("PL_ROLE_UNLOCK_TIMEOUT");
+  bytes32 public constant CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT = bytes32("PL_ORACLE_TYPE_UNLOCK_TIMEOUT");
 
   bytes32 public constant CONFIG_PREFIX = bytes32("PL");
 
@@ -71,7 +71,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256) {
-    return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
+    return uint256(pggConfigValue(_pgg, CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
