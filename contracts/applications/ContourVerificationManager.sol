@@ -16,10 +16,10 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/ContourVerificationSourceRegistry.sol";
+import "../registries/interfaces/IContourVerificationSourceRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/interfaces/IContourModifierApplication.sol";
-import "../ContourVerifiers.sol";
+import "../interfaces/IContourVerifiers.sol";
 import "./AbstractApplication.sol";
 import "./ContourVerificationManagerLib.sol";
 
@@ -94,7 +94,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   modifier onlyValidContourVerifier(address _verifier) {
     require(
-      ContourVerifiers(ggr.getContourVerifiersAddress()).isVerifierValid(_verifier, msg.sender),
+      IContourVerifiers(ggr.getContourVerifiersAddress()).isVerifierValid(_verifier, msg.sender),
       "Invalid operator"
     );
 
@@ -133,7 +133,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // USER INTERFACE
 
   function submit(address _applicationContract, uint256 _externalApplicationId) external {
-    ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
+    IContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication(_applicationContract).isCVApplicationPending(_externalApplicationId);
 
@@ -771,7 +771,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   )
     internal
   {
-    ContourVerifiers(ggr.getContourVerifiersAddress()).slash(_a.approvers, _verifier);
+    IContourVerifiers(ggr.getContourVerifiersAddress()).slash(_a.approvers, _verifier);
   }
 
   // GETTERS
