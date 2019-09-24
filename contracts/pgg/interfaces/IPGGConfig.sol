@@ -39,6 +39,9 @@ interface IPGGConfig {
   function setGlobalProposalSupport(uint256 _globalProposalId, bool _isSupported) external;
   function setContractAddress(bytes32 _key, address _address) external;
   function applicationConfig(bytes32) external view returns (bytes32);
+  function minimalArbitratorStake() external view returns(uint256);
+  function defaultProposalThreshold() external view returns(uint256);
+  function thresholds(bytes32) external view returns(uint256);
   function getMultiSig() external view returns (IPGGMultiSig);
   function getArbitratorStakes() external view returns (IPGGArbitratorStakeAccounting);
   function getOracleStakes() external view returns (IPGGOracleStakeAccounting);
@@ -51,4 +54,5 @@ interface IPGGConfig {
   function hasExternalRole(bytes32 _role, address _address) external view returns(bool);
   function getInternalRoles(bytes32 _role) external view returns(address[] memory);
   function hasInternalRole(bytes32 _role, address _address) external view returns(bool);
+  function getThresholdMarker(address _destination, bytes calldata _data) external pure returns(bytes32 marker);
 }

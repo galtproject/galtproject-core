@@ -14,7 +14,7 @@
 pragma solidity 0.5.10;
 
 import "@galtproject/multisig/contracts/MultiSigWallet.sol";
-import "./PGGConfig.sol";
+import "./interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGMultiSig.sol";
 
 
@@ -34,7 +34,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
     uint256 amount
   );
 
-  PGGConfig public pggConfig;
+  IPGGConfig public pggConfig;
 
   bool internal initialized;
 
@@ -66,7 +66,7 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
   constructor(
     address[] memory _initialOwners,
     uint256 _required,
-    PGGConfig _pggConfig
+    IPGGConfig _pggConfig
   )
     public
     MultiSigWallet(_initialOwners, _required)

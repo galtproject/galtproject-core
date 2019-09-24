@@ -16,7 +16,8 @@ pragma solidity 0.5.10;
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "@galtproject/libs/contracts/collections/AddressLinkedList.sol";
 import "@galtproject/libs/contracts/collections/VotingLinkedList.sol";
-import "../PGGConfig.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGMultiSigCandidateTop.sol";
 
 
@@ -63,16 +64,16 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
 
   uint256 public totalWeight;
 
-  VotingLinkedList.Data votingData;
-  AddressLinkedList.Data votingList;
+  VotingLinkedList.Data private votingData;
+  AddressLinkedList.Data private votingList;
 
-  PGGConfig pggConfig;
+  IPGGConfig internal pggConfig;
 
   // Candidate => isIgnored
   mapping(address => bool) private ignoredCandidates;
 
   constructor(
-    PGGConfig _pggConfig
+    IPGGConfig _pggConfig
   )
     public
   {
