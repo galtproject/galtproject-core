@@ -13,9 +13,7 @@
 
 pragma solidity 0.5.10;
 
-import "@galtproject/libs/contracts/traits/Permissionable.sol";
 import "@galtproject/multisig/contracts/MultiSigWallet.sol";
-import "./PGGArbitratorStakeAccounting.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGMultiSig.sol";
 

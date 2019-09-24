@@ -14,9 +14,7 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./PGGMultiSig.sol";
 import "./PGGConfig.sol";
 import "./interfaces/IPGGArbitratorStakeAccounting.sol";
 
