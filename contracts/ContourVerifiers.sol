@@ -167,7 +167,7 @@ contract ContourVerifiers is IContourVerifiers, OwnableAndInitializable {
   function isVerifierValid(address _verifier, address _operator) external view returns (bool) {
     Verifier storage v = verifiers[_verifier];
 
-    if (v.operator != _operator) {
+    if (v.operator != _operator && _verifier != _operator) {
       return false;
     }
 
