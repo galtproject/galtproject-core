@@ -132,7 +132,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   // USER INTERFACE
 
-  function submit(address _applicationContract, uint256 _externalApplicationId) external {
+  function submit(address _applicationContract, uint256 _externalApplicationId) external payable {
     IContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication(_applicationContract).isCVApplicationPending(_externalApplicationId);

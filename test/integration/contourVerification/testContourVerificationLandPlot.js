@@ -215,19 +215,19 @@ contract('ContourVerification', accounts => {
     await this.contourVerificationManager.setRequiredConfirmations(3);
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v4 });
-    await this.contourVerifiers.deposit(ether(200), { from: v4 });
+    await this.contourVerifiers.deposit(ether(200), v4, { from: v4 });
     await this.contourVerifiers.setOperator(o4, { from: v4 });
   });
 

@@ -245,15 +245,15 @@ contract('UpdatePropertyManager', accounts => {
     await this.acl.setRole(bytes32('CV_SLASHER'), this.contourVerificationManager.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     UpdatePropertyManager.link('AbstractPropertyManagerLib', this.updatePropertyManagerLib.address);
@@ -723,10 +723,10 @@ contract('UpdatePropertyManager', accounts => {
 
           // v1 and v2 were slashed
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-          await this.contourVerifiers.deposit(ether(200), { from: v1 });
+          await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
 
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-          await this.contourVerifiers.deposit(ether(200), { from: v2 });
+          await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
 
           await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
           await this.contourVerificationManager.approve(cvId2, v2, { from: o2 });
