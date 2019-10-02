@@ -25,7 +25,7 @@ interface IContourVerifiers {
 
   // USER INTERFACE
 
-  function deposit(uint256 _amount) external;
+  function deposit(uint256 _amount, address _verifier) external;
   function withdraw(uint256 _amount) external;
 
   function setOperator(address _operator) external;
