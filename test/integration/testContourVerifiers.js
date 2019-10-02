@@ -106,28 +106,28 @@ contract('ContourVerifiers', accounts => {
 
     it('should return false when a deposit is lower than the required', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(150), { from: alice });
+      await this.contourVerifiers.deposit(ether(150), alice, { from: alice });
 
       assert.equal(await this.contourVerifiers.isVerifierValid(alice, bob), false);
     });
 
     it('should return true when a deposit is equal to the required', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(200), { from: alice });
+      await this.contourVerifiers.deposit(ether(200), alice, { from: alice });
 
       assert.equal(await this.contourVerifiers.isVerifierValid(alice, bob), true);
     });
 
     it('should return true when a deposit is greater than the required', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(300), { from: alice });
+      await this.contourVerifiers.deposit(ether(300), alice, { from: alice });
 
       assert.equal(await this.contourVerifiers.isVerifierValid(alice, bob), true);
     });
 
     it('should return false when a checkin a wrong operator address', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(300), { from: alice });
+      await this.contourVerifiers.deposit(ether(300), alice, { from: alice });
 
       assert.equal(await this.contourVerifiers.isVerifierValid(alice, charlie), false);
     });
@@ -140,7 +140,7 @@ contract('ContourVerifiers', accounts => {
 
     it('should allow depositing more than required deposit ', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(300), { from: alice });
+      await this.contourVerifiers.deposit(ether(300), alice, { from: alice });
 
       const res = await this.contourVerifiers.verifiers(alice);
       assert.equal(res.deposit, ether(300));
@@ -148,8 +148,8 @@ contract('ContourVerifiers', accounts => {
 
     it('should allow depositing more if currentDeposit > requiredDeposit', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(500), { from: alice });
-      await this.contourVerifiers.deposit(ether(300), { from: alice });
-      await this.contourVerifiers.deposit(ether(200), { from: alice });
+      await this.contourVerifiers.deposit(ether(300), alice, { from: alice });
+      await this.contourVerifiers.deposit(ether(200), alice, { from: alice });
 
       const res = await this.contourVerifiers.verifiers(alice);
       assert.equal(res.deposit, ether(500));
@@ -157,8 +157,8 @@ contract('ContourVerifiers', accounts => {
 
     it('should allow depositing more if currentDeposit < requiredDeposit', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(500), { from: alice });
-      await this.contourVerifiers.deposit(ether(100), { from: alice });
-      await this.contourVerifiers.deposit(ether(400), { from: alice });
+      await this.contourVerifiers.deposit(ether(100), alice, { from: alice });
+      await this.contourVerifiers.deposit(ether(400), alice, { from: alice });
 
       const res = await this.contourVerifiers.verifiers(alice);
       assert.equal(res.deposit, ether(500));
@@ -166,8 +166,8 @@ contract('ContourVerifiers', accounts => {
 
     it('should allow depositing more if currentDeposit == requiredDeposit', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(500), { from: alice });
-      await this.contourVerifiers.deposit(ether(100), { from: alice });
-      await this.contourVerifiers.deposit(ether(400), { from: alice });
+      await this.contourVerifiers.deposit(ether(100), alice, { from: alice });
+      await this.contourVerifiers.deposit(ether(400), alice, { from: alice });
 
       const res = await this.contourVerifiers.verifiers(alice);
       assert.equal(res.deposit, ether(500));
@@ -177,7 +177,7 @@ contract('ContourVerifiers', accounts => {
   describe('withdrawal', async function() {
     it('should allow withdrawing', async function() {
       await this.galtToken.approve(this.contourVerifiers.address, ether(500), { from: alice });
-      await this.contourVerifiers.deposit(ether(300), { from: alice });
+      await this.contourVerifiers.deposit(ether(300), alice, { from: alice });
       assert.equal(await this.galtToken.balanceOf(this.contourVerifiers.address), ether(300));
 
       await this.contourVerifiers.withdraw(ether(50), { from: alice });
