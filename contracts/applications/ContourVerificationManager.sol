@@ -151,7 +151,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     a.applicationContract = _applicationContract;
     a.externalApplicationId = _externalApplicationId;
     a.requiredConfirmations = requiredConfirmations;
-    
+
     internalIdByExternalInfo[_applicationContract][_externalApplicationId] = id;
 
     emit NewApplication(id);
@@ -798,7 +798,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod.ETH_AND_GALT;
   }
-  
+
   function getApplicationIdByExternal(address applicationContract, uint256 externalApplicationId) public view returns(uint256) {
     return internalIdByExternalInfo[applicationContract][externalApplicationId];
   }
