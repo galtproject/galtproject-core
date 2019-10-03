@@ -254,7 +254,10 @@ contract('ContourVerification', accounts => {
       res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
       const vId = res.logs[0].args.applicationId;
 
-      const internalId = await this.contourVerificationManager.getApplicationIdByExternal(this.newPropertyManager.address, aId);
+      const internalId = await this.contourVerificationManager.getApplicationIdByExternal(
+        this.newPropertyManager.address,
+        aId
+      );
       assert.equal(internalId.toString(10), vId.toString(10));
 
       await this.contourVerificationManager.approve(0, v2, { from: o2 });
