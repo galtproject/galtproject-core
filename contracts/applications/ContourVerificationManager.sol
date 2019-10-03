@@ -85,6 +85,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   uint256 public approvalTimeout;
 
   mapping(uint256 => Application) internal verificationQueue;
+  mapping(address => mapping(uint256 => uint256)) internal internalIdByExternalInfo;
 
   // .......(TAIL)....queue.....(HEAD) ->
   // contour id for a new pushed contour
@@ -132,7 +133,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   // USER INTERFACE
 
-  function submit(address _applicationContract, uint256 _externalApplicationId) external {
+  function submit(address _applicationContract, uint256 _externalApplicationId) external payable {
     IContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication(_applicationContract).isCVApplicationPending(_externalApplicationId);
@@ -150,6 +151,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     a.applicationContract = _applicationContract;
     a.externalApplicationId = _externalApplicationId;
     a.requiredConfirmations = requiredConfirmations;
+
+    internalIdByExternalInfo[_applicationContract][_externalApplicationId] = id;
 
     emit NewApplication(id);
   }
@@ -794,6 +797,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod.ETH_AND_GALT;
+  }
+
+  function getApplicationIdByExternal(address applicationContract, uint256 externalApplicationId) public view returns(uint256) {
+    return internalIdByExternalInfo[applicationContract][externalApplicationId];
   }
 
   function getApplication(uint256 _aId)

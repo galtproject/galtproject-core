@@ -202,27 +202,27 @@ contract('ContourVerification Reward Distribution', accounts => {
     await this.contourVerificationManager.setRequiredConfirmations(5);
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v4 });
-    await this.contourVerifiers.deposit(ether(200), { from: v4 });
+    await this.contourVerifiers.deposit(ether(200), v4, { from: v4 });
     await this.contourVerifiers.setOperator(o4, { from: v4 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v5 });
-    await this.contourVerifiers.deposit(ether(200), { from: v5 });
+    await this.contourVerifiers.deposit(ether(200), v5, { from: v5 });
     await this.contourVerifiers.setOperator(o5, { from: v5 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v6 });
-    await this.contourVerifiers.deposit(ether(200), { from: v6 });
+    await this.contourVerifiers.deposit(ether(200), v6, { from: v6 });
     await this.contourVerifiers.setOperator(o6, { from: v6 });
     let res = await this.spaceToken.mint(alice, { from: minter });
     this.tokenId1 = res.logs[0].args.tokenId.toNumber();

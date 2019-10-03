@@ -116,14 +116,14 @@ contract ContourVerifiers is IContourVerifiers, OwnableAndInitializable {
 
   // USER INTERFACE
 
-  function deposit(uint256 _amount) external {
-    Verifier storage v = verifiers[msg.sender];
+  function deposit(uint256 _amount, address _verifier) external {
+    Verifier storage v = verifiers[_verifier];
 
     v.deposit = v.deposit.add(_amount);
 
     ggr.getGaltToken().transferFrom(msg.sender, address(this), _amount);
 
-    emit Deposit(msg.sender, _amount, v.deposit);
+    emit Deposit(_verifier, _amount, v.deposit);
   }
 
   function withdraw(uint256 _amount) external {
@@ -167,7 +167,7 @@ contract ContourVerifiers is IContourVerifiers, OwnableAndInitializable {
   function isVerifierValid(address _verifier, address _operator) external view returns (bool) {
     Verifier storage v = verifiers[_verifier];
 
-    if (v.operator != _operator) {
+    if (v.operator != _operator && _verifier != _operator) {
       return false;
     }
 
