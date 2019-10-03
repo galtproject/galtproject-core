@@ -323,12 +323,15 @@ library ContourVerificationManagerLib {
     internal
     returns (bool)
   {
-    require(segments5zAreCollinear(
-      _existingContourSegmentFirstPoint,
-      _existingContourSegmentSecondPoint,
-      _verifyingContourSegmentFirstPoint,
-      _verifyingContourSegmentSecondPoint
-    ) == false, "Segments are collinear");
+    require(
+      segments5zAreCollinear(
+        _existingContourSegmentFirstPoint,
+        _existingContourSegmentSecondPoint,
+        _verifyingContourSegmentFirstPoint,
+        _verifyingContourSegmentSecondPoint
+      ) == false,
+      "Segments are collinear"
+    );
 
     // Existing Token
     require(
@@ -470,16 +473,10 @@ library ContourVerificationManagerLib {
     pure
     returns (int256[2][2] memory)
   {
-    (int256 lat1, int256 lon1) = LandUtils.geohash5ToLatLon(_firstPointGeohash);
-    (int256 lat2, int256 lon2) = LandUtils.geohash5ToLatLon(_secondPointGeohash);
-
-    int256[2] memory first = int256[2]([lat1, lon1]);
-    int256[2] memory second = int256[2]([lat2, lon2]);
-
     return int256[2][2]([
       getLatLonPoint(_firstPointGeohash),
       getLatLonPoint(_secondPointGeohash)
-      ]);
+    ]);
   }
 
   function isSelfUpdateCase(
