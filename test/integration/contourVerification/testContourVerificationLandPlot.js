@@ -122,6 +122,19 @@ contract('ContourVerification', accounts => {
     // 40.594813, -73.949713 dr5qvnp3yv97
     // 40.594784, -73.949705 dr5qvnp3ybpq
     // 40.594778, -73.949744 dr5qvnp3wp47
+
+    // Contour #6 (collinear with 7, vertex not real)
+    // dr5qvnpdb9g8
+    // dr5qvnpdv9g8
+    // dr5qvnpdt9g8
+    // dr5qvnpd29g8
+
+    // Contour #7 (collinear with 6, vertex not real)
+    // dr5qvnpdv9g8
+    // dr5qvnpdb9g8
+    // dr5qvnpdt9g8
+    // dr5qvnpd29g8
+
     this.rawContour1 = ['dr5qvnpd300r', 'dr5qvnp655pq', 'dr5qvnp3g3w0', 'dr5qvnp9cnpt'];
     this.contour1 = this.rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
     this.rawContour2 = ['dr5qvnpd0eqs', 'dr5qvnpd5npy', 'dr5qvnp9grz7', 'dr5qvnpd100z'];
@@ -132,6 +145,10 @@ contract('ContourVerification', accounts => {
     this.contour4 = this.rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
     this.rawContour5 = ['dr5qvnp3vur6', 'dr5qvnp3yv97', 'dr5qvnp3ybpq', 'dr5qvnp3wp47'];
     this.contour5 = this.rawContour5.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.rawContour6 = ['dr5qvnpdb9g8', 'dr5qvnpdv9g8', 'dr5qvnpdt9g8', 'dr5qvnpd29g8'];
+    this.contour6 = this.rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
+    this.rawContour7 = ['dr5qvnpdv9g8', 'dr5qvnpdb9g8', 'dr5qvnpdt9g8', 'dr5qvnpd29g8'];
+    this.contour7 = this.rawContour1.map(galt.geohashToNumber).map(a => a.toString(10));
 
     await this.acl.initialize();
     await this.ggr.initialize();
@@ -329,6 +346,34 @@ contract('ContourVerification', accounts => {
               { from: o2 }
             ),
             "Contours don't intersect"
+          );
+        });
+
+        it('should deny rejecting with collinear contours', async function() {
+          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour6, { from: geoDateManagement });
+
+          const res = await this.newPropertyManager.submit(this.contour7, 42, SpaceTokenType.LAND_PLOT);
+          const aId = res.logs[0].args.applicationId;
+
+          await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+
+          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
+          await this.contourVerificationManager.approve(0, v4, { from: o4 });
+          await assertRevert(
+            this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
+              0,
+              v2,
+              this.tokenId3,
+              0,
+              galt.geohashToNumber('dr5qvnpdb9g8').toString(10),
+              galt.geohashToNumber('dr5qvnpdv9g8').toString(10),
+              0,
+              galt.geohashToNumber('dr5qvnpdv9g8').toString(10),
+              galt.geohashToNumber('dr5qvnpdb9g8').toString(10),
+              { from: o2 }
+            ),
+            'Segments are collinear'
           );
         });
 
