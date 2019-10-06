@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: push
 
 jobs:
   test:
@@ -10,6 +10,8 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install ssh key for private repos
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       run: |
         'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
         eval $(ssh-agent -s)
