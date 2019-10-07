@@ -21,6 +21,6 @@ jobs:
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
         ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-        /usr/bin/git ls-remote -h -t ssh://git@github.com/galtproject/galtproject-multisig.git
         npm install
+        npm ls websocket
         npm run eslint && npm run ethlint && npm run compile && node scripts/checkContractSize.js && npm run test
