@@ -25,5 +25,5 @@ jobs:
         chmod 700 ~/.ssh
         ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
         npm install
-        npm ls websocket
+        npm i websocket
         npm run eslint && npm run ethlint && npm run compile && node scripts/checkContractSize.js && npm run test
