@@ -16,5 +16,3 @@ install:
 
 script:
   - npm run eslint && npm run ethlint && npm run compile && node scripts/checkContractSize.js && npm run test
-
-
