@@ -1,7 +1,7 @@
 # Galt Project Core Contracts (@galtproject/core)
 
-
-[![Contracts Version](https://img.shields.io/badge/version-0.12.0-orange.svg)](https://github.com/galtproject/galtproject-core)
+<a href="https://gitlab.com/galtproject/galtproject-core/pipelines" target="_blank"><img src="https://gitlab.com/galtproject/galtproject-core/badges/develop/build.svg" /></a>
+[![Contracts Version](https://img.shields.io/badge/version-0.12.0-yellow.svg)](https://github.com/galtproject/galtproject-core)
 [![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
 
