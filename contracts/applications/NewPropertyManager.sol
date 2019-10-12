@@ -77,7 +77,7 @@ contract NewPropertyManager is AbstractPropertyManager {
    *
    * @param _pgg address to submit application to
    * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
-   * @param _customArea in sq. meters
+   * @param _customArea in sq. meters (1 sq. meter == 1 eth)
    * @param _beneficiary of the finally minted Space token
    * @param _dataLink IPLD address
    * @param _humanAddress just a human readable address string

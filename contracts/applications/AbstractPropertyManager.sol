@@ -274,7 +274,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @param _newLedgerIdentifier of a plot
    * @param _newDataLink IPLD address
    * @param _newHumanAddress just a human readable address string
-   * @param _newCustomArea in sq. meters
+   * @param _newCustomArea in sq. meters (1 sq. meter == 1 eth)
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
