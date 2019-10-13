@@ -24,8 +24,7 @@ import "./interfaces/ISpaceGeoDataRegistry.sol";
 contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   using SafeMath for uint256;
 
-  uint256 public constant MIN_CONTOUR_GEOHASH_PRECISION = 12;
-  uint256 public constant MAX_CONTOUR_GEOHASH_COUNT = 350;
+  uint256 public constant CONTOUR_GEOHASH_PRECISION = 12;
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
 
@@ -100,21 +99,17 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @dev Contours with large length could not be processed by SplitMerge operations. There also could be problems
    *      with calculating their are on-chain.
    * @param _spaceTokenId the same ID used in SpaceToken contract
-   * @param _contour geohash5z encoded bottom level contour (3 <= length <= 350)
+   * @param _contour geohash5z encoded bottom level contour (3 <= length)
    */
   function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] calldata _contour) external onlyGeoDataManager {
     require(_contour.length >= 3, "Number of contour elements should be equal or greater than 3");
-    require(
-      _contour.length <= MAX_CONTOUR_GEOHASH_COUNT,
-      "Number of contour elements should be equal or less than MAX_CONTOUR_GEOHASH_COUNT"
-    );
 
     for (uint256 i = 0; i < _contour.length; i++) {
       require(_contour[i] > 0, "Contour element geohash should not be a zero");
 
       require(
-        GeohashUtils.geohash5Precision(GeohashUtils.geohash5zToGeohash5(_contour[i])) >= MIN_CONTOUR_GEOHASH_PRECISION,
-        "Contour element geohash should have at least MIN_CONTOUR_GEOHASH_PRECISION precision"
+        GeohashUtils.geohash5Precision(GeohashUtils.geohash5zToGeohash5(_contour[i])) == CONTOUR_GEOHASH_PRECISION,
+        "Contour element geohash should has precision of 12"
       );
     }
 
@@ -193,12 +188,13 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   }
 
   /**
-   * @notice Delete a Space Token data for ex. when the token was burned.
+   * @notice Deletes a Space Token data if the token doesn't exist (for ex. when the token was burned).
+   * Permissionless method.
    * @param _spaceTokenId the same ID used in SpaceToken contract.
-   * @dev Not sure if the token contour will be deleted or not
    */
-  function deleteSpaceTokenGeoData(uint256 _spaceTokenId) external onlyGeoDataManager {
-    // TODO: test contour data emptied and wouldn't appear when token enabled again
+  function deleteSpaceTokenGeoData(uint256 _spaceTokenId) external {
+    require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) == false, "Token exists");
+
     delete spaceTokens[_spaceTokenId];
 
     emit DeleteSpaceTokenGeoData(_spaceTokenId, msg.sender);
