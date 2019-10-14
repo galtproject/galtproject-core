@@ -143,7 +143,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
   /**
    * @notice Sets Space Token area.
    * @param _spaceTokenId the same ID used in SpaceToken contract.
-   * @param _area uint256 in sq. meters
+   * @param _area uint256 in sq. meters (1 sq. meter == 1 eth)
    * @param _areaSource USER_INPUT for manual inputs and CONTRACT for on-chain calculated area
    */
   function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {

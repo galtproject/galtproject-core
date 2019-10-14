@@ -91,7 +91,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
    * @param _pgg address to submit application to
    * @param _spaceTokenId to modify information for
    * @param _changeContourOrHighestPoint true in case if these changes are required
-   * @param _customArea in sq. meters
+   * @param _customArea in sq. meters (1 sq. meter == 1 eth)
    * @param _dataLink IPLD address
    * @param _humanAddress just a human readable address string
    * @param _credentialsHash keccak256 of user credentials
