@@ -106,7 +106,7 @@ contract AbstractApplication is Initializable {
    * @notice Transfer all the Galt Protocol collected fees in GALT to the fee controller address
    */
   function claimGaltProtocolFeeGalt() external {
-    require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesEth, "Insufficient balance");
+    require(ggr.getGaltToken().balanceOf(address(this)) >= protocolFeesGalt, "Insufficient balance");
     ggr.getGaltToken().transfer(msg.sender, protocolFeesGalt);
     protocolFeesGalt = 0;
   }
