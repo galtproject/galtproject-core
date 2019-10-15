@@ -32,7 +32,7 @@
   "engines": {
     "node": ">=10.15.3"
   },
-  "repository": "https://github.com/galtspace/galtproject-contracts",
+  "repository": "https://github.com/galtproject/galtproject-core",
   "scripts": {
     "test": "truffle test --network test",
     "compile": "truffle compile",
