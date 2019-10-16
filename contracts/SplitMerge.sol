@@ -169,6 +169,7 @@ contract SplitMerge is OwnableAndInitializable {
     uint256[] memory resultContour
   )
     public
+    pure
   {
     for (uint i = 0; i < sourceContour.length; i++) {
       for (uint j = 0; j < mergeContour.length; j++) {
@@ -204,11 +205,11 @@ contract SplitMerge is OwnableAndInitializable {
 
   // GETTERS
 
-  function getCurrentSplitOperation(uint256 _spaceTokenId) external returns (address) {
+  function getCurrentSplitOperation(uint256 _spaceTokenId) external view returns (address) {
     return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
   }
 
-  function getSplitOperationsCount(uint256 _spaceTokenId) external returns (uint256) {
+  function getSplitOperationsCount(uint256 _spaceTokenId) external view returns (uint256) {
     return tokenIdToSplitOperations[_spaceTokenId].length;
   }
 

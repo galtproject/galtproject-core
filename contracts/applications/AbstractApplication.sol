@@ -118,7 +118,7 @@ contract AbstractApplication is Initializable {
     return idCounter;
   }
 
-  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal {
+  function requireValidPaymentType(address _pgg, PaymentType _paymentType) internal view {
     PaymentMethod pm = paymentMethod(_pgg);
 
     if (_paymentType == PaymentType.ETH) {

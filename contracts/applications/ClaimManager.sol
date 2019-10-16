@@ -175,7 +175,7 @@ contract ClaimManager is ArbitratorProposableApplication {
     pD = applicationDetails[_aId].proposalDetails[_proposeApproval(_aId, _msg)];
   }
 
-  function _verifyOraclesAreValid(uint256 _aId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
+  function _verifyOraclesAreValid(uint256 _aId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal view {
     Application storage c = applications[_aId];
 
     require(

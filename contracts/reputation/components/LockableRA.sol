@@ -109,7 +109,7 @@ contract LockableRA is ILockableRA, LiquidRA {
     emit UnlockReputation(msg.sender, _pgg, _amount);
   }
 
-  function pggConfig(address _pgg) internal returns (IPGGConfig) {
+  function pggConfig(address _pgg) internal view returns (IPGGConfig) {
     return IPGGRegistry(ggr.getPggRegistryAddress())
       .getPggConfig(_pgg);
   }

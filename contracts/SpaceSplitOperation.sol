@@ -224,7 +224,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   // INTERNAL
 
-  function geodesic() internal returns (IGeodesic) {
+  function geodesic() internal view returns (IGeodesic) {
     return IGeodesic(ggr.getGeodesicAddress());
   }
 

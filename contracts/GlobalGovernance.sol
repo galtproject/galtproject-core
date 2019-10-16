@@ -190,7 +190,7 @@ contract GlobalGovernance is OwnableAndInitializable, IGlobalGovernance {
 
   // GETTERS
 
-  function getMarker(address _destination, bytes memory _data) public view returns(bytes32 marker) {
+  function getMarker(address _destination, bytes memory _data) public pure returns(bytes32 marker) {
     bytes32 methodName;
 
     assembly {
