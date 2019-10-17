@@ -210,7 +210,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
       _changeApplicationStatus(a, ApplicationStatus.STORED);
     }
 
-    AbstractPropertyManagerLib.updateGeoData(ggr, a, address(this));
+    AbstractPropertyManagerLib.updateGeoData(ggr, a);
   }
 
   function _performSubmissionChecks(

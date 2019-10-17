@@ -624,7 +624,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     _executeReject(_aId, msg.sender);
   }
 
-  function eligibleForCastingDecision(uint256 _aId, address _verifier) internal {
+  function eligibleForCastingDecision(uint256 _aId, address _verifier) internal view {
     Application storage a = verificationQueue[_aId];
 
     require(_aId == tail, "ID mismatches with the current");

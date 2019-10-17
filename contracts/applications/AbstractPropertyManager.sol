@@ -125,20 +125,25 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
   // MODIFIER-LIKE FUNCTIONS
 
-  function onlyCVM() internal {
+  function onlyCVM() internal view {
     require(
       ggr.getACL().hasRole(msg.sender, ROLE_CONTOUR_VERIFIER_POOL),
       "Invalid verifier contract"
     );
   }
 
-  function onlyApplicant(uint256 _aId) internal {
+  function onlyApplicant(uint256 _aId) internal view {
     require(applications[_aId].applicant == msg.sender, "Invalid applicant");
   }
 
-  function onlyOracleOfApplication(uint256 _aId) internal {
+  function onlyOracleOfApplication(uint256 _aId) internal view {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
+
+  // ABSTRACT
+
+  function _executeApproval(uint256 _aId) internal;
+  function _assignRequiredOracleTypesAndRewards(Application storage a) internal;
 
   // CONFIG GETTERS
 
@@ -595,14 +600,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   // INTERNAL
-  function _executeApproval(uint256 _aId) internal {
-    revert("_executeApproval(): Not implemented");
-  }
-
-  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
-    revert("_assignRequiredOracleTypesAndRewards(): Not implemented");
-  }
-
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {

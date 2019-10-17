@@ -36,6 +36,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourSegmentSecondPoint
   )
     external
+    view
   {
     require(isSelfUpdateCase(a, _existingTokenId) == false, "Can't reject self-update action");
 
@@ -81,6 +82,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourPoint
   )
     external
+    view
   {
     require(isSelfUpdateCase(a, _existingTokenId) == false, "Can't reject self-update action");
 
@@ -126,6 +128,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourSegmentSecondPoint
   )
     external
+    view
   {
     ContourVerificationSourceRegistry(_ggr.getContourVerificationSourceRegistryAddress()).requireValid(_applicationContract);
     IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
@@ -172,6 +175,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourPoint
   )
     external
+    view
   {
     ContourVerificationSourceRegistry(_ggr.getContourVerificationSourceRegistryAddress()).requireValid(_applicationContract);
     IContourModifierApplication applicationContract = IContourModifierApplication(_applicationContract);
@@ -216,6 +220,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourPoint
   )
     external
+    view
   {
     require(
       existingA.status == ContourVerificationManager.Status.APPROVAL_TIMEOUT,
@@ -266,6 +271,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourSegmentSecondPoint
   )
     external
+    view
   {
 
     require(
@@ -317,6 +323,7 @@ library ContourVerificationManagerLib {
     uint256 _verifyingContourSegmentSecondPoint
   )
     internal
+    view
     returns (bool)
   {
     require(
@@ -376,6 +383,7 @@ library ContourVerificationManagerLib {
     uint256 _contourPoint
   )
     internal
+    view
     returns (bool)
   {
     // Verifying Token
@@ -415,6 +423,7 @@ library ContourVerificationManagerLib {
     uint256[] memory _contour
   )
     internal
+    pure
     returns (bool)
   {
     uint256 len = _contour.length;
@@ -442,6 +451,7 @@ library ContourVerificationManagerLib {
     ISpaceGeoDataRegistry.SpaceTokenType _existingSpaceTokenType
   )
     internal
+    view
   {
     ISpaceGeoDataRegistry.SpaceTokenType verifyingSpaceTokenType = IContourModifierApplication(a.applicationContract)
     .getCVSpaceTokenType(a.externalApplicationId);

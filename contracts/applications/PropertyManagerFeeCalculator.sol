@@ -21,7 +21,7 @@ library PropertyManagerFeeCalculator {
   uint256 public constant GALT_DIVISOR = 200;
   uint256 public constant DECIMALS = 10**18;
 
-  function calculateEthFee(uint256 _area) external view returns (uint256 fee) {
+  function calculateEthFee(uint256 _area) external pure returns (uint256) {
 
     uint256 area = _area;
 
@@ -32,7 +32,7 @@ library PropertyManagerFeeCalculator {
     return area * ETH_MULTIPLIER / ETH_DIVISOR;
   }
 
-  function calculateGaltFee(uint256 _area) external view returns (uint256 fee) {
+  function calculateGaltFee(uint256 _area) external pure returns (uint256) {
     uint256 area = _area;
 
     if (area < DECIMALS.mul(1000)) {

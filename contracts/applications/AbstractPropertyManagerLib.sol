@@ -65,8 +65,7 @@ library AbstractPropertyManagerLib {
 
   function updateGeoData(
     GaltGlobalRegistry _ggr,
-    AbstractPropertyManager.Application storage _a,
-    address _to
+    AbstractPropertyManager.Application storage _a
   )
     external
   {

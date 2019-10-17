@@ -40,7 +40,7 @@ contract ContourVerificationSourceRegistry is IContourVerificationSourceRegistry
     emit AddSource(_contract);
   }
 
-  function all(address _contract) external view returns (address[] memory) {
+  function all() external view returns (address[] memory) {
     return sources.elements();
   }
 
