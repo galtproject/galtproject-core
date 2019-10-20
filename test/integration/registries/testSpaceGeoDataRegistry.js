@@ -61,7 +61,7 @@ contract('SpaceGeoDataRegistry', accounts => {
       await this.registry.setContour(tokenId, contour, { from: geoDataManager });
       await this.registry.setArea(tokenId, 123, 0, { from: geoDataManager });
 
-      await assertRevert(this.registry.deleteSpaceTokenGeoData(tokenId, { from: alice }), 'Token exists');
+      await assertRevert(this.registry.deleteGeoData(tokenId, { from: alice }), 'Token exists');
 
       // burn token
       await this.spaceToken.burn(tokenId, { from: alice });
@@ -71,7 +71,7 @@ contract('SpaceGeoDataRegistry', accounts => {
       assert.equal(await this.registry.getArea(tokenId), 123);
       assert.equal(await this.registry.getAreaSource(tokenId), 0);
 
-      await this.registry.deleteSpaceTokenGeoData(tokenId, { from: alice });
+      await this.registry.deleteGeoData(tokenId, { from: alice });
 
       assert.sameMembers(await this.registry.getContour(tokenId), []);
       assert.equal(await this.registry.getArea(tokenId), 0);
