@@ -77,9 +77,7 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
     };
 
     this.getSpaceTokenContour = async _tokenId =>
-      (await this.spaceGeoData.getContour(_tokenId)).map(geohash =>
-        galt.numberToGeohash(geohash.toString(10))
-      );
+      (await this.spaceGeoData.getContour(_tokenId)).map(geohash => galt.numberToGeohash(geohash.toString(10)));
 
     this.splitSpaceToken = async (subjectSpaceTokenId, clippingContour) => {
       let res;
@@ -145,24 +143,16 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       res = await this.spaceToken.mint(alice);
       const firstSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setHeights(
-        firstSpaceTokenId,
-        firstSpaceToken.map((geohash, index) => index + 10),
-        {
-          from: coreTeam
-        }
-      );
+      await this.spaceGeoData.setHeights(firstSpaceTokenId, firstSpaceToken.map((geohash, index) => index + 10), {
+        from: coreTeam
+      });
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
       const secondSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setHeights(
-        secondSpaceTokenId,
-        secondSpaceToken.map((geohash, index) => index + 10),
-        {
-          from: coreTeam
-        }
-      );
+      await this.spaceGeoData.setHeights(secondSpaceTokenId, secondSpaceToken.map((geohash, index) => index + 10), {
+        from: coreTeam
+      });
 
       await this.spaceGeoData.mergeSpaceToken(firstSpaceTokenId, secondSpaceTokenId, resultSpaceToken, {
         from: alice

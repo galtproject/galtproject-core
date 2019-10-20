@@ -1982,10 +1982,7 @@ contract('UpdatePropertyManager', accounts => {
         assert.equal(await this.spaceGeoData.getArea(tokenId), 3344);
         assert.equal(await this.spaceGeoData.getDataLink(tokenId), 'data link 2');
         assert.equal(await this.spaceGeoData.getHumanAddress(tokenId), 'human address 2');
-        assert.equal(
-          web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)),
-          'ledger identifier 2'
-        );
+        assert.equal(web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)), 'ledger identifier 2');
       });
 
       it('should change status to STORED after contour/height changed', async function() {
@@ -2059,10 +2056,7 @@ contract('UpdatePropertyManager', accounts => {
         assert.equal(await this.spaceGeoData.getArea(tokenId), 3344);
         assert.equal(await this.spaceGeoData.getDataLink(tokenId), 'data link 2');
         assert.equal(await this.spaceGeoData.getHumanAddress(tokenId), 'human address 2');
-        assert.equal(
-          web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)),
-          'ledger identifier 2'
-        );
+        assert.equal(web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)), 'ledger identifier 2');
 
         assert.equal(await this.spaceGeoData.getHighestPoint(tokenId), 999888);
 
