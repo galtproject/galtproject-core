@@ -844,7 +844,7 @@ contract.skip("ModifySpaceGeoDataManager", (accounts) => {
       });
 
       it('should apply proposed geo registry changes with user-input area', async function() {
-        let res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        let res = await this.spaceGeoData.getGeoData(this.spaceTokenId2);
         assert.equal(res.contour.length, 0);
         assert.equal(res.heights.length, 0);
         assert.equal(res.level, 0);
@@ -856,7 +856,7 @@ contract.skip("ModifySpaceGeoDataManager", (accounts) => {
         await this.modifySpaceGeoDataManager.vote(this.cId, this.pId2, { from: bob });
         await this.modifySpaceGeoDataManager.vote(this.cId, this.pId2, { from: eve });
 
-        res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        res = await this.spaceGeoData.getGeoData(this.spaceTokenId2);
         assert.sameMembers(res.contour, this.customContour);
         assert.sameMembers(res.heights, this.customHeights);
         assert.equal(res.level, -1);
@@ -867,7 +867,7 @@ contract.skip("ModifySpaceGeoDataManager", (accounts) => {
       });
 
       it('should apply proposed geo registry changes with contract-calculated area', async function() {
-        let res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        let res = await this.spaceGeoData.getGeoData(this.spaceTokenId2);
         assert.equal(res.contour.length, 0);
         assert.equal(res.heights.length, 0);
         assert.equal(res.level, 0);
@@ -879,7 +879,7 @@ contract.skip("ModifySpaceGeoDataManager", (accounts) => {
         await this.modifySpaceGeoDataManager.vote(this.cId, this.pId1, { from: eve });
         await this.modifySpaceGeoDataManager.vote(this.cId, this.pId1, { from: dan });
 
-        res = await this.spaceGeoData.getSpaceTokenGeoData(this.spaceTokenId2);
+        res = await this.spaceGeoData.getGeoData(this.spaceTokenId2);
         assert.sameMembers(res.contour, this.customContour);
         assert.sameMembers(res.heights, this.customHeights);
         assert.equal(res.level, -1);

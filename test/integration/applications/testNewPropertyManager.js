@@ -382,7 +382,7 @@ contract('NewPropertyManager', accounts => {
       assert.equal(res2.highestPoint, 771000);
       assert.equal(parseInt(res2.area, 10) > 0, true);
 
-      const res3 = await this.spaceGeoData.getSpaceTokenContour(
+      const res3 = await this.spaceGeoData.getContour(
         '0x0000000000000000000000000000000000000000000000000000000000000000'
       );
 
@@ -606,8 +606,8 @@ contract('NewPropertyManager', accounts => {
           const rawContour4 = ['dr5qvnp6hfwt', 'dr5qvnp6h46c', 'dr5qvnp3gdwu', 'dr5qvnp3u57s'];
           const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
 
-          await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
-          await this.spaceGeoData.setSpaceTokenType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+          await this.spaceGeoData.setContour(tokenId1, contour1, { from: geoDataManager });
+          await this.spaceGeoData.setType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
           const expectedFee = ether(45);
 

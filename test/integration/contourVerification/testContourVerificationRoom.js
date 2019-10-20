@@ -236,15 +236,15 @@ contract('ContourVerification of ROOM types', accounts => {
     it('should allow approving any contour', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId1 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId1, this.contour1, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId1, this.contour1, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId2 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId2, this.contour2, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId2, this.contour2, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId3 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId3, this.contour3, { from: geoDateManagement });
 
       // Create a new NewPropertyManager application
       res = await this.newPropertyManager.submit(this.contour4, 6, SpaceTokenType.ROOM);
@@ -295,13 +295,13 @@ contract('ContourVerification of ROOM types', accounts => {
       describe('existing token', () => {
         beforeEach(async function() {
           // 20-30
-          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, addElevationToContour(20, this.contour1), {
+          await this.spaceGeoData.setContour(this.tokenId3, addElevationToContour(20, this.contour1), {
             from: geoDateManagement
           });
-          await this.spaceGeoData.setSpaceTokenHighestPoint(this.tokenId3, 30, {
+          await this.spaceGeoData.setHighestPoint(this.tokenId3, 30, {
             from: geoDateManagement
           });
-          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.ROOM, {
+          await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.ROOM, {
             from: geoDateManagement
           });
         });
@@ -380,7 +380,7 @@ contract('ContourVerification of ROOM types', accounts => {
             const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-            assert.equal(await this.spaceGeoData.getSpaceTokenType(this.tokenId3), SpaceTokenType.ROOM);
+            assert.equal(await this.spaceGeoData.getType(this.tokenId3), SpaceTokenType.ROOM);
             assert.equal(await this.newPropertyManager.getCVSpaceTokenType(aId), SpaceTokenType.ROOM);
 
             await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });

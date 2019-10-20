@@ -287,7 +287,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
-    return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenType(applications[_aId].spaceTokenId);
+    return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getType(applications[_aId].spaceTokenId);
   }
 
   function getCVData(uint256 _aId)

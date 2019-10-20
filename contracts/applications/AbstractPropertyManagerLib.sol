@@ -56,11 +56,15 @@ library AbstractPropertyManagerLib {
     _a.spaceTokenId = spaceTokenId;
     AbstractPropertyManager.Details storage d = _a.details;
 
-    spaceGeoData.setSpaceTokenType(spaceTokenId, d.spaceTokenType);
-    spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);
-    spaceGeoData.setSpaceTokenArea(spaceTokenId, d.area, d.areaSource);
-    spaceGeoData.setSpaceTokenLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
-    spaceGeoData.setSpaceTokenDataLink(spaceTokenId, d.dataLink);
+    spaceGeoData.setDetails(
+      spaceTokenId,
+      d.spaceTokenType,
+      d.areaSource,
+      d.area,
+      d.ledgerIdentifier,
+      d.humanAddress,
+      d.dataLink
+    );
   }
 
   function updateGeoData(
@@ -74,9 +78,9 @@ library AbstractPropertyManagerLib {
     AbstractPropertyManager.Details storage d = _a.details;
     uint256 spaceTokenId = _a.spaceTokenId;
 
-    spaceGeoData.setSpaceTokenHumanAddress(spaceTokenId, d.humanAddress);
-    spaceGeoData.setSpaceTokenArea(spaceTokenId, d.area, d.areaSource);
-    spaceGeoData.setSpaceTokenLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
-    spaceGeoData.setSpaceTokenDataLink(spaceTokenId, d.dataLink);
+    spaceGeoData.setHumanAddress(spaceTokenId, d.humanAddress);
+    spaceGeoData.setArea(spaceTokenId, d.area, d.areaSource);
+    spaceGeoData.setLedgerIdentifier(spaceTokenId, d.ledgerIdentifier);
+    spaceGeoData.setDataLink(spaceTokenId, d.dataLink);
   }
 }

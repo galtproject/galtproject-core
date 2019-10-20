@@ -51,7 +51,7 @@ function globalGovernanceHelpers(
       let res = await spaceToken.mint(delegateAddress, { from: spaceMinterAddress });
       const { tokenId } = res.logs[0].args;
 
-      await spaceGeoData.setSpaceTokenArea(tokenId, amount, '0', { from: geoDataManagerAddress });
+      await spaceGeoData.setArea(tokenId, amount, '0', { from: geoDataManagerAddress });
 
       // Build a space locker
       await galtToken.transfer(delegateAddress, ether(10), { from: sponsorAddress });

@@ -204,9 +204,9 @@ contract('PGG Voting Full Cycle', accounts => {
 
     // SET AREAS
     let p = [
-      this.spaceGeoData.setSpaceTokenArea(x1, '700', '0', { from: geoDateManagement }),
-      this.spaceGeoData.setSpaceTokenArea(x2, '500', '0', { from: geoDateManagement }),
-      this.spaceGeoData.setSpaceTokenArea(x3, '400', '0', { from: geoDateManagement })
+      this.spaceGeoData.setArea(x1, '700', '0', { from: geoDateManagement }),
+      this.spaceGeoData.setArea(x2, '500', '0', { from: geoDateManagement }),
+      this.spaceGeoData.setArea(x3, '400', '0', { from: geoDateManagement })
     ];
 
     await Promise.all(p);
