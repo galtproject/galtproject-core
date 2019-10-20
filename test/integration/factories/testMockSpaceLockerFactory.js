@@ -50,7 +50,7 @@ contract('MockSpaceLockerFactory', accounts => {
     it('should allow build for owner by coreTeam', async function() {
       let res = await this.spaceToken.mint(coreTeam, { from: coreTeam });
       const spaceTokenId = res.logs[0].args.tokenId;
-      await this.mockSpaceGeoDataRegistry.setSpaceTokenArea(spaceTokenId, toWei('200', 'ether'));
+      await this.mockSpaceGeoDataRegistry.setArea(spaceTokenId, toWei('200', 'ether'));
       res = await this.spaceLockerFactory.buildMock(alice, { from: coreTeam });
       const mockSpaceLocker = await MockSpaceLocker.at(res.logs[0].args.locker);
 

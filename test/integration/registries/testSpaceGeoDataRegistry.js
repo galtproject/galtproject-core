@@ -46,7 +46,7 @@ contract('SpaceGeoDataRegistry', accounts => {
 
       contour = addElevationToContour(123123, contour);
 
-      await this.registry.setSpaceTokenContour(1, contour, { from: geoDataManager });
+      await this.registry.setContour(1, contour, { from: geoDataManager });
     });
   });
 
@@ -58,25 +58,25 @@ contract('SpaceGeoDataRegistry', accounts => {
       const contour = ['qwerqwerqwer', 'rewqqwerqwer', 'wwrrqwerqwer']
         .map(galtUtils.geohashToNumber)
         .map(a => a.toString(10));
-      await this.registry.setSpaceTokenContour(tokenId, contour, { from: geoDataManager });
-      await this.registry.setSpaceTokenArea(tokenId, 123, 0, { from: geoDataManager });
+      await this.registry.setContour(tokenId, contour, { from: geoDataManager });
+      await this.registry.setArea(tokenId, 123, 0, { from: geoDataManager });
 
-      await assertRevert(this.registry.deleteSpaceTokenGeoData(tokenId, { from: alice }), 'Token exists');
+      await assertRevert(this.registry.deleteGeoData(tokenId, { from: alice }), 'Token exists');
 
       // burn token
       await this.spaceToken.burn(tokenId, { from: alice });
 
       // data still active
-      assert.sameMembers(await this.registry.getSpaceTokenContour(tokenId), contour);
-      assert.equal(await this.registry.getSpaceTokenArea(tokenId), 123);
-      assert.equal(await this.registry.getSpaceTokenAreaSource(tokenId), 0);
+      assert.sameMembers(await this.registry.getContour(tokenId), contour);
+      assert.equal(await this.registry.getArea(tokenId), 123);
+      assert.equal(await this.registry.getAreaSource(tokenId), 0);
 
-      await this.registry.deleteSpaceTokenGeoData(tokenId, { from: alice });
+      await this.registry.deleteGeoData(tokenId, { from: alice });
 
-      assert.sameMembers(await this.registry.getSpaceTokenContour(tokenId), []);
-      assert.equal(await this.registry.getSpaceTokenArea(tokenId), 0);
-      assert.equal(await this.registry.getSpaceTokenAreaSource(tokenId), 0);
-      assert.equal(await this.registry.getSpaceTokenType(tokenId), 0);
+      assert.sameMembers(await this.registry.getContour(tokenId), []);
+      assert.equal(await this.registry.getArea(tokenId), 0);
+      assert.equal(await this.registry.getAreaSource(tokenId), 0);
+      assert.equal(await this.registry.getType(tokenId), 0);
     });
   });
 });

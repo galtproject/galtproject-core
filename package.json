@@ -20,7 +20,7 @@
     "openzeppelin-solidity": "2.3.0",
     "p-iteration": "^1.1.8",
     "solidity-coverage": "^0.6.7",
-    "truffle": "5.0.40",
+    "truffle": "5.0.41",
     "web3": "1.2.1"
   },
   "engines": {

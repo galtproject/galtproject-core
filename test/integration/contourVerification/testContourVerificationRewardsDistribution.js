@@ -734,8 +734,8 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectExistingIntersection(numberOfApprovalsBeforeReject, paymentType) {
-    await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+    await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
       from: geoDateManagement
     });
     await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function() {
@@ -828,8 +828,8 @@ contract('ContourVerification Reward Distribution', accounts => {
   }
 
   async function rejectExistingInclusion(numberOfApprovalsBeforeReject, paymentType) {
-    await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+    await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
       from: geoDateManagement
     });
     await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function() {

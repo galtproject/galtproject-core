@@ -28,16 +28,17 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   bytes32 public constant ROLE_GEO_DATA_MANAGER = bytes32("GEO_DATA_MANAGER");
 
-  event SetSpaceTokenType(uint256 indexed spaceTokenId, SpaceTokenType spaceTokenType);
-  event SetSpaceTokenContour(uint256 indexed spaceTokenId, uint256[] contour);
-  event SetSpaceTokenHighestPoint(uint256 indexed spaceTokenId, int256 highestPoint);
-  event SetSpaceTokenHumanAddress(uint256 indexed spaceTokenId, string humanAddress);
-  event SetSpaceTokenDataLink(uint256 indexed spaceTokenId, string dataLink);
-  event SetSpaceTokenLedgerIdentifier(uint256 indexed spaceTokenId, bytes32 ledgerIdentifier);
-  event SetSpaceTokenVertexRootHash(uint256 indexed spaceTokenId, bytes32 ledgerIdentifier);
-  event SetSpaceTokenVertexStorageLink(uint256 indexed spaceTokenId, string vertexStorageLink);
-  event SetSpaceTokenArea(uint256 indexed spaceTokenId, uint256 area, AreaSource areaSource);
-  event DeleteSpaceTokenGeoData(uint256 indexed spaceTokenId, address indexed operator);
+  event SetType(uint256 indexed spaceTokenId, SpaceTokenType spaceTokenType);
+  event SetContour(uint256 indexed spaceTokenId, uint256[] contour);
+  event SetHighestPoint(uint256 indexed spaceTokenId, int256 highestPoint);
+  event SetHumanAddress(uint256 indexed spaceTokenId, string humanAddress);
+  event SetDataLink(uint256 indexed spaceTokenId, string dataLink);
+  event SetLedgerIdentifier(uint256 indexed spaceTokenId, bytes32 ledgerIdentifier);
+  event SetVertexRootHash(uint256 indexed spaceTokenId, bytes32 ledgerIdentifier);
+  event SetVertexStorageLink(uint256 indexed spaceTokenId, string vertexStorageLink);
+  event SetArea(uint256 indexed spaceTokenId, uint256 area, AreaSource areaSource);
+  event SetDetails(uint256 indexed spaceTokenId);
+  event DeleteGeoData(uint256 indexed spaceTokenId, address indexed operator);
 
   struct SpaceToken {
     // (LAND_PLOT,BUILDING,ROOM) Type cannot be changed after token creation
@@ -86,12 +87,12 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract
    * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
    */
-  function setSpaceTokenType(uint256 _spaceTokenId, SpaceTokenType _spaceTokenType) external onlyGeoDataManager {
+  function setType(uint256 _spaceTokenId, SpaceTokenType _spaceTokenType) external onlyGeoDataManager {
     require(spaceTokens[_spaceTokenId].spaceTokenType == SpaceTokenType.NULL, "Token type already set");
 
     spaceTokens[_spaceTokenId].spaceTokenType = _spaceTokenType;
 
-    emit SetSpaceTokenType(_spaceTokenId, _spaceTokenType);
+    emit SetType(_spaceTokenId, _spaceTokenType);
   }
 
   /**
@@ -101,7 +102,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract
    * @param _contour geohash5z encoded bottom level contour (3 <= length)
    */
-  function setSpaceTokenContour(uint256 _spaceTokenId, uint256[] calldata _contour) external onlyGeoDataManager {
+  function setContour(uint256 _spaceTokenId, uint256[] calldata _contour) external onlyGeoDataManager {
     require(_contour.length >= 3, "Number of contour elements should be equal or greater than 3");
 
     for (uint256 i = 0; i < _contour.length; i++) {
@@ -115,7 +116,7 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
     spaceTokens[_spaceTokenId].contour = _contour;
 
-    emit SetSpaceTokenContour(_spaceTokenId, _contour);
+    emit SetContour(_spaceTokenId, _contour);
   }
 
   /**
@@ -123,10 +124,10 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract
    * @param _highestPoint int256 in centimeters above the sea level
    */
-  function setSpaceTokenHighestPoint(uint256 _spaceTokenId, int256 _highestPoint) external onlyGeoDataManager {
+  function setHighestPoint(uint256 _spaceTokenId, int256 _highestPoint) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].highestPoint = _highestPoint;
 
-    emit SetSpaceTokenHighestPoint(_spaceTokenId, _highestPoint);
+    emit SetHighestPoint(_spaceTokenId, _highestPoint);
   }
 
   /**
@@ -134,10 +135,10 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract
    * @param _humanAddress string like city, street, building number an so on
    */
-  function setSpaceTokenHumanAddress(uint256 _spaceTokenId, string calldata _humanAddress) external onlyGeoDataManager {
+  function setHumanAddress(uint256 _spaceTokenId, string calldata _humanAddress) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].humanAddress = _humanAddress;
 
-    emit SetSpaceTokenHumanAddress(_spaceTokenId, _humanAddress);
+    emit SetHumanAddress(_spaceTokenId, _humanAddress);
   }
 
   /**
@@ -146,11 +147,11 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _area uint256 in sq. meters (1 sq. meter == 1 eth)
    * @param _areaSource USER_INPUT for manual inputs and CONTRACT for on-chain calculated area
    */
-  function setSpaceTokenArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
+  function setArea(uint256 _spaceTokenId, uint256 _area, AreaSource _areaSource) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].area = _area;
     spaceTokens[_spaceTokenId].areaSource = _areaSource;
 
-    emit SetSpaceTokenArea(_spaceTokenId, _area, _areaSource);
+    emit SetArea(_spaceTokenId, _area, _areaSource);
   }
 
   /**
@@ -158,10 +159,10 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract.
    * @param _ledgerIdentifier cadastral ID
    */
-  function setSpaceTokenLedgerIdentifier(uint256 _spaceTokenId, bytes32 _ledgerIdentifier) external onlyGeoDataManager {
+  function setLedgerIdentifier(uint256 _spaceTokenId, bytes32 _ledgerIdentifier) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].ledgerIdentifier = _ledgerIdentifier;
 
-    emit SetSpaceTokenLedgerIdentifier(_spaceTokenId, _ledgerIdentifier);
+    emit SetLedgerIdentifier(_spaceTokenId, _ledgerIdentifier);
   }
 
   /**
@@ -169,22 +170,46 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * @param _spaceTokenId the same ID used in SpaceToken contract.
    * @param _dataLink IPLD data address
    */
-  function setSpaceTokenDataLink(uint256 _spaceTokenId, string calldata _dataLink) external onlyGeoDataManager {
+  function setDataLink(uint256 _spaceTokenId, string calldata _dataLink) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].dataLink = _dataLink;
 
-    emit SetSpaceTokenDataLink(_spaceTokenId, _dataLink);
+    emit SetDataLink(_spaceTokenId, _dataLink);
   }
 
-  function setSpaceTokenVertexRootHash(uint256 _spaceTokenId, bytes32 _vertexRootHash) external onlyGeoDataManager {
+  function setVertexRootHash(uint256 _spaceTokenId, bytes32 _vertexRootHash) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].vertexRootHash = _vertexRootHash;
 
-    emit SetSpaceTokenVertexRootHash(_spaceTokenId, _vertexRootHash);
+    emit SetVertexRootHash(_spaceTokenId, _vertexRootHash);
   }
 
-  function setSpaceTokenVertexStorageLink(uint256 _spaceTokenId, string calldata _vertexStorageLink) external onlyGeoDataManager {
+  function setVertexStorageLink(uint256 _spaceTokenId, string calldata _vertexStorageLink) external onlyGeoDataManager {
     spaceTokens[_spaceTokenId].vertexStorageLink = _vertexStorageLink;
 
-    emit SetSpaceTokenVertexStorageLink(_spaceTokenId, _vertexStorageLink);
+    emit SetVertexStorageLink(_spaceTokenId, _vertexStorageLink);
+  }
+
+  function setDetails(
+    uint256 _spaceTokenId,
+    SpaceTokenType _tokenType,
+    AreaSource _areaSource,
+    uint256 _area,
+    bytes32 _ledgerIdentifier,
+    string calldata _humanAddress,
+    string calldata _dataLink
+  )
+    external
+    onlyGeoDataManager
+  {
+    SpaceToken storage p = spaceTokens[_spaceTokenId];
+
+    p.spaceTokenType = _tokenType;
+    p.areaSource = _areaSource;
+    p.area = _area;
+    p.ledgerIdentifier = _ledgerIdentifier;
+    p.humanAddress = _humanAddress;
+    p.dataLink = _dataLink;
+
+    emit SetDetails(_spaceTokenId);
   }
 
   /**
@@ -192,12 +217,12 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
    * Permissionless method.
    * @param _spaceTokenId the same ID used in SpaceToken contract.
    */
-  function deleteSpaceTokenGeoData(uint256 _spaceTokenId) external {
+  function deleteGeoData(uint256 _spaceTokenId) external {
     require(ISpaceToken(ggr.getSpaceTokenAddress()).exists(_spaceTokenId) == false, "Token exists");
 
     delete spaceTokens[_spaceTokenId];
 
-    emit DeleteSpaceTokenGeoData(_spaceTokenId, msg.sender);
+    emit DeleteGeoData(_spaceTokenId, msg.sender);
   }
 
   // INTERNAL
@@ -208,52 +233,52 @@ contract SpaceGeoDataRegistry is ISpaceGeoDataRegistry, Initializable {
 
   // GETTERS
 
-  function getSpaceTokenType(uint256 _spaceTokenId) external view returns (SpaceTokenType) {
+  function getType(uint256 _spaceTokenId) external view returns (SpaceTokenType) {
     return spaceTokens[_spaceTokenId].spaceTokenType;
   }
 
-  function getSpaceTokenContour(uint256 _spaceTokenId) external view returns (uint256[] memory) {
+  function getContour(uint256 _spaceTokenId) external view returns (uint256[] memory) {
     return spaceTokens[_spaceTokenId].contour;
   }
 
-  function getSpaceTokenHighestPoint(uint256 _spaceTokenId) external view returns (int256) {
+  function getHighestPoint(uint256 _spaceTokenId) external view returns (int256) {
     return spaceTokens[_spaceTokenId].highestPoint;
   }
 
-  function getSpaceTokenHumanAddress(uint256 _spaceTokenId) external view returns (string memory) {
+  function getHumanAddress(uint256 _spaceTokenId) external view returns (string memory) {
     return spaceTokens[_spaceTokenId].humanAddress;
   }
 
-  function getSpaceTokenArea(uint256 _spaceTokenId) external view returns (uint256) {
+  function getArea(uint256 _spaceTokenId) external view returns (uint256) {
     return spaceTokens[_spaceTokenId].area;
   }
 
-  function getSpaceTokenAreaSource(uint256 _spaceTokenId) external view returns (ISpaceGeoDataRegistry.AreaSource) {
+  function getAreaSource(uint256 _spaceTokenId) external view returns (ISpaceGeoDataRegistry.AreaSource) {
     return spaceTokens[_spaceTokenId].areaSource;
   }
 
-  function getSpaceTokenLedgerIdentifier(uint256 _spaceTokenId) external view returns (bytes32) {
+  function getLedgerIdentifier(uint256 _spaceTokenId) external view returns (bytes32) {
     return spaceTokens[_spaceTokenId].ledgerIdentifier;
   }
 
-  function getSpaceTokenDataLink(uint256 _spaceTokenId) external view returns (string memory) {
+  function getDataLink(uint256 _spaceTokenId) external view returns (string memory) {
     return spaceTokens[_spaceTokenId].dataLink;
   }
 
-  function getSpaceTokenVertexRootHash(uint256 _spaceTokenId) external view returns (bytes32) {
+  function getVertexRootHash(uint256 _spaceTokenId) external view returns (bytes32) {
     return spaceTokens[_spaceTokenId].vertexRootHash;
   }
 
-  function getSpaceTokenVertexStorageLink(uint256 _spaceTokenId) external view returns (string memory) {
+  function getVertexStorageLink(uint256 _spaceTokenId) external view returns (string memory) {
     return spaceTokens[_spaceTokenId].vertexStorageLink;
   }
 
-  function getSpaceTokenContourLength(uint256 _spaceTokenId) external view returns (uint256) {
+  function getContourLength(uint256 _spaceTokenId) external view returns (uint256) {
     return spaceTokens[_spaceTokenId].contour.length;
   }
 
-  function getSpaceTokenDetails(uint256 _spaceTokenId) external view returns (
-    SpaceTokenType spaceTokenType,
+  function getDetails(uint256 _spaceTokenId) external view returns (
+    SpaceTokenType tokenType,
     uint256[] memory contour,
     int256 highestPoint,
     AreaSource areaSource,

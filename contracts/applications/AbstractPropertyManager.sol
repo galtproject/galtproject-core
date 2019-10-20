@@ -533,8 +533,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
-    spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.details.contour);
-    spaceGeoData.setSpaceTokenHighestPoint(a.spaceTokenId, a.details.highestPoint);
+    spaceGeoData.setContour(a.spaceTokenId, a.details.contour);
+    spaceGeoData.setHighestPoint(a.spaceTokenId, a.details.highestPoint);
 
     _changeApplicationStatus(a, ApplicationStatus.STORED);
   }

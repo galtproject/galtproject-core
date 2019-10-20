@@ -252,15 +252,15 @@ contract('ContourVerification', accounts => {
     it('should allow approving any contour', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId1 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId1, this.contour1, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId1, this.contour1, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId2 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId2, this.contour2, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId2, this.contour2, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId3 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId3, this.contour3, { from: geoDateManagement });
 
       // Create a new NewPropertyManager application
       res = await this.newPropertyManager.submit(this.contour4, 6, SpaceTokenType.LAND_PLOT);
@@ -317,8 +317,8 @@ contract('ContourVerification', accounts => {
 
       describe('existing token', () => {
         beforeEach(async function() {
-          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+          await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+          await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
             from: geoDateManagement
           });
         });
@@ -350,7 +350,7 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with collinear contours', async function() {
-          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour6, { from: geoDateManagement });
+          await this.spaceGeoData.setContour(this.tokenId3, this.contour6, { from: geoDateManagement });
 
           const res = await this.newPropertyManager.submit(this.contour7, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
@@ -951,11 +951,11 @@ contract('ContourVerification', accounts => {
       beforeEach(async function() {
         let res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId1 = res.logs[0].args.tokenId.toNumber();
-        // await this.spaceGeoData.setSpaceTokenContour(this.tokenId1, this.contour1, { from: geoDateManagement });
+        // await this.spaceGeoData.setContour(this.tokenId1, this.contour1, { from: geoDateManagement });
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId2 = res.logs[0].args.tokenId.toNumber();
-        // await this.spaceGeoData.setSpaceTokenContour(this.tokenId2, this.contour2, { from: geoDateManagement });
+        // await this.spaceGeoData.setContour(this.tokenId2, this.contour2, { from: geoDateManagement });
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
@@ -964,8 +964,8 @@ contract('ContourVerification', accounts => {
       describe('existing contours', () => {
         describe('verifying point inside existing', () => {
           beforeEach(async function() {
-            await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-            await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+            await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+            await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
               from: geoDateManagement
             });
           });
@@ -1019,8 +1019,8 @@ contract('ContourVerification', accounts => {
 
         describe('existing point inside verifying', () => {
           beforeEach(async function() {
-            await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour2, { from: geoDateManagement });
-            await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+            await this.spaceGeoData.setContour(this.tokenId3, this.contour2, { from: geoDateManagement });
+            await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
               from: geoDateManagement
             });
           });
@@ -1415,15 +1415,15 @@ contract('ContourVerification', accounts => {
     it('should allow approving any contour', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId1 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId1, this.contour1, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId1, this.contour1, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId2 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId2, this.contour2, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId2, this.contour2, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId3 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId3, this.contour3, { from: geoDateManagement });
 
       res = await this.updatePropertyManager.submit(tokenId1, this.contour5, 42, SpaceTokenType.LAND_PLOT);
       const aId = res.logs[0].args.applicationId;
@@ -1465,13 +1465,13 @@ contract('ContourVerification', accounts => {
 
         let res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId2 = res.logs[0].args.tokenId.toNumber();
-        await this.spaceGeoData.setSpaceTokenContour(this.tokenId2, this.contour1, { from: geoDateManagement });
-        await this.spaceGeoData.setSpaceTokenType(this.tokenId2, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
+        await this.spaceGeoData.setContour(this.tokenId2, this.contour1, { from: geoDateManagement });
+        await this.spaceGeoData.setType(this.tokenId2, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
-        await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour3, { from: geoDateManagement });
-        await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
+        await this.spaceGeoData.setContour(this.tokenId3, this.contour3, { from: geoDateManagement });
+        await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, { from: geoDateManagement });
       });
 
       it('should allow rejecting only with another existing token intersection proof', async function() {
@@ -1565,11 +1565,11 @@ contract('ContourVerification', accounts => {
 
         let res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId2 = res.logs[0].args.tokenId.toNumber();
-        await this.spaceGeoData.setSpaceTokenContour(this.tokenId2, this.contour2, { from: geoDateManagement });
+        await this.spaceGeoData.setContour(this.tokenId2, this.contour2, { from: geoDateManagement });
 
         res = await this.spaceToken.mint(alice, { from: minter });
         this.tokenId3 = res.logs[0].args.tokenId.toNumber();
-        await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour3, { from: geoDateManagement });
+        await this.spaceGeoData.setContour(this.tokenId3, this.contour3, { from: geoDateManagement });
 
         res = await this.updatePropertyManager.submit(this.tokenId2, this.contour1, 42, SpaceTokenType.LAND_PLOT);
         const aId = res.logs[0].args.applicationId;

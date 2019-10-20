@@ -42,8 +42,8 @@ library ContourVerificationManagerLib {
 
     ISpaceGeoDataRegistry geoDataRegistry = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress());
 
-    uint256[] memory existingTokenContour = geoDataRegistry.getSpaceTokenContour(_existingTokenId);
-    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getSpaceTokenType(_existingTokenId);
+    uint256[] memory existingTokenContour = geoDataRegistry.getContour(_existingTokenId);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getType(_existingTokenId);
 
     _requireSameTokenType(a, existingSpaceTokenType);
 
@@ -60,7 +60,7 @@ library ContourVerificationManagerLib {
 
     if (intersects == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
-        int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
+        int256 existingTokenHighestPoint = geoDataRegistry.getHighestPoint(_existingTokenId);
         require(
           checkForRoomVerticalIntersection(a, existingTokenContour, existingTokenHighestPoint) == true,
           "No intersection neither among contours nor among heights"
@@ -88,8 +88,8 @@ library ContourVerificationManagerLib {
 
     ISpaceGeoDataRegistry geoDataRegistry = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress());
 
-    uint256[] memory existingTokenContour = geoDataRegistry.getSpaceTokenContour(_existingTokenId);
-    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getSpaceTokenType(_existingTokenId);
+    uint256[] memory existingTokenContour = geoDataRegistry.getContour(_existingTokenId);
+    ISpaceGeoDataRegistry.SpaceTokenType existingSpaceTokenType = geoDataRegistry.getType(_existingTokenId);
 
     _requireSameTokenType(a, existingSpaceTokenType);
 
@@ -102,7 +102,7 @@ library ContourVerificationManagerLib {
     );
     if (isInside == true) {
       if (existingSpaceTokenType == ISpaceGeoDataRegistry.SpaceTokenType.ROOM) {
-        int256 existingTokenHighestPoint = geoDataRegistry.getSpaceTokenHighestPoint(_existingTokenId);
+        int256 existingTokenHighestPoint = geoDataRegistry.getHighestPoint(_existingTokenId);
         require(
           checkForRoomVerticalIntersection(a, existingTokenContour, existingTokenHighestPoint) == true,
           "Contour inclusion/height intersection not found"

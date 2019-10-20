@@ -74,9 +74,9 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       const res = await this.spaceToken.mint(alice);
       const tokenId = res.logs[1].args.tokenId;
 
-      await this.spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
-      await this.spaceGeoData.setSpaceTokenArea(
+      await this.spaceGeoData.setContour(tokenId, geohashContour.map(galt.geohashToNumber));
+      await this.spaceGeoData.setHeights(tokenId, geohashContour.map(() => 10));
+      await this.spaceGeoData.setArea(
         tokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
         '1'
@@ -85,9 +85,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
     };
 
     this.getSpaceTokenContour = async _tokenId =>
-      (await this.spaceGeoData.getSpaceTokenContour(_tokenId)).map(geohash =>
-        galt.numberToGeohash(geohash.toString(10))
-      );
+      (await this.spaceGeoData.getContour(_tokenId)).map(geohash => galt.numberToGeohash(geohash.toString(10)));
 
     this.splitSpaceToken = async (subjectSpaceTokenId, clippingContour) => {
       let res;
@@ -135,11 +133,11 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
     };
 
     this.checkArea = async tokenId => {
-      const geohashContour = await this.getSpaceTokenContour(tokenId);
+      const geohashContour = await this.getContour(tokenId);
       // console.log('geohashContour', JSON.stringify(geohashContour));
       const jsArea = galt.geohash.contour.area(geohashContour);
       // await this.geodesic.cacheGeohashListToLatLonAndUtm(geohashContour.map(galt.geohashToNumber));
-      const solArea = await this.spaceGeoData.getSpaceTokenArea(tokenId);
+      const solArea = await this.spaceGeoData.getArea(tokenId);
 
       assert.isBelow(Math.abs(solArea / 10 ** 18 - jsArea), areaAccurancy);
     };
@@ -152,25 +150,17 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       let res;
       res = await this.spaceToken.mint(alice);
       const firstSpaceTokenId = res.logs[1].args.tokenId;
-      await this.spaceGeoData.setSpaceTokenContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setSpaceTokenHeights(
-        firstSpaceTokenId,
-        firstSpaceToken.map((geohash, index) => index + 10),
-        {
-          from: coreTeam
-        }
-      );
+      await this.spaceGeoData.setContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
+      await this.spaceGeoData.setHeights(firstSpaceTokenId, firstSpaceToken.map((geohash, index) => index + 10), {
+        from: coreTeam
+      });
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
       const secondSpaceTokenId = res.logs[1].args.tokenId;
-      await this.spaceGeoData.setSpaceTokenContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setSpaceTokenHeights(
-        secondSpaceTokenId,
-        secondSpaceToken.map((geohash, index) => index + 10),
-        {
-          from: coreTeam
-        }
-      );
+      await this.spaceGeoData.setContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
+      await this.spaceGeoData.setHeights(secondSpaceTokenId, secondSpaceToken.map((geohash, index) => index + 10), {
+        from: coreTeam
+      });
 
       await this.splitMerge.mergeSpaceToken(firstSpaceTokenId, secondSpaceTokenId, resultSpaceToken, {
         from: alice
@@ -189,9 +179,9 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       res = await this.spaceToken.ownerOf.call(packageId);
       assert.equal(res, alice);
 
-      await this.spaceGeoData.setSpaceTokenContour(packageId, this.subjectContour, { from: coreTeam });
+      await this.spaceGeoData.setContour(packageId, this.subjectContour, { from: coreTeam });
 
-      res = (await this.spaceGeoData.getSpaceTokenContour(packageId)).map(geohash => geohash.toString(10));
+      res = (await this.spaceGeoData.getContour(packageId)).map(geohash => geohash.toString(10));
 
       assert.deepEqual(res, this.subjectContour.map(geohash => geohash.toString(10)));
     });
@@ -254,14 +244,14 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qftn244vj',
         'w24qfxqukn80',
         'w24qfrx3sxuc',
         'w24qfmpp2p00'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfpvbmnkt',
         'w24qf5ju3pkx',
         'w24qfejgkp2p',
@@ -288,7 +278,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qfwj73jy9',
         'w24qfxtrkyqv',
         'w24qfrgs3s5g',
@@ -296,7 +286,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
         'w24qfmv92nbh'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfpvrmnke',
         'w24qfrgs3s5g',
         'w24qfq7pkn8p',
@@ -324,7 +314,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qfwj73jy9',
         'w24qfxtrkyqv',
         'w24qfrgs3s5g',
@@ -332,7 +322,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
         'w24qfmv92nbh'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfpvrmnke',
         'w24qfrgs3s5g',
         'w24qfq7pkn8p',
@@ -361,14 +351,14 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qf1yb198s',
         'w24qf3uc2pb1',
         'w24qf7kb2p2n',
         'w24qf5rp2ppu'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qcv6bkp00',
         'w24qfjpj2p00',
         'w24qf5rp2p2j',
@@ -395,14 +385,14 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qf1yb198s',
         'w24qf3uc2pb1',
         'w24qf7kb2p2n',
         'w24qf5rp2ppu'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qcv6bkp00',
         'w24qfjpj2p00',
         'w24qf5rp2p2j',
@@ -432,21 +422,21 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 2);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qfd8d0g8h', // 1200619217705582405,104524644854296247290
         'w24qfdw2kp8h', // 1200340250506997107,104532680679112672805
         'w24qfsjyrzpz', // 1209607785567641256,104532165359705686569
         'w24qfs24wq5y' // 1210331879095087062,104524199219555862637
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[1]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[1]), [
         'w24qfqrgfqs9', // 1221534521210230496,104523685221763649871
         'w24qfwqykn8p', // 1221964722499251363,104533367324620485305
         'w24qfxzt2yqh', // 1230030963197350500,104534265864640474318
         'w24qfrzx8gt5' // 1230402222620671413,104523278355338755424
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfrzx8gt5', // 1230402222620671413,104523278355338755424
         'w24r40j43nkg', // 1230889102444052694,104508869033306837081
         'w24qf4smkp85', // 1201198389753699301,104507961440831422805
@@ -497,14 +487,14 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qfmefgc0c',
         'w24qfjtvhzhf',
         'w24qfhen6688',
         'w24qfkteb688'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfj8rmnys',
         'w24qfjtvhzhf',
         'w24qfhen6688',
@@ -526,13 +516,13 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       ]);
 
       assert.equal(clippingSpaceTokensIds.length, 1);
-      assert.deepEqual(await this.getSpaceTokenContour(clippingSpaceTokensIds[0]), [
+      assert.deepEqual(await this.getContour(clippingSpaceTokensIds[0]), [
         'w24qfmsve4y7',
         'w24r42h56n7d',
         'w24qfwck0tek'
       ]);
 
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), [
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), [
         'w24qfwck0tek',
         'w24qfgy56x3f',
         'w24qf6tv6pt5',
@@ -562,7 +552,7 @@ contract.skip('SplitMerge', ([coreTeam, alice]) => {
       });
 
       assert.equal(await this.spaceToken.ownerOf(subjectSpaceTokenId), alice);
-      assert.deepEqual(await this.getSpaceTokenContour(subjectSpaceTokenId), subjectContour);
+      assert.deepEqual(await this.getContour(subjectSpaceTokenId), subjectContour);
       assert.equal(await this.spaceToken.exists.call(clippingSpaceTokensIds[0]), false);
     });
   });

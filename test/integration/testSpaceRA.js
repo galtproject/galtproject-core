@@ -99,9 +99,9 @@ contract('SpaceRA', accounts => {
       assert.equal(res, charlie);
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -367,9 +367,9 @@ contract('SpaceRA', accounts => {
       const token3 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -501,7 +501,7 @@ contract('SpaceRA', accounts => {
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
 
       // CREATE LOCKER
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });

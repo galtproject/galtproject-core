@@ -58,7 +58,7 @@ contract SplitMerge is OwnableAndInitializable {
     SpaceGeoDataRegistry _reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
     require(
-      _reg.getSpaceTokenAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      _reg.getAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Split available only for contract calculated token's area"
     );
 
@@ -80,7 +80,7 @@ contract SplitMerge is OwnableAndInitializable {
 
   function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
     SpaceGeoDataRegistry reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
-    return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(reg.getSpaceTokenContour(_spaceTokenId));
+    return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(reg.getContour(_spaceTokenId));
   }
 
   function finishSplitOperation(uint256 _spaceTokenId) external {
@@ -93,22 +93,22 @@ contract SplitMerge is OwnableAndInitializable {
 
     (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
 
-    reg.setSpaceTokenContour(_spaceTokenId, subjectContourOutput);
+    reg.setContour(_spaceTokenId, subjectContourOutput);
 
     spaceToken().transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
-    int256 originalHighestPoint = reg.getSpaceTokenHighestPoint(_spaceTokenId);
+    int256 originalHighestPoint = reg.getHighestPoint(_spaceTokenId);
 
     for (uint256 j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken().mint(subjectTokenOwner);
 
-      reg.setSpaceTokenContour(newPackageId, splitOperation.getResultContour(j));
-      reg.setSpaceTokenArea(newPackageId, calculateTokenArea(newPackageId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
-      reg.setSpaceTokenHighestPoint(newPackageId, originalHighestPoint);
+      reg.setContour(newPackageId, splitOperation.getResultContour(j));
+      reg.setArea(newPackageId, calculateTokenArea(newPackageId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
+      reg.setHighestPoint(newPackageId, originalHighestPoint);
 
       emit NewSplitSpaceToken(newPackageId);
     }
 
-    reg.setSpaceTokenArea(_spaceTokenId, calculateTokenArea(_spaceTokenId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
+    reg.setArea(_spaceTokenId, calculateTokenArea(_spaceTokenId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
 
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -135,30 +135,30 @@ contract SplitMerge is OwnableAndInitializable {
   {
     SpaceGeoDataRegistry reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
     require(
-      reg.getSpaceTokenAreaSource(_sourceSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      reg.getAreaSource(_sourceSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Merge available only for contract calculated token's area"
     );
     require(
-      reg.getSpaceTokenAreaSource(_destinationSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      reg.getAreaSource(_destinationSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Merge available only for contract calculated token's area"
     );
     checkMergeContours(
-      reg.getSpaceTokenContour(_sourceSpaceTokenId),
-      reg.getSpaceTokenContour(_destinationSpaceTokenId),
+      reg.getContour(_sourceSpaceTokenId),
+      reg.getContour(_destinationSpaceTokenId),
       _destinationSpaceContour
     );
 
-    reg.setSpaceTokenContour(_destinationSpaceTokenId, _destinationSpaceContour);
+    reg.setContour(_destinationSpaceTokenId, _destinationSpaceContour);
 
-    int256 sourcePackageHighestPoint = reg.getSpaceTokenHighestPoint(_sourceSpaceTokenId);
-    reg.setSpaceTokenHighestPoint(_destinationSpaceTokenId, sourcePackageHighestPoint);
-    reg.setSpaceTokenArea(
+    int256 sourcePackageHighestPoint = reg.getHighestPoint(_sourceSpaceTokenId);
+    reg.setHighestPoint(_destinationSpaceTokenId, sourcePackageHighestPoint);
+    reg.setArea(
       _destinationSpaceTokenId,
       calculateTokenArea(_destinationSpaceTokenId),
       ISpaceGeoDataRegistry.AreaSource.CONTRACT
     );
 
-    reg.deleteSpaceTokenGeoData(_sourceSpaceTokenId);
+    reg.deleteGeoData(_sourceSpaceTokenId);
 
     spaceToken().burn(_sourceSpaceTokenId);
   }
