@@ -111,6 +111,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ggr = _ggr;
     requiredConfirmations = _requiredConfirmations;
     approvalTimeout = _approvalTimeout;
+    head = 1;
+    tail = 1;
   }
 
   // OWNER INTERFACE
@@ -226,7 +228,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingContourIntersectionProof(
       ggr,
       a,
-      _verifier,
       _existingTokenId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -262,7 +263,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingContourIntersectionProof(
       ggr,
       a,
-      msg.sender,
       _existingTokenId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -297,7 +297,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      _verifier,
       _existingTokenId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -327,7 +326,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      msg.sender,
       _existingTokenId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -361,7 +359,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedContourIntersectionProof(
       ggr,
       a,
-      _verifier,
       _applicationContract,
       _externalApplicationId,
       _existingContourSegmentFirstPointIndex,
@@ -399,7 +396,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedContourIntersectionProof(
       ggr,
       a,
-      msg.sender,
       _applicationContract,
       _externalApplicationId,
       _existingContourSegmentFirstPointIndex,
@@ -436,7 +432,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      _verifier,
       _applicationContract,
       _externalApplicationId,
       _verifyingContourPointIndex,
@@ -468,7 +463,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      msg.sender,
       _applicationContract,
       _externalApplicationId,
       _verifyingContourPointIndex,
@@ -503,7 +497,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedTimeoutContourIntersectionProof(
       a,
       existingA,
-      _verifier,
       _existingCVApplicationId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -544,7 +537,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedTimeoutContourIntersectionProof(
       a,
       existingA,
-      msg.sender,
       _existingCVApplicationId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -580,7 +572,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       a,
       existingA,
       _inclusion,
-      _verifier,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -592,8 +583,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // at-in-f
   function reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
     uint256 _aId,
-    Inclusion _inclusion,
     uint256 _existingCVApplicationId,
+    Inclusion _inclusion,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -615,7 +606,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       a,
       existingA,
       _inclusion,
-      msg.sender,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint

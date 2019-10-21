@@ -26,7 +26,6 @@ library ContourVerificationManagerLib {
   function denyWithExistingContourIntersectionProof(
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
-    address _reporter,
     uint256 _existingTokenId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,
@@ -76,7 +75,6 @@ library ContourVerificationManagerLib {
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Inclusion _inclusion,
-    address _reporter,
     uint256 _existingTokenId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
@@ -117,7 +115,6 @@ library ContourVerificationManagerLib {
   function denyWithApplicationApprovedContourIntersectionProof(
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
-    address _reporter,
     address _applicationContract,
     uint256 _externalApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
@@ -168,7 +165,6 @@ library ContourVerificationManagerLib {
     GaltGlobalRegistry _ggr,
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Inclusion _inclusion,
-    address _reporter,
     address _applicationContract,
     uint256 _externalApplicationId,
     uint256 _verifyingContourPointIndex,
@@ -214,7 +210,6 @@ library ContourVerificationManagerLib {
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Application storage existingA,
     ContourVerificationManager.Inclusion _inclusion,
-    address _reporter,
     uint256 _existingCVApplicationId,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
@@ -261,7 +256,6 @@ library ContourVerificationManagerLib {
   function denyWithApplicationApprovedTimeoutContourIntersectionProof(
     ContourVerificationManager.Application storage a,
     ContourVerificationManager.Application storage existingA,
-    address _reporter,
     uint256 _existingCVApplicationId,
     uint256 _existingContourSegmentFirstPointIndex,
     uint256 _existingContourSegmentFirstPoint,

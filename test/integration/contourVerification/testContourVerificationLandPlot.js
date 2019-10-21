@@ -277,29 +277,29 @@ contract('ContourVerification', accounts => {
       );
       assert.equal(internalId.toString(10), vId.toString(10));
 
-      await this.contourVerificationManager.approve(0, v2, { from: o2 });
-      await this.contourVerificationManager.approve(0, v4, { from: o4 });
-      await this.contourVerificationManager.approve(0, v3, { from: o3 });
+      await this.contourVerificationManager.approve(vId, v2, { from: o2 });
+      await this.contourVerificationManager.approve(vId, v4, { from: o4 });
+      await this.contourVerificationManager.approve(vId, v3, { from: o3 });
 
       await evmIncreaseTime(3600 * 4);
 
       assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(vId);
       assert.equal(res.approvalCount, 3);
       assert.equal(res.action, 0);
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
+      await assertRevert(this.contourVerificationManager.pushApproval(vId), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
-      await this.contourVerificationManager.pushApproval(0);
+      await this.contourVerificationManager.pushApproval(vId);
 
       assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.SUBMITTED);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(vId);
       assert.equal(res.status, CVStatus.APPROVED);
     });
 
@@ -324,17 +324,18 @@ contract('ContourVerification', accounts => {
         });
 
         it('should deny rejecting with non-intersecting contours', async function() {
-          const res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
+          let res = await this.newPropertyManager.submit(this.contour3, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
           assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(0, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
           await assertRevert(
             this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-              0,
+              cvId2,
               v2,
               this.tokenId3,
               3,
@@ -352,17 +353,18 @@ contract('ContourVerification', accounts => {
         it('should deny rejecting with collinear contours', async function() {
           await this.spaceGeoData.setContour(this.tokenId3, this.contour6, { from: geoDateManagement });
 
-          const res = await this.newPropertyManager.submit(this.contour7, 42, SpaceTokenType.LAND_PLOT);
+          let res = await this.newPropertyManager.submit(this.contour7, 42, SpaceTokenType.LAND_PLOT);
           const aId = res.logs[0].args.applicationId;
 
           await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-          await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+          const cvId2 = res.logs[0].args.applicationId;
           assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-          await this.contourVerificationManager.approve(0, v4, { from: o4 });
+          await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
           await assertRevert(
             this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-              0,
+              cvId2,
               v2,
               this.tokenId3,
               0,
@@ -417,7 +419,7 @@ contract('ContourVerification', accounts => {
           await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
           await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-            0,
+            cvId2,
             v2,
             Inclusion.VERIFYING_INSIDE_EXISTING,
             this.tokenId3,
@@ -446,7 +448,7 @@ contract('ContourVerification', accounts => {
 
           assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-          res = await this.contourVerificationManager.getApplication(0);
+          res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.approvalCount, 3);
           assert.equal(res.action, 0);
           assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
@@ -484,13 +486,13 @@ contract('ContourVerification', accounts => {
 
           assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-          res = await this.contourVerificationManager.getApplication(0);
+          res = await this.contourVerificationManager.getApplication(cvId2);
           assert.equal(res.approvalCount, 3);
           assert.equal(res.action, 0);
           assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
           await this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
-            0,
+            cvId2,
             this.tokenId3,
             Inclusion.VERIFYING_INSIDE_EXISTING,
             3,
@@ -971,17 +973,18 @@ contract('ContourVerification', accounts => {
           });
 
           it('should deny rejecting with non-intersecting contour', async function() {
-            const res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
+            let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
             const aId = res.logs[0].args.applicationId;
 
             await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-                0,
+                cvId2,
                 v2,
                 Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.tokenId3,
@@ -1026,17 +1029,18 @@ contract('ContourVerification', accounts => {
           });
 
           it('should deny rejecting with non-intersecting contour', async function() {
-            const res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
+            let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
             const aId = res.logs[0].args.applicationId;
 
             await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-                0,
+                cvId2,
                 v2,
                 Inclusion.EXISTING_INSIDE_VERIFYING,
                 this.tokenId3,
@@ -1430,31 +1434,32 @@ contract('ContourVerification', accounts => {
 
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-      await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
+      res = await this.contourVerificationManager.submit(this.updatePropertyManager.address, aId, { from: alice });
+      const cvId = res.logs[0].args.applicationId;
 
-      await this.contourVerificationManager.approve(0, v2, { from: o2 });
-      await this.contourVerificationManager.approve(0, v4, { from: o4 });
-      await this.contourVerificationManager.approve(0, v3, { from: o3 });
+      await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
+      await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
+      await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
 
       await evmIncreaseTime(3600 * 4);
 
       assert.equal(await this.updatePropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(cvId);
       assert.equal(res.approvalCount, 3);
       assert.equal(res.action, 0);
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
+      await assertRevert(this.contourVerificationManager.pushApproval(cvId), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
-      await this.contourVerificationManager.pushApproval(0);
+      await this.contourVerificationManager.pushApproval(cvId);
 
       assert.equal(await this.updatePropertyManager.getApplicationStatus(aId), ApplicationStatus.SUBMITTED);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(cvId);
       assert.equal(res.status, CVStatus.APPROVED);
     });
 
@@ -1691,55 +1696,55 @@ contract('ContourVerification', accounts => {
 
     it('should move queue correctly', async function() {
       // 0-0
-      assert.equal(await this.contourVerificationManager.tail(), 0);
-      assert.equal(await this.contourVerificationManager.head(), 0);
+      assert.equal(await this.contourVerificationManager.tail(), 1);
+      assert.equal(await this.contourVerificationManager.head(), 1);
 
       // 0-1
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
       this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, { from: alice });
 
-      assert.equal(await this.contourVerificationManager.tail(), 0);
-      assert.equal(await this.contourVerificationManager.head(), 1);
+      assert.equal(await this.contourVerificationManager.tail(), 1);
+      assert.equal(await this.contourVerificationManager.head(), 2);
 
       // 0-2
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: bob });
       this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, { from: bob });
 
-      assert.equal(await this.contourVerificationManager.tail(), 0);
-      assert.equal(await this.contourVerificationManager.head(), 2);
+      assert.equal(await this.contourVerificationManager.tail(), 1);
+      assert.equal(await this.contourVerificationManager.head(), 3);
 
       // 1-2
-      await assertRevert(this.contourVerificationManager.approve(1, v1, { from: o1 }));
-
-      await this.contourVerificationManager.approve(0, v1, { from: o1 });
-      await this.contourVerificationManager.approve(0, v2, { from: o2 });
-
-      assert.equal(await this.contourVerificationManager.tail(), 0);
-      await this.contourVerificationManager.approve(0, v3, { from: o3 });
-
-      assert.equal(await this.contourVerificationManager.tail(), 1);
-      assert.equal(await this.contourVerificationManager.head(), 2);
-
-      await assertRevert(this.contourVerificationManager.approve(0, v4, { from: o4 }));
-
-      // 2-2
       await assertRevert(this.contourVerificationManager.approve(2, v1, { from: o1 }));
 
+      await this.contourVerificationManager.approve(1, v1, { from: o1 });
       await this.contourVerificationManager.approve(1, v2, { from: o2 });
-      await this.contourVerificationManager.approve(1, v3, { from: o3 });
 
       assert.equal(await this.contourVerificationManager.tail(), 1);
-      await this.contourVerificationManager.approve(1, v4, { from: o4 });
+      await this.contourVerificationManager.approve(1, v3, { from: o3 });
 
       assert.equal(await this.contourVerificationManager.tail(), 2);
-      assert.equal(await this.contourVerificationManager.head(), 2);
+      assert.equal(await this.contourVerificationManager.head(), 3);
+
+      await assertRevert(this.contourVerificationManager.approve(1, v4, { from: o4 }));
+
+      // 2-2
+      await assertRevert(this.contourVerificationManager.approve(3, v1, { from: o1 }));
+
+      await this.contourVerificationManager.approve(2, v2, { from: o2 });
+      await this.contourVerificationManager.approve(2, v3, { from: o3 });
+
+      assert.equal(await this.contourVerificationManager.tail(), 2);
+      await this.contourVerificationManager.approve(2, v4, { from: o4 });
+
+      assert.equal(await this.contourVerificationManager.tail(), 3);
+      assert.equal(await this.contourVerificationManager.head(), 3);
 
       // 2-3
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: bob });
       this.contourVerificationManager.submit(this.newPropertyManager.address, this.aId, { from: bob });
 
-      assert.equal(await this.contourVerificationManager.tail(), 2);
-      assert.equal(await this.contourVerificationManager.head(), 3);
+      assert.equal(await this.contourVerificationManager.tail(), 3);
+      assert.equal(await this.contourVerificationManager.head(), 4);
 
       // 3-3
     });
