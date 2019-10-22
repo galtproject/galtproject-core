@@ -19,16 +19,15 @@ contract AutoBuyBack {
   event Swap(address indexed sender, uint256 ethBalance, uint256 galtBalance);
 
   IDEX public dex;
-  uint256 public minReturn;
 
-  constructor(address _dexAddress, uint256 _minReturn) public {
+  constructor(address _dexAddress) public {
     dex = IDEX(_dexAddress);
   }
 
   function swap() external {
     uint256 ethBalance = address(this).balance;
 
-    uint256 galtBalance = dex.ethToGalt.value(ethBalance)(minReturn);
+    uint256 galtBalance = dex.ethToGalt.value(ethBalance)(0);
 
     emit Swap(msg.sender, ethBalance, galtBalance);
   }
