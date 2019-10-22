@@ -9,7 +9,7 @@ contract('AutoBuyBack', ([coreTeam, alice, bob]) => {
   beforeEach(async function() {
     this.galtToken = await GaltToken.new();
     this.mockDex = await MockDex.new(this.galtToken.address);
-    this.autoBuyBack = await AutoBuyBack.new(this.mockDex.address, 1, { from: coreTeam });
+    this.autoBuyBack = await AutoBuyBack.new(this.mockDex.address, { from: coreTeam });
     await this.galtToken.mint(this.mockDex.address, ether(42));
     assert.equal(await this.galtToken.balanceOf(this.mockDex.address), ether(42));
   });
