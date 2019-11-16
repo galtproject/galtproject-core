@@ -23,15 +23,6 @@ import "./components/SpaceInputRA.sol";
 
 
 contract SpaceRA is IRA, LiquidRA, LockableRA, SpaceInputRA {
-  function initialize(
-    GaltGlobalRegistry _ggr
-  )
-    external
-  {
-    initializeInternal(_ggr);
-    ggr = _ggr;
-  }
-
   function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal {
     pggConfig(_pgg)
       .getDelegateSpaceVoting()

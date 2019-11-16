@@ -11,16 +11,10 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../../interfaces/ISpaceToken.sol";
-import "../../interfaces/ISpaceLocker.sol";
-import "../../registries/interfaces/ILockerRegistry.sol";
-import "../../registries/GaltGlobalRegistry.sol";
 
 
-contract LiquidRA is Initializable {
+contract LiquidRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
   using ArraySet for ArraySet.Uint256Set;
@@ -29,8 +23,6 @@ contract LiquidRA is Initializable {
   event Mint(address indexed owner, uint256 amount);
   event Transfer(address indexed from, address indexed to, uint256 amount);
   event RevokeDelegated(address indexed from, address indexed owner, uint256 amount);
-
-  GaltGlobalRegistry public ggr;
 
   // Delegate => balance
   mapping(address => uint256) internal _balances;
@@ -46,15 +38,6 @@ contract LiquidRA is Initializable {
 
   // L0
   uint256 internal totalStakedSpace;
-
-  function initializeInternal(
-    GaltGlobalRegistry _ggr
-  )
-    internal
-    isInitializer
-  {
-    ggr = _ggr;
-  }
 
   // PermissionED
   function revoke(address _from, uint256 _amount) public {

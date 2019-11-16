@@ -12,10 +12,12 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../registries/interfaces/ILockerRegistry.sol";
+import "../../interfaces/IGaltLocker.sol";
 import "./LiquidRA.sol";
+import "./DecentralizedRA.sol";
 
 
-contract GaltInputRA is LiquidRA {
+contract GaltInputRA is LiquidRA, DecentralizedRA {
   ArraySet.AddressSet internal _members;
 
   // locker => isMinted
@@ -31,7 +33,7 @@ contract GaltInputRA is LiquidRA {
 
   // @dev Mints reputation for given token to the owner account
   function mint(
-    ISpaceLocker _galtLocker
+    IGaltLocker _galtLocker
   )
     public
   {
@@ -53,7 +55,7 @@ contract GaltInputRA is LiquidRA {
   // Burn space token total reputation
   // Owner should revoke all delegated reputation back to his account before performing this action
   function approveBurn(
-    ISpaceLocker _galtLocker
+    IGaltLocker _galtLocker
   )
     public
   {

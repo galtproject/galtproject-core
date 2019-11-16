@@ -14,6 +14,7 @@ import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../registries/interfaces/IPGGRegistry.sol";
 import "../interfaces/ILockableRA.sol";
 import "./LiquidRA.sol";
+import "./DecentralizedRA.sol";
 
 // LiquidRA - base class
 // SpaceInputRA - space input
@@ -26,7 +27,7 @@ import "./LiquidRA.sol";
 // FundRA  = LiquidRA + (SpaceInputRA + SharableRA)
 
 
-contract LockableRA is ILockableRA, LiquidRA {
+contract LockableRA is ILockableRA, LiquidRA, DecentralizedRA {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
