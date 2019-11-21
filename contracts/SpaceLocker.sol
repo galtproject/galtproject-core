@@ -31,6 +31,8 @@ contract SpaceLocker is ILocker, ISpaceLocker {
   event Withdrawal(uint256 reputation);
   event TokenBurned(uint256 spaceTokenId);
 
+  bytes32 public constant LOCKER_TYPE = bytes32("REPUTATION");
+
   address public owner;
 
   GaltGlobalRegistry public ggr;
