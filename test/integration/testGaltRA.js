@@ -115,10 +115,10 @@ contract('GaltRA', accounts => {
       res = await this.galtLockerRegistry.isValid(aliceLockerAddress);
       assert.equal(res, true);
 
-      res = await this.galtLockerRegistry.getLockersListByOwner(alice);
+      res = await this.galtLockerRegistry.getLockerListByOwner(alice);
       assert.deepEqual(res, [aliceLockerAddress]);
 
-      res = await this.galtLockerRegistry.getLockersCountByOwner(alice);
+      res = await this.galtLockerRegistry.getLockerCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
       res = await this.galtRA.isMember(alice);

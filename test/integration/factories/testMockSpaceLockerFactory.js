@@ -54,7 +54,7 @@ contract('MockSpaceLockerFactory', accounts => {
       res = await this.spaceLockerFactory.buildMock(alice, { from: coreTeam });
       const mockSpaceLocker = await MockSpaceLocker.at(res.logs[0].args.locker);
 
-      assert.deepEqual(await this.spaceLockerRegistry.getLockersListByOwner(alice), [mockSpaceLocker.address]);
+      assert.deepEqual(await this.spaceLockerRegistry.getLockerListByOwner(alice), [mockSpaceLocker.address]);
 
       await mockSpaceLocker.hackDeposit(spaceTokenId, { from: coreTeam });
       await this.spaceToken.transferFrom(coreTeam, mockSpaceLocker.address, spaceTokenId, { from: coreTeam });
