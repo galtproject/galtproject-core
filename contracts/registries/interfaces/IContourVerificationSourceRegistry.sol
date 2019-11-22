@@ -10,7 +10,10 @@
 pragma solidity 0.5.10;
 
 
-interface IPropertyManagerFeeCalculator {
-  function calculateEthFee(uint256 _area) external view returns (uint256 fee);
-  function calculateGaltFee(uint256 _area) external view returns (uint256 fee);
+interface IContourVerificationSourceRegistry {
+  function addSource(address _contract) external;
+  function removeSource(address _contract) external;
+  function all() external view returns (address[] memory);
+  function hasSource(address _contract) external view returns (bool);
+  function requireValid(address _contract) external view;
 }

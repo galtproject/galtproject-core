@@ -240,15 +240,15 @@ contract('NewPropertyManager', accounts => {
     await this.acl.setRole(bytes32('CV_SLASHER'), this.contourVerificationManager.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     NewPropertyManager.link('AbstractPropertyManagerLib', this.newPropertyManagerLib.address);
@@ -267,7 +267,7 @@ contract('NewPropertyManager', accounts => {
     applicationConfig[bytes32('PM_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
     applicationConfig[bytes32('PM_APPLICATION_CANCEL_TIMEOUT')] = numberToEvmWord(180);
     applicationConfig[bytes32('PM_APPLICATION_CLOSE_TIMEOUT')] = numberToEvmWord(240);
-    applicationConfig[bytes32('PM_ROLE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
+    applicationConfig[bytes32('PM_ORACLE_TYPE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
     applicationConfig[bytes32('PM_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
     // [52, 48],
@@ -382,7 +382,7 @@ contract('NewPropertyManager', accounts => {
       assert.equal(res2.highestPoint, 771000);
       assert.equal(parseInt(res2.area, 10) > 0, true);
 
-      const res3 = await this.spaceGeoData.getSpaceTokenContour(
+      const res3 = await this.spaceGeoData.getContour(
         '0x0000000000000000000000000000000000000000000000000000000000000000'
       );
 
@@ -606,8 +606,8 @@ contract('NewPropertyManager', accounts => {
           const rawContour4 = ['dr5qvnp6hfwt', 'dr5qvnp6h46c', 'dr5qvnp3gdwu', 'dr5qvnp3u57s'];
           const contour4 = rawContour4.map(galt.geohashToNumber).map(a => a.toString(10));
 
-          await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
-          await this.spaceGeoData.setSpaceTokenType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+          await this.spaceGeoData.setContour(tokenId1, contour1, { from: geoDataManager });
+          await this.spaceGeoData.setType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
           const expectedFee = ether(45);
 
@@ -675,10 +675,10 @@ contract('NewPropertyManager', accounts => {
 
           // v1 and v2 were slashed
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-          await this.contourVerifiers.deposit(ether(200), { from: v1 });
+          await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
 
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-          await this.contourVerifiers.deposit(ether(200), { from: v2 });
+          await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
 
           await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
           await this.contourVerificationManager.approve(cvId2, v2, { from: o2 });

@@ -1,25 +1,17 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
 pragma solidity 0.5.10;
 
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../pgg/PGGOracleStakeAccounting.sol";
-import "../pgg/PGGMultiSig.sol";
-import "../registries/PGGRegistry.sol";
 import "./AbstractApplication.sol";
 
 
@@ -97,34 +89,18 @@ contract ArbitratorProposableApplication is AbstractApplication {
   }
 
   // CONFIG GETTERS
-
-  function _execute(uint256 _cId, bytes32 _pId) internal {
-    revert("#_execute() not implemented");
-  }
-
-  function _checkRewardCanBeClaimed(uint256 _cId) internal returns (bool) {
-    revert("#_checkRewardCanBeClaimed() not implemented");
-  }
-
-  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256) {
-    revert("#minimalApplicationFeeEth() not implemented");
-  }
-
-  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256) {
-    revert("#minimalApplicationFeeGalt() not implemented");
-  }
-
-  // arbitrators count required
-  function m(address _pgg) public view returns (uint256) {
-    revert("#m() not implemented");
-  }
-
-  // total arbitrators count able to lock the claim
-  function n(address _pgg) public view returns (uint256) {
-    revert("#n() not implemented");
-  }
-
+  function minimalApplicationFeeEth(address _pgg) internal view returns (uint256);
+  function minimalApplicationFeeGalt(address _pgg) internal view returns (uint256);
   function paymentMethod(address _pgg) public view returns (PaymentMethod);
+  // arbitrators count required
+  function m(address _pgg) public view returns (uint256);
+  // total arbitrators count able to lock the claim
+  function n(address _pgg) public view returns (uint256);
+
+  // ABSTRACT
+  function _execute(uint256 _cId, bytes32 _pId) internal;
+  function _checkRewardCanBeClaimed(uint256 _cId) internal returns (bool);
+
 
   /**
    * @dev Submit a new claim.
@@ -313,17 +289,6 @@ contract ArbitratorProposableApplication is AbstractApplication {
     }
 
     emit ArbitratorRewardApplication(_cId, msg.sender);
-  }
-
-  function verifyOraclesAreValid(uint256 _cId, address[] memory _oracles, bytes32[] memory _oracleTypes) internal {
-    Application storage c = applications[_cId];
-
-    require(
-      pggConfig(c.pgg)
-      .getOracles()
-      .oraclesHasTypesAssigned(_oracles, _oracleTypes),
-      "Some oracle types are invalid"
-    );
   }
 
   function _assignGaltProtocolFee(Application storage _a) internal {

@@ -245,15 +245,15 @@ contract('UpdatePropertyManager', accounts => {
     await this.acl.setRole(bytes32('CV_SLASHER'), this.contourVerificationManager.address, true, { from: coreTeam });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     UpdatePropertyManager.link('AbstractPropertyManagerLib', this.updatePropertyManagerLib.address);
@@ -272,7 +272,7 @@ contract('UpdatePropertyManager', accounts => {
     applicationConfig[bytes32('PL_MINIMAL_FEE_GALT')] = numberToEvmWord(ether(45));
     applicationConfig[bytes32('PL_APPLICATION_CANCEL_TIMEOUT')] = numberToEvmWord(180);
     applicationConfig[bytes32('PL_APPLICATION_CLOSE_TIMEOUT')] = numberToEvmWord(240);
-    applicationConfig[bytes32('PL_ROLE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
+    applicationConfig[bytes32('PL_ORACLE_TYPE_UNLOCK_TIMEOUT')] = numberToEvmWord(360);
     applicationConfig[bytes32('PL_PAYMENT_METHOD')] = numberToEvmWord(PaymentMethods.ETH_AND_GALT);
 
     // [52, 48],
@@ -404,7 +404,7 @@ contract('UpdatePropertyManager', accounts => {
       assert.equal(res2.highestPoint, 771000);
       assert.equal(parseInt(res2.area, 10) > 0, true);
 
-      const res3 = await this.spaceGeoData.getSpaceTokenContour(
+      const res3 = await this.spaceGeoData.getContour(
         '0x0000000000000000000000000000000000000000000000000000000000000000'
       );
 
@@ -635,11 +635,11 @@ contract('UpdatePropertyManager', accounts => {
           const rawContour5 = ['dr5qvnp3vur6', 'dr5qvnp3yv97', 'dr5qvnp3ybpq', 'dr5qvnp3wp47'];
           const contour5 = rawContour5.map(galt.geohashToNumber).map(a => a.toString(10));
 
-          await this.spaceGeoData.setSpaceTokenContour(tokenId1, contour1, { from: geoDataManager });
-          await this.spaceGeoData.setSpaceTokenType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+          await this.spaceGeoData.setContour(tokenId1, contour1, { from: geoDataManager });
+          await this.spaceGeoData.setType(tokenId1, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
-          await this.spaceGeoData.setSpaceTokenContour(tokenId2, contour3, { from: geoDataManager });
-          await this.spaceGeoData.setSpaceTokenType(tokenId2, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+          await this.spaceGeoData.setContour(tokenId2, contour3, { from: geoDataManager });
+          await this.spaceGeoData.setType(tokenId2, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
 
           const expectedFee = ether(45);
 
@@ -672,7 +672,7 @@ contract('UpdatePropertyManager', accounts => {
           });
           const cvId1 = res.logs[0].args.applicationId;
 
-          assert.equal(SpaceTokenType.LAND_PLOT, await this.spaceGeoData.getSpaceTokenType(tokenId2));
+          assert.equal(SpaceTokenType.LAND_PLOT, await this.spaceGeoData.getType(tokenId2));
           assert.equal(SpaceTokenType.LAND_PLOT, await this.updatePropertyManager.getCVSpaceTokenType(aId));
 
           await this.contourVerificationManager.approve(cvId1, v1, { from: o1 });
@@ -723,10 +723,10 @@ contract('UpdatePropertyManager', accounts => {
 
           // v1 and v2 were slashed
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-          await this.contourVerifiers.deposit(ether(200), { from: v1 });
+          await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
 
           await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-          await this.contourVerifiers.deposit(ether(200), { from: v2 });
+          await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
 
           await this.contourVerificationManager.approve(cvId2, v1, { from: o1 });
           await this.contourVerificationManager.approve(cvId2, v2, { from: o2 });
@@ -1944,11 +1944,11 @@ contract('UpdatePropertyManager', accounts => {
         const ledgerIdentifier2 = web3.utils.utf8ToHex('ledger identifier 2');
 
         // TODO: setup existing fields
-        await this.spaceGeoData.setSpaceTokenType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenDataLink(tokenId, 'data link 1', { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenHumanAddress(tokenId, 'address 1', { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenLedgerIdentifier(tokenId, ledgerIdentifier1, {
+        await this.spaceGeoData.setType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+        await this.spaceGeoData.setArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
+        await this.spaceGeoData.setDataLink(tokenId, 'data link 1', { from: geoDataManager });
+        await this.spaceGeoData.setHumanAddress(tokenId, 'address 1', { from: geoDataManager });
+        await this.spaceGeoData.setLedgerIdentifier(tokenId, ledgerIdentifier1, {
           from: geoDataManager
         });
 
@@ -1979,13 +1979,10 @@ contract('UpdatePropertyManager', accounts => {
         res = await this.updatePropertyManager.getApplication(aId);
         assert.equal(res.status, ApplicationStatus.STORED);
 
-        assert.equal(await this.spaceGeoData.getSpaceTokenArea(tokenId), 3344);
-        assert.equal(await this.spaceGeoData.getSpaceTokenDataLink(tokenId), 'data link 2');
-        assert.equal(await this.spaceGeoData.getSpaceTokenHumanAddress(tokenId), 'human address 2');
-        assert.equal(
-          web3.utils.hexToUtf8(await this.spaceGeoData.getSpaceTokenLedgerIdentifier(tokenId)),
-          'ledger identifier 2'
-        );
+        assert.equal(await this.spaceGeoData.getArea(tokenId), 3344);
+        assert.equal(await this.spaceGeoData.getDataLink(tokenId), 'data link 2');
+        assert.equal(await this.spaceGeoData.getHumanAddress(tokenId), 'human address 2');
+        assert.equal(web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)), 'ledger identifier 2');
       });
 
       it('should change status to STORED after contour/height changed', async function() {
@@ -2001,13 +1998,13 @@ contract('UpdatePropertyManager', accounts => {
         const ledgerIdentifier1 = web3.utils.utf8ToHex('ledger identifier 1');
         const ledgerIdentifier2 = web3.utils.utf8ToHex('ledger identifier 2');
 
-        await this.spaceGeoData.setSpaceTokenType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenHighestPoint(tokenId, 999888, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenContour(tokenId, contour3, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenDataLink(tokenId, 'data link 1', { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenHumanAddress(tokenId, 'address 1', { from: geoDataManager });
-        await this.spaceGeoData.setSpaceTokenLedgerIdentifier(tokenId, ledgerIdentifier1, {
+        await this.spaceGeoData.setType(tokenId, SpaceTokenType.LAND_PLOT, { from: geoDataManager });
+        await this.spaceGeoData.setHighestPoint(tokenId, 999888, { from: geoDataManager });
+        await this.spaceGeoData.setContour(tokenId, contour3, { from: geoDataManager });
+        await this.spaceGeoData.setArea(tokenId, 1122, AreaSource.USER_INPUT, { from: geoDataManager });
+        await this.spaceGeoData.setDataLink(tokenId, 'data link 1', { from: geoDataManager });
+        await this.spaceGeoData.setHumanAddress(tokenId, 'address 1', { from: geoDataManager });
+        await this.spaceGeoData.setLedgerIdentifier(tokenId, ledgerIdentifier1, {
           from: geoDataManager
         });
 
@@ -2056,17 +2053,14 @@ contract('UpdatePropertyManager', accounts => {
         res = await this.updatePropertyManager.getApplication(aId);
         assert.equal(res.status, ApplicationStatus.APPROVED);
 
-        assert.equal(await this.spaceGeoData.getSpaceTokenArea(tokenId), 3344);
-        assert.equal(await this.spaceGeoData.getSpaceTokenDataLink(tokenId), 'data link 2');
-        assert.equal(await this.spaceGeoData.getSpaceTokenHumanAddress(tokenId), 'human address 2');
-        assert.equal(
-          web3.utils.hexToUtf8(await this.spaceGeoData.getSpaceTokenLedgerIdentifier(tokenId)),
-          'ledger identifier 2'
-        );
+        assert.equal(await this.spaceGeoData.getArea(tokenId), 3344);
+        assert.equal(await this.spaceGeoData.getDataLink(tokenId), 'data link 2');
+        assert.equal(await this.spaceGeoData.getHumanAddress(tokenId), 'human address 2');
+        assert.equal(web3.utils.hexToUtf8(await this.spaceGeoData.getLedgerIdentifier(tokenId)), 'ledger identifier 2');
 
-        assert.equal(await this.spaceGeoData.getSpaceTokenHighestPoint(tokenId), 999888);
+        assert.equal(await this.spaceGeoData.getHighestPoint(tokenId), 999888);
 
-        res = await this.spaceGeoData.getSpaceTokenContour(tokenId);
+        res = await this.spaceGeoData.getContour(tokenId);
 
         for (let i = 0; i < res.length; i++) {
           assert.equal(res[i].toString(10), contour3[i]);
@@ -2075,9 +2069,9 @@ contract('UpdatePropertyManager', accounts => {
         // check STORED
         await this.updatePropertyManager.store(aId, { from: unauthorized });
 
-        assert.equal(await this.spaceGeoData.getSpaceTokenHighestPoint(tokenId), 771000);
+        assert.equal(await this.spaceGeoData.getHighestPoint(tokenId), 771000);
 
-        res = await this.spaceGeoData.getSpaceTokenContour(tokenId);
+        res = await this.spaceGeoData.getContour(tokenId);
 
         for (let i = 0; i < res.length; i++) {
           assert.equal(res[i].toString(10), contour5[i]);

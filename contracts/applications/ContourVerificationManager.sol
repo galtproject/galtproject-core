@@ -1,26 +1,21 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/ContourVerificationSourceRegistry.sol";
+import "../registries/interfaces/IContourVerificationSourceRegistry.sol";
 import "../registries/interfaces/IFeeRegistry.sol";
 import "../applications/interfaces/IContourModifierApplication.sol";
-import "../ContourVerifiers.sol";
+import "../interfaces/IContourVerifiers.sol";
 import "./AbstractApplication.sol";
 import "./ContourVerificationManagerLib.sol";
 
@@ -86,6 +81,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   uint256 public approvalTimeout;
 
   mapping(uint256 => Application) internal verificationQueue;
+  mapping(address => mapping(uint256 => uint256)) internal internalIdByExternalInfo;
 
   // .......(TAIL)....queue.....(HEAD) ->
   // contour id for a new pushed contour
@@ -95,7 +91,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   modifier onlyValidContourVerifier(address _verifier) {
     require(
-      ContourVerifiers(ggr.getContourVerifiersAddress()).isVerifierValid(_verifier, msg.sender),
+      IContourVerifiers(ggr.getContourVerifiersAddress()).isVerifierValid(_verifier, msg.sender),
       "Invalid operator"
     );
 
@@ -115,6 +111,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ggr = _ggr;
     requiredConfirmations = _requiredConfirmations;
     approvalTimeout = _approvalTimeout;
+    head = 1;
+    tail = 1;
   }
 
   // OWNER INTERFACE
@@ -133,8 +131,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   // USER INTERFACE
 
-  function submit(address _applicationContract, uint256 _externalApplicationId) external {
-    ContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
+  function submit(address _applicationContract, uint256 _externalApplicationId) external payable {
+    IContourVerificationSourceRegistry(ggr.getContourVerificationSourceRegistryAddress())
       .requireValid(_applicationContract);
     IContourModifierApplication(_applicationContract).isCVApplicationPending(_externalApplicationId);
 
@@ -151,6 +149,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     a.applicationContract = _applicationContract;
     a.externalApplicationId = _externalApplicationId;
     a.requiredConfirmations = requiredConfirmations;
+
+    internalIdByExternalInfo[_applicationContract][_externalApplicationId] = id;
 
     emit NewApplication(id);
   }
@@ -228,7 +228,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingContourIntersectionProof(
       ggr,
       a,
-      _verifier,
       _existingTokenId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -264,7 +263,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithExistingContourIntersectionProof(
       ggr,
       a,
-      msg.sender,
       _existingTokenId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -299,7 +297,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      _verifier,
       _existingTokenId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -329,7 +326,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      msg.sender,
       _existingTokenId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -363,7 +359,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedContourIntersectionProof(
       ggr,
       a,
-      _verifier,
       _applicationContract,
       _externalApplicationId,
       _existingContourSegmentFirstPointIndex,
@@ -401,7 +396,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedContourIntersectionProof(
       ggr,
       a,
-      msg.sender,
       _applicationContract,
       _externalApplicationId,
       _existingContourSegmentFirstPointIndex,
@@ -438,7 +432,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      _verifier,
       _applicationContract,
       _externalApplicationId,
       _verifyingContourPointIndex,
@@ -470,7 +463,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       ggr,
       a,
       _inclusion,
-      msg.sender,
       _applicationContract,
       _externalApplicationId,
       _verifyingContourPointIndex,
@@ -505,7 +497,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedTimeoutContourIntersectionProof(
       a,
       existingA,
-      _verifier,
       _existingCVApplicationId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -546,7 +537,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     ContourVerificationManagerLib.denyWithApplicationApprovedTimeoutContourIntersectionProof(
       a,
       existingA,
-      msg.sender,
       _existingCVApplicationId,
       _existingContourSegmentFirstPointIndex,
       _existingContourSegmentFirstPoint,
@@ -582,7 +572,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       a,
       existingA,
       _inclusion,
-      _verifier,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -594,8 +583,8 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   // at-in-f
   function reportInvalidApprovalWithApplicationApprovedTimeoutPointInclusionProof(
     uint256 _aId,
-    Inclusion _inclusion,
     uint256 _existingCVApplicationId,
+    Inclusion _inclusion,
     uint256 _verifyingContourPointIndex,
     uint256 _verifyingContourPoint
   )
@@ -617,7 +606,6 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
       a,
       existingA,
       _inclusion,
-      msg.sender,
       _existingCVApplicationId,
       _verifyingContourPointIndex,
       _verifyingContourPoint
@@ -626,7 +614,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
     _executeReject(_aId, msg.sender);
   }
 
-  function eligibleForCastingDecision(uint256 _aId, address _verifier) internal {
+  function eligibleForCastingDecision(uint256 _aId, address _verifier) internal view {
     Application storage a = verificationQueue[_aId];
 
     require(_aId == tail, "ID mismatches with the current");
@@ -772,7 +760,7 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
   )
     internal
   {
-    ContourVerifiers(ggr.getContourVerifiersAddress()).slash(_a.approvers, _verifier);
+    IContourVerifiers(ggr.getContourVerifiersAddress()).slash(_a.approvers, _verifier);
   }
 
   // GETTERS
@@ -795,6 +783,10 @@ contract ContourVerificationManager is OwnableAndInitializable, AbstractApplicat
 
   function paymentMethod(address _pgg) public view returns (PaymentMethod) {
     return PaymentMethod.ETH_AND_GALT;
+  }
+
+  function getApplicationIdByExternal(address applicationContract, uint256 externalApplicationId) public view returns(uint256) {
+    return internalIdByExternalInfo[applicationContract][externalApplicationId];
   }
 
   function getApplication(uint256 _aId)

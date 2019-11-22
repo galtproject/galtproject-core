@@ -1,14 +1,10 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
 pragma solidity 0.5.10;
@@ -39,6 +35,9 @@ interface IPGGConfig {
   function setGlobalProposalSupport(uint256 _globalProposalId, bool _isSupported) external;
   function setContractAddress(bytes32 _key, address _address) external;
   function applicationConfig(bytes32) external view returns (bytes32);
+  function minimalArbitratorStake() external view returns(uint256);
+  function defaultProposalThreshold() external view returns(uint256);
+  function thresholds(bytes32) external view returns(uint256);
   function getMultiSig() external view returns (IPGGMultiSig);
   function getArbitratorStakes() external view returns (IPGGArbitratorStakeAccounting);
   function getOracleStakes() external view returns (IPGGOracleStakeAccounting);
@@ -51,4 +50,5 @@ interface IPGGConfig {
   function hasExternalRole(bytes32 _role, address _address) external view returns(bool);
   function getInternalRoles(bytes32 _role) external view returns(address[] memory);
   function hasInternalRole(bytes32 _role, address _address) external view returns(bool);
+  function getThresholdMarker(address _destination, bytes calldata _data) external pure returns(bytes32 marker);
 }

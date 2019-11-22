@@ -9,22 +9,19 @@
 
 pragma solidity 0.5.10;
 
-
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-// This contract will be included into the current one
-import "../../pgg/PGGOracleStakeAccounting.sol";
-import "../../pgg/PGGConfig.sol";
 
+contract MockDex {
+  IERC20 galtToken;
 
-contract PGGOracleStakeAccountingFactory is Ownable {
-  function build(
-    PGGConfig _pggConfig
-  )
-    external
-    returns (PGGOracleStakeAccounting oracleStakes)
-  {
-    oracleStakes = new PGGOracleStakeAccounting(_pggConfig);
+  constructor (address _galtToken) public {
+    galtToken = IERC20(_galtToken);
+  }
+
+  function ethToGalt(uint256 _minReturn) external payable returns (uint256) {
+    uint256 balance = galtToken.balanceOf(address(this));
+    require(galtToken.transfer(msg.sender, balance) == true, "Failed to send GALT tokens");
+    return balance;
   }
 }

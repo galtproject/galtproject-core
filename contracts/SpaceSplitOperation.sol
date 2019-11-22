@@ -1,14 +1,10 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
 pragma solidity 0.5.10;
@@ -58,7 +54,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
     ggr = _ggr;
     subjectTokenOwner = _ggr.getSpaceToken().ownerOf(_subjectTokenId);
     subjectTokenId = _subjectTokenId;
-    subjectContour = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenContour(_subjectTokenId);
+    subjectContour = ISpaceGeoDataRegistry(_ggr.getSpaceGeoDataRegistryAddress()).getContour(_subjectTokenId);
     clippingContour = _clippingContour;
   }
 
@@ -228,7 +224,7 @@ contract SpaceSplitOperation is ISpaceSplitOperation {
 
   // INTERNAL
 
-  function geodesic() internal returns (IGeodesic) {
+  function geodesic() internal view returns (IGeodesic) {
     return IGeodesic(ggr.getGeodesicAddress());
   }
 
