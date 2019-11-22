@@ -144,10 +144,10 @@ contract('SpaceRA', accounts => {
       res = await this.spaceLockerRegistry.isValid(aliceLockerAddress);
       assert.equal(res, true);
 
-      res = await this.spaceLockerRegistry.getLockersListByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockerListByOwner(alice);
       assert.deepEqual(res, [aliceLockerAddress]);
 
-      res = await this.spaceLockerRegistry.getLockersCountByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockerCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
       res = await this.spaceRA.isMember(alice);

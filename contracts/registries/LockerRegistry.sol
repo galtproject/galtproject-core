@@ -78,11 +78,11 @@ contract LockerRegistry is ILockerRegistry {
     return lockers[_locker].active;
   }
 
-  function getLockersListByOwner(address _owner) external view returns (address[] memory) {
+  function getLockerListByOwner(address _owner) external view returns (address[] memory) {
     return lockersByOwner[_owner].elements();
   }
 
-  function getLockersCountByOwner(address _owner) external view returns (uint256) {
+  function getLockerCountByOwner(address _owner) external view returns (uint256) {
     return lockersByOwner[_owner].size();
   }
 }
