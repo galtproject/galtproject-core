@@ -12,7 +12,9 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../registries/interfaces/ILockerRegistry.sol";
+import "../../interfaces/ISpaceLocker.sol";
 import "./LiquidRA.sol";
+import "./DecentralizedRA.sol";
 
 // LiquidRA - base class
 // SpaceInputRA - space input
@@ -22,7 +24,7 @@ import "./LiquidRA.sol";
 // FundRA - LiquidRA + SpaceInputRA + SharableRA
 
 
-contract SpaceInputRA is LiquidRA {
+contract SpaceInputRA is LiquidRA, DecentralizedRA {
   ArraySet.AddressSet internal _spaceTokenOwners;
 
   mapping(address => ArraySet.Uint256Set) internal _spaceTokensByOwner;
