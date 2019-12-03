@@ -10,9 +10,7 @@
 pragma solidity ^0.5.13;
 
 
-contract IPGGOracleStakeVoting {
-  bytes32 public constant ROLE_ORACLE_STAKE_NOTIFIER = bytes32("oracle_stake_notifier");
-
+interface IPGGOracleStakeVoting {
   function vote(address _candidate) external;
   function onOracleStakeChanged(address _oracle, uint256 _newReputation)external;
   function getOracle(address _oracle) external view returns (address _currentCandidate, uint256 reputation);

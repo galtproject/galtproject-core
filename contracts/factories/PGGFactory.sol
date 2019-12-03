@@ -275,7 +275,7 @@ contract PGGFactory is Initializable {
     require(g.nextStep == Step.FOURTH, "FOURTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    IPGGOracleStakeVoting oracleStakeVoting = pggOracleStakeVotingFactory.build(g.pggConfig);
+    PGGOracleStakeVoting oracleStakeVoting = pggOracleStakeVotingFactory.build(g.pggConfig);
     IPGGDelegateReputationVoting delegateSpaceVoting = pggDelegateReputationVotingFactory.build(
       g.pggConfig,
       "SPACE_REPUTATION_NOTIFIER"
