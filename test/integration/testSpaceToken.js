@@ -28,7 +28,10 @@ contract('SpaceToken', ([coreTeam, minter, burner, alice, bob]) => {
       assert.equal(res, alice);
 
       const tokensOfOwner = await this.spaceToken.tokensOfOwner(alice);
-      assert.deepEqual(tokensOfOwner.map(tokenId => tokenId.toString(10)), ['0']);
+      assert.deepEqual(
+        tokensOfOwner.map(tokenId => tokenId.toString(10)),
+        ['0']
+      );
     });
 
     it('should allow mint some tokens to the users in the minters role list', async function() {

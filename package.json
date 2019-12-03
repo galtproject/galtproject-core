@@ -32,6 +32,7 @@
     "compile": "truffle compile",
     "test-cov": "./node_modules/.bin/solidity-coverage",
     "eslint": "eslint .",
+    "eslint-fix": "eslint . --fix",
     "ethlint": "solium --dir ."
   },
   "author": "",

@@ -113,7 +113,10 @@ module.exports = async function(callback) {
     const tokenId = new BN(res.logs[0].args.id.replace('0x', ''), 'hex').toString(10);
 
     await spaceGeoData.setSpaceTokenContour(tokenId, geohashContour.map(galt.geohashToNumber));
-    await spaceGeoData.setSpaceTokenHeights(tokenId, geohashContour.map(() => 10));
+    await spaceGeoData.setSpaceTokenHeights(
+      tokenId,
+      geohashContour.map(() => 10)
+    );
     return tokenId;
   }
 
