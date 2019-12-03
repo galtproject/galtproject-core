@@ -1,6 +1,6 @@
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Mintable.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 
 

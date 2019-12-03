@@ -7,9 +7,9 @@
  * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@galtproject/geodesic/contracts/utils/GeohashUtils.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../interfaces/ISpaceToken.sol";

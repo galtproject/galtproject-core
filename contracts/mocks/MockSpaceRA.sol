@@ -9,7 +9,7 @@
 
 pragma solidity ^0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "../registries/interfaces/ILockerRegistry.sol";
 import "../reputation/SpaceRA.sol";
 
