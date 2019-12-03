@@ -10,7 +10,7 @@
 pragma solidity ^0.5.13;
 
 
-contract ILockableRA {
+interface ILockableRA {
   function revoke(address _from, uint256 _amount) external;
   function revokeLocked(address _delegate, address _pgg, uint256 _amount) external;
   function lockReputation(address _pgg, uint256 _amount) external;

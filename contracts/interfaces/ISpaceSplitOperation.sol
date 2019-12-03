@@ -10,15 +10,9 @@
 pragma solidity ^0.5.13;
 
 
-contract ISpaceSplitOperation {
+interface ISpaceSplitOperation {
 
-  address public subjectTokenOwner;
-  uint256 public subjectTokenId;
-  uint256[] public subjectContour;
-  uint256[] public clippingContour;
-
-  uint256[] public subjectContourOutput;
-  uint256[][] public resultContours;
+  function subjectTokenOwner() external view returns (address);
 
   function getSubjectContour() external view returns (uint256[] memory);
 

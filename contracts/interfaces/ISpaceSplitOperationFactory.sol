@@ -10,6 +10,6 @@
 pragma solidity ^0.5.13;
 
 
-contract ISpaceSplitOperationFactory {
+interface ISpaceSplitOperationFactory {
   function build(uint256 _spaceTokenId, uint256[] calldata _clippingContour) external returns (address);
 }

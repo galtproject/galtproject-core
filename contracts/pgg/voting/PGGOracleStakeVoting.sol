@@ -19,6 +19,8 @@ contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
 
+  bytes32 public constant ROLE_ORACLE_STAKE_NOTIFIER = bytes32("oracle_stake_notifier");
+
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
   event ReputationChanged(address delegate, uint256 prevReputation, uint256 newReputation);
