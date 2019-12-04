@@ -1,8 +1,8 @@
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
 import "../pgg/PGGArbitratorStakeAccounting.sol";
 import "../pgg/PGGConfig.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract MockPGGArbitratorStakeAccounting is PGGArbitratorStakeAccounting {

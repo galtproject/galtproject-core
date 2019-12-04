@@ -7,10 +7,10 @@
  * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
 
-contract IStakeTracker {
+interface IStakeTracker {
   function onChange(address _pgg, uint256 _amount) external;
   function balancesOf(address[] calldata _pggs) external view returns(uint256);
   function balanceOf(address _pgg) external view returns(uint256);

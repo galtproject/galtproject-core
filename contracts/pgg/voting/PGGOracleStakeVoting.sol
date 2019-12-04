@@ -7,10 +7,10 @@
  * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IPGGConfig.sol";
 import "./interfaces/IPGGOracleStakeVoting.sol";
 
@@ -18,6 +18,8 @@ import "./interfaces/IPGGOracleStakeVoting.sol";
 contract PGGOracleStakeVoting is IPGGOracleStakeVoting {
   using SafeMath for uint256;
   using ArraySet for ArraySet.AddressSet;
+
+  bytes32 public constant ROLE_ORACLE_STAKE_NOTIFIER = bytes32("oracle_stake_notifier");
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);

@@ -8,20 +8,20 @@
   "dependencies": {},
   "devDependencies": {
     "@galtproject/eslint-config-galt": "^1.1.0",
-    "@galtproject/geodesic": "git+ssh://git@github.com/galtproject/galtproject-geodesic.git#3da29d4",
-    "@galtproject/libs": "git+ssh://git@github.com/galtproject/galtproject-libs.git#f9a8ced",
-    "@galtproject/math": "git+ssh://git@github.com/galtproject/galtproject-math.git#a1370d7",
-    "@galtproject/multisig": "git+ssh://git@github.com/galtproject/galtproject-multisig.git#5d0284f",
+    "@galtproject/geodesic": "git+ssh://git@github.com/galtproject/galtproject-geodesic.git#1bc2b2a",
+    "@galtproject/libs": "git+ssh://git@github.com/galtproject/galtproject-libs.git#7c78e38",
+    "@galtproject/math": "git+ssh://git@github.com/galtproject/galtproject-math.git#e235c33",
+    "@galtproject/multisig": "git+ssh://git@github.com/galtproject/galtproject-multisig.git#f381a12",
     "@galtproject/utils": "git://github.com/galtproject/galtproject-utils-js.git#fb52908",
     "cli-table": "^0.3.1",
     "ethlint": "1.2.5",
     "ganache-core": "2.8.0",
     "lodash": "^4.17.15",
-    "openzeppelin-solidity": "2.3.0",
+    "@openzeppelin/contracts": "2.4.0",
     "p-iteration": "^1.1.8",
     "solidity-coverage": "^0.6.7",
-    "truffle": "5.0.41",
-    "web3": "1.2.1"
+    "truffle": "5.1.2",
+    "web3": "1.2.4"
   },
   "engines": {
     "node": ">=10.15.3"
@@ -32,6 +32,7 @@
     "compile": "truffle compile",
     "test-cov": "./node_modules/.bin/solidity-coverage",
     "eslint": "eslint .",
+    "eslint-fix": "eslint . --fix",
     "ethlint": "solium --dir ."
   },
   "author": "",

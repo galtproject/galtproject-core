@@ -67,7 +67,10 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       const tokenId = res.logs[1].args.tokenId;
 
       await this.spaceGeoData.setContour(tokenId, geohashContour.map(galt.geohashToNumber));
-      await this.spaceGeoData.setHeights(tokenId, geohashContour.map(() => 10));
+      await this.spaceGeoData.setHeights(
+        tokenId,
+        geohashContour.map(() => 10)
+      );
       await this.spaceGeoData.setArea(
         tokenId,
         web3.utils.toWei(galt.geohash.contour.area(geohashContour).toString(), 'ether'),
@@ -143,16 +146,24 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
       res = await this.spaceToken.mint(alice);
       const firstSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setContour(firstSpaceTokenId, firstSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setHeights(firstSpaceTokenId, firstSpaceToken.map((geohash, index) => index + 10), {
-        from: coreTeam
-      });
+      await this.spaceGeoData.setHeights(
+        firstSpaceTokenId,
+        firstSpaceToken.map((geohash, index) => index + 10),
+        {
+          from: coreTeam
+        }
+      );
 
       res = await this.spaceToken.mint(alice, { from: coreTeam });
       const secondSpaceTokenId = res.logs[1].args.tokenId;
       await this.spaceGeoData.setContour(secondSpaceTokenId, secondSpaceToken, { from: coreTeam });
-      await this.spaceGeoData.setHeights(secondSpaceTokenId, secondSpaceToken.map((geohash, index) => index + 10), {
-        from: coreTeam
-      });
+      await this.spaceGeoData.setHeights(
+        secondSpaceTokenId,
+        secondSpaceToken.map((geohash, index) => index + 10),
+        {
+          from: coreTeam
+        }
+      );
 
       await this.spaceGeoData.mergeSpaceToken(firstSpaceTokenId, secondSpaceTokenId, resultSpaceToken, {
         from: alice
@@ -175,7 +186,10 @@ contract.skip('SpaceGeoData', ([coreTeam, alice]) => {
 
       res = (await this.spaceGeoData.getContour(packageId)).map(geohash => geohash.toString(10));
 
-      assert.deepEqual(res, this.subjectContour.map(geohash => geohash.toString(10)));
+      assert.deepEqual(
+        res,
+        this.subjectContour.map(geohash => geohash.toString(10))
+      );
     });
 
     it('should check merge correctly', async function() {

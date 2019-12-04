@@ -7,9 +7,9 @@
  * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@galtproject/libs/contracts/traits/Initializable.sol";
 import "../registries/GaltGlobalRegistry.sol";
 import "../registries/interfaces/IPGGRegistry.sol";
@@ -275,7 +275,7 @@ contract PGGFactory is Initializable {
     require(g.nextStep == Step.FOURTH, "FOURTH step required");
     require(g.creator == msg.sender, "Only the initial allowed to continue build process");
 
-    IPGGOracleStakeVoting oracleStakeVoting = pggOracleStakeVotingFactory.build(g.pggConfig);
+    PGGOracleStakeVoting oracleStakeVoting = pggOracleStakeVotingFactory.build(g.pggConfig);
     IPGGDelegateReputationVoting delegateSpaceVoting = pggDelegateReputationVotingFactory.build(
       g.pggConfig,
       "SPACE_REPUTATION_NOTIFIER"

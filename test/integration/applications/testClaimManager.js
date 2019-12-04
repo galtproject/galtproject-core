@@ -515,7 +515,10 @@ contract("ClaimManager", (accounts) => {
         res = await this.claimManager.getProposalDetails(this.cId, pId1);
         assert.sameMembers(res.oracles, [dan]);
         assert.sameMembers(res.oracleTypes.map(hexToString), [PC_AUDITOR_ORACLE_TYPE].map(hexToString));
-        assert.sameMembers(res.oracleFines.map(v => v.toString(10)), [ether(20)]);
+        assert.sameMembers(
+          res.oracleFines.map(v => v.toString(10)),
+          [ether(20)]
+        );
 
         res = await this.claimManager.getProposal(this.cId, pId2);
         assert.equal(res.from, dan);
@@ -527,7 +530,10 @@ contract("ClaimManager", (accounts) => {
           res.oracleTypes.map(web3.utils.hexToString),
           [PC_AUDITOR_ORACLE_TYPE, PC_AUDITOR_ORACLE_TYPE].map(hexToString)
         );
-        assert.sameMembers(res.oracleFines.map(v => v.toString(10)), [ether(10), ether(20)]);
+        assert.sameMembers(
+          res.oracleFines.map(v => v.toString(10)),
+          [ether(10), ether(20)]
+        );
       });
 
       it('should deny non-oracle proposing a proposal', async function() {
