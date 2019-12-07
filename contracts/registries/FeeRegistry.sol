@@ -27,7 +27,6 @@ contract FeeRegistry is IFeeRegistry, OwnableAndInitializable {
   uint256 internal protocolApplicationEthShare;
   uint256 internal protocolApplicationGaltShare;
 
-  mapping(bytes32 => uint256) internal protocolEthShare;
   mapping(bytes32 => uint256) internal ethFees;
   mapping(bytes32 => uint256) internal galtFees;
   mapping(bytes32 => PaymentMethod) internal paymentMethods;

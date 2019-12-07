@@ -23,7 +23,7 @@ import "../interfaces/IACL.sol";
  */
 contract GaltGlobalRegistry is OwnableAndInitializable {
   // solium-disable-next-line mixedcase
-  address internal ZERO_ADDRESS = address(0);
+  address internal constant ZERO_ADDRESS = address(0);
 
   bytes32 public constant ACL = bytes32("ACL");
 

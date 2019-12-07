@@ -14,7 +14,7 @@ import "../reputation/interfaces/IRA.sol";
 
 interface ISpaceLocker {
   function deposit(uint256 _spaceTokenId) external;
-  function withdraw(uint256 _spaceTokenId) external;
+  function withdraw() external;
   function approveMint(IRA _sra) external;
   function burn(IRA _sra) external;
   function burnToken(bytes32 _spaceTokenIdHash) external;
