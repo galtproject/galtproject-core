@@ -22,7 +22,6 @@ contract PGGDelegateReputationVoting is IPGGDelegateReputationVoting, Checkpoint
 
   // limit for Reputation delegation
   uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
-  uint256 private constant DECIMALS = 10**6;
 
   event ReputationMint(address delegate, uint256 amount);
   event ReputationBurn(address delegate, uint256 amount);
