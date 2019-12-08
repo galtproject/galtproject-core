@@ -39,7 +39,6 @@ contract PGGArbitratorStakeAccounting is IPGGArbitratorStakeAccounting {
   uint256 public periodLengthInSeconds;
   uint256 internal _initialTimestamp;
   IPGGConfig internal pggConfig;
-  ArraySet.AddressSet internal arbitrators;
 
   mapping(address => uint256) _balances;
 

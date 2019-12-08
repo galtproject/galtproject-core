@@ -68,9 +68,11 @@ contract SpaceLocker is ILocker, ISpaceLocker {
     emit Deposit(reputation);
   }
 
-  function withdraw(uint256 _spaceTokenId) external onlyOwner notBurned {
+  function withdraw() external onlyOwner notBurned {
     require(tokenDeposited, "Token not deposited");
     require(sras.size() == 0, "RAs counter not 0");
+
+    uint256 _spaceTokenId = spaceTokenId;
 
     spaceTokenId = 0;
     reputation = 0;

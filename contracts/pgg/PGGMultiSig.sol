@@ -32,8 +32,6 @@ contract PGGMultiSig is IPGGMultiSig, MultiSigWallet {
 
   IPGGConfig public pggConfig;
 
-  bool internal initialized;
-
   mapping(uint256 => uint256) internal _periodRunningTotal;
 
   modifier forbidden() {

@@ -27,6 +27,7 @@ contract PGGMultiSigCandidateTop is IPGGMultiSigCandidateTop {
   uint256 public constant STAKE_REPUTATION_SHARE = 30;
 
   // limit for SpaceReputation delegation
+  // NOTICE: not used
   uint256 private constant DELEGATE_CANDIDATES_LIMIT = 5;
   uint256 private constant DECIMALS = 10**6;
 

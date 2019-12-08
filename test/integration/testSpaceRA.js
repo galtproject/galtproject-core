@@ -260,7 +260,7 @@ contract('SpaceRA', accounts => {
 
       // UNSUCCESSFUL WITHDRAW SPACE TOKEN
       await assertRevert(aliceLocker.burn(this.spaceRA.address, { from: alice }));
-      await assertRevert(aliceLocker.withdraw(token1, { from: alice }));
+      await assertRevert(aliceLocker.withdraw({ from: alice }));
 
       // REVOKE REPUTATION
       await this.spaceRA.revoke(bob, 50, { from: alice });
@@ -310,7 +310,7 @@ contract('SpaceRA', accounts => {
       assert.sameMembers(res, []);
 
       await aliceLocker.burn(this.spaceRA.address, { from: alice });
-      await aliceLocker.withdraw(token1, { from: alice });
+      await aliceLocker.withdraw({ from: alice });
 
       res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 0);
@@ -488,7 +488,7 @@ contract('SpaceRA', accounts => {
       await aliceLocker.burn(this.spaceRA.address, { from: alice });
 
       // Withdraw token
-      await aliceLocker.withdraw(token1, { from: alice });
+      await aliceLocker.withdraw({ from: alice });
     });
   });
 

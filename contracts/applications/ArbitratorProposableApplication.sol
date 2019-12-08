@@ -75,7 +75,6 @@ contract ArbitratorProposableApplication is AbstractApplication {
   }
 
   mapping(uint256 => Application) internal applications;
-  mapping(address => uint256[]) internal applicationByArbitrator;
 
   constructor () public {}
 
