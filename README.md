@@ -40,7 +40,7 @@ Unfortunately, we do not currently have sufficient resources for a full audit of
 Our team believes that the Galt Project will enable people to transact land and real estate without borders and third parties. As well as creating self-governing communities without corruption and with transparent governance processes. 
 You can contribute to this by checking the code and creating an issue, or by making a small donation to the address of the team **0x98064493535B22F6EbDf475341F0A6DaaBb7b538**.
 
-Also you can use our [Galt Project dApp](https://app.galtproject.io/) on mainnet with Private Property Regostries functionality to support Galt Project!
+Also you can use our [Galt Project dApp](https://app.galtproject.io/) on mainnet with Private Property Registries functionality to support Galt Project!
 
 :memo:**Get started contributing with a good first [issue](https://github.com/galtproject/galtproject-core/issues)**.
 
