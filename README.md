@@ -45,7 +45,7 @@ Also you can use our [Galt Project dApp](https://app.galtproject.io/) on mainnet
 :memo:**Get started contributing with a good first [issue](https://github.com/galtproject/galtproject-core/issues)**.
 
 # Contracts overview
-This repository **@galtproject-core** contains main project contracts:
+This repository [@galtproject-core](https://github.com/galtproject/galtproject-core/) contains main project contracts:
 - **SpaceToken.sol** - ERC721 Token. Each Token contains geospatial data and represents a particular land plot, whole building, room, or several rooms. We employ World Geodetic System (WGS84) as a primary Geodetic datum.
 - **Governance Contracts (GlobalGovernance.sol,ACL.sol,ApplicationRegistry.sol,FeeRegistry.sol,GaltGlobalRegistry.sol,SpaceGeoDataRegistry.sol and others)** - contracts used for decentralized protocol governance (setting access rights for call contracts, defining contract parameters, etc.).
 - **Applications** - Contracts used for interaction between protocol participants. For example, the Property Owner through one of the contracts can apply for the creation / change of the token, and the Cadastral engineer can approve its creation / change.
