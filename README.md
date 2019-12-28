@@ -21,6 +21,23 @@
 
 Galt Project is an international decentralized land and real estate property registry governed by DAO (Decentralized autonomous organization) and self-governance protocol for communities of homeowners built on top of Ethereum blockchain. Unlike the state property registries, the Galt Project is managed by a decentralized community of property owners using smart contracts. Creation of property records, resolution of disputes between owners, trading, mortgage, title insurance, and many other operations are performed on smart contracts. Also, property owners can unite in communities for voting, fundraising, and managing the common property.
 
+:page_with_curl: **For more information read the [Whitepaper](https://github.com/galtproject/galtproject-docs/blob/master/en/Whitepaper.md)**
+
+:construction: **Project stage: Testnet**
+
+At the moment, core contracts are completed, undergoing verification and are preparing for deployment to the mainnet.
+
+:bomb: **Security review status: Unaudited**
+
+Unfortunately, we do not currently have sufficient resources for a full audit of the created contracts. 
+
+Our team believes that the Galt Project will enable people to transact land and real estate without borders and third parties. As well as creating self-governing communities without corruption and with transparent governance processes. 
+You can contribute to this by checking the code and creating an issue, or by making a small donation to the address of the team **0x10cB408e1285d840CACed4d730dF2359e3d56444**.
+
+Also you can use our Private property registry sollution now on mainnet with a small smart contract commissions.
+
+:memo:**Get started contributing with a good first [issue](https://github.com/galtproject/galtproject-core/issues)**.
+
 ## For Developers
 
 * Compile contracts
@@ -40,8 +57,3 @@ make test
 ```sh
 make validate
 ```
-
-## About Galt Project
-The main goal of Galt Project is to create sofware for land tokenization (accounting, buying and selling on blockchain) and self-governance. And to create a communities, runned by a smart contracts with the help of this software.
-
-https://galtproject.io/
