@@ -1,7 +1,7 @@
 <p align="center"> <img src="https://github.com/galtproject/galtproject-docs/blob/master/images/logo-black-1.png" alt="logo-black-360" width="200"/></p>
 
 
-<h3 align="center">Galt Project Core Contracts (@galtproject/core)</h3>
+<h3 align="center">Galt Project Core Contracts (@galtproject-core)</h3>
 <div align="center">
 </div>
 
