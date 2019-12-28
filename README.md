@@ -25,13 +25,13 @@
 
 **Galt Project is an international decentralized land and real estate property registry governed by DAO (Decentralized autonomous organization) and self-governance protocol for communities of homeowners built on top of Ethereum blockchain.**
 
-**@galtproject-core repo contains smart contracts for a Single consistent decentralized land and real estate registry. Any land and real-estate property owner can create his property tokens with the help of the decentralized community of cadastral engineers and notaries. Tokens can be created for commercial purposes or for the self-government of property owners.**
+[@galtproject-core](https://github.com/galtproject/galtproject-core/) repo contains smart contracts for a Single consistent decentralized land and real estate registry. Any land and real-estate property owner can create his property tokens with the help of the decentralized community of cadastral engineers and notaries. Tokens can be created for commercial purposes or for the self-government of property owners.
 
 :page_with_curl: **For more information read the [Whitepaper](https://github.com/galtproject/galtproject-docs/blob/master/en/Whitepaper.md)**
 
 :construction: **@galtproject-core stage: Testnet**
 
-At the moment, **@galtproject-core** contracts are deployed in our private Testnet(RPC: https://https-rpc.testnet-58.galtproject.io/, Explorer: https://explorer.testnet-58.galtproject.io/), we are preparing a deployment of the first version of contracts on the mainnet.
+At the moment, [@galtproject-core](https://github.com/galtproject/galtproject-core/) contracts are deployed in our private Testnet(RPC: https://https-rpc.testnet-58.galtproject.io/, Explorer: https://explorer.testnet-58.galtproject.io/), we are preparing a deployment of the first version of contracts on the mainnet.
 
 :bomb: **Security review status: Unaudited**
 
