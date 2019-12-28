@@ -25,14 +25,14 @@ Galt Project is an international decentralized land and real estate property reg
 
 :construction: **Project stage: Testnet**
 
-At the moment, core contracts are completed, undergoing verification and are preparing for deployment to the mainnet.
+At the moment, core contracts are completed and deployed in our private Testnet(RPC: https://https-rpc.testnet-58.galtproject.io/, Explorer: https://explorer.testnet-58.galtproject.io/), we are preparing a deployment of the first version of contracts on the mainnet.
 
 :bomb: **Security review status: Unaudited**
 
 Unfortunately, we do not currently have sufficient resources for a full audit of the created contracts. 
 
 Our team believes that the Galt Project will enable people to transact land and real estate without borders and third parties. As well as creating self-governing communities without corruption and with transparent governance processes. 
-You can contribute to this by checking the code and creating an issue, or by making a small donation to the address of the team **0x10cB408e1285d840CACed4d730dF2359e3d56444**.
+You can contribute to this by checking the code and creating an issue, or by making a small donation to the address of the team **0x98064493535B22F6EbDf475341F0A6DaaBb7b538**.
 
 Also you can use our Private property registry sollution now on mainnet with a small smart contract commissions.
 
