@@ -6,16 +6,19 @@
 </div>
 
 <div align="center">
-<img src="https://img.shields.io/github/issues-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="opened issues"/>
-<img src="https://img.shields.io/github/issues-closed-raw/galtproject/galtproject-core.svg?color=blue&style=flat-square" alt="closed issues" />
-<img src="https://img.shields.io/github/issues-pr-closed/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="closed PR"/>
-<img src="https://img.shields.io/github/issues-pr-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="opened PR"/>
+<a href="https://gitlab.com/galtproject/galtproject-core/pipelines" target="_blank"><img src="https://gitlab.com/galtproject/galtproject-core/badges/develop/build.svg" /></a>
+<img src="https://img.shields.io/github/issues-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="Opened issues"/>
+<img src="https://img.shields.io/github/issues-closed-raw/galtproject/galtproject-core.svg?color=blue&style=flat-square" alt="Closed issues" />
+<img src="https://img.shields.io/github/issues-pr-closed/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="Closed PR"/>
+<img src="https://img.shields.io/github/issues-pr-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="Opened PR"/>
+<img src="https://img.shields.io/badge/version-0.12.0-yellow.svg" alt="Contracts Version"/>
 </div>
 <br/>
 <br/>
 <div align="center">
   <img src="https://img.shields.io/badge/contributions-welcome-orange.svg?style=flat-square" alt="Contributions Welcome" />
   <a href="https://t.me/galtproject"><img src="https://img.shields.io/badge/Join%20Us%20On-Telegram-2599D2.svg?style=flat-square" alt="Join Us On Telegram" /></a>
+  <a href="https://twitter.com/galtproject"><img src="https://img.shields.io/twitter/follow/galtproject?label=Follow&style=social" alt="Follow us on Twitter" /></a>
 </div>
 <br/>
 
