@@ -1,9 +1,25 @@
-# Galt Project Core Contracts (@galtproject/core)
+<p align="center"> <img src="https://github.com/galtproject/galtproject-docs/blob/master/images/logo-black-1.png" alt="logo-black-360" width="200"/></p>
 
-<a href="https://gitlab.com/galtproject/galtproject-core/pipelines" target="_blank"><img src="https://gitlab.com/galtproject/galtproject-core/badges/develop/build.svg" /></a>
-[![Contracts Version](https://img.shields.io/badge/version-0.12.0-yellow.svg)](https://github.com/galtproject/galtproject-core)
-[![Telegram Chat](https://img.shields.io/badge/telegram-chat-blue.svg)](https://t.me/galtproject)
 
+<h3 align="center">Galt Project Core Contracts (@galtproject/core)</h3>
+<div align="center">
+</div>
+
+<div align="center">
+<img src="https://img.shields.io/github/issues-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="opened issues"/>
+<img src="https://img.shields.io/github/issues-closed-raw/galtproject/galtproject-core.svg?color=blue&style=flat-square" alt="closed issues" />
+<img src="https://img.shields.io/github/issues-pr-closed/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="closed PR"/>
+<img src="https://img.shields.io/github/issues-pr-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="opened PR"/>
+</div>
+<br/>
+<br/>
+<div align="center">
+  <img src="https://img.shields.io/badge/contributions-welcome-orange.svg?style=flat-square" alt="Contributions Welcome" />
+  <a href="https://t.me/galtproject"><img src="https://img.shields.io/badge/Join%20Us%20On-Telegram-2599D2.svg?style=flat-square" alt="Join Us On Telegram" /></a>
+</div>
+<br/>
+
+Galt Project is an international decentralized land and real estate property registry governed by DAO (Decentralized autonomous organization) and self-governance protocol for communities of homeowners built on top of Ethereum blockchain. Unlike the state property registries, the Galt Project is managed by a decentralized community of property owners using smart contracts. Creation of property records, resolution of disputes between owners, trading, mortgage, title insurance, and many other operations are performed on smart contracts. Also, property owners can unite in communities for voting, fundraising, and managing the common property.
 
 ## For Developers
 
@@ -29,6 +45,3 @@ make validate
 The main goal of Galt Project is to create sofware for land tokenization (accounting, buying and selling on blockchain) and self-governance. And to create a communities, runned by a smart contracts with the help of this software.
 
 https://galtproject.io/
-
-## About Copyright and Software licenses
-The main purpose of Galt Protocol is to create open and reliable instrument for self-government communities of Property Owners. According to that, one of our main goals in Galt Project is to create pure community driven and open software product. For now Galt Project if fully self-funded, we have certain vision and we want to implement it. To ensure the achievement of our vision, before the launch, protocol is open-sourced, but it is and it will be our intellectual property. You need to ask us, if you want to participate or use our code. We will decide if it's possible at that moment.
