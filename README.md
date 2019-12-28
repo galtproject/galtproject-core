@@ -6,7 +6,7 @@
 </div>
 
 <div align="center">
-<a href="https://gitlab.com/galtproject/galtproject-core/pipelines" target="_blank"><img src="https://gitlab.com/galtproject/galtproject-core/badges/develop/build.svg" /></a>
+<a href="https://gitlab.com/galtproject/galtproject-core/pipelines" target="_blank"><img src="https://gitlab.com/galtproject/galtproject-core/badges/develop/pipeline.svg" /></a>
 <img src="https://img.shields.io/github/issues-raw/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="Opened issues"/>
 <img src="https://img.shields.io/github/issues-closed-raw/galtproject/galtproject-core.svg?color=blue&style=flat-square" alt="Closed issues" />
 <img src="https://img.shields.io/github/issues-pr-closed/galtproject/galtproject-core.svg?color=green&style=flat-square" alt="Closed PR"/>
