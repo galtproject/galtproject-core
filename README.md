@@ -27,7 +27,7 @@
 
 [@galtproject-core](https://github.com/galtproject/galtproject-core/) repo contains smart contracts for a Single consistent decentralized land and real estate registry. Any land and real-estate property owner can create his property tokens with the help of the decentralized community of cadastral engineers and notaries. Tokens can be created for commercial purposes or for the self-government of property owners.
 
-:page_with_curl: **For more information read the [Whitepaper](https://github.com/galtproject/galtproject-docs/blob/master/en/Whitepaper.md)**
+:page_with_curl: **For more information read the [Whitepaper](https://github.com/galtproject/galtproject-docs/blob/master/whitepaper/en/Whitepaper.md)**
 
 :construction: **@galtproject-core stage: Testnet**
 
