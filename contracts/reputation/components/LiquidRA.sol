@@ -41,8 +41,7 @@ contract LiquidRA {
 
   // PermissionED
   function revoke(address _from, uint256 _amount) public {
-    _debitAccount(_from, msg.sender, _amount);
-    _creditAccount(msg.sender, msg.sender, _amount);
+    _revokeDelegated(_from, _amount);
   }
 
   // INTERNAL
@@ -111,18 +110,7 @@ contract LiquidRA {
   }
 
   function _revokeDelegated(address _account, uint _amount) internal {
-    require(_delegatedBalances[msg.sender][_account] >= _amount, "Not enough funds");
-
-    // _balances[_account] -= _amount;
-    _balances[_account] = _balances[_account].sub(_amount);
-    // _delegatedBalances[msg.sender][_account] -= _amount;
-    _delegatedBalances[msg.sender][_account] = _delegatedBalances[msg.sender][_account].sub(_amount);
-
-    if (_delegatedBalances[msg.sender][_account] == 0) {
-      _delegations[msg.sender].remove(_account);
-      _delegatedBy[_account].remove(msg.sender);
-    }
-
+    _debitAccount(_account, msg.sender, _amount);
     _creditAccount(msg.sender, msg.sender, _amount);
 
     emit RevokeDelegated(_account, msg.sender, _amount);
