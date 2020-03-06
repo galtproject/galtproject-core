@@ -114,6 +114,7 @@ contract LiquidRA {
     _creditAccount(msg.sender, msg.sender, _amount);
 
     emit RevokeDelegated(_account, msg.sender, _amount);
+    emit Transfer(_account, msg.sender, _amount);
   }
 
   // GETTERS
