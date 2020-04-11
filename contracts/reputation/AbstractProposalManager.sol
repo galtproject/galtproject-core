@@ -129,7 +129,6 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     string memory _dataLink
   )
     internal
-    payable
     onlyMember
   {
     idCounter.increment();
