@@ -120,15 +120,15 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     feeManager = _feeManager;
   }
 
-  function propose(
+  function _propose(
     address _destination,
     uint256 _value,
     bool _castVote,
     bool _executesIfDecided,
-    bytes calldata _data,
-    string calldata _dataLink
+    bytes memory _data,
+    string memory _dataLink
   )
-    public
+    internal
     payable
     onlyMember
   {
