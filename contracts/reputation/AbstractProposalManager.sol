@@ -128,7 +128,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     bytes calldata _data,
     string calldata _dataLink
   )
-    external
+    public
     payable
     onlyMember
   {
