@@ -73,7 +73,7 @@ contract GaltInputRA is LiquidRA, DecentralizedRA {
       _members.remove(owner);
     }
 
-    _burn(owner, reputation);
+    _burn(owner, owner, reputation);
   }
 
   function galtLockerRegistry() internal view returns(ILockerRegistry) {

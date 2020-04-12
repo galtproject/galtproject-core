@@ -57,7 +57,7 @@ contract LiquidRA {
     emit Mint(_beneficiary, _amount);
   }
 
-  function _burn(address _benefactor, uint256 _amount) internal {
+  function _burn(address _delegate, address _benefactor, uint256 _amount) internal {
     require(_balances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
     require(_delegatedBalances[_benefactor][_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
     require(_ownedBalances[_benefactor] >= _amount, "LiquidRA: Not enough funds to burn");
@@ -65,7 +65,7 @@ contract LiquidRA {
     // totalStakedSpace -= _amount;
     totalStakedSpace = totalStakedSpace.sub(_amount);
 
-    _debitAccount(_benefactor, _benefactor, _amount);
+    _debitAccount(_delegate, _benefactor, _amount);
 
     // _ownedBalances[_benefactor] -= _amount;
     _ownedBalances[_benefactor] = _ownedBalances[_benefactor].sub(_amount);

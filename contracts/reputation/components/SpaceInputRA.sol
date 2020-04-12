@@ -85,7 +85,7 @@ contract SpaceInputRA is LiquidRA, DecentralizedRA {
 
     require(reputationMinted[spaceTokenId] == true, "Reputation doesn't minted");
 
-    _burn(owner, reputation);
+    _burn(owner, owner, reputation);
 
     _spaceTokensByOwner[owner].remove(spaceTokenId);
     if (_spaceTokensByOwner[owner].size() == 0) {
