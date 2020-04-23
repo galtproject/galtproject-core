@@ -312,6 +312,16 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     external
     onlyProposalDefaultConfigManager
   {
+    _setDefaultProposalConfig(_support, _minAcceptQuorum, _timeout);
+  }
+
+  function _setDefaultProposalConfig(
+    uint256 _support,
+    uint256 _minAcceptQuorum,
+    uint256 _timeout
+  )
+    internal
+  {
     _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
 
     defaultVotingConfig.support = _support;
@@ -329,6 +339,17 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   )
     external
     onlyProposalConfigManager
+  {
+    _setProposalConfig(_marker, _support, _minAcceptQuorum, _timeout);
+  }
+
+  function _setProposalConfig(
+    bytes32 _marker,
+    uint256 _support,
+    uint256 _minAcceptQuorum,
+    uint256 _timeout
+  )
+    internal
   {
     _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
 
