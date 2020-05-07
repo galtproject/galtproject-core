@@ -13,10 +13,10 @@ pragma solidity ^0.5.13;
 contract ChargesEthFee {
   event SetFeeManager(address addr);
   event SetFeeCollector(address addr);
-  event SetEthFee(uint256 ethFee);
+  event SetEthFee(bytes32 key, uint256 ethFee);
   event WithdrawEth(address indexed to, uint256 amount);
 
-  uint256 public ethFee;
+  mapping(bytes32 => uint256) public ethFeeByKey;
 
   address public feeManager;
   address public feeCollector;
@@ -49,10 +49,10 @@ contract ChargesEthFee {
     emit SetFeeCollector(_addr);
   }
 
-  function setEthFee(uint256 _ethFee) external onlyFeeManager {
-    ethFee = _ethFee;
+  function setEthFee(bytes32 _key, uint256 _ethFee) external onlyFeeManager {
+    ethFeeByKey[_key] = _ethFee;
 
-    emit SetEthFee(_ethFee);
+    emit SetEthFee(_key, _ethFee);
   }
 
   // WITHDRAWERS
@@ -67,7 +67,7 @@ contract ChargesEthFee {
 
   // INTERNAL
 
-  function _acceptPayment() internal {
-    require(msg.value == ethFee, "Fee and msg.value not equal");
+  function _acceptPayment(bytes32 _key) internal {
+    require(msg.value == ethFeeByKey[_key], "Fee and msg.value not equal");
   }
 }
