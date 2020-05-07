@@ -18,8 +18,7 @@ import "../traits/ChargesEthFee.sol";
 
 contract AbstractProposalManager is Initializable, ChargesEthFee {
 
-  uint256 constant VERSION = 2;
-  bytes32 constant VOTE_FEE_KEY = bytes32("VOTE_FEE");
+  uint256 public constant VERSION = 2;
 
   using SafeMath for uint256;
   using Counters for Counters.Counter;
@@ -28,6 +27,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
 
   // 100% == 100 ether
   uint256 public constant ONE_HUNDRED_PCT = 100 ether;
+  bytes32 public constant VOTE_FEE_KEY = bytes32("VOTE_FEE");
 
   event NewProposal(uint256 indexed proposalId, address indexed proposer, bytes32 indexed marker);
   event AyeProposal(uint256 indexed proposalId, address indexed voter);
