@@ -13,29 +13,20 @@ import "../interfaces/IEthFeeRegistry.sol";
 
 
 contract ChargesEthFee {
-  address payable public feeRegistry;
-
-  event SetFeeRegistry(address feeRegistry);
-
-  modifier onlyFeeRegistryManager() {
-    IEthFeeRegistry(feeRegistry).requireRegistryManager(msg.sender);
-    _;
-  }
+  address internal _feeRegistry;
 
   constructor() public {}
 
-  // SETTERS
-
-  function setFeeRegistry(address _addr) external onlyFeeRegistryManager {
-    feeRegistry = address(uint160(_addr));
-
-    emit SetFeeRegistry(_addr);
+  function feeRegistry() public returns(address) {
+    return _feeRegistry;
   }
 
   // INTERNAL
 
   function _acceptPayment(bytes32 _key) internal {
-    require(msg.value == IEthFeeRegistry(feeRegistry).ethFeeByKey(_key), "Fee and msg.value not equal");
-    feeRegistry.transfer(msg.value);
+    address payable feeRegistryPayable = address(uint160(feeRegistry()));
+
+    require(msg.value == IEthFeeRegistry(feeRegistryPayable).ethFeeByKey(_key), "Fee and msg.value not equal");
+    feeRegistryPayable.transfer(msg.value);
   }
 }

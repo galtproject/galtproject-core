@@ -117,8 +117,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   constructor() public {
   }
 
-  function initialize(address _feeRegistry) public isInitializer {
-    feeRegistry = address(uint160(_feeRegistry));
+  function initialize(address _feeRegistryAddr) public isInitializer {
+    _feeRegistry = _feeRegistryAddr;
   }
 
   function _propose(
