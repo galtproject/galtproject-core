@@ -25,6 +25,9 @@ contract ChargesEthFee {
 
   function _acceptPayment(bytes32 _key) internal {
     address payable feeRegistryPayable = address(uint160(feeRegistry()));
+    if (feeRegistryPayable == address(0)) {
+      return;
+    }
 
     require(msg.value == IEthFeeRegistry(feeRegistryPayable).ethFeeByKey(_key), "Fee and msg.value not equal");
     feeRegistryPayable.transfer(msg.value);
