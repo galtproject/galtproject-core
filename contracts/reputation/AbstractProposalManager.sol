@@ -27,7 +27,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
 
   // 100% == 100 ether
   uint256 public constant ONE_HUNDRED_PCT = 100 ether;
-  bytes32 public constant VOTE_FEE_KEY = bytes32("VOTE_FEE");
+  bytes32 public constant VOTE_FEE_KEY = bytes32("PMANAGER_VOTE");
 
   event NewProposal(uint256 indexed proposalId, address indexed proposer, bytes32 indexed marker);
   event AyeProposal(uint256 indexed proposalId, address indexed voter);
