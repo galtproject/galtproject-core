@@ -17,7 +17,5 @@ interface IEthFeeRegistry {
 
   function requireFeeManager(address _sender) external view;
 
-  function requireRegistryManager(address _sender) external view;
-
   function requireFeeCollector(address _sender) external view;
 }
