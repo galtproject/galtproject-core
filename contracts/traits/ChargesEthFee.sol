@@ -9,65 +9,33 @@
 
 pragma solidity ^0.5.13;
 
+import "../interfaces/IEthFeeRegistry.sol";
+
 
 contract ChargesEthFee {
-  event SetFeeManager(address addr);
-  event SetFeeCollector(address addr);
-  event SetEthFee(bytes32 key, uint256 ethFee);
-  event WithdrawEth(address indexed to, uint256 amount);
+  address payable public feeRegistry;
 
-  mapping(bytes32 => uint256) public ethFeeByKey;
+  event SetFeeRegistry(address feeRegistry);
 
-  address public feeManager;
-  address public feeCollector;
-
-  modifier onlyFeeManager() {
-    require(msg.sender == feeManager, "ChargesEthFee: caller is not the feeManager");
+  modifier onlyFeeRegistryManager() {
+    IEthFeeRegistry(feeRegistry).requireRegistryManager(msg.sender);
     _;
   }
 
-  modifier onlyFeeCollector() {
-    require(msg.sender == feeCollector, "ChargesEthFee: caller is not the feeCollector");
-    _;
-  }
-
-  constructor() public {
-
-  }
+  constructor() public {}
 
   // SETTERS
 
-  function setFeeManager(address _addr) external onlyFeeManager {
-    feeManager = _addr;
+  function setFeeRegistry(address _addr) external onlyFeeRegistryManager {
+    feeRegistry = address(uint160(_addr));
 
-    emit SetFeeManager(_addr);
-  }
-
-  function setFeeCollector(address _addr) external onlyFeeManager {
-    feeCollector = _addr;
-
-    emit SetFeeCollector(_addr);
-  }
-
-  function setEthFee(bytes32 _key, uint256 _ethFee) external onlyFeeManager {
-    ethFeeByKey[_key] = _ethFee;
-
-    emit SetEthFee(_key, _ethFee);
-  }
-
-  // WITHDRAWERS
-
-  function withdrawEth(address payable _to) external onlyFeeCollector {
-    uint256 balance = address(this).balance;
-
-    _to.transfer(balance);
-
-    emit WithdrawEth(_to, balance);
+    emit SetFeeRegistry(_addr);
   }
 
   // INTERNAL
 
   function _acceptPayment(bytes32 _key) internal {
-    require(msg.value == ethFeeByKey[_key], "Fee and msg.value not equal");
+    require(msg.value == IEthFeeRegistry(feeRegistry).ethFeeByKey(_key), "Fee and msg.value not equal");
+    feeRegistry.transfer(msg.value);
   }
 }
