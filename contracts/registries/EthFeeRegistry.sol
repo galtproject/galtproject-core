@@ -74,6 +74,7 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
     for (uint256 i = 0; i < feeKeysLen; i++) {
       ethFeeByKey[_feeKeys[i]] = _feeValues[i];
+      emit SetFee(_feeKeys[i], _feeValues[i]);
     }
   }
 
