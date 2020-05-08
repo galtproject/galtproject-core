@@ -53,6 +53,16 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
   }
 
+  // FEE COLLECTOR INTERFACE
+
+  function withdrawEth(address payable _to) external onlyFeeCollector {
+    uint256 balance = address(this).balance;
+
+    _to.transfer(balance);
+
+    emit WithdrawFee(_to, balance);
+  }
+
   // OWNER INTERFACE
 
   function setFeeManager(address _feeManager) external onlyOwner {

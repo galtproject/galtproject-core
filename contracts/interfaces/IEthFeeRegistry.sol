@@ -13,6 +13,8 @@ pragma solidity ^0.5.13;
 interface IEthFeeRegistry {
   event SetFee(bytes32 indexed key, uint256 value);
 
+  event WithdrawFee(address indexed to, uint256 value);
+
   function ethFeeByKey(bytes32 _key) external view returns(uint256);
 
   function requireFeeManager(address _sender) external view;
