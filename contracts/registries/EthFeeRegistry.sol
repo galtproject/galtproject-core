@@ -24,7 +24,6 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
   mapping(bytes32 => uint256) public ethFeeByKey;
 
   address public feeManager;
-  address public registryManager;
   address public feeCollector;
 
   modifier onlyFeeManager() {
@@ -39,13 +38,11 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function initialize(
     address _feeManager,
-    address _registryManager,
     address _feeCollector,
     bytes32[] calldata _feeKeys,
     uint256[] calldata _feeValues
   ) external isInitializer {
     feeManager = _feeManager;
-    registryManager = _registryManager;
     feeCollector = _feeCollector;
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
   }
@@ -60,10 +57,6 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function setFeeManager(address _feeManager) external onlyOwner {
     feeManager = _feeManager;
-  }
-
-  function setRegistryManager(address _registryManager) external onlyOwner {
-    registryManager = _registryManager;
   }
 
   function setFeeCollector(address _feeCollector) external onlyOwner {
@@ -88,10 +81,6 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function requireFeeManager(address _sender) public view {
     require(_sender == feeManager, "EthFeeRegistry: caller is not the feeManager");
-  }
-
-  function requireRegistryManager(address _sender) public view {
-    require(_sender == registryManager, "EthFeeRegistry: caller is not the registryManager");
   }
 
   function requireFeeCollector(address _sender) public view {
