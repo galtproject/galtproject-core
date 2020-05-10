@@ -22,6 +22,7 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
   uint256 public constant VERSION = 1;
 
   mapping(bytes32 => uint256) public ethFeeByKey;
+  mapping(address => mapping(bytes32 => uint256)) public contractEthFeeByKey;
 
   address public feeManager;
   address public feeCollector;
@@ -47,10 +48,24 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
   }
 
+  // GETTERS
+
+  function getEthFeeByKey(bytes32 _key) external view returns (uint256) {
+    return contractEthFeeByKey[msg.sender][_key] > 0 ? contractEthFeeByKey[msg.sender][_key] : ethFeeByKey[_key];
+  }
+
   // FEE MANAGER INTERFACE
 
   function setEthFeeKeysAndValues(bytes32[] calldata _feeKeys, uint256[] calldata _feeValues) external onlyFeeManager {
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
+  }
+
+  function setContractEthFeeKeysAndValues(
+    address _contractAddr,
+    bytes32[] calldata _feeKeys,
+    uint256[] calldata _feeValues
+  ) external onlyFeeManager {
+    _setContractEthFeeKeysAndValues(_contractAddr, _feeKeys, _feeValues);
   }
 
   // FEE COLLECTOR INTERFACE
@@ -85,6 +100,21 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     for (uint256 i = 0; i < feeKeysLen; i++) {
       ethFeeByKey[_feeKeys[i]] = _feeValues[i];
       emit SetFee(_feeKeys[i], _feeValues[i]);
+    }
+  }
+
+  function _setContractEthFeeKeysAndValues(
+    address _contractAddr,
+    bytes32[] memory _feeKeys,
+    uint256[] memory _feeValues
+  ) internal {
+    uint256 feeKeysLen = _feeKeys.length;
+
+    require(feeKeysLen == _feeValues.length, "Keys and values length does not match");
+
+    for (uint256 i = 0; i < feeKeysLen; i++) {
+      contractEthFeeByKey[_contractAddr][_feeKeys[i]] = _feeValues[i];
+      emit SetContractFee(_contractAddr, _feeKeys[i], _feeValues[i]);
     }
   }
 

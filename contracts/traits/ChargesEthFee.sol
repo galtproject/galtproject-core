@@ -29,7 +29,7 @@ contract ChargesEthFee {
       return;
     }
 
-    require(msg.value == IEthFeeRegistry(feeRegistryPayable).ethFeeByKey(_key), "Fee and msg.value not equal");
+    require(msg.value == IEthFeeRegistry(feeRegistryPayable).getEthFeeByKey(_key), "Fee and msg.value not equal");
     feeRegistryPayable.transfer(msg.value);
   }
 }
