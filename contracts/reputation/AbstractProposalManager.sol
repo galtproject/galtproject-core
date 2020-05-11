@@ -18,7 +18,7 @@ import "../traits/ChargesEthFee.sol";
 
 contract AbstractProposalManager is Initializable, ChargesEthFee {
 
-  uint256 constant VERSION = 2;
+  uint256 public constant VERSION = 2;
 
   using SafeMath for uint256;
   using Counters for Counters.Counter;
@@ -27,6 +27,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
 
   // 100% == 100 ether
   uint256 public constant ONE_HUNDRED_PCT = 100 ether;
+  bytes32 public constant VOTE_FEE_KEY = bytes32("PMANAGER_VOTE");
 
   event NewProposal(uint256 indexed proposalId, address indexed proposer, bytes32 indexed marker);
   event AyeProposal(uint256 indexed proposalId, address indexed voter);
@@ -116,8 +117,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   constructor() public {
   }
 
-  function initialize(address _feeManager) public isInitializer {
-    feeManager = _feeManager;
+  function initialize(address _feeRegistryAddr) public isInitializer {
+    _feeRegistry = _feeRegistryAddr;
   }
 
   function _propose(
@@ -182,7 +183,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   // INTERNAL
 
   function _aye(uint256 _proposalId, address _voter, bool _executeIfDecided) internal {
-    _acceptPayment();
+    _acceptPayment(VOTE_FEE_KEY);
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
@@ -209,7 +210,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   }
 
   function _nay(uint256 _proposalId, address _voter) internal {
-    _acceptPayment();
+    _acceptPayment(VOTE_FEE_KEY);
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
@@ -230,7 +231,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   }
 
   function _abstain(uint256 _proposalId, address _voter, bool _executeIfDecided) internal {
-    _acceptPayment();
+    _acceptPayment(VOTE_FEE_KEY);
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
@@ -312,6 +313,16 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     external
     onlyProposalDefaultConfigManager
   {
+    _setDefaultProposalConfig(_support, _minAcceptQuorum, _timeout);
+  }
+
+  function _setDefaultProposalConfig(
+    uint256 _support,
+    uint256 _minAcceptQuorum,
+    uint256 _timeout
+  )
+    internal
+  {
     _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
 
     defaultVotingConfig.support = _support;
@@ -329,6 +340,17 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   )
     external
     onlyProposalConfigManager
+  {
+    _setProposalConfig(_marker, _support, _minAcceptQuorum, _timeout);
+  }
+
+  function _setProposalConfig(
+    bytes32 _marker,
+    uint256 _support,
+    uint256 _minAcceptQuorum,
+    uint256 _timeout
+  )
+    internal
   {
     _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
 
