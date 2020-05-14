@@ -32,11 +32,6 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     _;
   }
 
-  modifier onlyFeeCollector() {
-    requireFeeCollector(msg.sender);
-    _;
-  }
-
   function initialize(
     address _feeManager,
     address _feeCollector,
@@ -66,16 +61,6 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     uint256[] calldata _feeValues
   ) external onlyFeeManager {
     _setContractEthFeeKeysAndValues(_contractAddr, _feeKeys, _feeValues);
-  }
-
-  // FEE COLLECTOR INTERFACE
-
-  function withdrawEth(address payable _to) external onlyFeeCollector {
-    uint256 balance = address(this).balance;
-
-    _to.transfer(balance);
-
-    emit WithdrawFee(_to, balance);
   }
 
   // OWNER INTERFACE
@@ -122,9 +107,5 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function requireFeeManager(address _sender) public view {
     require(_sender == feeManager, "EthFeeRegistry: caller is not the feeManager");
-  }
-
-  function requireFeeCollector(address _sender) public view {
-    require(_sender == feeCollector, "EthFeeRegistry: caller is not the feeCollector");
   }
 }

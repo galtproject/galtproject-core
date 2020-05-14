@@ -24,12 +24,13 @@ contract ChargesEthFee {
   // INTERNAL
 
   function _acceptPayment(bytes32 _key) internal {
-    address payable feeRegistryPayable = address(uint160(feeRegistry()));
-    if (feeRegistryPayable == address(0)) {
+    address feeRegistry = feeRegistry();
+    if (feeRegistry == address(0)) {
       return;
     }
 
-    require(msg.value == IEthFeeRegistry(feeRegistryPayable).getEthFeeByKey(_key), "Fee and msg.value not equal");
-    feeRegistryPayable.transfer(msg.value);
+    require(msg.value == IEthFeeRegistry(feeRegistry).getEthFeeByKey(_key), "Fee and msg.value not equal");
+    address payable feeCollector = address(uint160(IEthFeeRegistry(feeRegistry).feeCollector()));
+    feeCollector.transfer(msg.value);
   }
 }
