@@ -30,7 +30,7 @@ contract ChargesEthFee {
     }
 
     require(msg.value == IEthFeeRegistry(feeRegistry).getEthFeeByKey(_key), "Fee and msg.value not equal");
-    address payable feeCollector = address(uint160(IEthFeeRegistry(feeRegistry).feeCollector()));
-    feeCollector.transfer(msg.value);
+    address payable feeReceiver = address(uint160(IEthFeeRegistry(feeRegistry).feeReceiver()));
+    feeReceiver.transfer(msg.value);
   }
 }

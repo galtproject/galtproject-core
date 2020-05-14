@@ -17,7 +17,7 @@ interface IEthFeeRegistry {
 
   event WithdrawFee(address indexed to, uint256 value);
 
-  function feeCollector() external view returns(address);
+  function feeReceiver() external view returns(address);
 
   function getEthFeeByKey(bytes32 _key) external view returns(uint256);
 

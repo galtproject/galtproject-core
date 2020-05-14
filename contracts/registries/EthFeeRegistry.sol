@@ -25,7 +25,7 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
   mapping(address => mapping(bytes32 => uint256)) public contractEthFeeByKey;
 
   address public feeManager;
-  address public feeCollector;
+  address public feeReceiver;
 
   modifier onlyFeeManager() {
     requireFeeManager(msg.sender);
@@ -34,12 +34,12 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function initialize(
     address _feeManager,
-    address _feeCollector,
+    address _feeReceiver,
     bytes32[] calldata _feeKeys,
     uint256[] calldata _feeValues
   ) external isInitializer {
     feeManager = _feeManager;
-    feeCollector = _feeCollector;
+    feeReceiver = _feeReceiver;
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
   }
 
@@ -69,8 +69,8 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     feeManager = _feeManager;
   }
 
-  function setFeeCollector(address _feeCollector) external onlyOwner {
-    feeCollector = _feeCollector;
+  function setfeeReceiver(address _feeReceiver) external onlyOwner {
+    feeReceiver = _feeReceiver;
   }
 
   function () external payable {}
