@@ -17,7 +17,7 @@ contract ChargesEthFee {
 
   constructor() public {}
 
-  function feeRegistry() public returns(address) {
+  function feeRegistry() public view returns(address) {
     return _feeRegistry;
   }
 
