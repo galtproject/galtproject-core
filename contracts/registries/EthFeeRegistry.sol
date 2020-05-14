@@ -69,7 +69,7 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     feeManager = _feeManager;
   }
 
-  function setfeeReceiver(address _feeReceiver) external onlyOwner {
+  function setFeeReceiver(address _feeReceiver) external onlyOwner {
     feeReceiver = _feeReceiver;
   }
 
