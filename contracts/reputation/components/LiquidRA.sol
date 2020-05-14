@@ -40,7 +40,7 @@ contract LiquidRA {
   uint256 internal totalStakedSpace;
 
   // PermissionED
-  function revoke(address _from, uint256 _amount) public {
+  function revoke(address _from, uint256 _amount) public payable {
     _revokeDelegated(_from, _amount);
   }
 
