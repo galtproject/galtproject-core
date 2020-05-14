@@ -25,21 +25,26 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
   mapping(address => mapping(bytes32 => uint256)) public contractEthFeeByKey;
 
   address public feeManager;
-  address public feeReceiver;
+  address public feeCollector;
 
   modifier onlyFeeManager() {
     requireFeeManager(msg.sender);
     _;
   }
 
+  modifier onlyFeeCollector() {
+    requireFeeCollector(msg.sender);
+    _;
+  }
+
   function initialize(
     address _feeManager,
-    address _feeReceiver,
+    address _feeCollector,
     bytes32[] calldata _feeKeys,
     uint256[] calldata _feeValues
   ) external isInitializer {
     feeManager = _feeManager;
-    feeReceiver = _feeReceiver;
+    feeCollector = _feeCollector;
     _setEthFeeKeysAndValues(_feeKeys, _feeValues);
   }
 
@@ -63,14 +68,24 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
     _setContractEthFeeKeysAndValues(_contractAddr, _feeKeys, _feeValues);
   }
 
+  // FEE COLLECTOR INTERFACE
+
+  function withdrawEth(address payable _to) external onlyFeeCollector {
+    uint256 balance = address(this).balance;
+
+    _to.transfer(balance);
+
+    emit WithdrawFee(_to, balance);
+  }
+
   // OWNER INTERFACE
 
   function setFeeManager(address _feeManager) external onlyOwner {
     feeManager = _feeManager;
   }
 
-  function setFeeReceiver(address _feeReceiver) external onlyOwner {
-    feeReceiver = _feeReceiver;
+  function setFeeCollector(address _feeCollector) external onlyOwner {
+    feeCollector = _feeCollector;
   }
 
   function () external payable {}
@@ -107,5 +122,9 @@ contract EthFeeRegistry is IEthFeeRegistry, OwnableAndInitializable {
 
   function requireFeeManager(address _sender) public view {
     require(_sender == feeManager, "EthFeeRegistry: caller is not the feeManager");
+  }
+
+  function requireFeeCollector(address _sender) public view {
+    require(_sender == feeCollector, "EthFeeRegistry: caller is not the feeCollector");
   }
 }
