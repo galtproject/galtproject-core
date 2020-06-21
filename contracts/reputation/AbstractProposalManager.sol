@@ -37,20 +37,24 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   event Approved(uint256 ayeShare, uint256 support, uint256 indexed proposalId, bytes32 indexed marker);
   event Execute(uint256 indexed proposalId, address indexed executer, bool indexed success, bytes response);
 
-  event SetProposalVotingConfig(bytes32 indexed key, uint256 support, uint256 minAcceptQuorum, uint256 timeout);
-  event SetDefaultProposalVotingConfig(uint256 support, uint256 minAcceptQuorum, uint256 timeout);
+  event SetProposalVotingConfig(bytes32 indexed key, uint256 support, uint256 minAcceptQuorum, uint256 timeout, uint256 committingTimeout);
+  event SetDefaultProposalVotingConfig(uint256 support, uint256 minAcceptQuorum, uint256 timeout, uint256 committingTimeout);
 
   struct ProposalVoting {
+    bool isCommitReveal;
     uint256 creationBlock;
     uint256 creationTotalSupply;
     uint256 createdAt;
     uint256 timeoutAt;
+    uint256 committingTimeoutAt;
     uint256 requiredSupport;
     uint256 minAcceptQuorum;
     uint256 totalAyes;
     uint256 totalNays;
     uint256 totalAbstains;
     mapping(address => Choice) participants;
+    mapping(address => bytes32) commitments;
+    mapping(address => bool) revealed;
     ArraySet.AddressSet ayes;
     ArraySet.AddressSet nays;
     ArraySet.AddressSet abstains;
@@ -70,6 +74,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     uint256 support;
     uint256 minAcceptQuorum;
     uint256 timeout;
+    uint256 committingTimeout;
   }
 
   Counters.Counter public idCounter;
@@ -126,6 +131,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     uint256 _value,
     bool _castVote,
     bool _executesIfDecided,
+    bool _isCommitReveal,
     bytes memory _data,
     string memory _dataLink
   )
@@ -144,17 +150,34 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     p.marker = getThresholdMarker(_destination, _data);
 
     p.status = ProposalStatus.ACTIVE;
-    _onNewProposal(id);
+    _onNewProposal(id, _isCommitReveal);
 
     emit NewProposal(id, msg.sender, p.marker);
 
-    if (_castVote) {
+    if (!_isCommitReveal && _castVote) {
       _aye(id, msg.sender, _executesIfDecided);
     }
   }
 
+  function commit(uint256 _proposalId, bytes32 _commitment) external {
+    require(_isProposalOpen(_proposalId), "Proposal isn't open");
+
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+    require(pV.isCommitReveal == true, "Not a commit-reveal vote");
+    require(_isCommittingOpen(_proposalId), "Committing is closed");
+
+    pV.commitments[msg.sender] = _commitment;
+  }
+
   function aye(uint256 _proposalId, bool _executeIfDecided) external payable {
     require(_isProposalOpen(_proposalId), "Proposal isn't open");
+
+    _aye(_proposalId, msg.sender, _executeIfDecided);
+  }
+
+  function ayeReveal(uint256 _proposalId, bool _executeIfDecided, string calldata _raw) external payable {
+    // "1" is AYE representation
+    _revealCommitment(_proposalId, _raw, "1");
 
     _aye(_proposalId, msg.sender, _executeIfDecided);
   }
@@ -165,8 +188,22 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     _nay(_proposalId, msg.sender);
   }
 
+  function nayReveal(uint256 _proposalId, string calldata _raw) external payable {
+    // "2" is NAY representation
+    _revealCommitment(_proposalId, _raw, "2");
+
+    _nay(_proposalId, msg.sender);
+  }
+
   function abstain(uint256 _proposalId, bool _executeIfDecided) external payable {
     require(_isProposalOpen(_proposalId), "Proposal isn't open");
+
+    _abstain(_proposalId, msg.sender, _executeIfDecided);
+  }
+
+  function abstainReveal(uint256 _proposalId, bool _executeIfDecided, string calldata _raw) external payable {
+    // "3" is ABSTAIN representation
+    _revealCommitment(_proposalId, _raw, "3");
 
     _abstain(_proposalId, msg.sender, _executeIfDecided);
   }
@@ -181,6 +218,21 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   }
 
   // INTERNAL
+
+  function _revealCommitment(uint256 _proposalId, string memory _raw, bytes1 _expectedChoice) internal {
+    require(_isProposalOpen(_proposalId), "Proposal isn't open");
+    require(_isRevealingOpen(_proposalId), "Revealing isn't open");
+
+    ProposalVoting storage pV = _proposalVotings[_proposalId];
+    require(pV.revealed[msg.sender] == false, "Already revealed");
+    require(keccak256(abi.encode(_raw)) == pV.commitments[msg.sender], "Commitment doesn't match");
+
+    bytes memory bytesUnencoded = bytes(_raw);
+
+    require(bytesUnencoded[0] == _expectedChoice, "Invalid choice decoded");
+
+    pV.revealed[msg.sender] = true;
+  }
 
   function _aye(uint256 _proposalId, address _voter, bool _executeIfDecided) internal {
     _acceptPayment(VOTE_FEE_KEY);
@@ -262,7 +314,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     return canExecuteThis;
   }
 
-  function _onNewProposal(uint256 _proposalId) internal {
+  function _onNewProposal(uint256 _proposalId, bool _isCommitReveal) internal {
     bytes32 marker = proposals[_proposalId].marker;
 
     uint256 blockNumber = block.number.sub(1);
@@ -274,10 +326,16 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     pv.creationBlock = blockNumber;
     pv.creationTotalSupply = totalSupply;
 
-    (uint256 support, uint256 quorum, uint256 timeout) = getProposalVotingConfig(marker);
+    (uint256 support, uint256 quorum, uint256 timeout, uint256 committingTimeout) = getProposalVotingConfig(marker);
     pv.createdAt = block.timestamp;
     // pv.timeoutAt = block.timestamp + timeout;
     pv.timeoutAt = block.timestamp.add(timeout);
+
+    if (_isCommitReveal) {
+      require(committingTimeout > 0, "Missing committing timeout");
+      pv.isCommitReveal = _isCommitReveal;
+      pv.committingTimeoutAt = block.timestamp.add(committingTimeout);
+    }
 
     pv.requiredSupport = support;
     pv.minAcceptQuorum = quorum;
@@ -308,59 +366,65 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   function setDefaultProposalConfig(
     uint256 _support,
     uint256 _minAcceptQuorum,
-    uint256 _timeout
+    uint256 _timeout,
+    uint256 _committingTimeout
   )
     external
     onlyProposalDefaultConfigManager
   {
-    _setDefaultProposalConfig(_support, _minAcceptQuorum, _timeout);
+    _setDefaultProposalConfig(_support, _minAcceptQuorum, _timeout, _committingTimeout);
   }
 
   function _setDefaultProposalConfig(
     uint256 _support,
     uint256 _minAcceptQuorum,
-    uint256 _timeout
+    uint256 _timeout,
+    uint256 _committingTimeout
   )
     internal
   {
-    _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
+    _validateVotingConfig(_support, _minAcceptQuorum, _timeout, _committingTimeout);
 
     defaultVotingConfig.support = _support;
     defaultVotingConfig.minAcceptQuorum = _minAcceptQuorum;
     defaultVotingConfig.timeout = _timeout;
+    defaultVotingConfig.committingTimeout = _committingTimeout;
 
-    emit SetDefaultProposalVotingConfig(_support, _minAcceptQuorum, _timeout);
+    emit SetDefaultProposalVotingConfig(_support, _minAcceptQuorum, _timeout, _committingTimeout);
   }
 
   function setProposalConfig(
     bytes32 _marker,
     uint256 _support,
     uint256 _minAcceptQuorum,
-    uint256 _timeout
+    uint256 _timeout,
+    uint256 _committingTimeout
   )
     external
     onlyProposalConfigManager
   {
-    _setProposalConfig(_marker, _support, _minAcceptQuorum, _timeout);
+    _setProposalConfig(_marker, _support, _minAcceptQuorum, _timeout, _committingTimeout);
   }
 
   function _setProposalConfig(
     bytes32 _marker,
     uint256 _support,
     uint256 _minAcceptQuorum,
-    uint256 _timeout
+    uint256 _timeout,
+    uint256 _committingTimeout
   )
     internal
   {
-    _validateVotingConfig(_support, _minAcceptQuorum, _timeout);
+    _validateVotingConfig(_support, _minAcceptQuorum, _timeout, _committingTimeout);
 
     customVotingConfigs[_marker] = VotingConfig({
       support: _support,
       minAcceptQuorum: _minAcceptQuorum,
-      timeout: _timeout
+      timeout: _timeout,
+      committingTimeout: _committingTimeout
     });
 
-    emit SetProposalVotingConfig(_marker, _support, _minAcceptQuorum, _timeout);
+    emit SetProposalVotingConfig(_marker, _support, _minAcceptQuorum, _timeout, _committingTimeout);
   }
 
   // INTERNAL GETTERS
@@ -407,10 +471,21 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     return block.timestamp < pv.timeoutAt && p.status == ProposalStatus.ACTIVE;
   }
 
+  function _isCommittingOpen(uint256 _proposalId) internal view returns (bool) {
+    return now < _proposalVotings[_proposalId].committingTimeoutAt;
+  }
+
+  function _isRevealingOpen(uint256 _proposalId) internal view returns (bool) {
+    ProposalVoting storage pv = _proposalVotings[_proposalId];
+
+    return pv.committingTimeoutAt < now && now < pv.timeoutAt;
+  }
+
   function _validateVotingConfig(
     uint256 _support,
     uint256 _minAcceptQuorum,
-    uint256 _timeout
+    uint256 _timeout,
+    uint256 _committingTimeout
   )
     internal
     pure
@@ -418,6 +493,9 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     require(_minAcceptQuorum > 0, "Invalid min accept quorum value");
     require(_support > 0 && _support <= ONE_HUNDRED_PCT, "Invalid support value");
     require(_timeout > 0, "Invalid duration value");
+    if (_committingTimeout > 0) {
+      require(_committingTimeout < _timeout, "Committing timeout should be less than timeout");
+    }
   }
 
   // GETTERS
@@ -428,6 +506,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     external
     view
     returns (
+      bool isCommitReveal,
       uint256 creationBlock,
       uint256 creationTotalSupply,
       uint256 totalAyes,
@@ -441,6 +520,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     ProposalVoting storage pV = _proposalVotings[_proposalId];
 
     return (
+      pV.isCommitReveal,
       pV.creationBlock,
       pV.creationTotalSupply,
       pV.totalAyes,
@@ -480,6 +560,10 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       pV.minAcceptQuorum,
       pV.timeoutAt
     );
+  }
+
+  function getCommitmentOf(uint256 _proposalId, address _committer) external view returns (bytes32) {
+    return _proposalVotings[_proposalId].commitments[_committer];
   }
 
   function reputationOf(address _address) public view returns (uint256) {
@@ -559,7 +643,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   )
     public
     view
-    returns (uint256 support, uint256 minAcceptQuorum, uint256 timeout)
+    returns (uint256 support, uint256 minAcceptQuorum, uint256 timeout, uint256 committingTimeout)
   {
     uint256 to = customVotingConfigs[_key].timeout;
 
@@ -567,13 +651,15 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       return (
         customVotingConfigs[_key].support,
         customVotingConfigs[_key].minAcceptQuorum,
-        customVotingConfigs[_key].timeout
+        customVotingConfigs[_key].timeout,
+        customVotingConfigs[_key].committingTimeout
       );
     } else {
       return (
         defaultVotingConfig.support,
         defaultVotingConfig.minAcceptQuorum,
-        defaultVotingConfig.timeout
+        defaultVotingConfig.timeout,
+        defaultVotingConfig.committingTimeout
       );
     }
   }
