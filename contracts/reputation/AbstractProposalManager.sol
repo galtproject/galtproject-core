@@ -175,11 +175,19 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     _aye(_proposalId, msg.sender, _executeIfDecided);
   }
 
-  function ayeReveal(uint256 _proposalId, bool _executeIfDecided, string calldata _raw) external payable {
+  function ayeReveal(
+    uint256 _proposalId,
+    address _voter,
+    bool _executeIfDecided,
+    string calldata _raw
+  )
+    external
+    payable
+  {
     // "1" is AYE representation
-    _revealCommitment(_proposalId, _raw, "1");
+    _revealCommitment(_proposalId, _voter, _raw, "1");
 
-    _aye(_proposalId, msg.sender, _executeIfDecided);
+    _aye(_proposalId, _voter, _executeIfDecided);
   }
 
   function nay(uint256 _proposalId) external payable {
@@ -188,11 +196,11 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     _nay(_proposalId, msg.sender);
   }
 
-  function nayReveal(uint256 _proposalId, string calldata _raw) external payable {
+  function nayReveal(uint256 _proposalId, address _voter, string calldata _raw) external payable {
     // "2" is NAY representation
-    _revealCommitment(_proposalId, _raw, "2");
+    _revealCommitment(_proposalId, _voter, _raw, "2");
 
-    _nay(_proposalId, msg.sender);
+    _nay(_proposalId, _voter);
   }
 
   function abstain(uint256 _proposalId, bool _executeIfDecided) external payable {
@@ -201,11 +209,19 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     _abstain(_proposalId, msg.sender, _executeIfDecided);
   }
 
-  function abstainReveal(uint256 _proposalId, bool _executeIfDecided, string calldata _raw) external payable {
+  function abstainReveal(
+    uint256 _proposalId,
+    address _voter,
+    bool _executeIfDecided,
+    string calldata _raw
+  )
+    external
+    payable
+  {
     // "3" is ABSTAIN representation
-    _revealCommitment(_proposalId, _raw, "3");
+    _revealCommitment(_proposalId, _voter, _raw, "3");
 
-    _abstain(_proposalId, msg.sender, _executeIfDecided);
+    _abstain(_proposalId, _voter, _executeIfDecided);
   }
 
   function executeProposal(uint256 _proposalId, uint256 _gasToKeep) external {
@@ -219,19 +235,19 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
 
   // INTERNAL
 
-  function _revealCommitment(uint256 _proposalId, string memory _raw, bytes1 _expectedChoice) internal {
+  function _revealCommitment(uint256 _proposalId, address _voter, string memory _raw, bytes1 _expectedChoice) internal {
     require(_isProposalOpen(_proposalId), "Proposal isn't open");
     require(_isRevealingOpen(_proposalId), "Revealing isn't open");
 
     ProposalVoting storage pV = _proposalVotings[_proposalId];
-    require(pV.revealed[msg.sender] == false, "Already revealed");
-    require(keccak256(abi.encode(_raw)) == pV.commitments[msg.sender], "Commitment doesn't match");
+    require(pV.revealed[_voter] == false, "Already revealed");
+    require(keccak256(abi.encode(_raw)) == pV.commitments[_voter], "Commitment doesn't match");
 
     bytes memory bytesUnencoded = bytes(_raw);
 
     require(bytesUnencoded[0] == _expectedChoice, "Invalid choice decoded");
 
-    pV.revealed[msg.sender] = true;
+    pV.revealed[_voter] = true;
   }
 
   function _aye(uint256 _proposalId, address _voter, bool _executeIfDecided) internal {
@@ -275,8 +291,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       pV.totalAbstains = pV.totalAbstains.sub(reputation);
     }
 
-    pV.participants[msg.sender] = Choice.NAY;
-    pV.nays.add(msg.sender);
+    pV.participants[_voter] = Choice.NAY;
+    pV.nays.add(_voter);
     pV.totalNays = pV.totalNays.add(reputation);
 
     emit NayProposal(_proposalId, _voter);
@@ -296,8 +312,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       pV.totalNays = pV.totalNays.sub(reputation);
     }
 
-    pV.participants[msg.sender] = Choice.ABSTAIN;
-    pV.abstains.add(msg.sender);
+    pV.participants[_voter] = Choice.ABSTAIN;
+    pV.abstains.add(_voter);
     pV.totalAbstains = pV.totalAbstains.add(reputation);
 
     emit AbstainProposal(_proposalId, _voter);
