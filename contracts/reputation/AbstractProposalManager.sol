@@ -49,9 +49,14 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     uint256 committingTimeoutAt;
     uint256 requiredSupport;
     uint256 minAcceptQuorum;
+    // in reputation points
     uint256 totalAyes;
+    // in reputation points
     uint256 totalNays;
+    // in reputation points
     uint256 totalAbstains;
+    // votes counter
+    uint256 totalVotes;
     mapping(address => Choice) participants;
     mapping(address => bytes32) commitments;
     mapping(address => bool) revealed;
@@ -137,9 +142,10 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
   )
     internal
     onlyMember
+    returns (uint256 id)
   {
     idCounter.increment();
-    uint256 id = idCounter.current();
+    id = idCounter.current();
 
     Proposal storage p = proposals[id];
     p.creator = msg.sender;
@@ -157,6 +163,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     if (!_isCommitReveal && _castVote) {
       _aye(id, msg.sender, _executesIfDecided);
     }
+
+    return id;
   }
 
   function commit(uint256 _proposalId, bytes32 _commitment) external {
@@ -255,18 +263,25 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
+    bool keepTotalVotesTheSame = false;
 
     if (pV.participants[_voter] == Choice.NAY) {
       pV.nays.remove(_voter);
       pV.totalNays = pV.totalNays.sub(reputation);
+      keepTotalVotesTheSame = true;
     } else if (pV.participants[_voter] == Choice.ABSTAIN) {
       pV.abstains.remove(_voter);
       pV.totalAbstains = pV.totalAbstains.sub(reputation);
+      keepTotalVotesTheSame = true;
     }
 
     pV.participants[_voter] = Choice.AYE;
     pV.ayes.add(_voter);
     pV.totalAyes = pV.totalAyes.add(reputation);
+
+    if (keepTotalVotesTheSame == false) {
+      pV.totalVotes++;
+    }
 
     emit AyeProposal(_proposalId, _voter);
 
@@ -282,18 +297,25 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
+    bool keepTotalVotesTheSame = false;
 
     if (pV.participants[_voter] == Choice.AYE) {
       pV.ayes.remove(_voter);
       pV.totalAyes = pV.totalAyes.sub(reputation);
+      keepTotalVotesTheSame = true;
     } else if (pV.participants[_voter] == Choice.ABSTAIN) {
       pV.abstains.remove(_voter);
       pV.totalAbstains = pV.totalAbstains.sub(reputation);
+      keepTotalVotesTheSame = true;
     }
 
     pV.participants[_voter] = Choice.NAY;
     pV.nays.add(_voter);
     pV.totalNays = pV.totalNays.add(reputation);
+
+    if (keepTotalVotesTheSame == false) {
+      pV.totalVotes++;
+    }
 
     emit NayProposal(_proposalId, _voter);
   }
@@ -303,18 +325,25 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     ProposalVoting storage pV = _proposalVotings[_proposalId];
     uint256 reputation = reputationOfAt(_voter, pV.creationBlock);
     require(reputation > 0, "Can't vote with 0 reputation");
+    bool keepTotalVotesTheSame = false;
 
     if (pV.participants[_voter] == Choice.AYE) {
       pV.ayes.remove(_voter);
       pV.totalAyes = pV.totalAyes.sub(reputation);
+      keepTotalVotesTheSame = true;
     } else if (pV.participants[_voter] == Choice.NAY) {
       pV.nays.remove(_voter);
       pV.totalNays = pV.totalNays.sub(reputation);
+      keepTotalVotesTheSame = true;
     }
 
     pV.participants[_voter] = Choice.ABSTAIN;
     pV.abstains.add(_voter);
     pV.totalAbstains = pV.totalAbstains.add(reputation);
+
+    if (keepTotalVotesTheSame == false) {
+      pV.totalVotes++;
+    }
 
     emit AbstainProposal(_proposalId, _voter);
 
