@@ -557,6 +557,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       uint256 totalAyes,
       uint256 totalNays,
       uint256 totalAbstains,
+      uint256 totalVotes,
       address[] memory ayes,
       address[] memory nays,
       address[] memory abstains
@@ -571,6 +572,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       pV.totalAyes,
       pV.totalNays,
       pV.totalAbstains,
+      pV.totalVotes,
       pV.ayes.elements(),
       pV.nays.elements(),
       pV.abstains.elements()
