@@ -45,7 +45,7 @@ contract LockableRA is ILockableRA, LiquidRA, DecentralizedRA {
 
   function onDelegateReputationChanged(address _pgg, address _delegate, uint256 _amount) internal;
 
-  function revoke(address _from, uint256 _amount) public {
+  function revoke(address _from, uint256 _amount) public payable {
     require((delegatedBalanceOf(_from, msg.sender) - _totalLocked[_from]) >= _amount, "Insufficient amount to revoke");
 
     _debitAccount(_from, msg.sender, _amount);

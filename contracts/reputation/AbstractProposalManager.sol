@@ -553,6 +553,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     returns (
       bool isCommitReveal,
       uint256 creationBlock,
+      uint256 createdAt,
       uint256 creationTotalSupply,
       uint256 totalAyes,
       uint256 totalNays,
@@ -568,6 +569,7 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     return (
       pV.isCommitReveal,
       pV.creationBlock,
+      pV.createdAt,
       pV.creationTotalSupply,
       pV.totalAyes,
       pV.totalNays,
@@ -592,7 +594,8 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       uint256 currentQuorum,
       uint256 requiredSupport,
       uint256 minAcceptQuorum,
-      uint256 timeoutAt
+      uint256 timeoutAt,
+      uint256 committingTimeoutAt
     )
   {
     ProposalVoting storage pV = _proposalVotings[_proposalId];
@@ -605,12 +608,17 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
       getCurrentQuorum(_proposalId),
       pV.requiredSupport,
       pV.minAcceptQuorum,
-      pV.timeoutAt
+      pV.timeoutAt,
+      pV.committingTimeoutAt
     );
   }
 
   function getCommitmentOf(uint256 _proposalId, address _committer) external view returns (bytes32) {
     return _proposalVotings[_proposalId].commitments[_committer];
+  }
+
+  function getRevealedOf(uint256 _proposalId, address _committer) external view returns (bool) {
+    return _proposalVotings[_proposalId].revealed[_committer];
   }
 
   function reputationOf(address _address) public view returns (uint256) {
