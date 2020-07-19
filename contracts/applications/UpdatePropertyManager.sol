@@ -1,25 +1,18 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./interfaces/IContourModifierApplication.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
-import "../interfaces/ISpaceToken.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IPGGRegistry.sol";
 import "./AbstractPropertyManager.sol";
 
 
@@ -39,7 +32,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
 
   bytes32 public constant CONFIG_APPLICATION_CANCEL_TIMEOUT = bytes32("PL_APPLICATION_CANCEL_TIMEOUT");
   bytes32 public constant CONFIG_APPLICATION_CLOSE_TIMEOUT = bytes32("PL_APPLICATION_CLOSE_TIMEOUT");
-  bytes32 public constant CONFIG_ROLE_UNLOCK_TIMEOUT = bytes32("PL_ROLE_UNLOCK_TIMEOUT");
+  bytes32 public constant CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT = bytes32("PL_ORACLE_TYPE_UNLOCK_TIMEOUT");
 
   bytes32 public constant CONFIG_PREFIX = bytes32("PL");
 
@@ -74,7 +67,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256) {
-    return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
+    return uint256(pggConfigValue(_pgg, CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -98,7 +91,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
    * @param _pgg address to submit application to
    * @param _spaceTokenId to modify information for
    * @param _changeContourOrHighestPoint true in case if these changes are required
-   * @param _customArea in sq. meters
+   * @param _customArea in sq. meters (1 sq. meter == 1 eth)
    * @param _dataLink IPLD address
    * @param _humanAddress just a human readable address string
    * @param _credentialsHash keccak256 of user credentials
@@ -217,7 +210,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
       _changeApplicationStatus(a, ApplicationStatus.STORED);
     }
 
-    AbstractPropertyManagerLib.updateGeoData(ggr, a, address(this));
+    AbstractPropertyManagerLib.updateGeoData(ggr, a);
   }
 
   function _performSubmissionChecks(
@@ -294,7 +287,7 @@ contract UpdatePropertyManager is AbstractPropertyManager {
   }
 
   function getCVSpaceTokenType(uint256 _aId) external view returns (ISpaceGeoDataRegistry.SpaceTokenType) {
-    return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getSpaceTokenType(applications[_aId].spaceTokenId);
+    return ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress()).getType(applications[_aId].spaceTokenId);
   }
 
   function getCVData(uint256 _aId)

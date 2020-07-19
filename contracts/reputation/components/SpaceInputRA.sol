@@ -1,22 +1,20 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
 import "../../registries/interfaces/ILockerRegistry.sol";
+import "../../interfaces/ISpaceLocker.sol";
 import "./LiquidRA.sol";
+import "./DecentralizedRA.sol";
 
 // LiquidRA - base class
 // SpaceInputRA - space input
@@ -26,7 +24,7 @@ import "./LiquidRA.sol";
 // FundRA - LiquidRA + SpaceInputRA + SharableRA
 
 
-contract SpaceInputRA is LiquidRA {
+contract SpaceInputRA is LiquidRA, DecentralizedRA {
   ArraySet.AddressSet internal _spaceTokenOwners;
 
   mapping(address => ArraySet.Uint256Set) internal _spaceTokensByOwner;
@@ -87,7 +85,7 @@ contract SpaceInputRA is LiquidRA {
 
     require(reputationMinted[spaceTokenId] == true, "Reputation doesn't minted");
 
-    _burn(owner, reputation);
+    _burn(owner, owner, reputation);
 
     _spaceTokensByOwner[owner].remove(spaceTokenId);
     if (_spaceTokensByOwner[owner].size() == 0) {

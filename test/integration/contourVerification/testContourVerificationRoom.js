@@ -216,19 +216,19 @@ contract('ContourVerification of ROOM types', accounts => {
     await this.contourVerificationManager.setRequiredConfirmations(3);
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v4 });
-    await this.contourVerifiers.deposit(ether(200), { from: v4 });
+    await this.contourVerifiers.deposit(ether(200), v4, { from: v4 });
     await this.contourVerifiers.setOperator(o4, { from: v4 });
   });
 
@@ -236,15 +236,15 @@ contract('ContourVerification of ROOM types', accounts => {
     it('should allow approving any contour', async function() {
       let res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId1 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId1, this.contour1, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId1, this.contour1, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId2 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId2, this.contour2, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId2, this.contour2, { from: geoDateManagement });
 
       res = await this.spaceToken.mint(alice, { from: minter });
       const tokenId3 = res.logs[0].args.tokenId.toNumber();
-      await this.spaceGeoData.setSpaceTokenContour(tokenId3, this.contour3, { from: geoDateManagement });
+      await this.spaceGeoData.setContour(tokenId3, this.contour3, { from: geoDateManagement });
 
       // Create a new NewPropertyManager application
       res = await this.newPropertyManager.submit(this.contour4, 6, SpaceTokenType.ROOM);
@@ -252,31 +252,32 @@ contract('ContourVerification of ROOM types', accounts => {
 
       await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-      await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+      const cvId = res.logs[0].args.applicationId;
 
-      await this.contourVerificationManager.approve(0, v2, { from: o2 });
-      await this.contourVerificationManager.approve(0, v4, { from: o4 });
-      await this.contourVerificationManager.approve(0, v3, { from: o3 });
+      await this.contourVerificationManager.approve(cvId, v2, { from: o2 });
+      await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
+      await this.contourVerificationManager.approve(cvId, v3, { from: o3 });
 
       await evmIncreaseTime(3600 * 4);
 
       assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(cvId);
       assert.equal(res.approvalCount, 3);
       assert.equal(res.action, 0);
       assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
       // too early
-      await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
+      await assertRevert(this.contourVerificationManager.pushApproval(cvId), 'Timeout period has not passed yet');
 
       await evmIncreaseTime(3600 * 5);
 
-      await this.contourVerificationManager.pushApproval(0);
+      await this.contourVerificationManager.pushApproval(cvId);
 
       assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.SUBMITTED);
 
-      res = await this.contourVerificationManager.getApplication(0);
+      res = await this.contourVerificationManager.getApplication(cvId);
       assert.equal(res.status, CVStatus.APPROVED);
     });
 
@@ -295,20 +296,20 @@ contract('ContourVerification of ROOM types', accounts => {
       describe('existing token', () => {
         beforeEach(async function() {
           // 20-30
-          await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, addElevationToContour(20, this.contour1), {
+          await this.spaceGeoData.setContour(this.tokenId3, addElevationToContour(20, this.contour1), {
             from: geoDateManagement
           });
-          await this.spaceGeoData.setSpaceTokenHighestPoint(this.tokenId3, 30, {
+          await this.spaceGeoData.setHighestPoint(this.tokenId3, 30, {
             from: geoDateManagement
           });
-          await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.ROOM, {
+          await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.ROOM, {
             from: geoDateManagement
           });
         });
 
         describe('intersection proofs', () => {
           it('should deny rejecting with (NON-IS contours AND IS heights)', async function() {
-            const res = await this.newPropertyManager.submit(
+            let res = await this.newPropertyManager.submit(
               addElevationToContour(25, this.contour3),
               35,
               SpaceTokenType.ROOM
@@ -317,12 +318,14 @@ contract('ContourVerification of ROOM types', accounts => {
 
             await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId = res.logs[0].args.applicationId;
+
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId, v4, { from: o4 });
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-                0,
+                cvId,
                 v2,
                 this.tokenId3,
                 3,
@@ -350,7 +353,7 @@ contract('ContourVerification of ROOM types', accounts => {
             res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
             const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
                 cvId2,
@@ -380,7 +383,7 @@ contract('ContourVerification of ROOM types', accounts => {
             const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
-            assert.equal(await this.spaceGeoData.getSpaceTokenType(this.tokenId3), SpaceTokenType.ROOM);
+            assert.equal(await this.spaceGeoData.getType(this.tokenId3), SpaceTokenType.ROOM);
             assert.equal(await this.newPropertyManager.getCVSpaceTokenType(aId), SpaceTokenType.ROOM);
 
             await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
@@ -422,7 +425,7 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
@@ -466,7 +469,7 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
@@ -519,7 +522,7 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
@@ -552,7 +555,7 @@ contract('ContourVerification of ROOM types', accounts => {
         describe('inclusion proofs', () => {
           it('should deny rejecting with (NON-IN point AND IN heights)', async function() {
             // 25-35
-            const res = await this.newPropertyManager.submit(
+            let res = await this.newPropertyManager.submit(
               addElevationToContour(25, this.contour2),
               35,
               SpaceTokenType.ROOM
@@ -561,13 +564,14 @@ contract('ContourVerification of ROOM types', accounts => {
 
             await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-            await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+            const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-                0,
+                cvId2,
                 v2,
                 Inclusion.VERIFYING_INSIDE_EXISTING,
                 this.tokenId3,
@@ -592,7 +596,7 @@ contract('ContourVerification of ROOM types', accounts => {
             res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
             const cvId2 = res.logs[0].args.applicationId;
             assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
-            await this.contourVerificationManager.approve(0, v4, { from: o4 });
+            await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
             await assertRevert(
               this.contourVerificationManager.rejectWithExistingPointInclusionProof(
                 cvId2,
@@ -623,7 +627,7 @@ contract('ContourVerification of ROOM types', accounts => {
             await this.contourVerificationManager.approve(cvId2, v4, { from: o4 });
 
             await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-              0,
+              cvId2,
               v2,
               Inclusion.VERIFYING_INSIDE_EXISTING,
               this.tokenId3,
@@ -657,14 +661,14 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
             await assertRevert(
               this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
-                0,
+                cvId2,
                 this.tokenId3,
                 Inclusion.VERIFYING_INSIDE_EXISTING,
                 1,
@@ -698,14 +702,14 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
             await assertRevert(
               this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
-                0,
+                cvId2,
                 this.tokenId3,
                 Inclusion.VERIFYING_INSIDE_EXISTING,
                 0,
@@ -739,13 +743,13 @@ contract('ContourVerification of ROOM types', accounts => {
               ApplicationStatus.CONTOUR_VERIFICATION
             );
 
-            res = await this.contourVerificationManager.getApplication(0);
+            res = await this.contourVerificationManager.getApplication(cvId2);
             assert.equal(res.approvalCount, 3);
             assert.equal(res.action, 0);
             assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
             await this.contourVerificationManager.reportInvalidApprovalWithExistingPointInclusionProof(
-              0,
+              cvId2,
               this.tokenId3,
               Inclusion.VERIFYING_INSIDE_EXISTING,
               0,

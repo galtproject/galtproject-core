@@ -1,25 +1,17 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../interfaces/ISpaceToken.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./interfaces/IContourModifierApplication.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
-import "../ACL.sol";
 import "./AbstractPropertyManager.sol";
 
 
@@ -38,7 +30,7 @@ contract NewPropertyManager is AbstractPropertyManager {
 
   bytes32 public constant CONFIG_APPLICATION_CANCEL_TIMEOUT = bytes32("PM_APPLICATION_CANCEL_TIMEOUT");
   bytes32 public constant CONFIG_APPLICATION_CLOSE_TIMEOUT = bytes32("PM_APPLICATION_CLOSE_TIMEOUT");
-  bytes32 public constant CONFIG_ROLE_UNLOCK_TIMEOUT = bytes32("PM_ROLE_UNLOCK_TIMEOUT");
+  bytes32 public constant CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT = bytes32("PM_ORACLE_TYPE_UNLOCK_TIMEOUT");
 
   bytes32 public constant CONFIG_PREFIX = bytes32("PM");
 
@@ -66,7 +58,7 @@ contract NewPropertyManager is AbstractPropertyManager {
   }
 
   function oracleTypeUnlockTimeout(address _pgg) public view returns (uint256) {
-    return uint256(pggConfigValue(_pgg, CONFIG_ROLE_UNLOCK_TIMEOUT));
+    return uint256(pggConfigValue(_pgg, CONFIG_ORACLE_TYPE_UNLOCK_TIMEOUT));
   }
 
   function getOracleTypeShareKey(bytes32 _oracleType) public pure returns (bytes32) {
@@ -85,7 +77,7 @@ contract NewPropertyManager is AbstractPropertyManager {
    *
    * @param _pgg address to submit application to
    * @param _spaceTokenType LAND_PLOT, BUILDING, or ROOM
-   * @param _customArea in sq. meters
+   * @param _customArea in sq. meters (1 sq. meter == 1 eth)
    * @param _beneficiary of the finally minted Space token
    * @param _dataLink IPLD address
    * @param _humanAddress just a human readable address string

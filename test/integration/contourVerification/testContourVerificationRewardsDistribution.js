@@ -25,6 +25,7 @@ const {
   ether,
   deploySpaceGeoDataLight,
   assertGaltBalanceChanged,
+  assertEthBalanceChanged,
   assertRevert,
   initHelperWeb3,
   initHelperArtifacts,
@@ -202,28 +203,29 @@ contract('ContourVerification Reward Distribution', accounts => {
     await this.contourVerificationManager.setRequiredConfirmations(5);
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v1 });
-    await this.contourVerifiers.deposit(ether(200), { from: v1 });
+    await this.contourVerifiers.deposit(ether(200), v1, { from: v1 });
     await this.contourVerifiers.setOperator(o1, { from: v1 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v2 });
-    await this.contourVerifiers.deposit(ether(200), { from: v2 });
+    await this.contourVerifiers.deposit(ether(200), v2, { from: v2 });
     await this.contourVerifiers.setOperator(o2, { from: v2 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v3 });
-    await this.contourVerifiers.deposit(ether(200), { from: v3 });
+    await this.contourVerifiers.deposit(ether(200), v3, { from: v3 });
     await this.contourVerifiers.setOperator(o3, { from: v3 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v4 });
-    await this.contourVerifiers.deposit(ether(200), { from: v4 });
+    await this.contourVerifiers.deposit(ether(200), v4, { from: v4 });
     await this.contourVerifiers.setOperator(o4, { from: v4 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v5 });
-    await this.contourVerifiers.deposit(ether(200), { from: v5 });
+    await this.contourVerifiers.deposit(ether(200), v5, { from: v5 });
     await this.contourVerifiers.setOperator(o5, { from: v5 });
 
     await this.galtToken.approve(this.contourVerifiers.address, ether(200), { from: v6 });
-    await this.contourVerifiers.deposit(ether(200), { from: v6 });
+    await this.contourVerifiers.deposit(ether(200), v6, { from: v6 });
     await this.contourVerifiers.setOperator(o6, { from: v6 });
+
     let res = await this.spaceToken.mint(alice, { from: minter });
     this.tokenId1 = res.logs[0].args.tokenId.toNumber();
 
@@ -234,188 +236,372 @@ contract('ContourVerification Reward Distribution', accounts => {
     this.tokenId3 = res.logs[0].args.tokenId.toNumber();
   });
 
-  describe('approval', () => {
-    it('should correctly distribute rewards for 1 of 1 verifiers', async function() {
-      await approve.call(this, 1);
-      await checkApproveDistributionFor1.call(this);
-    });
-
-    it('should correctly distribute rewards for 3 of 3 verifiers', async function() {
-      await approve.call(this, 3);
-      await checkApproveDistributionFor3.call(this);
-    });
-
-    async function checkApproveDistributionFor1() {
-      const res = await this.contourVerificationManager.getApplicationRewards(0);
-      assert.equal(res.currency, Currency.GALT);
-      assert.equal(res.totalPaidFee, ether(10));
-      assert.equal(res.verifiersReward, ether(8.7));
-      assert.equal(res.galtProtocolReward, ether(1.3));
-
-      assert.equal(res.verifierReward, ether(8.7));
-
-      const v1BalanceBefore = await this.galtToken.balanceOf(v1);
-      const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
-
-      await this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 });
-      await assertRevert(
-        this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }),
-        'Reward has already paid out'
-      );
-      await assertRevert(
-        this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }),
-        'Not voted on the application'
-      );
-      await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
-
-      const v1BalanceAfter = await this.galtToken.balanceOf(v1);
-      const mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
-
-      assertGaltBalanceChanged(v1BalanceBefore, v1BalanceAfter, ether(8.7));
-      assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
-    }
-  });
-
-  describe('rejection', () => {
-    describe('for intersection proofs', () => {
-      describe('rejected due existing token', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectExistingIntersection.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 0);
-        });
-
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectExistingIntersection.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 0);
-        });
-
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectExistingIntersection.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 0);
-        });
-
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectExistingIntersection.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 0);
-        });
+  describe('GALT payment', () => {
+    describe('approval', () => {
+      it('should correctly distribute rewards for 1 of 1 verifiers', async function() {
+        await approveGalt.call(this, 1);
+        await checkGaltApproveDistributionFor1.call(this);
       });
 
-      describe('rejected due applicationApproved contour', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectApplicationApprovedIntersection.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 1);
-        });
-
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectApplicationApprovedIntersection.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 1);
-        });
-
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectApplicationApprovedIntersection.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 1);
-        });
-
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectApplicationApprovedIntersection.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 1);
-        });
-      });
-
-      describe('rejected due applicationApprovedTimeout contour', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutIntersection.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 1);
-        });
-
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutIntersection.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 1);
-        });
-
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutIntersection.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 1);
-        });
-
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutIntersection.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 1);
-        });
+      it('should correctly distribute rewards for 3 of 3 verifiers', async function() {
+        await approveGalt.call(this, 3);
+        await checkGaltApproveDistributionFor3.call(this);
       });
     });
 
-    describe('for inclusion proofs', () => {
-      describe('rejected due existing token', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectExistingInclusion.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 0);
+    describe('rejection', () => {
+      describe('for intersection proofs', () => {
+        describe('rejected due existing token', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 1);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 1);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 1);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 1);
+          });
         });
 
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectExistingInclusion.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 0);
+        describe('rejected due applicationApproved contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 2);
+          });
         });
 
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectExistingInclusion.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 0);
-        });
+        describe('rejected due applicationApprovedTimeout contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 2);
+          });
 
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectExistingInclusion.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 0);
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 2);
+          });
         });
       });
 
-      describe('rejected due applicationApproved contour', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectApplicationApprovedInclusion.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 1);
+      describe('for inclusion proofs', () => {
+        describe('rejected due existing token', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 1);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 1);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 1);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 1);
+          });
         });
 
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectApplicationApprovedInclusion.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 1);
+        describe('rejected due applicationApproved contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 2);
+          });
         });
 
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectApplicationApprovedInclusion.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 1);
-        });
+        describe('rejected due applicationApprovedTimeout contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 0, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 0, 0, 2);
+          });
 
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectApplicationApprovedInclusion.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 1);
-        });
-      });
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 1, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 1, 0, 2);
+          });
 
-      describe('rejected due applicationApprovedTimeout contour', () => {
-        it('should distribute proper reward if 0 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutInclusion.call(this, 0);
-          await checkRejectDistribution.call(this, 0, 0, 1);
-        });
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 2, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 2, 0, 2);
+          });
 
-        it('should distribute proper reward if 1 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutInclusion.call(this, 1);
-          await checkRejectDistribution.call(this, 1, 0, 1);
-        });
-
-        it('should distribute proper reward if 2 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutInclusion.call(this, 2);
-          await checkRejectDistribution.call(this, 2, 0, 1);
-        });
-
-        it('should distribute proper reward if 4 CVs has voted before', async function() {
-          await rejectApplicationApprovedTimeoutInclusion.call(this, 4);
-          await checkRejectDistribution.call(this, 4, 0, 1);
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 4, Currency.GALT);
+            await checkGaltRejectDistribution.call(this, 4, 0, 2);
+          });
         });
       });
     });
   });
 
-  async function checkApproveDistributionFor3() {
-    const res = await this.contourVerificationManager.getApplicationRewards(0);
+  describe('ETH payment', () => {
+    describe('approval', () => {
+      it('should correctly distribute rewards for 1 of 1 verifiers', async function() {
+        await approveEth.call(this, 1);
+        await checkEthApproveDistributionFor1.call(this);
+      });
+
+      it('should correctly distribute rewards for 3 of 3 verifiers', async function() {
+        await approveEth.call(this, 3);
+        await checkEthApproveDistributionFor3.call(this);
+      });
+    });
+
+    describe('rejection', () => {
+      describe('for intersection proofs', () => {
+        describe('rejected due existing token', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 1);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 1);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 1);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectExistingIntersection.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 1);
+          });
+        });
+
+        describe('rejected due applicationApproved contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedIntersection.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 2);
+          });
+        });
+
+        describe('rejected due applicationApprovedTimeout contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutIntersection.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 2);
+          });
+        });
+      });
+
+      describe('for inclusion proofs', () => {
+        describe('rejected due existing token', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 1);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 1);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 1);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectExistingInclusion.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 1);
+          });
+        });
+
+        describe('rejected due applicationApproved contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedInclusion.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 2);
+          });
+        });
+
+        describe('rejected due applicationApprovedTimeout contour', () => {
+          it('should distribute proper reward if 0 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 0, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 0, 0, 2);
+          });
+
+          it('should distribute proper reward if 1 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 1, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 1, 0, 2);
+          });
+
+          it('should distribute proper reward if 2 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 2, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 2, 0, 2);
+          });
+
+          it('should distribute proper reward if 4 CVs has voted before', async function() {
+            await rejectApplicationApprovedTimeoutInclusion.call(this, 4, Currency.ETH);
+            await checkEthRejectDistribution.call(this, 4, 0, 2);
+          });
+        });
+      });
+    });
+  });
+
+  async function checkGaltApproveDistributionFor1() {
+    const res = await this.contourVerificationManager.getApplicationRewards(1);
+    assert.equal(res.currency, Currency.GALT);
+    assert.equal(res.totalPaidFee, ether(10));
+    assert.equal(res.verifiersReward, ether(8.7));
+    assert.equal(res.galtProtocolReward, ether(1.3));
+
+    assert.equal(res.verifierReward, ether(8.7));
+
+    const v1BalanceBefore = await this.galtToken.balanceOf(v1);
+    const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 });
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 }),
+      'Reward has already paid out'
+    );
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 }),
+      'Not voted on the application'
+    );
+    await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
+
+    const v1BalanceAfter = await this.galtToken.balanceOf(v1);
+    const mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+
+    assertGaltBalanceChanged(v1BalanceBefore, v1BalanceAfter, ether(8.7));
+    assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
+  }
+
+  async function checkEthApproveDistributionFor1() {
+    const res = await this.contourVerificationManager.getApplicationRewards(1);
+    assert.equal(res.currency, Currency.ETH);
+    assert.equal(res.totalPaidFee, ether(5));
+    assert.equal(res.verifiersReward, ether(3.35));
+    assert.equal(res.galtProtocolReward, ether(1.65));
+
+    assert.equal(res.verifierReward, ether(3.35));
+
+    const v1BalanceBefore = await web3.eth.getBalance(v1);
+    const mixerBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 });
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 }),
+      'Reward has already paid out'
+    );
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 }),
+      'Not voted on the application'
+    );
+    await this.contourVerificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+
+    const v1BalanceAfter = await web3.eth.getBalance(v1);
+    const mixerBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
+
+    assertEthBalanceChanged(v1BalanceBefore, v1BalanceAfter, ether(3.35));
+    assertEthBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.65));
+  }
+
+  async function checkGaltApproveDistributionFor3() {
+    const res = await this.contourVerificationManager.getApplicationRewards(1);
     assert.equal(res.currency, Currency.GALT);
     assert.equal(res.totalPaidFee, ether(10));
     assert.equal(res.verifiersReward, ether(8.7));
@@ -429,12 +615,12 @@ contract('ContourVerification Reward Distribution', accounts => {
     // const v4BalanceBefore = await this.galtToken.balanceOf(v4);
     const mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
 
-    await this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 });
-    await this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 });
-    await this.contourVerificationManager.claimVerifierApprovalReward(0, v3, { from: o3 });
-    // await this.contourVerificationManager.claimVerifierApprovalReward(0, v4, { from: o4 });
-    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v1, { from: o1 }));
-    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(0, v2, { from: o2 }));
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 });
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 });
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v3, { from: o3 });
+    // await this.contourVerificationManager.claimVerifierApprovalReward(1, v4, { from: o4 });
+    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 }));
+    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 }));
     await this.contourVerificationManager.claimGaltProtocolFeeGalt({ from: feeMixerAddress });
 
     const v1BalanceAfter = await this.galtToken.balanceOf(v1);
@@ -450,7 +636,51 @@ contract('ContourVerification Reward Distribution', accounts => {
     assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
   }
 
-  async function approve(numberOfApprovals) {
+  async function checkEthApproveDistributionFor3() {
+    const res = await this.contourVerificationManager.getApplicationRewards(1);
+    assert.equal(res.currency, Currency.ETH);
+    assert.equal(res.totalPaidFee, ether(5));
+    assert.equal(res.verifiersReward, ether(3.35));
+    assert.equal(res.galtProtocolReward, ether(1.65));
+
+    assert.equal(res.verifierReward, '1116666666666666666');
+
+    const v1BalanceBefore = await web3.eth.getBalance(v1);
+    const v2BalanceBefore = await web3.eth.getBalance(v2);
+    const v3BalanceBefore = await web3.eth.getBalance(v3);
+    // const v4BalanceBefore = await web3.eth.getBalance(v4);
+    const mixerBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 });
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 });
+    await this.contourVerificationManager.claimVerifierApprovalReward(1, v3, { from: o3 });
+    // await this.contourVerificationManager.claimVerifierApprovalReward(1, v4, { from: o4 });
+    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(1, v1, { from: o1 }));
+    await assertRevert(this.contourVerificationManager.claimVerifierApprovalReward(1, v2, { from: o2 }));
+    await this.contourVerificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+
+    const v1BalanceAfter = await web3.eth.getBalance(v1);
+    const v2BalanceAfter = await web3.eth.getBalance(v2);
+    const v3BalanceAfter = await web3.eth.getBalance(v3);
+    // const v4BalanceAfter = await web3.eth.getBalance(v4);
+    const mixerBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
+
+    assertEthBalanceChanged(v1BalanceBefore, v1BalanceAfter, '1116666666666666666');
+    assertEthBalanceChanged(v2BalanceBefore, v2BalanceAfter, '1116666666666666666');
+    assertEthBalanceChanged(v3BalanceBefore, v3BalanceAfter, '1116666666666666666');
+    // assertEthBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(2.9));
+    assertEthBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.65));
+  }
+
+  async function approveEth(numberOfApprovals) {
+    return approve.call(this, numberOfApprovals, Currency.ETH);
+  }
+
+  async function approveGalt(numberOfApprovals) {
+    return approve.call(this, numberOfApprovals, Currency.GALT);
+  }
+
+  async function approve(numberOfApprovals, paymentType) {
     assert.equal(numberOfApprovals <= 6, true, 'Too many numberOfApprovalsBeforeReject');
 
     await this.contourVerificationManager.setRequiredConfirmations(numberOfApprovals);
@@ -462,9 +692,16 @@ contract('ContourVerification Reward Distribution', accounts => {
     let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
 
-    await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+    if (paymentType === Currency.ETH) {
+      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, {
+        from: alice,
+        value: ether(5)
+      });
+    } else {
+      await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-    res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+    }
     const cvId2 = res.logs[0].args.applicationId;
 
     const asyncFuncsToCall = [];
@@ -478,32 +715,32 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.CONTOUR_VERIFICATION);
 
-    res = await this.contourVerificationManager.getApplication(0);
+    res = await this.contourVerificationManager.getApplication(cvId2);
     assert.equal(res.approvalCount, numberOfApprovals);
     assert.equal(res.action, 0);
     assert.equal(res.status, CVStatus.APPROVAL_TIMEOUT);
 
     // too early
-    await assertRevert(this.contourVerificationManager.pushApproval(0), 'Timeout period has not passed yet');
+    await assertRevert(this.contourVerificationManager.pushApproval(cvId2), 'Timeout period has not passed yet');
 
     await evmIncreaseTime(3600 * 5);
 
-    await this.contourVerificationManager.pushApproval(0);
+    await this.contourVerificationManager.pushApproval(cvId2);
 
     assert.equal(await this.newPropertyManager.getApplicationStatus(aId), ApplicationStatus.SUBMITTED);
 
-    res = await this.contourVerificationManager.getApplication(0);
+    res = await this.contourVerificationManager.getApplication(cvId2);
     assert.equal(res.status, CVStatus.APPROVED);
   }
 
-  async function rejectExistingIntersection(numberOfApprovalsBeforeReject) {
-    await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+  async function rejectExistingIntersection(numberOfApprovalsBeforeReject, paymentType) {
+    await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
       from: geoDateManagement
     });
-    await reject.call(this, numberOfApprovalsBeforeReject, async function() {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function() {
       await this.contourVerificationManager.rejectWithExistingContourIntersectionProof(
-        0,
+        1,
         v2,
         this.tokenId3,
         3,
@@ -517,7 +754,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function rejectApplicationApprovedIntersection(numberOfApprovalsBeforeReject) {
+  async function rejectApplicationApprovedIntersection(numberOfApprovalsBeforeReject, paymentType) {
     let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
@@ -538,7 +775,7 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     await this.contourVerificationManager.pushApproval(cvId1);
 
-    await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedContourIntersectionProof(
         cvId2,
         v2,
@@ -555,7 +792,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function rejectApplicationApprovedTimeoutIntersection(numberOfApprovalsBeforeReject) {
+  async function rejectApplicationApprovedTimeoutIntersection(numberOfApprovalsBeforeReject, paymentType) {
     let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
@@ -574,7 +811,7 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     await evmIncreaseTime(3600 * 3);
 
-    await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutContourIntersectionProof(
         cvId2,
         v2,
@@ -590,14 +827,14 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function rejectExistingInclusion(numberOfApprovalsBeforeReject) {
-    await this.spaceGeoData.setSpaceTokenContour(this.tokenId3, this.contour1, { from: geoDateManagement });
-    await this.spaceGeoData.setSpaceTokenType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
+  async function rejectExistingInclusion(numberOfApprovalsBeforeReject, paymentType) {
+    await this.spaceGeoData.setContour(this.tokenId3, this.contour1, { from: geoDateManagement });
+    await this.spaceGeoData.setType(this.tokenId3, SpaceTokenType.LAND_PLOT, {
       from: geoDateManagement
     });
-    await reject.call(this, numberOfApprovalsBeforeReject, async function() {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function() {
       await this.contourVerificationManager.rejectWithExistingPointInclusionProof(
-        0,
+        1,
         v2,
         Inclusion.VERIFYING_INSIDE_EXISTING,
         this.tokenId3,
@@ -608,7 +845,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function rejectApplicationApprovedInclusion(numberOfApprovalsBeforeReject) {
+  async function rejectApplicationApprovedInclusion(numberOfApprovalsBeforeReject, paymentType) {
     let res = await this.updatePropertyManager.submit(this.tokenId3, this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
@@ -629,7 +866,7 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     await this.contourVerificationManager.pushApproval(cvId1);
 
-    await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedPointInclusionProof(
         cvId2,
         v2,
@@ -643,7 +880,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function rejectApplicationApprovedTimeoutInclusion(numberOfApprovalsBeforeReject) {
+  async function rejectApplicationApprovedTimeoutInclusion(numberOfApprovalsBeforeReject, paymentType) {
     let res = await this.newPropertyManager.submit(this.contour1, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
     this.existingAId = aId;
@@ -662,7 +899,7 @@ contract('ContourVerification Reward Distribution', accounts => {
 
     await evmIncreaseTime(3600 * 3);
 
-    await reject.call(this, numberOfApprovalsBeforeReject, async function(cvId2) {
+    await reject.call(this, numberOfApprovalsBeforeReject, paymentType, async function(cvId2) {
       await this.contourVerificationManager.rejectWithApplicationApprovedTimeoutPointInclusionProof(
         cvId2,
         v2,
@@ -675,15 +912,23 @@ contract('ContourVerification Reward Distribution', accounts => {
     });
   }
 
-  async function reject(numberOfApprovalsBeforeReject, rejectFunction) {
+  async function reject(numberOfApprovalsBeforeReject, paymentType, rejectFunction) {
     assert.equal(numberOfApprovalsBeforeReject <= 6, true, 'Too many numberOfApprovalsBeforeReject');
 
     let res = await this.newPropertyManager.submit(this.contour2, 42, SpaceTokenType.LAND_PLOT);
     const aId = res.logs[0].args.applicationId;
 
-    await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
+    if (paymentType === Currency.ETH) {
+      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, {
+        from: alice,
+        value: ether(5)
+      });
+    } else {
+      await this.galtToken.approve(this.contourVerificationManager.address, ether(10), { from: alice });
 
-    res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+      res = await this.contourVerificationManager.submit(this.newPropertyManager.address, aId, { from: alice });
+    }
+
     const cvId2 = res.logs[0].args.applicationId;
     assert.equal(await this.contourVerifiers.slashedRewards(v2), ether(0));
 
@@ -740,7 +985,7 @@ contract('ContourVerification Reward Distribution', accounts => {
     assert.equal(res.status, CVStatus.REJECTED);
   }
 
-  async function checkRejectDistribution(numberOfApprovalsBeforeReject, aId, cvId) {
+  async function checkGaltRejectDistribution(numberOfApprovalsBeforeReject, aId, cvId) {
     const res = await this.contourVerificationManager.getApplicationRewards(cvId);
     assert.equal(res.currency, Currency.GALT);
     assert.equal(res.totalPaidFee, ether(10));
@@ -774,6 +1019,64 @@ contract('ContourVerification Reward Distribution', accounts => {
     assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
     assertGaltBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
     assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.3));
+
+    v2BalanceBefore = await this.galtToken.balanceOf(v2);
+    v3BalanceBefore = await this.galtToken.balanceOf(v3);
+    await this.contourVerifiers.claimSlashedReward({ from: v3 });
+    await this.contourVerifiers.claimSlashedReward({ from: v2 });
+    await this.contourVerifiers.claimSlashedReward({ from: v2 });
+    v2BalanceAfter = await this.galtToken.balanceOf(v2);
+    v3BalanceAfter = await this.galtToken.balanceOf(v3);
+
+    assertGaltBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(174 * numberOfApprovalsBeforeReject));
+    assertGaltBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
+
+    mixerBalanceBefore = await this.galtToken.balanceOf(feeMixerAddress);
+    await assertRevert(
+      this.contourVerifiers.claimSlashedProtocolReward({ from: v2 }),
+      'Only FEE_COLLECTOR role allowed'
+    );
+    await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
+    await this.contourVerifiers.claimSlashedProtocolReward({ from: feeMixerAddress });
+    mixerBalanceAfter = await this.galtToken.balanceOf(feeMixerAddress);
+
+    assertGaltBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(26 * numberOfApprovalsBeforeReject));
+  }
+
+  async function checkEthRejectDistribution(numberOfApprovalsBeforeReject, aId, cvId) {
+    const res = await this.contourVerificationManager.getApplicationRewards(cvId);
+    assert.equal(res.currency, Currency.ETH);
+    assert.equal(res.totalPaidFee, ether(5));
+    assert.equal(res.verifiersReward, ether(3.35));
+    assert.equal(res.galtProtocolReward, ether(1.65));
+    assert.equal(res.verifierReward, ether(3.35));
+
+    let v2BalanceBefore = await web3.eth.getBalance(v2);
+    let v3BalanceBefore = await web3.eth.getBalance(v3);
+    const v4BalanceBefore = await web3.eth.getBalance(v4);
+    let mixerBalanceBefore = await web3.eth.getBalance(feeMixerAddress);
+
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(cvId, v4, { from: o1 }),
+      'Invalid operator'
+    );
+    await assertRevert(
+      this.contourVerificationManager.claimVerifierApprovalReward(cvId, v2, { from: o2 }),
+      'Expect APPROVED status'
+    );
+    await this.contourVerificationManager.claimVerifierRejectionReward(cvId, v2, { from: o2 });
+    await this.contourVerificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+    await this.contourVerificationManager.claimGaltProtocolFeeEth({ from: feeMixerAddress });
+
+    let v2BalanceAfter = await web3.eth.getBalance(v2);
+    let v3BalanceAfter = await web3.eth.getBalance(v3);
+    const v4BalanceAfter = await web3.eth.getBalance(v4);
+    let mixerBalanceAfter = await web3.eth.getBalance(feeMixerAddress);
+
+    assertEthBalanceChanged(v2BalanceBefore, v2BalanceAfter, ether(3.35));
+    assertEthBalanceChanged(v3BalanceBefore, v3BalanceAfter, ether(0));
+    assertEthBalanceChanged(v4BalanceBefore, v4BalanceAfter, ether(0));
+    assertEthBalanceChanged(mixerBalanceBefore, mixerBalanceAfter, ether(1.65));
 
     v2BalanceBefore = await this.galtToken.balanceOf(v2);
     v3BalanceBefore = await this.galtToken.balanceOf(v3);

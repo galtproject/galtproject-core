@@ -1,22 +1,19 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/drafts/Counters.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "./PGGConfig.sol";
+import "./interfaces/IPGGConfig.sol";
+import "./interfaces/IPGGProposalManager.sol";
 
 
 contract PGGProposalManager is IPGGProposalManager {
@@ -76,7 +73,7 @@ contract PGGProposalManager is IPGGProposalManager {
     bytes response;
   }
 
-  PGGConfig internal pggConfig;
+  IPGGConfig internal pggConfig;
 
   Counters.Counter internal idCounter;
 
@@ -104,7 +101,7 @@ contract PGGProposalManager is IPGGProposalManager {
     _;
   }
 
-  constructor(PGGConfig _pggConfig) public {
+  constructor(IPGGConfig _pggConfig) public {
     pggConfig = _pggConfig;
   }
 

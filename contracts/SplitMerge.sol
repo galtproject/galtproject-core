@@ -1,22 +1,18 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/drafts/Counters.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/drafts/Counters.sol";
 import "@galtproject/libs/contracts/traits/OwnableAndInitializable.sol";
 import "@galtproject/libs/contracts/utils/ArrayUtils.sol";
 import "./interfaces/ISpaceSplitOperation.sol";
@@ -62,7 +58,7 @@ contract SplitMerge is OwnableAndInitializable {
     SpaceGeoDataRegistry _reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
     require(
-      _reg.getSpaceTokenAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      _reg.getAreaSource(_spaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Split available only for contract calculated token's area"
     );
 
@@ -84,7 +80,7 @@ contract SplitMerge is OwnableAndInitializable {
 
   function calculateTokenArea(uint256 _spaceTokenId) public returns (uint256) {
     SpaceGeoDataRegistry reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
-    return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(reg.getSpaceTokenContour(_spaceTokenId));
+    return IGeodesic(ggr.getGeodesicAddress()).calculateContourArea(reg.getContour(_spaceTokenId));
   }
 
   function finishSplitOperation(uint256 _spaceTokenId) external {
@@ -97,22 +93,22 @@ contract SplitMerge is OwnableAndInitializable {
 
     (uint256[] memory subjectContourOutput, address subjectTokenOwner, uint256 resultContoursLength) = splitOperation.getFinishInfo();
 
-    reg.setSpaceTokenContour(_spaceTokenId, subjectContourOutput);
+    reg.setContour(_spaceTokenId, subjectContourOutput);
 
     spaceToken().transferFrom(splitOperationAddress, subjectTokenOwner, _spaceTokenId);
-    int256 originalHighestPoint = reg.getSpaceTokenHighestPoint(_spaceTokenId);
+    int256 originalHighestPoint = reg.getHighestPoint(_spaceTokenId);
 
     for (uint256 j = 0; j < resultContoursLength; j++) {
       uint256 newPackageId = spaceToken().mint(subjectTokenOwner);
 
-      reg.setSpaceTokenContour(newPackageId, splitOperation.getResultContour(j));
-      reg.setSpaceTokenArea(newPackageId, calculateTokenArea(newPackageId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
-      reg.setSpaceTokenHighestPoint(newPackageId, originalHighestPoint);
+      reg.setContour(newPackageId, splitOperation.getResultContour(j));
+      reg.setArea(newPackageId, calculateTokenArea(newPackageId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
+      reg.setHighestPoint(newPackageId, originalHighestPoint);
 
       emit NewSplitSpaceToken(newPackageId);
     }
 
-    reg.setSpaceTokenArea(_spaceTokenId, calculateTokenArea(_spaceTokenId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
+    reg.setArea(_spaceTokenId, calculateTokenArea(_spaceTokenId), ISpaceGeoDataRegistry.AreaSource.CONTRACT);
 
     activeSplitOperations[splitOperationAddress] = false;
   }
@@ -139,30 +135,30 @@ contract SplitMerge is OwnableAndInitializable {
   {
     SpaceGeoDataRegistry reg = SpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
     require(
-      reg.getSpaceTokenAreaSource(_sourceSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      reg.getAreaSource(_sourceSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Merge available only for contract calculated token's area"
     );
     require(
-      reg.getSpaceTokenAreaSource(_destinationSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
+      reg.getAreaSource(_destinationSpaceTokenId) == ISpaceGeoDataRegistry.AreaSource.CONTRACT,
       "Merge available only for contract calculated token's area"
     );
     checkMergeContours(
-      reg.getSpaceTokenContour(_sourceSpaceTokenId),
-      reg.getSpaceTokenContour(_destinationSpaceTokenId),
+      reg.getContour(_sourceSpaceTokenId),
+      reg.getContour(_destinationSpaceTokenId),
       _destinationSpaceContour
     );
 
-    reg.setSpaceTokenContour(_destinationSpaceTokenId, _destinationSpaceContour);
+    reg.setContour(_destinationSpaceTokenId, _destinationSpaceContour);
 
-    int256 sourcePackageHighestPoint = reg.getSpaceTokenHighestPoint(_sourceSpaceTokenId);
-    reg.setSpaceTokenHighestPoint(_destinationSpaceTokenId, sourcePackageHighestPoint);
-    reg.setSpaceTokenArea(
+    int256 sourcePackageHighestPoint = reg.getHighestPoint(_sourceSpaceTokenId);
+    reg.setHighestPoint(_destinationSpaceTokenId, sourcePackageHighestPoint);
+    reg.setArea(
       _destinationSpaceTokenId,
       calculateTokenArea(_destinationSpaceTokenId),
       ISpaceGeoDataRegistry.AreaSource.CONTRACT
     );
 
-    reg.deleteSpaceTokenGeoData(_sourceSpaceTokenId);
+    reg.deleteGeoData(_sourceSpaceTokenId);
 
     spaceToken().burn(_sourceSpaceTokenId);
   }
@@ -173,6 +169,7 @@ contract SplitMerge is OwnableAndInitializable {
     uint256[] memory resultContour
   )
     public
+    pure
   {
     for (uint i = 0; i < sourceContour.length; i++) {
       for (uint j = 0; j < mergeContour.length; j++) {
@@ -208,11 +205,11 @@ contract SplitMerge is OwnableAndInitializable {
 
   // GETTERS
 
-  function getCurrentSplitOperation(uint256 _spaceTokenId) external returns (address) {
+  function getCurrentSplitOperation(uint256 _spaceTokenId) external view returns (address) {
     return tokenIdToSplitOperations[_spaceTokenId][tokenIdToSplitOperations[_spaceTokenId].length - 1];
   }
 
-  function getSplitOperationsCount(uint256 _spaceTokenId) external returns (uint256) {
+  function getSplitOperationsCount(uint256 _spaceTokenId) external view returns (uint256) {
     return tokenIdToSplitOperations[_spaceTokenId].length;
   }
 

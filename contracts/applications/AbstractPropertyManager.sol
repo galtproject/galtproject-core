@@ -1,34 +1,20 @@
 /*
- * Copyright ©️ 2018 Galt•Space Society Construction and Terraforming Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka),
- * [Dima Starodubcev](https://github.com/xhipster),
- * [Valery Litvin](https://github.com/litvintech) by
- * [Basic Agreement](http://cyb.ai/QmSAWEG5u5aSsUyMNYuX2A2Eaz4kEuoYWUkVBRdmu9qmct:ipfs)).
+ * Copyright ©️ 2018 Galt•Project Society Construction and Terraforming Company
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka)
  *
  * Copyright ©️ 2018 Galt•Core Blockchain Company
- * (Founded by [Nikolai Popeka](https://github.com/npopeka) and
- * Galt•Space Society Construction and Terraforming Company by
- * [Basic Agreement](http://cyb.ai/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS:ipfs)).
+ * (Founded by [Nikolai Popeka](https://github.com/npopeka) by
+ * [Basic Agreement](ipfs/QmaCiXUmSrP16Gz8Jdzq6AJESY1EAANmmwha15uR3c1bsS)).
  */
 
-pragma solidity 0.5.10;
+pragma solidity ^0.5.13;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "@galtproject/geodesic/contracts/interfaces/IGeodesic.sol";
-import "@galtproject/libs/contracts/collections/ArraySet.sol";
-import "../interfaces/ISpaceToken.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../registries/interfaces/ISpaceGeoDataRegistry.sol";
-import "./interfaces/IPropertyManagerFeeCalculator.sol";
-import "./interfaces/IContourModifierApplication.sol";
-import "./AbstractApplication.sol";
 import "./AbstractOracleApplication.sol";
 import "./AbstractPropertyManagerLib.sol";
 import "../registries/GaltGlobalRegistry.sol";
-import "../registries/interfaces/IPGGRegistry.sol";
 import "./ContourVerifiableApplication.sol";
-import "./ContourVerificationManager.sol";
-import "../ACL.sol";
 
 
 contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiableApplication {
@@ -139,20 +125,25 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
   // MODIFIER-LIKE FUNCTIONS
 
-  function onlyCVM() internal {
+  function onlyCVM() internal view {
     require(
       ggr.getACL().hasRole(msg.sender, ROLE_CONTOUR_VERIFIER_POOL),
       "Invalid verifier contract"
     );
   }
 
-  function onlyApplicant(uint256 _aId) internal {
+  function onlyApplicant(uint256 _aId) internal view {
     require(applications[_aId].applicant == msg.sender, "Invalid applicant");
   }
 
-  function onlyOracleOfApplication(uint256 _aId) internal {
+  function onlyOracleOfApplication(uint256 _aId) internal view {
     require(applications[_aId].addressOracleTypes[msg.sender] != 0x0, "Not valid oracle");
   }
+
+  // ABSTRACT
+
+  function _executeApproval(uint256 _aId) internal;
+  function _assignRequiredOracleTypesAndRewards(Application storage a) internal;
 
   // CONFIG GETTERS
 
@@ -288,7 +279,7 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
    * @param _newLedgerIdentifier of a plot
    * @param _newDataLink IPLD address
    * @param _newHumanAddress just a human readable address string
-   * @param _newCustomArea in sq. meters
+   * @param _newCustomArea in sq. meters (1 sq. meter == 1 eth)
    * @param _resubmissionFeeInGalt or 0 if paid by ETH
    */
   function resubmit(
@@ -542,8 +533,8 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
 
     ISpaceGeoDataRegistry spaceGeoData = ISpaceGeoDataRegistry(ggr.getSpaceGeoDataRegistryAddress());
 
-    spaceGeoData.setSpaceTokenContour(a.spaceTokenId, a.details.contour);
-    spaceGeoData.setSpaceTokenHighestPoint(a.spaceTokenId, a.details.highestPoint);
+    spaceGeoData.setContour(a.spaceTokenId, a.details.contour);
+    spaceGeoData.setHighestPoint(a.spaceTokenId, a.details.highestPoint);
 
     _changeApplicationStatus(a, ApplicationStatus.STORED);
   }
@@ -609,14 +600,6 @@ contract AbstractPropertyManager is AbstractOracleApplication, ContourVerifiable
   }
 
   // INTERNAL
-  function _executeApproval(uint256 _aId) internal {
-    revert("_executeApproval(): Not implemented");
-  }
-
-  function _assignRequiredOracleTypesAndRewards(Application storage a) internal {
-    revert("_assignRequiredOracleTypesAndRewards(): Not implemented");
-  }
-
   function _assignGaltProtocolFee(Application storage _a) internal {
     if (_a.rewards.galtProtocolFeePaidOut == false) {
       if (_a.currency == Currency.ETH) {

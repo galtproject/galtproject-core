@@ -99,9 +99,9 @@ contract('SpaceRA', accounts => {
       assert.equal(res, charlie);
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -144,10 +144,10 @@ contract('SpaceRA', accounts => {
       res = await this.spaceLockerRegistry.isValid(aliceLockerAddress);
       assert.equal(res, true);
 
-      res = await this.spaceLockerRegistry.getLockersListByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockerListByOwner(alice);
       assert.deepEqual(res, [aliceLockerAddress]);
 
-      res = await this.spaceLockerRegistry.getLockersCountByOwner(alice);
+      res = await this.spaceLockerRegistry.getLockerCountByOwner(alice);
       assert.equal(res.toString(10), '1');
 
       res = await this.spaceRA.isMember(alice);
@@ -260,7 +260,7 @@ contract('SpaceRA', accounts => {
 
       // UNSUCCESSFUL WITHDRAW SPACE TOKEN
       await assertRevert(aliceLocker.burn(this.spaceRA.address, { from: alice }));
-      await assertRevert(aliceLocker.withdraw(token1, { from: alice }));
+      await assertRevert(aliceLocker.withdraw({ from: alice }));
 
       // REVOKE REPUTATION
       await this.spaceRA.revoke(bob, 50, { from: alice });
@@ -310,7 +310,7 @@ contract('SpaceRA', accounts => {
       assert.sameMembers(res, []);
 
       await aliceLocker.burn(this.spaceRA.address, { from: alice });
-      await aliceLocker.withdraw(token1, { from: alice });
+      await aliceLocker.withdraw({ from: alice });
 
       res = await this.spaceRA.balanceOf(alice);
       assert.equal(res, 0);
@@ -367,9 +367,9 @@ contract('SpaceRA', accounts => {
       const token3 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token2, 600, '0', { from: geoDateManagement });
-      await this.spaceGeoData.setSpaceTokenArea(token3, 400, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token2, 600, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token3, 400, '0', { from: geoDateManagement });
 
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
       res = await this.spaceLockerFactory.build({ from: alice });
@@ -488,7 +488,7 @@ contract('SpaceRA', accounts => {
       await aliceLocker.burn(this.spaceRA.address, { from: alice });
 
       // Withdraw token
-      await aliceLocker.withdraw(token1, { from: alice });
+      await aliceLocker.withdraw({ from: alice });
     });
   });
 
@@ -501,7 +501,7 @@ contract('SpaceRA', accounts => {
       const token1 = res.logs[0].args.tokenId.toNumber();
 
       // HACK
-      await this.spaceGeoData.setSpaceTokenArea(token1, 800, '0', { from: geoDateManagement });
+      await this.spaceGeoData.setArea(token1, 800, '0', { from: geoDateManagement });
 
       // CREATE LOCKER
       await this.galtToken.approve(this.spaceLockerFactory.address, ether(10), { from: alice });
