@@ -613,6 +613,10 @@ contract AbstractProposalManager is Initializable, ChargesEthFee {
     );
   }
 
+  function getProposalsCount() external view returns (uint256) {
+    return idCounter.current();
+  }
+
   function getCommitmentOf(uint256 _proposalId, address _committer) external view returns (bytes32) {
     return _proposalVotings[_proposalId].commitments[_committer];
   }
